@@ -1,0 +1,66 @@
+<html>
+  <head>
+    <title>RoundwareWebListen Test</title>
+  </head>
+  <body>
+    <script type="text/javascript" src="roundware.js"></script>
+    <script type="text/javascript" src="jquery-3.2.1.slim.min.js"></script>
+    <script>
+      var roundwareServerUrl = "http://localhost:8888/api/2";
+      var roundwareProjectId = 1;
+
+      var roundware = new Roundware({
+        serverUrl: roundwareServerUrl,
+        projectId: roundwareProjectId
+      });
+
+      function handleListening(streamURL) {
+        var streamPlayer = $("#streamplayer");
+        var audioSource  = $("#audiosource");
+        var pauseButton  = $("#pause");
+
+        console.info("Starting to listen to " + streamURL);
+        audioSource.prop("src",streamURL);
+
+        streamPlayer.trigger("load");
+        streamPlayer.trigger("play");
+
+        pauseButton.show();
+
+        pauseButton.click(function() {
+          console.info("pausing");
+          streamPlayer.trigger("pause");
+        }).show();
+      };
+
+      function handleListeningFailure(userErrMsg,techErrMsg) {
+        console.error("Roundware Start Error",userErrMsg,techErrMsg);
+      };
+
+      $(function startApp() {
+        roundware.start({
+          success: handleListening,
+          error: handleListeningFailure
+        });
+
+        var tagIds = $("#tag_ids");
+        
+        tagIds.change(function(evt) {
+          roundware.tags(tagIds.val());
+        });
+      });
+    </script>
+
+    <audio id="streamplayer" style="border: solid 1px black;">
+      <source id="audiosource" type="audio/mp3"></source>
+      Your browser does not support the audio format.
+    </audio>
+
+    <h1 id='status'>...</h1>
+    <button id="pause" style="display: none;">Pause</button>
+    <div>
+      <label>Tag IDs</label>
+      <input id='tag_ids' />
+    </div>
+  </body>
+</html>
