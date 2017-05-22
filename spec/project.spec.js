@@ -1,20 +1,25 @@
 import { Project } from "../src/project";
 
 describe("Project",() => {
-  var project;
+  var project, storedCallback;
+
   var responseData = { 
     name: "ACME",
     pub_date: "2017-05-22",
     audio_format: "MP3"
   };
+
   var requestPromise = {
     then: (callback) => {
-      return callback(responseData);
+      storedCallback = callback;
+      return requestPromise;
     }
   };
+
   var apiClient = {
     get: () => { return requestPromise; }
   };
+
   var newProjectOptions = {
     apiClient: apiClient
   };
@@ -34,12 +39,18 @@ describe("Project",() => {
       toHaveBeenCalledWith("/projects/100",{ session_id: 300 });
   });
 
-  it("connect() returns the given sessionID",() => { 
-    expect(project.connect(333)).toBe(333);
+  it("connect() returns a promise for the connect request",() => { 
+    expect(project.connect(333)).toBe(requestPromise);
+  });
+
+  it("connect() attaches a callback to the connect request promise that returns the given sessionID",() => { 
+    project.connect(333);
+    expect(storedCallback(responseData)).toBe(333);
   });
 
   it(".connect() extracts project data from the API call",() => {
     project.connect(300);
+    storedCallback(responseData);
     expect(project.toString()).toMatch(/ACME/);
   });
 });
