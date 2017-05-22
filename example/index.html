@@ -46,7 +46,7 @@
         var tagIds = $("#tag_ids");
         
         tagIds.change(function(evt) {
-          roundware.tags(tagIds.val());
+          roundware.tags(tagIds.val().join(","));
         });
       });
     </script>
