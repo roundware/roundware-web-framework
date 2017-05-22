@@ -1,6 +1,5 @@
-/* jshint esversion: 6 */
+import logger from "./logger";
 
-var logger = require('./logger');
 var projectId, apiClient;
 var projectName = "(unknown)";
 var pubDate, audioFormat;
