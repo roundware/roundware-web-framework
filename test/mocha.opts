@@ -1,0 +1,4 @@
+--recursive 
+--bail 
+--use_strict 
+--compilers js:babel-core/register
