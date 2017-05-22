@@ -1,7 +1,7 @@
 import logger from "./logger";
 
 var apiClient, sessionId, streamId, streamApiUrl, streamAudioUrl, coords, heartbeatUrl, heartbeatInterval;
-const defaultHeartbeatInterval = 5000; // 5 seconds, TODO make this larger once we are stable
+const defaultHeartbeatInterval = 60 * 1000; // 5 seconds, TODO make this larger once we are stable
 
 export class Stream {
   constructor(options) {
@@ -31,7 +31,7 @@ export class Stream {
         session_id: sessionId,
       };
 
-      console.info("Activating heartbeat for " + defaultHeartbeatInterval);
+      console.info("Activating heartbeat for " + heartbeatInterval);
       apiClient.post(heartbeatUrl,heartbeatData);
     },defaultHeartbeatInterval);
   }

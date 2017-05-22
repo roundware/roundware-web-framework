@@ -1,13 +1,11 @@
 import logger from "./logger";
 
-var ajaxInterface = {};
-var serverUrl;
 var jQuery = require('jQuery');
 
 export class ApiClient {
   constructor(baseServerUrl,options = {}) {
-    ajaxInterface = options.ajaxInterface || jQuery;
-    serverUrl = baseServerUrl;
+    this._serverUrl = baseServerUrl;
+    this._ajaxInterface = options.ajaxInterface || jQuery;
   }
 
   get(path,data,options = {}) {
@@ -28,9 +26,9 @@ export class ApiClient {
   // note: Roundware Server expects paths to end with a trailing slash: /sessions/ instead of /sessions
   // TODO make this method account for that, adding it if needed
   send(path,data,options = {}) {
-    var url = serverUrl + path;
+    var url = this._serverUrl + path;
     options.data = data;
-    return ajaxInterface.ajax(url,options);
+    return this._ajaxInterface.ajax(url,options);
   }
 
   setAuthToken(authToken) {
@@ -38,8 +36,7 @@ export class ApiClient {
       Authorization: "token " + authToken,
     };
 
-    console.info("AUTH TOKEN SET");
-    ajaxInterface.ajaxSetup({
+    this._ajaxInterface.ajaxSetup({
       headers: headers,
       crossDomain: true
     });
