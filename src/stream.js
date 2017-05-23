@@ -1,63 +1,82 @@
 import logger from "./logger";
 
-var apiClient, sessionId, streamId, streamApiUrl, streamAudioUrl, coords, heartbeatUrl, heartbeatInterval;
-const defaultHeartbeatInterval = 60 * 1000; // 5 seconds, TODO make this larger once we are stable
+var apiClient, sessionId, streamId, streamApiUrl, streamAudioUrl, coords, heartbeatInterval;
+const defaultHeartbeatIntervalSeconds = 60;
 
+/** Establishes an audio stream with the Roundware server, and notifies Roundware of events like tag
+ * and geoposition updates **/
 export class Stream {
+  /** Create a new Stream 
+   * @param {Object} options - Various configuration parameters for this stream
+   * @param {apiClient} options.apiClient - the API client object to use for server API calls
+   * @param {Number} [options.heartbeatIntervalSeconds = 60"] how frequently to send a stream heartbeat
+  **/
   constructor(options) {
     apiClient = options.apiClient;
-    heartbeatInterval = options.heartbeatInterval || defaultHeartbeatInterval;
+    heartbeatInterval = (options.heartbeatIntervalSeconds || defaultHeartbeatIntervalSeconds) * 1000;
   }
 
+  /** @returns {String] human-readable description of this stream **/
   toString() {
-    return `Roundware Stream #${streamId} (${streamUrl})`;
+    return `Roundware Stream #${streamId} (${streamApiUrl})`;
   }
 
-  updateGeoposition(_coords) {
-    coords = _coords;
-    this.update(coords);
-  }
+  /** Notifies Roundware server of the listener's new coordinates 
+   * @param {Object} coords - Describes current position (typically produced by an instance of the Geolocation class)
+   * @param {Number} coords.latitude
+   * @param {Number} coords.longitude
+   * @see Geolocation **/
+  //updateGeoposition(_coords) {
+    //coords = _coords;
+    //this.update(coords);
+  //}
     
-  update(data) {
-    if (streamApiUrl && data) {
-      data.session_id = sessionId;
-      apiClient.patch(streamApiUrl,data);
-    }
-  }
-
-  activateHeartbeat() {
-    setInterval(() => {
-      var heartbeatData = {
-        session_id: sessionId,
-      };
-
-      console.info("Activating heartbeat for " + heartbeatInterval);
-      apiClient.post(heartbeatUrl,heartbeatData);
-    },defaultHeartbeatInterval);
-  }
-
+  /** Request a streaming audio URL from Roundware server
+   * @param {Number} _sessionId - Identifies the current session, must have been previously established by an instance of the Session class
+   * @param {Promise}  initialGeoLocation - we will wait on this promise to resolve with initial coordinates before attempting to establish a stream
+   * @returns {Promise} represents the pending API call **/
   connect(_sessionId,initialGeoLocation) {
     sessionId = _sessionId;
 
-    return initialGeoLocation.then((data,geoMonitor) => { 
-      data.session_id = sessionId;
+    return initialGeoLocation.then((coords,geoMonitor) => { 
+      let createStreamData = {};
+      Object.assign(createStreamData,coords,{ session_id: sessionId });
 
-      // make sure we update our local state with the first position
-      this.updateGeoposition(data);
-
-      // then register our interest in further position updates
-      geoMonitor.progress((data) => this.updateGeoposition(data));
-
-      return apiClient.post("/streams/",data,{
+      // Now we ask the server to create a new audio stream for us
+      let audioStreamPromise = apiClient.post("/streams/",createStreamData,{
         crossDomain: true,
         cache: true // to avoid CORS problems
       });
-    }).then(function streamsSuccess(data) {
-        streamAudioUrl = data.stream_url;
-        streamId = data.stream_id;
+
+      // then register our interest in further position updates
+      geoMonitor.progress(this.update);
+
+      return audioStreamPromise;
+    }).then(function streamsSuccess(streamData) {
+        streamAudioUrl = streamData.stream_url;
+        streamId = streamData.stream_id;
         streamApiUrl = `/streams/${streamId}/`;
-        heartbeatUrl = `/streams/${streamId}/heartbeat/`;
+
+        let heartbeatUrl = `/streams/${streamId}/heartbeat/`;
+        let heartbeatData = {
+          session_id: sessionId
+        };
+
+        setInterval(function sendHeartbeat() {
+          apiClient.post(heartbeatUrl,heartbeatData);
+        },heartbeatInterval);
+
+        // return the audio URL back to the caller so this promise can be chained in the Roundware class
         return streamAudioUrl;
-    }).done(() => this.activateHeartbeat());
+    });
+  }
+
+  /** Sends data to the Roundware server. If the Stream has not been established, does nothing.
+   * @param {Object} data [{}] **/
+  update(data = {}) {
+    if (streamApiUrl) {
+      data.session_id = sessionId;
+      apiClient.patch(streamApiUrl,data);
+    }
   }
 }
