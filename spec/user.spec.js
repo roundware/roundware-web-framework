@@ -1,31 +1,21 @@
 import { User } from "../src/user";
+import { mockApiClient, mockApiClientRequestPromise } from "./mocks/mock-api-client";
 
 describe("User",() => {
-  var user, storedCallback;
+  var user;
 
   var responseData = {
-    username: "Sonya"
+    username: "Sonya",
+    token: "ABC123"
   };
 
-  var requestPromise = {
-    done(callback) {
-      storedCallback = callback;
-      return requestPromise;
-    }
-  };
-
-  var apiClient = {
-    post: () => { return requestPromise; },
-    setAuthToken: () => {}
-  };
+  beforeEach(mockApiClient.testInit);
 
   var newUserOptions = {
-    apiClient: apiClient
+    apiClient: mockApiClient
   };
 
   beforeEach(function()  {
-    spyOn(apiClient,"post").and.callThrough();
-    spyOn(apiClient,"setAuthToken");
     user = new User(newUserOptions);
   });
 
@@ -35,17 +25,25 @@ describe("User",() => {
 
   it(".connect() makes an API request to /users/#",() => {
     user.connect();
-    expect(apiClient.post).
+    expect(mockApiClient.post).
       toHaveBeenCalledWith("/users/",{ device_id: "00000000000000", client_type: "web" });
   });
 
   it("connect() returns a promise for the connect request",() => { 
-    expect(user.connect()).toBe(requestPromise);
+    expect(user.connect()).toBe(mockApiClientRequestPromise);
   });
 
-  it(".connect() attachs a callback that extracts user data from the API call",() => {
+  it(".connect() attaches a callback that extracts user data from the API call",() => {
     user.connect();
-    storedCallback(responseData);
+    mockApiClientRequestPromise.storedCallback(responseData);
     expect(user.toString()).toMatch(/Sonya/);
+  });
+
+  it(".connect() passes the retrieved auth token to the API client",() => {
+    user.connect();
+    mockApiClientRequestPromise.storedCallback(responseData);
+
+    expect(mockApiClient.setAuthToken).
+      toHaveBeenCalledWith("ABC123");
   });
 });
