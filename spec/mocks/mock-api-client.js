@@ -9,7 +9,7 @@ let mockApiClientRequestPromise = {
   },
 
   then: function(callback) {
-    return done(callback);
+    return this.done(callback);
   },
 };
 
