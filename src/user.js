@@ -4,7 +4,14 @@ var deviceId, clientType, userName, apiClient;
 var authToken = "UNKNOWN";
 var userName = "(anonymous)";
 
+/** Responsible for identifying the user to the Roundware server and retrieving an auth token **/
 export class User {
+  /** Create a User
+   * @param {Object} options - Various configuration parameters for this user
+   * @param {apiClient} options.name - the API client object to use for server API calls
+   * @param {String} options.deviceId - this value distinguishes a particular user, who may be anonymous, to the server; by default we will fingerprint the browser to get this value, but you can supply your own value (useful if your app has a preexisting authorization scheme)
+   * @param {String} [options.clientType = "web"] 
+   **/
   constructor(options) {
     apiClient = options.apiClient;
 
@@ -14,16 +21,20 @@ export class User {
     clientType = options.clientType || "web";
   }
 
+  /** @returns {String} human-readable representation of this user **/
   toString() {
-    return "User '" + userName + "'";
+    return `User ${userName} (deviceId ${deviceId})`;
   }
 
+  /** Make an API call to associate the (possibly anonymous) application user with a Roundware user account.
+   * Upon success, this function receives an auth token, which is passed onto the apiClient object. **/
   connect() {
     var data = {
       device_id: deviceId,
       client_type: clientType
     };
 
+    // TODO need to also handle auth failures
     return apiClient.post("/users/",data).
       done(function connectionSuccess(data) {
         userName = data.username;

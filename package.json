@@ -10,6 +10,7 @@
     "build:main": "babel --copy-files --out-dir dist src",
     "build:umd": "webpack --output-filename roundware-web.umd.js",
     "build:umd.min": "webpack --output-filename roundware-web.umd.min.js -p",
+    "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
     "devstart": "webpack-dev-server"
   },
   "repository": {
@@ -34,6 +35,7 @@
     "babel-preset-stage-2": "6.24.1",
     "file-loader": "0.11.1",
     "jasmine": "2.6.0",
+    "jsdoc": "3.4.3",
     "json-loader": "0.5.4",
     "npm-run-all": "4.0.2",
     "path": "0.12.7",
