@@ -1,4 +1,4 @@
-import logger from "./logger";
+import { logger } from "./shims";
 
 var jQuery = require('jQuery');
 

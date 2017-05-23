@@ -1,4 +1,4 @@
-import logger from "./logger";
+import { logger } from "./shims";
 
 var apiClient, sessionId, streamId, streamApiUrl, streamAudioUrl, coords, heartbeatInterval;
 const defaultHeartbeatIntervalSeconds = 60;
@@ -38,7 +38,7 @@ export class Stream {
   connect(_sessionId,initialGeoLocation) {
     sessionId = _sessionId;
 
-    return initialGeoLocation.then((coords,geoMonitor) => { 
+    return initialGeoLocation.then((coords) => { 
       let createStreamData = {};
       Object.assign(createStreamData,coords,{ session_id: sessionId });
 
@@ -47,9 +47,6 @@ export class Stream {
         crossDomain: true,
         cache: true // to avoid CORS problems
       });
-
-      // then register our interest in further position updates
-      geoMonitor.progress(this.update);
 
       return audioStreamPromise;
     }).then(function streamsSuccess(streamData) {

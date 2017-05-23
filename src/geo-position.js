@@ -1,81 +1,80 @@
-// @see https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/Using_geolocation
+import { logger, defaultNavigator } from "./shims";
 
-import logger from "./logger";
+const initialGeoTimeoutSeconds = 1;
 
-var jQuery         = require('jQuery'); // HACK not sure why ES6 "include" doesn't work
-var geoListenEnabled = false;
-
-const oneSecond = 10000;
-const tenSeconds = 10000;
 const defaultCoords = {
   latitude: 1,
   longitude: 1
 };
 
-// first we get a fast, low-accuracy position
+// for an initial rapid, low-accuracy position
 const fastGeolocationPositionOptions = { 
   enableHighAccuracy: false,
-  timeout: oneSecond
+  timeout: initialGeoTimeoutSeconds
 };
 
-// first we get a fast, low-accuracy position
+// subsequent position monitoring should be high-accuracy
 const accurateGeolocationPositionOptions = { 
-  enableHighAccuracy: true,
-  timeout: tenSeconds
+  enableHighAccuracy: true
 };
 
+/** Responsible for tracking the user's position, when geo listening is enabled and the browser is capable
+ * @property {Boolean} geoListenEnabled - whether or not the geo positioning system is enabled and available
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/Using_geolocation **/
 export class GeoPosition {
+  /** Create a new GeoPosition.
+   * @param {Object} options - parameters for initializing this GeoPosition
+   * @param {Boolean} [options.geoListenEnabled = false] - whether or not to attempt to use geolocation **/
   constructor(options = {}) {
-    if ("geolocation" in navigator) {
-      if ("geoListenEnabled" in options) {
-        geoListenEnabled = options.geoListenEnabled;
-      } else {
-        geoListenEnabled = true; // awkward but only way I can think of to default this to true the way I want
-      }
+    this.navigator = options.navigator || defaultNavigator;
+
+    if (this.navigator.geolocation && options.geoListenEnabled) {
+      this.geoListenEnabled = true;
+    } else {
+      this.geoListenEnabled = false;
     }
   }
 
-  isGeoEnabled() {
-    return geoListenEnabled;
-  }
-
+  /** @return {String} Human-readable representation of this GeoPosition **/
   toString() { 
-    return `Latitude ${latitude}, Longitude ${longitude}`;
+    return `GeoPosition (enabled: ${this.geoListenEnabled})`;
   }
 
-  // note: you can specify a single callback function here or an array of functions, in case you 
-  // want to use this code to update a map at the same time it updates the stream, for example
-  connect() {
-    var initialGeolocation = jQuery.Deferred();
-    var geoMonitor = jQuery.Deferred();
-
-    if (!geoListenEnabled) {
+  /** Attempts to get an initial rough geographic location for the listener, then sets up a callback
+   * to update the position.
+   * @param {Function} geoUpdateCallback - object that should receive geolocation updates
+   * @return {Promise} represents the pending initial geolocation effort
+   * @see geoListenEnabled **/
+  connect(geoUpdateCallback) {
+    if (!this.geoListenEnabled) {
       logger.info("Geolocation disabled");
       return initialGeoLocation;
     }
 
     logger.info("Initializing geolocation system");
 
-    navigator.geolocation.getCurrentPosition(function initialGeoSuccess(initialPosition) {
-      var coords = initialPosition.coords;
-      logger.info("Received initial geolocation",coords);
+    let initialGeolocationPromise = new Promise((resolve,reject) => {
+      this.navigator.geolocation.getCurrentPosition((initialPosition) => {
+        let coords = initialPosition.coords;
+        logger.info("Received initial geolocation",coords);
 
-      navigator.geolocation.watchPosition(function highAccuracyGeoSuccess(updatedPosition) {
-        var newCoords = updatedPosition.coords;
-        geoMonitor.notify(newCoords);
-      },function highAccuracyGeoError(error) {
-        logger.warn("Unable to monitor geolocation: " + error);
-        geoMonitor.reject();
-      },accurateGeolocationPositionOptions);
+        geoUpdateCallback(coords);
 
-      initialGeolocation.resolve(coords,geoMonitor);
-      // NOTE: this method returns a watchID which can be used to cancel the geolocation monitor, could be useful in the future
-    },function initialGeoError(error) {
-      logger.warn(`Unable to get initial geolocation: ${error.message} (code #${error.code})`);
-      initialGeolocation.reject(defaultCoords);
-      geoMonitor.reject();
-    },fastGeolocationPositionOptions);
+        let geoWatchId = this.navigator.geolocation.watchPosition((updatedPosition) => {
+          let newCoords = updatedPosition.coords;
+          geoUpdateCallback(newCoords);
+        },(error) => {
+          logger.warn("Unable to watch geolocation: " + error);
+        },accurateGeolocationPositionOptions);
 
-    return initialGeolocation.promise();
+        logger.info(`Monitoring geoposition updates (watch ID ${geoWatchId})`);
+        resolve();
+      },function initialGeoError(error) {
+        logger.warn(`Unable to get initial geolocation: ${error.message} (code #${error.code})`);
+        reject();
+      },fastGeolocationPositionOptions);
+    });
+
+    return initialGeolocationPromise;
   }
 }

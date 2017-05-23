@@ -9,15 +9,9 @@ describe("Stream",() => {
     latitude: 39.2904,
     longitude: 76.6122
   };
-  let geoMonitorCallback;
-  let geoMonitor = {
-    progress: function(callback) {
-      geoMonitorCallback = callback;
-    }
-  };
   let initialGeolocation = {
     then: function(callback) {
-      return callback(initialCoordinates,geoMonitor);
+      return callback(initialCoordinates);
     }
   };
 
@@ -73,16 +67,6 @@ describe("Stream",() => {
     stream.connect(sessionId,initialGeolocation);
     let result = mockApiClientRequestPromise.storedCallback(responseData);
     expect(result).toBe(streamUrl);
-  });
-
-  it(".connect() registers a geoMonitor progress callback that updates the server with new position info",() => {
-    stream.connect(sessionId,initialGeolocation);
-
-    mockApiClientRequestPromise.storedCallback(responseData);
-    geoMonitorCallback({ latitude: 10, longitude: 10 });
-
-    expect(mockApiClient.patch).
-      toHaveBeenCalledWith("/streams/1300/",{ session_id: 650, latitude: 10, longitude: 10 });
   });
 
   it(".connect() creates a heartbeat timer",() => {

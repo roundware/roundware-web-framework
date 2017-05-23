@@ -2,7 +2,7 @@ import { Project } from "./project";
 import { Session } from "./session";
 import { GeoPosition } from "./geo-position";
 import { Stream } from "./stream";
-import logger from "./logger";
+import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { User } from "./user";
 
@@ -21,7 +21,6 @@ class Roundware {
     projectId = options.projectId;
 
     apiClient = new ApiClient(serverUrl);
-
     options.apiClient = apiClient;
 
     user = new User(options);
@@ -32,7 +31,7 @@ class Roundware {
   }
 
   start(options) {
-    var initialGeoLocation = geoPosition.connect(); // want to start this process as soon as possible, as it can take a few seconds
+    var initialGeoLocation = geoPosition.connect(stream.update); // want to start this process as soon as possible, as it can take a few seconds
 
     logger.info("Initializing Roundware for project ID #" + projectId);
 

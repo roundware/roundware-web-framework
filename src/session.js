@@ -1,4 +1,4 @@
-import logger from "./logger";
+import { logger } from "./shims";
 
 var clientSystem = "Unknown";
 var projectId, sessionId, geoListenEnabled;

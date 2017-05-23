@@ -1,4 +1,4 @@
-import logger from "./logger";
+import { logger } from "./shims";
 
 var projectId, apiClient;
 var projectName = "(unknown)";

@@ -1,4 +1,4 @@
-import logger from "./logger";
+import { logger } from "./shims";
 
 var deviceId, clientType, userName, apiClient;
 var authToken = "UNKNOWN";
