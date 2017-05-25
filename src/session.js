@@ -1,4 +1,4 @@
-import { logger } from "./shims";
+import { logger, navigator } from "./shims";
 
 var clientSystem = "Unknown";
 var projectId, sessionId, geoListenEnabled;
@@ -18,7 +18,7 @@ export class Session {
     geoListenEnabled = geoListenEnablement;
 
     apiClient = options.apiClient;
-    clientSystem = options.userAgent;
+    clientSystem = options.userAgent || navigator.userAgent;
 
     if (clientSystem.length > 127) {
       // on mobile browsers, this string is longer than the server wants
@@ -35,7 +35,7 @@ export class Session {
    * @returns {Promise} represents the pending API call
    **/
   connect() {
-    var data = {
+    let data = {
       project_id: projectId,
       geo_listen_enabled: geoListenEnabled,
       client_system: clientSystem

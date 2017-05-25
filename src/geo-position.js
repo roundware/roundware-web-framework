@@ -1,4 +1,4 @@
-import { logger, defaultNavigator } from "./shims";
+import { logger, navigator } from "./shims";
 
 const initialGeoTimeoutSeconds = 1;
 
@@ -26,7 +26,7 @@ export class GeoPosition {
    * @param {Object} options - parameters for initializing this GeoPosition
    * @param {Boolean} [options.geoListenEnabled = false] - whether or not to attempt to use geolocation **/
   constructor(options = {}) {
-    this.navigator = options.navigator || defaultNavigator;
+    this.navigator = options.navigator || navigator;
 
     if (this.navigator.geolocation && options.geoListenEnabled) {
       this.geoListenEnabled = true;
@@ -48,7 +48,7 @@ export class GeoPosition {
   connect(geoUpdateCallback = () => {}) {
     if (!this.geoListenEnabled) {
       logger.info("Geolocation disabled");
-      return initialGeoLocation;
+      return Promise.resolve();
     }
 
     logger.info("Initializing geolocation system");

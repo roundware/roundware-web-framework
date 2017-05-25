@@ -38,10 +38,9 @@
       };
 
       $(function startApp() {
-        roundware.start({
-          success: handleListening,
-          error: handleListeningFailure
-        });
+        roundware.start().
+          then(handleListening).
+          catch(handleListeningFailure);
 
         var tagIds = $("#tag_ids");
         

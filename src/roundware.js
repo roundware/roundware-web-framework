@@ -56,7 +56,7 @@ export default class Roundware {
 
     user        = options.user || new User(options);
     geoPosition = options.geoPosition || new GeoPosition(options);
-    session     = options.session || new Session(projectId,geoPosition.isGeoEnabled,options);
+    session     = options.session || new Session(projectId,geoPosition.geoListenEnabled,options);
     project     = options.project || new Project(projectId,options);
     stream      = options.stream || new Stream(options);
   }
@@ -82,4 +82,4 @@ export default class Roundware {
 }
 
 // Slight hack here to export Roundware module to browser properly; see https://github.com/webpack/webpack/issues/3929
-//module.exports = RoundwareClient;
+module.exports = Roundware;
