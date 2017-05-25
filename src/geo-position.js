@@ -45,7 +45,7 @@ export class GeoPosition {
    * @param {Function} geoUpdateCallback - object that should receive geolocation updates
    * @return {Promise} represents the pending initial geolocation effort
    * @see geoListenEnabled **/
-  connect(geoUpdateCallback) {
+  connect(geoUpdateCallback = () => {}) {
     if (!this.geoListenEnabled) {
       logger.info("Geolocation disabled");
       return initialGeoLocation;
@@ -64,7 +64,7 @@ export class GeoPosition {
           let newCoords = updatedPosition.coords;
           geoUpdateCallback(newCoords);
         },(error) => {
-          logger.warn("Unable to watch geolocation: " + error);
+          logger.warn(`Unable to watch position: ${error.message} (code #${error.code})`);
         },accurateGeolocationPositionOptions);
 
         logger.info(`Monitoring geoposition updates (watch ID ${geoWatchId})`);

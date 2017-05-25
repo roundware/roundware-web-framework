@@ -1,14 +1,14 @@
-// Ensures that we always have access to a logger object, even when operating outside of a browser context
-let logger;
+// by default, we assume no access to console, so we create a dummy logger
+let logger = {
+  error: () => {},
+  warn : () => {},
+  info : () => {},
+  log  : () => {}
+};
 
-if (typeof console === 'undefined') {
-  logger = {
-    error: function(){},
-    warn : function(){},
-    info : function(){},
-    log  : function(){}
-  };
-} else {
+// If a console is available, and we are in a browser, always use it; if we're in NodeJS, only use the console if the ROUNDWARE_DEBUG environment variable is set to "true"
+// We use the existence of the global variable 'process' as a test for whether
+if ((typeof console !== 'undefined') && ((typeof(process) === 'undefined' || process.env.ROUNDWARE_DEBUG === "true"))) {
   logger = console;
 }
 

@@ -23,5 +23,6 @@ npm devstart
 The test suite can be executed like this:
 
 ```bash
-npm test # will watch for file changes and auto-run tests for you
+npm test # run test suite
+ROUNDWARE_DEBUG=true npm test # pipe logging statements to the console
 ```
