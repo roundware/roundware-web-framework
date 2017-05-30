@@ -1,9 +1,12 @@
 {
   "name": "roundware-web-framework",
-  "version": "0.0.1-alpha.4",
+  "version": "0.0.1-alpha.5",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "main": "roundware.js",
-  "files": ["src","dist"],
+  "files": [
+    "src",
+    "dist"
+  ],
   "scripts": {
     "test": "./node_modules/.bin/babel-node ./node_modules/.bin/jasmine",
     "cover": "nyc --reporter=lcov -x spec/mocks -x spec/helpers npm test",
