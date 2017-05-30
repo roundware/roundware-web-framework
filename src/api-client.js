@@ -1,6 +1,6 @@
 import { logger } from "./shims";
 
-var jQuery = require('jQuery');
+var jQuery = require('JQuery');
 
 export class ApiClient {
   constructor(baseServerUrl,options = {}) {
