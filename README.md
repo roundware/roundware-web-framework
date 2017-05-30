@@ -54,7 +54,9 @@
 
 ## Resources
 
-* [Roundware Web Framework Documentation](https://roundware.github.io/roundware-web-framework/)
+* [Documentation](https://roundware.github.io/roundware-web-framework/)
+* [Code of Conduct](https://github.com/roundware/roundware-web-framework/blob/master/CODE_OF_CONDIUCT.md)
+* TODO link to CI build site w/ code coverage
 
 ## Development
 
@@ -76,6 +78,6 @@ npm run build # see package.json for all the possible builds
 npm run docbuild && open doc/index.html # creates jsdoc HTML files in doc/
 ```
 
-## Copyright &amp; Open Source License
+## Copyright
 
-TODO: need to confer with @hburgund. Do we use GNU Affero General Public License v3.0 like the server does?
+See [COPYRIGHT.txt]()
