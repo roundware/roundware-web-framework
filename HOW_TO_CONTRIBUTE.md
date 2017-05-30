@@ -25,7 +25,8 @@ npm run build # see package.json for all the possible builds
 # How to Release
 
 ```bash
-npm run docbuild && open doc/index.html # creates jsdoc HTML files in doc/, which powers the project site
+npm build
+npm run docbuild # creates jsdoc HTML files in doc/, which powers the project site
 export RW_VERSION=0.0.1-alpha.??
 npm version $RW_VERSION # also creates a git tag
 unset RW_VERSION

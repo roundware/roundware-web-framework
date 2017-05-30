@@ -535,13 +535,12 @@ var Stream = exports.Stream = function () {
       return "Roundware Stream #" + streamId + " (" + streamApiUrl + ")";
     }
 
-    /** Request a streaming audio URL from Roundware server and establish a regular heartbeat.
+    /** Request a streaming audio URL from Roundware server and establish a regular heartbeat. The heartbeat is used to keep a stream alive 
+     * during a session. Streams take a lot of resources on the server, so we put the auto-kill mechanism in place to not have useless 
+     * streams taking resources, but needed a method to keep them alive when we know they are still wanted.
      * @param {Number} _sessionId - Identifies the current session, must have been previously established by an instance of the Session class
      * @param {Promise}  initialGeoLocation - we will wait on this promise to resolve with initial coordinates before attempting to establish a stream
      * @returns {Promise} represents the pending API call 
-     * @note 
-     * The heartbeat is used to keep a stream alive during a session. Streams take a lot of resources on the server, so we put the auto-kill mechanism 
-     * in place to not have useless streams taking resources, but needed a method to keep them alive when we know they are still wanted.
      * **/
 
   }, {
@@ -627,13 +626,7 @@ var deviceId, clientType, userName, apiClient;
 var authToken = "UNKNOWN";
 var userName = "(anonymous)";
 
-/** Responsible for identifying the user to the Roundware server and retrieving an auth token 
- * Note: We don't currently use device ID but will eventually want to up a system where users would be able to claim automatically-created anonymous Roundware accounts. 
- * Users do NOT need an account to use Roundware. 
- *
- * @note From Halsey:
- * "Each user obviously has a unique token, but we thought that associating the token with a unique device_id would be helpful so if an app was deleted it wouldn’t change or if a user has multiple RW apps on their phone, they all would use the same user. So this is how things work on iOS at least. The client sends the device_id to the users/ endpoint; if the device_id is found on the server, the associated token is returned for use, but if the device_id isn’t found, a new token is generated along with an associated user and user profile. Once we allow users to claim their accounts, we will use the username/pw to authenticate instead of the device_id.”
- * **/
+/** Responsible for identifying the user to the Roundware server and retrieving an auth token **/
 
 var User = exports.User = function () {
   /** Create a User
