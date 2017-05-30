@@ -64,11 +64,12 @@ TODO add browser example
 
 ## Resources
 
+* [Code of Conduct](https://github.com/roundware/roundware-web-framework/blob/master/CODE_OF_CONDIUCT.md)
 * [Documentation](https://roundware.github.io/roundware-web-framework/)
 * [Source Code](https://github.com/roundware/roundware-web-framework/)
-* [Code of Conduct](https://github.com/roundware/roundware-web-framework/blob/master/CODE_OF_CONDIUCT.md)
 * [npm package](https://www.npmjs.com/package/roundware-web-framework)
-* TODO link to CI build site w/ code coverage
+* [CI Build](https://travis-ci.org/roundware/roundware-web-framework)
+* TODO link to code coverage
 
 ## References
 
@@ -93,6 +94,10 @@ npm run devstart && open http://localhost:9000 # Uses webpack to live-reload sou
 npm run build # see package.json for all the possible builds
 npm run docbuild && open doc/index.html # creates jsdoc HTML files in doc/
 ```
+
+## Badges
+
+[![Build Status](https://travis-ci.org/roundware/roundware-web-framework.svg?branch=master)](https://travis-ci.org/roundware/roundware-web-framework)
 
 ## Copyright and License
 
