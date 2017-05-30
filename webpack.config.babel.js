@@ -8,7 +8,7 @@ export default {
   entry: "./src/roundware.js",
 
   output: {
-    filename: "roundware.js",
+    filename: "roundware.umd.js",
     path: dist,
     pathinfo: true,
     libraryTarget: "umd",
