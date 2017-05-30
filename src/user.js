@@ -4,7 +4,13 @@ var deviceId, clientType, userName, apiClient;
 var authToken = "UNKNOWN";
 var userName = "(anonymous)";
 
-/** Responsible for identifying the user to the Roundware server and retrieving an auth token **/
+/** Responsible for identifying the user to the Roundware server and retrieving an auth token 
+ * Note: We don't currently use device ID but will eventually want to up a system where users would be able to claim automatically-created anonymous Roundware accounts. 
+ * Users do NOT need an account to use Roundware. 
+ *
+ * @note From Halsey:
+ * "Each user obviously has a unique token, but we thought that associating the token with a unique device_id would be helpful so if an app was deleted it wouldn’t change or if a user has multiple RW apps on their phone, they all would use the same user. So this is how things work on iOS at least. The client sends the device_id to the users/ endpoint; if the device_id is found on the server, the associated token is returned for use, but if the device_id isn’t found, a new token is generated along with an associated user and user profile. Once we allow users to claim their accounts, we will use the username/pw to authenticate instead of the device_id.”
+ * **/
 export class User {
   /** Create a User
    * @param {Object} options - Various configuration parameters for this user
