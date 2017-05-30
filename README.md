@@ -77,28 +77,9 @@ TODO add browser example
 
 ## Development
 
-```bash
-# Setup
+See [HOW_TO_CONTRIBUTE](HOW_TO_CONTIRBUTE.md).
 
-git clone https://github.com/roundware/roundware-web-framework.git
-cd roundware-web-framework
-npm install
-
-# Workflow
-
-npm run test # run test suite
-ROUNDWARE_DEBUG=true npm test # send logging statements to STDOUT
-
-npm run devstart && open http://localhost:9000 # Uses webpack to live-reload source code in your browser
-
-npm run cover # checks code coverage and opens a report in the browser
-npm run check-coverage # make sure we have 100% unit test coverage; no excuses!
-
-npm run build # see package.json for all the possible builds
-npm run docbuild && open doc/index.html # creates jsdoc HTML files in doc/
-```
-
-## Badges
+## Pieces of Flair
 
 [![Build Status](https://travis-ci.org/roundware/roundware-web-framework.svg?branch=master)](https://travis-ci.org/roundware/roundware-web-framework)
 
