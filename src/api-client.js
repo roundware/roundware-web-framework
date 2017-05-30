@@ -23,8 +23,10 @@ export class ApiClient {
     return this.send(path,data,options);
   }
 
-  // note: Roundware Server expects paths to end with a trailing slash: /sessions/ instead of /sessions
-  // TODO make this method account for that, adding it if needed
+  /** Transmit an Ajax request to the Roundware API. Note that the Roundware Server expects paths to end with a trailing slash: /sessions/ instead of /sessions
+   * @param path {string} - identifies the endpoint to receive the request
+   * @param data {object} - the payload to send
+   * @param options {object} - any additional options to add to the Ajax request **/
   send(path,data,options = {}) {
     var url = this._serverUrl + path;
     options.data = data;

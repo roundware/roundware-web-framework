@@ -66,6 +66,8 @@ TODO add browser example
 
 * [Code of Conduct](https://github.com/roundware/roundware-web-framework/blob/master/CODE_OF_CONDIUCT.md)
 * [Documentation](https://roundware.github.io/roundware-web-framework/)
+* [Demo Site](https://github.com/subelsky/roundware_web_demo/) (and also check out [examples])
+* [Roundware Terminology](http://roundware.org/docs/terminology/index.html)
 * [Source Code](https://github.com/roundware/roundware-web-framework/)
 * [npm package](https://www.npmjs.com/package/roundware-web-framework)
 * [CI Build](https://travis-ci.org/roundware/roundware-web-framework)

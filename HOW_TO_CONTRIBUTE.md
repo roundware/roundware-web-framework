@@ -22,15 +22,24 @@ npm run check-coverage # make sure we have 100% unit test coverage; no excuses!
 npm run build # see package.json for all the possible builds
 ```
 
+# Unit Testing
+
+Our standard is 100% unit test coverage. Run `npm run check-coverage && open coverage/lcov-report/index.html` to check.
+
+# Documentation
+
+* We aim for 100% documentation coverage. This is a good place to jump into the project - look for some undocumented methods and see if you can figure out what they do!
+* All classes and methods should be documented with [JSDoc](http://usejsdoc.org/) comments. These are used to build the [project documentation site](https://roundware.github.io/roundware-web-framework/).
+
 # How to Release
 
 ```bash
-npm run build
 npm run docbuild # if needed, creates jsdoc HTML files in doc/, which powers the project site
 export RW_VERSION=0.0.1-alpha.??
 npm version $RW_VERSION # also creates a git tag
+npm run build
 unset RW_VERSION
-git push && push --tags
+git push && git push --tags
 npm publish --tag alpha
 ```
 
