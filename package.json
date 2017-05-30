@@ -57,5 +57,7 @@
       "stage-2"
     ]
   },
-  "dependencies": {}
+  "dependencies": {
+    "jquery": "3.2.1"
+  }
 }

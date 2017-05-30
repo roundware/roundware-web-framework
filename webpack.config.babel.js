@@ -39,9 +39,5 @@ export default {
       {test: /\.js$/, loader: 'babel-loader', include},
       {test: /\.json$/, 'loader': 'json-loader', include},
     ]
-  },
-
-  externals: { 
-    jquery: "jQuery" 
   }
 };

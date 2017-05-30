@@ -2,7 +2,7 @@
 
 ## Introduction
 
-[Roundware](http://roundware.org/) is a location-based contributory audio platform. This framework provides a JavaScript SDK for interacting with the [Roundware Server API](https://github.com/roundware/roundware-server). The goal is to enable the creation of browser-based contributory audio and audio augmented reality applications.
+[Roundware](http://roundware.org/) is a location-based contributory audio platform. This framework provides a JavaScript SDK for interacting with the [Roundware Server API](https://github.com/roundware/roundware-server). The goal is to enable the creation of browser-based contributory audio and audio augmented reality applications. The library is written in ES6 but is built to run in all modern browsers that support HTML5 audio. It has one dependency on JQuery, but we only use it for Ajax - hopefully we can fall back to [ES6's fetch standard method](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) once we figure out how to get it working right.
 
 Note: this is currently alpha software; this code is in flux!
 
