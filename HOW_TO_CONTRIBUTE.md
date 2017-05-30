@@ -29,7 +29,7 @@ npm run docbuild && open doc/index.html # creates jsdoc HTML files in doc/, whic
 export RW_VERSION=0.0.1-alpha.??
 npm version $RW_VERSION # also creates a git tag
 unset RW_VERSION
-git push --tags
+git push && push --tags
 npm publish --tag alpha
 ```
 
