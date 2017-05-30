@@ -126,4 +126,26 @@ describe("GeoPosition",() => {
       ).then(done);
     });
   });
+
+  describe('when geolisten is disabled',() => {
+    let disabledConnectPromise;
+
+    beforeEach(() => {
+      let disabledGeo = new GeoPosition({
+        navigator: geoEnabledNavigator,
+        geoListenEnabled: false
+      });
+
+      spyOn(geoLocationSystem,"getCurrentPosition");
+      disabledConnectPromise = disabledGeo.connect();
+    });
+
+    it('returns a resolved promise',() => {
+      expect(disabledConnectPromise instanceof Promise).toBe(true);
+    });
+
+    it('does not activate geolocation',() => {
+      expect(geoLocationSystem.getCurrentPosition).not.toHaveBeenCalled();
+    });
+  });
 });

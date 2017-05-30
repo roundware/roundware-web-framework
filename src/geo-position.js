@@ -48,7 +48,7 @@ export class GeoPosition {
   connect(geoUpdateCallback = () => {}) {
     if (!this.geoListenEnabled) {
       logger.info("Geolocation disabled");
-      return Promise.resolve();
+      return Promise.resolve({});
     }
 
     logger.info("Initializing geolocation system");

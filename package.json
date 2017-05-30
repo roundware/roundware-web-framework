@@ -6,7 +6,7 @@
   "files": ["src","dist"],
   "scripts": {
     "test": "./node_modules/.bin/babel-node ./node_modules/.bin/jasmine",
-    "cover": "nyc --reporter=lcov npm test",
+    "cover": "nyc --reporter=lcov -x spec/mocks -x spec/helpers npm test",
     "check-coverage": "nyc check-coverage --statement 100 --branches 100 --function 100 --lines 100",
     "prebuild": "rimraf dist",
     "build": "npm-run-all --parallel build:*",
