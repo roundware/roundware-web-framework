@@ -55,6 +55,7 @@
 ## Resources
 
 * [Documentation](https://roundware.github.io/roundware-web-framework/)
+* [Source Code](https://github.com/roundware/roundware-web-framework/)
 * [Code of Conduct](https://github.com/roundware/roundware-web-framework/blob/master/CODE_OF_CONDIUCT.md)
 * TODO link to CI build site w/ code coverage
 
