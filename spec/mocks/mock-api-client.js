@@ -15,8 +15,7 @@ let mockApiClientRequestPromise = {
 
 let mockApiClient = new ApiClient("http://roundware.example.com");
 
-// @note You have to call this method inside a beforeEach or it() function
-// @example 
+// note You have to call this method inside a beforeEach or it() function
 //   import mockApiClient from "./mocks/mock-api-client";
 //   beforeEach(mockApiClient.testInit);
 mockApiClient.testInit = () => {
