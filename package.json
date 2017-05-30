@@ -26,7 +26,7 @@
   "bugs": {
     "url": "https://github.com/roundware/roundware-web/issues"
   },
-  "homepage": "https://github.com/roundware/roundware-web#readme",
+  "homepage": "https://roundware.github.io/roundware-web-framework/",
   "devDependencies": {
     "babel-cli": "6.24.1",
     "babel-core": "6.24.1",

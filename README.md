@@ -52,6 +52,10 @@
 
 * TODO: Need to fill this in after we release the first version and can practice setting it up
 
+## Resources
+
+* [Roundware Web Framework Documentation](https://roundware.github.io/roundware-web-framework/)
+
 ## Development
 
 ```bash
