@@ -1,8 +1,9 @@
 {
-  "name": "roundware",
-  "version": "0.0.1",
+  "name": "roundware-web-framework",
+  "version": "0.0.1-alpha.0",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "main": "roundware.js",
+  "files": "src",
   "scripts": {
     "test": "./node_modules/.bin/babel-node ./node_modules/.bin/jasmine",
     "prebuild": "rimraf dist",

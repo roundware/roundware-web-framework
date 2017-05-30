@@ -4,6 +4,8 @@
 
 [Roundware](http://roundware.org/) is a location-based contributory audio platform. This framework provides a JavaScript SDK for interacting with the [Roundware Server API](https://github.com/roundware/roundware-server). The goal is to enable the creation of browser-based contributory audio and audio augmented reality applications.
 
+Note: this is currently alpha software; this code is in flux!
+
 ## Code Samples
 
 ```html
@@ -50,14 +52,27 @@
 
 ## Installation
 
-* TODO: Need to fill this in after we release the first version and can practice setting it up
+> Node
+  
+```bash
+npm install roundware-web-framework
+```
+
+> Browser
+
+TODO add browser example
 
 ## Resources
 
 * [Documentation](https://roundware.github.io/roundware-web-framework/)
 * [Source Code](https://github.com/roundware/roundware-web-framework/)
 * [Code of Conduct](https://github.com/roundware/roundware-web-framework/blob/master/CODE_OF_CONDIUCT.md)
+* [npm package](https://www.npmjs.com/package/roundware-web-framework)
 * TODO link to CI build site w/ code coverage
+
+## References
+
+* [How to Write an Open Source JavaScript Library](https://github.com/sarbbottam/write-an-open-source-js-lib#creating-the-library-and-adding-dependencies): a lot of the initial project setup was adapted from this tutorial.
 
 ## Development
 
@@ -79,6 +94,6 @@ npm run build # see package.json for all the possible builds
 npm run docbuild && open doc/index.html # creates jsdoc HTML files in doc/
 ```
 
-## Copyright
+## Copyright and License
 
-See [COPYRIGHT.txt]()
+By Mike Subelsky and other authors. See [COPYRIGHT.txt](COPYRIGHT.txt) and [LICENSE.txt](LICENSE.txt) for more details.
