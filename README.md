@@ -69,7 +69,7 @@ TODO add browser example
 * [Source Code](https://github.com/roundware/roundware-web-framework/)
 * [npm package](https://www.npmjs.com/package/roundware-web-framework)
 * [CI Build](https://travis-ci.org/roundware/roundware-web-framework)
-* TODO link to code coverage
+* TODO figure out how to display code coverage report
 
 ## References
 
@@ -90,6 +90,9 @@ npm run test # run test suite
 ROUNDWARE_DEBUG=true npm test # send logging statements to STDOUT
 
 npm run devstart && open http://localhost:9000 # Uses webpack to live-reload source code in your browser
+
+npm run cover # checks code coverage and opens a report in the browser
+npm run check-coverage # make sure we have 100% unit test coverage; no excuses!
 
 npm run build # see package.json for all the possible builds
 npm run docbuild && open doc/index.html # creates jsdoc HTML files in doc/
