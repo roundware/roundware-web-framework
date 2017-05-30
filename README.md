@@ -11,7 +11,7 @@ Note: this is currently alpha software; this code is in flux!
 ```html
 <html>
   <body>
-    <script type="text/javascript" src="roundware.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/roundware-web-framework@0.0.1-alpha.4/dist/roundware.umd.min.js"></script>
     <script type="text/javascript" src="jquery-3.2.1.slim.min.js"></script>
     <script>
       var roundwareServerUrl = "http://localhost:8888/api/2";

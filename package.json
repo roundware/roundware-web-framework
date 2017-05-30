@@ -3,7 +3,7 @@
   "version": "0.0.1-alpha.4",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "main": "roundware.js",
-  "files": "src",
+  "files": ["src","dist"],
   "scripts": {
     "test": "./node_modules/.bin/babel-node ./node_modules/.bin/jasmine",
     "cover": "nyc --reporter=lcov npm test",
