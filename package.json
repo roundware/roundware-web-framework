@@ -4,7 +4,6 @@
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "main": "roundware.js",
   "files": [
-    "src",
     "dist"
   ],
   "scripts": {
