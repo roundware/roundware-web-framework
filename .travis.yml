@@ -11,8 +11,9 @@ notifications:
 before_script:
   - npm prune
 script:
-  - npm run cover
-  #- npm run check-coverage # not ready to enforce this yet
-  #- npm run build
+  #- npm run cover
+  #- npm run check-coverage # does not work yet
+  - npm test
+  - npm run build
 after_success:
   #- npm run report-coverage # TODO figure out nice way to report this; codecov.io wanted way too many permissions
