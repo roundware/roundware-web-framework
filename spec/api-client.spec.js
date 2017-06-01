@@ -9,9 +9,16 @@ describe("ApiClient",function() {
   };
 
   var ajaxSpy;
-  var sendOptions = { cache: true };
+  var sendOptions = { xyz: 123 };
+  var ajaxRequestPromiseErrorHandler;
+  var ajaxRequestErrorHandlingPromise;
 
-  var ajaxRequest = {};
+  var ajaxRequestPromise = {
+    catch(errorHandlingBehavior) {
+      ajaxRequestPromiseErrorHandler = errorHandlingBehavior;
+      return ajaxRequestErrorHandlingPromise;
+    }
+  };
   const baseUrl = "http://example.com";
   const streamsPath = "/streams/";
   const streamsUrl = baseUrl + streamsPath;
@@ -26,41 +33,47 @@ describe("ApiClient",function() {
 
     ajaxSpy = spyOn(ajaxInterface,"ajax").
       and.
-      returnValue(ajaxRequest);
+      returnValue(ajaxRequestPromise);
   });
 
   it(".get() makes GET requests",function() {
     client.get(streamsPath,data,sendOptions);
-    expect(ajaxSpy).toHaveBeenCalledWith(streamsUrl,{ data: data, method: "GET", cache: true });
+    expect(ajaxSpy).toHaveBeenCalledWith(streamsUrl,{ data: data, method: "GET", xyz: 123, crossDomain: true });
   });
 
   it(".get() returns the request object",function() {
-    expect(client.get(streamsPath,data,sendOptions)).toBe(ajaxRequest);
+    expect(client.get(streamsPath,data,sendOptions)).toBe(ajaxRequestErrorHandlingPromise);
   });
 
   it(".post() makes POST requests",function() {
     client.post(streamsPath,data,sendOptions);
-    expect(ajaxSpy).toHaveBeenCalledWith(streamsUrl,{ data: data, method: "POST", cache: true });
+    expect(ajaxSpy).toHaveBeenCalledWith(streamsUrl,{ data: data, method: "POST", xyz: 123, crossDomain: true });
   });
 
   it(".post() returns the request object",function() {
-    expect(client.post(streamsPath,data,sendOptions)).toBe(ajaxRequest);
+    expect(client.post(streamsPath,data,sendOptions)).toBe(ajaxRequestErrorHandlingPromise);
   });
 
   it(".patch() makes PATCH requests",function() {
     client.patch(streamsPath,data,sendOptions);
-    expect(ajaxSpy).toHaveBeenCalledWith(streamsUrl,{ data: data, method: "PATCH", cache: true });
+    expect(ajaxSpy).toHaveBeenCalledWith(streamsUrl,{ data: data, method: "PATCH", xyz: 123, crossDomain: true });
   });
 
   it(".patch() returns the request object",function() {
-    expect(client.patch(streamsPath,data,sendOptions)).toBe(ajaxRequest);
+    expect(client.patch(streamsPath,data,sendOptions)).toBe(ajaxRequestErrorHandlingPromise);
   });
 
   it(".send() makes generic Ajax requests, with data",function() {
     var customOptions = { method: "HEAD", cache: true };
 
     client.send(streamsPath,data,customOptions);
-    expect(ajaxSpy).toHaveBeenCalledWith(streamsUrl,{ data: data, method: "HEAD", cache: true });
+    expect(ajaxSpy).toHaveBeenCalledWith(streamsUrl,{ data: data, method: "HEAD", cache: true, crossDomain: true });
+  });
+
+  it('.send() rethrows async API errors',() => {
+    client.send(streamsPath,data,sendOptions);
+    expect(ajaxRequestPromiseErrorHandler).not.toBeNull();
+    expect(() => ajaxRequestPromiseErrorHandler({},"ugh","a problem")).toThrow(jasmine.stringMatching('ugh'));
   });
 
   it("sets Ajax authorization header",function() {
@@ -71,8 +84,7 @@ describe("ApiClient",function() {
     expect(headerSpy).toHaveBeenCalledWith({
       headers: { 
         Authorization: "token ABC123"
-      },
-      crossDomain: true
+      }
     });
   });
 });
