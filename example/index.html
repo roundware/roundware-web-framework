@@ -12,7 +12,7 @@
       */
 
       var roundwareServerUrl = "http://localhost:8888/api/2";
-      var roundwareProjectId = 1;
+      var roundwareProjectId = 1; // corresponds to a project setup in the roundware server developer seed script
 
       var roundware = new Roundware({
         serverUrl: roundwareServerUrl,
@@ -38,9 +38,9 @@
         }).show();
       };
 
-      // First message is user-friendly; second message is for programmers
-      function handleListeningFailure(userErrMsg,techErrMsg) {
-        console.error("Roundware Start Error",userErrMsg,techErrMsg);
+      // Generally we throw user-friendly messages and log a more technical message
+      function handleListeningFailure(userErrMsg) {
+        console.error("Roundware Start Error",userErrMsg);
       };
 
       $(function startApp() {

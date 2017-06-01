@@ -46,7 +46,7 @@ export class ApiClient {
       logger.error(techMsg);
 
       let usrMsg = "We were unable to contact the audio server. Please try again.";
-      throw(usrMsg,techMsg);
+      throw(usrMsg);
     });
 
     return errorHandlingRequestPromise;

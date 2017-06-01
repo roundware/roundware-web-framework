@@ -73,7 +73,7 @@ describe("ApiClient",function() {
   it('.send() rethrows async API errors',() => {
     client.send(streamsPath,data,sendOptions);
     expect(ajaxRequestPromiseErrorHandler).not.toBeNull();
-    expect(() => ajaxRequestPromiseErrorHandler({},"ugh","a problem")).toThrow(jasmine.stringMatching('ugh'));
+    expect(() => ajaxRequestPromiseErrorHandler({},"ugh","a problem")).toThrow(jasmine.stringMatching('Please try again'));
   });
 
   it("sets Ajax authorization header",function() {
