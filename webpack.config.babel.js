@@ -18,7 +18,7 @@ export default {
   devtool: "source-map",
 
   devServer: {
-    port: 9000,
+    port: 8080,
     contentBase: [path.resolve(__dirname,"example")],
     watchContentBase: true,
 
