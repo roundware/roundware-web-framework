@@ -19,6 +19,7 @@ describe("GeoPosition",() => {
     geoListenEnabled: true
   };
 
+  /* istanbul ignore next */
   let failSpecOnErrorCallback = (err) => {
     fail(err);
   };
@@ -100,9 +101,11 @@ describe("GeoPosition",() => {
 
     it('returns a rejected promise',(done) => {
       connectPromise.then(
-        function shouldNotResolve() { fail("promise was resolved instead of rejected"); },
-        function rejectFunction() {}
-      ).then(done);
+        /* istanbul ignore next */
+        function shouldNotResolve() { 
+          fail("promise was resolved instead of rejected"); 
+        }
+      ).catch(done);
     });
   });
 
@@ -122,6 +125,7 @@ describe("GeoPosition",() => {
     it('still returns a resolved promise',(done) => {
       connectPromise.then(
         function resolve() {},
+        /* istanbul ignore next */
         function shouldNotReject() { fail("promise was rejected instead of resolved"); }
       ).then(done);
     });

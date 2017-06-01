@@ -21,9 +21,10 @@ describe('Roundware', function() {
 
   let mockStream = {
     connect: () => { return Promise.resolve(audioStreamUrl); },
-    update: () => {}
+    update: {}
   };
 
+  /* istanbul ignore next */
   let failSpecOnErrorCallback = (err) => {
     fail(err);
   };
