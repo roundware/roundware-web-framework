@@ -15,8 +15,8 @@ before_script:
   - npm prune
 script:
   #- npm run cover
-  #- npm run check-coverage # does not work yet
+  #- npm run check-coverage # TODO does not work yet
   - npm test
-  - npm run build
+  #- npm run build # TODO does not work yet - want to try using semantic-release
 after_success:
   #- npm run report-coverage # TODO figure out nice way to report this; codecov.io wanted way too many permissions
