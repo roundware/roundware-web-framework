@@ -1,7 +1,7 @@
 import { ApiClient } from "../../src/api-client";
 
 let mockApiClientRequestPromise = {
-  storedCallback: () => { fail("no callback was stored in the request promise"); },
+  storedCallback: () => {},
 
   done: function(callback) {
     this.storedCallback = callback;
@@ -9,6 +9,7 @@ let mockApiClientRequestPromise = {
   },
 
   then: function(callback) {
+    this.storedCallback = callback;
     return this.done(callback);
   },
 };

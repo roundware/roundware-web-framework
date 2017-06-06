@@ -7,7 +7,7 @@
     "dist"
   ],
   "scripts": {
-    "test": "./node_modules/.bin/babel-node ./node_modules/.bin/jasmine",
+    "test": "./node_modules/.bin/babel-node ./node_modules/jasmine/bin/jasmine.js",
     "cover": "nyc --reporter=lcov -x spec/mocks -x spec/helpers npm test",
     "check-coverage": "nyc check-coverage --statement 100 --branches 100 --function 100 --lines 100",
     "prebuild": "rimraf dist",
@@ -16,8 +16,14 @@
     "build:umd": "webpack --output-filename roundware.umd.js",
     "build:umd.min": "webpack --output-filename roundware.umd.min.js -p",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
-    "devstart": "webpack-dev-server"
+    "devstart": "webpack-dev-server",
+    "watch": "npm-watch test"
   },
+
+  "watch": {
+    "test": "{src,test}/*.js"
+  },
+
   "repository": {
     "type": "git",
     "url": "git+https://github.com/roundware/roundware-web.git"
@@ -43,6 +49,7 @@
     "jsdoc": "3.4.3",
     "json-loader": "0.5.4",
     "npm-run-all": "4.0.2",
+    "npm-watch": "0.1.9",
     "nyc": "10.3.2",
     "path": "0.12.7",
     "pryjs": "1.0.3",

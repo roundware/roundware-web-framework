@@ -9,11 +9,6 @@ describe("Stream",() => {
     latitude: 39.2904,
     longitude: 76.6122
   };
-  let initialGeolocation = {
-    then: function(callback) {
-      return callback(initialCoordinates);
-    }
-  };
 
   let responseData = {
     stream_url: streamUrl,
@@ -40,37 +35,54 @@ describe("Stream",() => {
     expect(stream.toString()).toMatch(/Stream/);
   });
 
-  it(".connect() makes an API request to /streams/",() => {
-    stream.connect(sessionId,initialGeolocation);
+  it(".play() makes an API request to /streams/",() => {
+    stream.play(sessionId,initialCoordinates);
+    mockApiClientRequestPromise.storedCallback(responseData);
 
     let expectedData = {};
     Object.assign(expectedData,initialCoordinates,{ session_id:  sessionId });
 
     expect(mockApiClient.post).
       toHaveBeenCalledWith("/streams/",expectedData,{ 
-        crossDomain: true,
         cache: true
       });
   });
 
-  it(".connect() returns a promise for the API request",() => { 
-    expect(stream.connect(sessionId,initialGeolocation)).toBe(mockApiClientRequestPromise);
+  it(".play() returns a promise for the API request",() => { 
+    expect(stream.play(sessionId,initialCoordinates)).toBe(mockApiClientRequestPromise);
   });
 
-  it(".connect() attaches a callback that extracts session data from the API call",() => {
-    stream.connect(sessionId,initialGeolocation);
+  it(".play() attaches a callback that extracts session data from the API call",() => {
+    stream.play(sessionId,initialCoordinates);
     mockApiClientRequestPromise.storedCallback(responseData);
     expect(stream.toString()).toMatch(/Stream #1300/);
   });
 
-  it(".connect() attaches a callback that returns a new audio stream URL",() => {
-    stream.connect(sessionId,initialGeolocation);
-    let result = mockApiClientRequestPromise.storedCallback(responseData);
-    expect(result).toBe(streamUrl);
+  it(".play() invokes the caller's firstPlayCallback with a new audio stream URL",() => {
+    let firstPlayCallback = jasmine.createSpy("firstPlayCallback");
+    stream.play(sessionId,initialCoordinates,firstPlayCallback);
+    mockApiClientRequestPromise.storedCallback(responseData);
+    expect(firstPlayCallback).toHaveBeenCalledWith(streamUrl);
   });
 
-  it(".connect() creates a heartbeat timer",() => {
-    stream.connect(sessionId,initialGeolocation);
+  it('multiple calls to .play() invoke the firstPlayCallback once, and make /resume calls to the server thereafter ',() => {
+    let firstPlayCallback = jasmine.createSpy("firstPlayCallback");
+
+    stream.play(sessionId,initialCoordinates,firstPlayCallback);
+    mockApiClientRequestPromise.storedCallback(responseData);
+
+    let secondPlayResponse = stream.play(sessionId,initialCoordinates,firstPlayCallback);
+    expect(secondPlayResponse).toBe(mockApiClientRequestPromise);
+
+    expect(firstPlayCallback).toHaveBeenCalledTimes(1);
+    expect(mockApiClient.post).toHaveBeenCalledTimes(2);
+
+    expect(mockApiClient.post).
+      toHaveBeenCalledWith("/streams/1300/resume/");
+  });
+
+  it(".play() creates a heartbeat timer",() => {
+    stream.play(sessionId,initialCoordinates);
     mockApiClientRequestPromise.storedCallback(responseData);
     
     jasmine.clock().tick(heartbeatIntervalSeconds * 1000);
@@ -79,11 +91,25 @@ describe("Stream",() => {
   });
 
   it(".update() sends new data to the server",() => {
-    stream.connect(sessionId,initialGeolocation);
+    stream.play(sessionId,initialCoordinates);
     mockApiClientRequestPromise.storedCallback(responseData);
+
     stream.update({ abc: 123 });
 
     expect(mockApiClient.patch).
       toHaveBeenCalledWith("/streams/1300/", { abc: 123, session_id: 650 });
+  });
+
+  it('.pause() does nothing when called before .play()',() => {
+    expect(() => stream.pause()).not.toThrow();
+  });
+
+  it('.pause() sends a pause API message when called after .play()',() => {
+    stream.play(sessionId,initialCoordinates);
+    mockApiClientRequestPromise.storedCallback(responseData);
+    stream.pause();
+
+    expect(mockApiClient.post).
+      toHaveBeenCalledWith("/streams/1300/pause/");
   });
 });

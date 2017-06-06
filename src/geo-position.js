@@ -27,6 +27,7 @@ export class GeoPosition {
    * @param {Boolean} [options.geoListenEnabled = false] - whether or not to attempt to use geolocation **/
   constructor(options = {}) {
     this.navigator = options.navigator || navigator;
+    this._initialGeolocationPromise = Promise.resolve(defaultCoords);
 
     if (this.navigator.geolocation && options.geoListenEnabled) {
       this.geoListenEnabled = true;
@@ -42,22 +43,21 @@ export class GeoPosition {
 
   /** Attempts to get an initial rough geographic location for the listener, then sets up a callback
    * to update the position.
-   * @param {Function} geoUpdateCallback - object that should receive geolocation updates
-   * @return {Promise} represents the pending initial geolocation effort
+   * @param {Function} geoUpdateCallback - object that should receive geolocation coordinate updates
    * @see geoListenEnabled **/
   connect(geoUpdateCallback = () => {}) {
     if (!this.geoListenEnabled) {
       logger.info("Geolocation disabled");
-      return Promise.resolve({});
+      this._initialGeolocationPromise = Promise.resolve({});
+      return;
     }
 
     logger.info("Initializing geolocation system");
 
-    let initialGeolocationPromise = new Promise((resolve,reject) => {
+    this._initialGeolocationPromise = new Promise((resolve,reject) => {
       this.navigator.geolocation.getCurrentPosition((initialPosition) => {
         let coords = initialPosition.coords;
         logger.info("Received initial geolocation",coords);
-
         geoUpdateCallback(coords);
 
         let geoWatchId = this.navigator.geolocation.watchPosition((updatedPosition) => {
@@ -68,13 +68,19 @@ export class GeoPosition {
         },accurateGeolocationPositionOptions);
 
         logger.info(`Monitoring geoposition updates (watch ID ${geoWatchId})`);
-        resolve();
+        resolve(coords);
       },function initialGeoError(error) {
         logger.warn(`Unable to get initial geolocation: ${error.message} (code #${error.code})`);
-        reject();
+        resolve(defaultCoords);
       },fastGeolocationPositionOptions);
     });
+  }
 
-    return initialGeolocationPromise;
+  /** Allows you to wait on the progress of the .connect() behavior, attempting to get an initial
+   * estimate of the user's position. Note that this promise will never fail - if we cannot get an
+   * accurate estimate, we fall back to default coordinates (currently latitude 1, longitude 1)
+   * @return {Promise} Represents the attempt to get an initial estimate of the user's position **/
+  waitForInitialGeolocation() {
+    return this._initialGeolocationPromise;
   }
 }

@@ -19,10 +19,49 @@ describe("GeoPosition",() => {
     geoListenEnabled: true
   };
 
-  /* istanbul ignore next */
   let failSpecOnErrorCallback = (err) => {
+    /* istanbul ignore next */
     fail(err);
   };
+
+  let shouldNotResolveCallback = () => {
+    /* istanbul ignore next */
+    fail("promise was resolved instead of being rejected");
+  };
+
+  let shouldNotRejectCallback = () => {
+    /* istanbul ignore next */
+    fail("promise was rejected instead of being resolved");
+  };
+
+  describe('constructor',() => {
+    beforeEach(() => {
+      geoPosition = new GeoPosition();
+    });
+    
+    it('.toString() returns a string',() => {
+      expect(geoPosition.toString()).toMatch(/GeoPosition/);
+    });
+
+    it('sets a default initial geolocation promise that can be waited on',(done) => {
+      geoPosition.waitForInitialGeolocation().then(done,shouldNotRejectCallback);
+    });
+
+    it('sets a default initial geolocation promise that resolves to default coordinates',(done) => {
+      geoPosition.waitForInitialGeolocation().then((result) => {
+        expect(result).toEqual({ latitude: 1, longitude: 1 });
+        done();
+      }
+      ,shouldNotRejectCallback);
+    });
+  });
+
+  describe('without geolocation support',() => {
+    it('geoListenEnabled is false, even when geoListenEnabled option is true',() => {
+      let geoPosition = new GeoPosition({ geoListenEnabled: true });
+      expect(geoPosition.geoListenEnabled).toBe(false);
+    });
+  });
 
   describe('with geolocation support',() => {
     beforeEach(() => {
@@ -43,20 +82,8 @@ describe("GeoPosition",() => {
     });
   });
 
-  it('.toString() returns a string',() => {
-    let geoPosition = new GeoPosition();
-    expect(geoPosition.toString()).toMatch(/GeoPosition/);
-  });
-
-  describe('without geolocation support',() => {
-    it('geoListenEnabled is false, even when geoListenEnabled option is true',() => {
-      let geoPosition = new GeoPosition({ geoListenEnabled: true });
-      expect(geoPosition.geoListenEnabled).toBe(false);
-    });
-  });
-
   describe('.connect()',() => {
-    let connectPromise, geoPositionUpdateCallback;
+    let geoPositionUpdateCallback;
 
     beforeEach(() => {
       geoPosition = new GeoPosition(geoPositionOptions);
@@ -65,11 +92,7 @@ describe("GeoPosition",() => {
       spyOn(geoLocationSystem,"watchPosition").and.callThrough();
 
       geoPositionUpdateCallback = jasmine.createSpy('geoPositionUpdateCallback');
-      connectPromise = geoPosition.connect(geoPositionUpdateCallback).catch(failSpecOnErrorCallback);
-    });
-
-    it('returns the initial geolocation promise',() => {
-      expect(connectPromise instanceof Promise).toBe(true);
+      geoPosition.connect(geoPositionUpdateCallback);
     });
 
     it('requests an initial rough geolocation',() => {
@@ -84,10 +107,19 @@ describe("GeoPosition",() => {
       expect(allArgs[0][0]).toBe(initialCoordinates.coords);
       expect(allArgs[1][0]).toBe(watchCoordinates.coords);
     });
+
+    it('sets a promise that can be successfully waited on via .waitForGeolocation()',(done) => {
+      let promise = geoPosition.waitForInitialGeolocation();
+      expect(promise instanceof Promise).toBe(true);
+
+      promise.
+        catch(failSpecOnErrorCallback).
+        then(done);
+    });
   });
 
   describe('.connect() with initial geolocation error',() => {
-    let connectPromise, geoPositionUpdateCallback;
+    let geoPositionUpdateCallback;
 
     beforeEach(() => {
       geoPosition = new GeoPosition(geoPositionOptions);
@@ -96,20 +128,18 @@ describe("GeoPosition",() => {
         errCallback({ message: "ugh", code: 1 });
       });
 
-      connectPromise = geoPosition.connect(geoPositionUpdateCallback);
+      geoPosition.connect(geoPositionUpdateCallback);
     });
 
-    it('returns a rejected promise',(done) => {
-      connectPromise.then(
-        /* istanbul ignore next */
-        function shouldNotResolve() { 
-          fail("promise was resolved instead of rejected"); 
-        }
-      ).catch(done);
+    it('sets promise that resolves to default coordinates, which can be waited on via .waitForGeolocation()',(done) => {
+      geoPosition.waitForInitialGeolocation().then(function shouldResolve(coords) {
+        expect(coords).toEqual({ latitude: 1, longitude: 1 });
+      },shouldNotRejectCallback).
+      then(done);
     });
   });
 
-  describe('.connect() with initial geolocation error',() => {
+  describe('.connect() with geolocation monitoring error',() => {
     let connectPromise, geoPositionUpdateCallback;
 
     beforeEach(() => {
@@ -119,21 +149,15 @@ describe("GeoPosition",() => {
         errCallback({ message: "ugh", code: 2 });
       });
 
-      connectPromise = geoPosition.connect(geoPositionUpdateCallback);
+      geoPosition.connect(geoPositionUpdateCallback);
     });
 
-    it('still returns a resolved promise',(done) => {
-      connectPromise.then(
-        function resolve() {},
-        /* istanbul ignore next */
-        function shouldNotReject() { fail("promise was rejected instead of resolved"); }
-      ).then(done);
+    it('still sets a resolved promise which can be waited on via .waitForGeolocation()',(done) => {
+      geoPosition.waitForInitialGeolocation().then(done).catch(shouldNotRejectCallback);
     });
   });
 
   describe('when geolisten is disabled',() => {
-    let disabledConnectPromise;
-
     beforeEach(() => {
       let disabledGeo = new GeoPosition({
         navigator: geoEnabledNavigator,
@@ -141,11 +165,11 @@ describe("GeoPosition",() => {
       });
 
       spyOn(geoLocationSystem,"getCurrentPosition");
-      disabledConnectPromise = disabledGeo.connect();
+      disabledGeo.connect();
     });
 
-    it('returns a resolved promise',() => {
-      expect(disabledConnectPromise instanceof Promise).toBe(true);
+    it('still sets a resolved promise which can be waited on via .waitForGeolocation()',(done) => {
+      geoPosition.waitForInitialGeolocation().then(done).catch(shouldNotRejectCallback);
     });
 
     it('does not activate geolocation',() => {

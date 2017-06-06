@@ -1,26 +1,32 @@
 import Roundware from '../src/roundware';
 
-describe('Roundware', function() {
+describe('Roundware',() => {
   let roundware;
   let audioStreamUrl = "http://audio.example.com";
+  let initialCoordinates = { latitude: 10, longitude: 10 };
+
   const sessionId = 250;
 
   let mockUser = {
-    connect: () => { return new Promise((resolve,reject) => { resolve(); }); }
+    connect: () => { return new Promise((resolve,reject) => resolve()); }
   };
 
-  let mockGeo = jasmine.createSpyObj('geoPosition',['connect']); 
+  let mockGeo = {
+    connect: () => {},
+    waitForInitialGeolocation: () => { return new Promise((resolve,reject) => resolve(initialCoordinates)); }
+  };
 
   let mockSession = {
-    connect: () => { return new Promise((resolve,reject) => { resolve(sessionId); }); }
+    connect: () => { return new Promise((resolve,reject) => resolve(sessionId)); }
   };
 
   let mockProject = {
-    connect: () => { return new Promise((resolve,reject) => { resolve(sessionId); }); }
+    connect: () => { return new Promise((resolve,reject) => resolve(sessionId)); }
   };
 
   let mockStream = {
-    connect: () => { return Promise.resolve(audioStreamUrl); },
+    play: () => { return Promise.resolve(); },
+    pause: {},
     update: {}
   };
 
@@ -41,12 +47,25 @@ describe('Roundware', function() {
     });
   });
 
-  describe('.start()',() => {
-    let userConnectSpy, sessionConnectSpy, projectConnectSpy, returnPromise;
+  it('constructor raises throws error when the server URL parameter is missing', () => {
+    expect(() => {
+      new Roundware({ projectId: 1 });
+    }).toThrow(jasmine.stringMatching('serverUrl'));
+  });
+
+  it('constructor throws error when the project ID parameter is missing', () => {
+    expect(() => {
+      new Roundware({ serverUrl: 'http://example.com' });
+    }).toThrow(jasmine.stringMatching('projectId'));
+  });
+
+  describe('.connect()',() => {
+    let userConnectSpy, geoConnectSpy, returnPromise;
 
     beforeEach(() => {
       userConnectSpy = spyOn(mockUser,'connect').and.callThrough();
-      returnPromise = roundware.start().catch(failSpecOnErrorCallback);
+      geoConnectSpy = spyOn(mockGeo,'connect').and.callThrough();
+      returnPromise = roundware.connect().catch(failSpecOnErrorCallback);
     });
 
     it('makes the User connection API call',() => {
@@ -57,18 +76,41 @@ describe('Roundware', function() {
       expect(mockGeo.connect).toHaveBeenCalledWith(mockStream.update);
     });
 
-    it('returns a promise that succeeds with the audio stream URL',(done) => {
+    it('returns a promise',(done) => {
       expect(returnPromise instanceof Promise).toBe(true);
-
-      returnPromise.then((successValue) => {
-        expect(successValue).toBe(audioStreamUrl);
-      }).catch(failSpecOnErrorCallback).
-        then(done);
+      returnPromise.then(done).catch(failSpecOnErrorCallback);
     });
   });
 
-  describe(".tags()",() => {
-    var streamUpdateSpy;
+  describe('when connected',() => {
+    let firstPlayCallback = function dummyFunction() {};
+
+    beforeEach((done) => {
+      roundware.connect().
+        then(done).
+        catch(failSpecOnErrorCallback);
+    });
+
+    it('.play() waits on the initial geolocation promise before commanding the stream object to start playing',(done) => {
+      let streamPlaySpy = spyOn(mockStream,'play').and.callThrough();
+
+      roundware.play(firstPlayCallback).
+        then(done).
+        then(() => {
+          expect(streamPlaySpy).toHaveBeenCalled();
+        }).
+        catch(failSpecOnErrorCallback);
+    });
+
+    it(".pause() commands the stream to pause",() => {
+      let streamPauseSpy = spyOn(mockStream,'pause');
+      roundware.pause();
+      expect(streamPauseSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe("followed by .tags()",() => {
+    let streamUpdateSpy;
 
     beforeEach(() => {
       streamUpdateSpy = spyOn(mockStream,"update");
@@ -78,17 +120,5 @@ describe('Roundware', function() {
       roundware.tags("1234");
       expect(streamUpdateSpy).toHaveBeenCalledWith({ tag_ids: "1234" });
     });
-  });
-
-  it('constructor raises throws error when the server URL parameter is missing', function() {
-    expect(() => {
-      new Roundware({ projectId: 1 });
-    }).toThrow(jasmine.stringMatching('serverUrl'));
-  });
-
-  it('constructor throws error when the project ID parameter is missing', function() {
-    expect(() => {
-      new Roundware({ serverUrl: 'http://example.com' });
-    }).toThrow(jasmine.stringMatching('projectId'));
   });
 });

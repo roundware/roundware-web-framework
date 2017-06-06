@@ -6,13 +6,6 @@ import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { User } from "./user";
 
-var serverUrl, projectId;
-var geoPosition = {};
-var user = {};
-var session = {};
-var project = {};
-var stream = {};
-
 const noOp = () => {};
 
 /** This class is the primary integration point between Roundware's server and your application
@@ -25,13 +18,26 @@ const noOp = () => {};
      projectId: roundwareProjectId
    });
 
-   roundware.start().
-      then(function success(audioStreamURL) {
-        console.info("We can now listen to:",audioStreamURL);
-      },function error(errMsg) {
-        console.error(errMsg);
-      });
-   });
+   function ready() {
+     console.info("Connected to Roundware Server. Ready to play.");
+     // this is a good place to initialize audio player controls, etc.
+   }
+
+   // Generally we throw user-friendly messages and log a more technical message
+   function handleError(userErrMsg) {
+     console.error("Roundware Error: " + userErrMsg);
+   }
+
+  roundware.connect().
+    then(ready).
+    catch(handleError);
+
+  function startListening(streamURL) {
+    console.info("Loading " + streamURL);
+    // good place to connect your audio player to the audio stream
+  }
+
+  roundware.play(startListening).catch(handleError);
 **/
 export default class Roundware {
   /** @param {Object} options - Collection of parameters for configuring this Roundware instance
@@ -40,44 +46,58 @@ export default class Roundware {
    * @param {Boolean} options.geoListenEnabled - whether or not to attempt to initialize geolocation-based listening
    * @throws Will throw an error if serveUrl or projectId are missing **/
   constructor(options = {}) {
-    serverUrl = options.serverUrl;
-    projectId = options.projectId;
+    this._serverUrl = options.serverUrl;
+    this._projectId = options.projectId;
 
-    if (serverUrl === undefined) {
+    if (this._serverUrl === undefined) {
       throw "Roundware objects must be initialized with a serverUrl";
     }
 
-    if (projectId === undefined) {
+    if (this._projectId === undefined) {
       throw "Roundware objects must be initialized with a projectId";
     }
 
-    let apiClient = new ApiClient(serverUrl);
-    options.apiClient = apiClient;
+    this._apiClient = new ApiClient(this._serverUrl);
+    options.apiClient = this._apiClient;
 
-    user        = options.user || new User(options);
-    geoPosition = options.geoPosition || new GeoPosition(options);
-    session     = options.session || new Session(projectId,geoPosition.geoListenEnabled,options);
-    project     = options.project || new Project(projectId,options);
-    stream      = options.stream || new Stream(options);
+    this._user        = options.user || new User(options);
+    this._geoPosition = options.geoPosition || new GeoPosition(options);
+    this._session     = options.session || new Session(this._projectId,this._geoPosition.geoListenEnabled,options);
+    this._project     = options.project || new Project(this._projectId,options);
+    this._stream      = options.stream || new Stream(options);
   }
 
   /** Initiate a connection to Roundware
    *  @return {Promise} - Can be resolved in order to get the audio stream URL, or rejected to get an error message; see example above **/
-  start() {
-    var initialGeoLocation = geoPosition.connect(stream.update); // want to start this process as soon as possible, as it can take a few seconds
+  connect() {
+    this._geoPosition.connect(this._stream.update); // want to start this process as soon as possible, as it can take a few seconds
 
-    logger.info("Initializing Roundware for project ID #" + projectId);
+    logger.info("Initializing Roundware for project ID #" + this._projectId);
 
-    return user.connect().
-      then(session.connect).
-      then(project.connect).
-      then((sessionId) => { return stream.connect(sessionId,initialGeoLocation); });
+    return this._user.connect().
+      then(this._session.connect).
+      then(this._project.connect).
+      then((sessionId) => this._sessionId = sessionId);
+  }
+
+  /** Create or resume the audio stream o
+   * @see Stream.play **/
+  play(firstPlayCallback = () => {}) {
+    return this._geoPosition.waitForInitialGeolocation().then((initialCoordinates) => {
+      return this._stream.play(this._sessionId,initialCoordinates,firstPlayCallback);
+    });
+  }
+
+  /** Tell Roundware server to pause the audio stream. You should always call this when the local audio player has been paused.
+   * @see Stream.pause **/
+  pause() {
+    this._stream.pause();
   }
 
   /** Update the Roundware stream with new tag IDs 
    * @param {string} tagIdStr - comma-separated list of tag IDs to send to the streams API **/
   tags(tagIdStr) {
-    stream.update({ tag_ids: tagIdStr });
+    this._stream.update({ tag_ids: tagIdStr });
   }
 }
 
