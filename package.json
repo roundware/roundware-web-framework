@@ -19,11 +19,9 @@
     "devstart": "webpack-dev-server",
     "watch": "npm-watch test"
   },
-
   "watch": {
     "test": "{src,test}/*.js"
   },
-
   "repository": {
     "type": "git",
     "url": "git+https://github.com/roundware/roundware-web.git"
@@ -67,6 +65,7 @@
     ]
   },
   "dependencies": {
+    "deasync": "0.1.10",
     "jquery": "3.2.1"
   }
 }

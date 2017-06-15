@@ -13,24 +13,7 @@ if ((typeof console !== 'undefined') && ((typeof(process) === 'undefined' || pro
   logger = console;
 }
 
-// Ensures that we always have access to a navigator object
-let navigator;
-
-let defaultNavigator = {
-  userAgent: "Unknown"
-};
-
-let theNavigator;
-
-if (typeof navigator === 'undefined') {
-  theNavigator = defaultNavigator;
-} else {
-  /* istanbul ignore next */
-  theNavigator = navigator;
-}
-
 module.exports = {
-  navigator: theNavigator,
   logger: logger
 };
 

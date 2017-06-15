@@ -1,4 +1,5 @@
 import Roundware from '../src/roundware';
+import mockNavigator from "./mocks/mock-navigator";
 
 describe('Roundware',() => {
   let roundware;
@@ -6,6 +7,10 @@ describe('Roundware',() => {
   let initialCoordinates = { latitude: 10, longitude: 10 };
 
   const sessionId = 250;
+
+  let mockWindow = {
+    navigator: mockNavigator
+  };
 
   let mockUser = {
     connect: () => { return new Promise((resolve,reject) => resolve()); }
@@ -36,7 +41,7 @@ describe('Roundware',() => {
   };
 
   beforeEach(() => {
-    roundware = new Roundware({
+    roundware = new Roundware(mockWindow,{
       projectId: 1,
       serverUrl: 'http://example.com',
       user: mockUser,
@@ -49,13 +54,13 @@ describe('Roundware',() => {
 
   it('constructor raises throws error when the server URL parameter is missing', () => {
     expect(() => {
-      new Roundware({ projectId: 1 });
+      new Roundware(mockWindow,{ projectId: 1 });
     }).toThrow(jasmine.stringMatching('serverUrl'));
   });
 
   it('constructor throws error when the project ID parameter is missing', () => {
     expect(() => {
-      new Roundware({ serverUrl: 'http://example.com' });
+      new Roundware(mockWindow,{ serverUrl: 'http://example.com' });
     }).toThrow(jasmine.stringMatching('projectId'));
   });
 

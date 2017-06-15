@@ -1,4 +1,4 @@
-import { logger, navigator } from "./shims";
+import { logger } from "./shims";
 
 const initialGeoTimeoutSeconds = 1;
 
@@ -23,13 +23,14 @@ const accurateGeolocationPositionOptions = {
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/Using_geolocation **/
 export class GeoPosition {
   /** Create a new GeoPosition.
+   * @param {Object} navigator - provides access to geolocation system
    * @param {Object} options - parameters for initializing this GeoPosition
    * @param {Boolean} [options.geoListenEnabled = false] - whether or not to attempt to use geolocation **/
-  constructor(options = {}) {
-    this.navigator = options.navigator || navigator;
+  constructor(navigator,options = {}) {
+    this._navigator = navigator;
     this._initialGeolocationPromise = Promise.resolve(defaultCoords);
 
-    if (this.navigator.geolocation && options.geoListenEnabled) {
+    if (this._navigator.geolocation && options.geoListenEnabled) {
       this.geoListenEnabled = true;
     } else {
       this.geoListenEnabled = false;
@@ -55,12 +56,12 @@ export class GeoPosition {
     logger.info("Initializing geolocation system");
 
     this._initialGeolocationPromise = new Promise((resolve,reject) => {
-      this.navigator.geolocation.getCurrentPosition((initialPosition) => {
+      this._navigator.geolocation.getCurrentPosition((initialPosition) => {
         let coords = initialPosition.coords;
         logger.info("Received initial geolocation",coords);
         geoUpdateCallback(coords);
 
-        let geoWatchId = this.navigator.geolocation.watchPosition((updatedPosition) => {
+        let geoWatchId = this._navigator.geolocation.watchPosition((updatedPosition) => {
           let newCoords = updatedPosition.coords;
           geoUpdateCallback(newCoords);
         },(error) => {

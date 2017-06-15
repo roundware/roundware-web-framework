@@ -3,7 +3,10 @@ import { mockApiClient, mockApiClientRequestPromise } from "./mocks/mock-api-cli
 
 describe("Session",() => {
   let session;
-  let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5)";
+
+  let navigator = {
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5)"
+  };
   let geoListenEnablement = "geoListenEnablement setting";
   let responseData = {
     session_id: 22
@@ -11,12 +14,11 @@ describe("Session",() => {
 
   beforeEach(() => {
     let newSessionOptions = {
-      apiClient: mockApiClient,
-      userAgent: userAgent
+      apiClient: mockApiClient
     };
 
     mockApiClient.testInit();
-    session = new Session(30,geoListenEnablement,newSessionOptions);
+    session = new Session(navigator,30,geoListenEnablement,newSessionOptions);
   });
 
   it(".toString() returns a useful string",() => {
@@ -25,11 +27,12 @@ describe("Session",() => {
 
   it(".connect() makes an API request to /sessions/",() => {
     session.connect();
+
     expect(mockApiClient.post).
       toHaveBeenCalledWith("/sessions/",{ 
         project_id: 30,
         geo_listen_enabled: geoListenEnablement,
-        client_system: userAgent
+        client_system: navigator.userAgent
       });
   });
 
@@ -44,16 +47,18 @@ describe("Session",() => {
   });
 
   describe("with a long userAgent",() => {
-    let longUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 1234567890Padding";
+    let navigator = {
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 1234567890Padding"
+    };
+
     let longUserAgentSession;
 
     beforeEach(() => {
       let newSessionOptions = {
-        apiClient: mockApiClient,
-        userAgent: longUserAgent
+        apiClient: mockApiClient
       };
 
-      longUserAgentSession = new Session(30,geoListenEnablement,newSessionOptions);
+      longUserAgentSession = new Session(navigator,30,geoListenEnablement,newSessionOptions);
     });
 
     it(".connect() uses an abbreviated clientSystem value for the API request",() => {

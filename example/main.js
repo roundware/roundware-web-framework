@@ -1,7 +1,7 @@
 var roundwareServerUrl = "http://localhost:8888/api/2";
 var roundwareProjectId = 1; // corresponds to a project setup in the roundware server developer seed script
 
-var roundware = new Roundware({
+var roundware = new Roundware(window,{
   serverUrl: roundwareServerUrl,
   projectId: roundwareProjectId
 });

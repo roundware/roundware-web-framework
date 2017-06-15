@@ -40,12 +40,14 @@ const noOp = () => {};
   roundware.play(startListening).catch(handleError);
 **/
 export default class Roundware {
-  /** @param {Object} options - Collection of parameters for configuring this Roundware instance
+  /** Initialize a new Roundware instance
+   * @param {Object} window - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
+   * @param {Object} options - Collection of parameters for configuring this Roundware instance
    * @param {String} options.serverUrl - identifies the Roundware server
    * @param {Number} options.projectId - identifies the Roundware project to connect
    * @param {Boolean} options.geoListenEnabled - whether or not to attempt to initialize geolocation-based listening
    * @throws Will throw an error if serveUrl or projectId are missing **/
-  constructor(options = {}) {
+  constructor(window,options = {}) {
     this._serverUrl = options.serverUrl;
     this._projectId = options.projectId;
 
@@ -60,9 +62,11 @@ export default class Roundware {
     this._apiClient = new ApiClient(this._serverUrl);
     options.apiClient = this._apiClient;
 
+    let navigator = window.navigator;
+
     this._user        = options.user || new User(options);
-    this._geoPosition = options.geoPosition || new GeoPosition(options);
-    this._session     = options.session || new Session(this._projectId,this._geoPosition.geoListenEnabled,options);
+    this._geoPosition = options.geoPosition || new GeoPosition(navigator,options);
+    this._session     = options.session || new Session(navigator,this._projectId,this._geoPosition.geoListenEnabled,options);
     this._project     = options.project || new Project(this._projectId,options);
     this._stream      = options.stream || new Stream(options);
   }

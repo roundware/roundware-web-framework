@@ -1,21 +1,10 @@
 import { GeoPosition } from "../src/geo-position";
+import { mockNavigator, mockGeolocationSystem, initialCoordinates, watchCoordinates } from "./mocks/mock-navigator";
 
 describe("GeoPosition",() => {
   let geoPosition;
-  let initialCoordinates = { coords: { latitude: 1, longitude: 2 } };
-  let watchCoordinates   = { coords: { latitude: 3, longitude: 4 } };
-
-  let geoLocationSystem = {
-    getCurrentPosition: (successCallback,errCallback) => { successCallback(initialCoordinates); },
-    watchPosition:      (successCallback,errCallback) => { successCallback(watchCoordinates); },
-  };
-
-  let geoEnabledNavigator = { 
-    geolocation: geoLocationSystem
-  };
 
   let geoPositionOptions = {
-    navigator: geoEnabledNavigator,
     geoListenEnabled: true
   };
 
@@ -36,7 +25,7 @@ describe("GeoPosition",() => {
 
   describe('constructor',() => {
     beforeEach(() => {
-      geoPosition = new GeoPosition();
+      geoPosition = new GeoPosition({});
     });
     
     it('.toString() returns a string',() => {
@@ -51,21 +40,20 @@ describe("GeoPosition",() => {
       geoPosition.waitForInitialGeolocation().then((result) => {
         expect(result).toEqual({ latitude: 1, longitude: 1 });
         done();
-      }
-      ,shouldNotRejectCallback);
+      },shouldNotRejectCallback);
     });
   });
 
   describe('without geolocation support',() => {
     it('geoListenEnabled is false, even when geoListenEnabled option is true',() => {
-      let geoPosition = new GeoPosition({ geoListenEnabled: true });
+      let geoPosition = new GeoPosition({},{ geoListenEnabled: true });
       expect(geoPosition.geoListenEnabled).toBe(false);
     });
   });
 
   describe('with geolocation support',() => {
     beforeEach(() => {
-      geoPosition = new GeoPosition(geoPositionOptions);
+      geoPosition = new GeoPosition(mockNavigator,geoPositionOptions);
     });
 
     it('geoListenEnabled is true if the geoListenEnabled option is also true',() => {
@@ -73,8 +61,7 @@ describe("GeoPosition",() => {
     });
 
     it('geoListenEnabled is false if the geoListenEnabled option is false',() => {
-      geoPosition = new GeoPosition({
-        navigator: geoEnabledNavigator,
+      geoPosition = new GeoPosition(mockNavigator,{
         geoListenEnabled: false
       });
 
@@ -86,17 +73,17 @@ describe("GeoPosition",() => {
     let geoPositionUpdateCallback;
 
     beforeEach(() => {
-      geoPosition = new GeoPosition(geoPositionOptions);
+      geoPosition = new GeoPosition(mockNavigator,geoPositionOptions);
 
-      spyOn(geoLocationSystem,"getCurrentPosition").and.callThrough();
-      spyOn(geoLocationSystem,"watchPosition").and.callThrough();
+      spyOn(mockGeolocationSystem,"getCurrentPosition").and.callThrough();
+      spyOn(mockGeolocationSystem,"watchPosition").and.callThrough();
 
       geoPositionUpdateCallback = jasmine.createSpy('geoPositionUpdateCallback');
       geoPosition.connect(geoPositionUpdateCallback);
     });
 
     it('requests an initial rough geolocation',() => {
-      expect(geoLocationSystem.getCurrentPosition).toHaveBeenCalled();
+      expect(mockGeolocationSystem.getCurrentPosition).toHaveBeenCalled();
     });
 
     it('passes initial rough position estimate and then high-accuracy estimate to the given callback',() => {
@@ -122,9 +109,9 @@ describe("GeoPosition",() => {
     let geoPositionUpdateCallback;
 
     beforeEach(() => {
-      geoPosition = new GeoPosition(geoPositionOptions);
+      geoPosition = new GeoPosition(mockNavigator,geoPositionOptions);
 
-      spyOn(geoLocationSystem,"getCurrentPosition").and.callFake((_,errCallback) => {
+      spyOn(mockGeolocationSystem,"getCurrentPosition").and.callFake((_,errCallback) => {
         errCallback({ message: "ugh", code: 1 });
       });
 
@@ -143,9 +130,9 @@ describe("GeoPosition",() => {
     let connectPromise, geoPositionUpdateCallback;
 
     beforeEach(() => {
-      geoPosition = new GeoPosition(geoPositionOptions);
+      geoPosition = new GeoPosition(mockNavigator,geoPositionOptions);
 
-      spyOn(geoLocationSystem,"watchPosition").and.callFake((_,errCallback) => {
+      spyOn(mockGeolocationSystem,"watchPosition").and.callFake((_,errCallback) => {
         errCallback({ message: "ugh", code: 2 });
       });
 
@@ -159,12 +146,11 @@ describe("GeoPosition",() => {
 
   describe('when geolisten is disabled',() => {
     beforeEach(() => {
-      let disabledGeo = new GeoPosition({
-        navigator: geoEnabledNavigator,
+      let disabledGeo = new GeoPosition(mockNavigator,{
         geoListenEnabled: false
       });
 
-      spyOn(geoLocationSystem,"getCurrentPosition");
+      spyOn(mockGeolocationSystem,"getCurrentPosition");
       disabledGeo.connect();
     });
 
@@ -173,7 +159,7 @@ describe("GeoPosition",() => {
     });
 
     it('does not activate geolocation',() => {
-      expect(geoLocationSystem.getCurrentPosition).not.toHaveBeenCalled();
+      expect(mockGeolocationSystem.getCurrentPosition).not.toHaveBeenCalled();
     });
   });
 });
