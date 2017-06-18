@@ -65,7 +65,6 @@
     ]
   },
   "dependencies": {
-    "deasync": "0.1.10",
     "jquery": "3.2.1"
   }
 }
