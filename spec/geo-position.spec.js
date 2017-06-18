@@ -145,8 +145,10 @@ describe("GeoPosition",() => {
   });
 
   describe('when geolisten is disabled',() => {
+    let disabledGeo;
+
     beforeEach(() => {
-      let disabledGeo = new GeoPosition(mockNavigator,{
+      disabledGeo = new GeoPosition(mockNavigator,{
         geoListenEnabled: false
       });
 
