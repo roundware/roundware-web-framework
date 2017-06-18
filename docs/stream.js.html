@@ -28,7 +28,6 @@
         <article>
             <pre class="prettyprint source linenums"><code>import { logger } from "./shims";
 
-var apiClient, sessionId, streamId, streamApiUrl, streamAudioUrl, coords, heartbeatInterval;
 const defaultHeartbeatIntervalSeconds = 60;
 
 /** Establishes an audio stream with the Roundware server, and notifies Roundware of events like tag
@@ -44,55 +43,71 @@ export class Stream {
    * @param {Object} options - Various configuration parameters for this stream
    * @param {apiClient} options.apiClient - the API client object to use for server API calls
    * @param {Number} [options.heartbeatIntervalSeconds = 60"] how frequently to send a stream heartbeat
-  **/
+   **/
   constructor(options) {
-    apiClient = options.apiClient;
-    heartbeatInterval = (options.heartbeatIntervalSeconds || defaultHeartbeatIntervalSeconds) * 1000;
+    this._apiClient = options.apiClient;
+    this._streamId = "(unknown)";
+    this._heartbeatInterval = (options.heartbeatIntervalSeconds || defaultHeartbeatIntervalSeconds) * 1000;
   }
 
   /** @returns {String] human-readable description of this stream **/
   toString() {
-    return `Roundware Stream #${streamId} (${streamApiUrl})`;
+    return `Roundware Stream #${this._streamId} (${this._streamApiPath})`;
   }
 
   /** Request a streaming audio URL from Roundware server and establish a regular heartbeat. The heartbeat is used to keep a stream alive 
    * during a session. Streams take a lot of resources on the server, so we put the auto-kill mechanism in place to not have useless 
-   * streams taking resources, but needed a method to keep them alive when we know they are still wanted.
-   * @param {Number} _sessionId - Identifies the current session, must have been previously established by an instance of the Session class
+   * streams taking resources, but needed a method to keep them alive when we know they are still wanted. After we initially connect to Roundware,
+   * subsequent calls are forwarded to the Roundware server as "resume playing" API messages.
+   * @param {Number} sessionId - Identifies the current session, must have been previously established by an instance of the Session class
    * @param {Promise}  initialGeoLocation - we will wait on this promise to resolve with initial coordinates before attempting to establish a stream
+   * @param {Stream~firstPlayCallback} firstPlayCallback - invoked the first time we connect to roundware and retrieve a stream URL
    * @returns {Promise} represents the pending API call 
+   * @see pause()
    * **/
-  connect(_sessionId,initialGeoLocation) {
-    sessionId = _sessionId;
+  play(sessionId,initialLocation,firstPlayCallback = (streamAudioUrl) => {}) {
+    if (this._streamApiPath) {
+      let resumePlayingPath = `${this._streamApiPath}resume/`;
+      return this._apiClient.post(resumePlayingPath);
+    }
+    
+    this._sessionId = sessionId;
 
-    return initialGeoLocation.then((coords) => { 
-      let createStreamData = {};
-      Object.assign(createStreamData,coords,{ session_id: sessionId });
+    let createStreamData = {};
+    Object.assign(createStreamData,initialLocation,{ session_id: this._sessionId });
 
-      // Now we ask the server to create a new audio stream for us
-      let audioStreamPromise = apiClient.post("/streams/",createStreamData,{
-        crossDomain: true,
-        cache: true // to avoid CORS problems
-      });
-
-      return audioStreamPromise;
-    }).then(function streamsSuccess(streamData) {
-        streamAudioUrl = streamData.stream_url;
-        streamId = streamData.stream_id;
-        streamApiUrl = `/streams/${streamId}/`;
-
-        let heartbeatUrl = `/streams/${streamId}/heartbeat/`;
-        let heartbeatData = {
-          session_id: sessionId
-        };
-
-        setInterval(function sendHeartbeat() {
-          apiClient.post(heartbeatUrl,heartbeatData);
-        },heartbeatInterval);
-
-        // return the audio URL back to the caller so this promise can be chained in the Roundware class
-        return streamAudioUrl;
+    let streamConnectionPromise = this._apiClient.post("/streams/",createStreamData,{
+      cache: true // to avoid CORS problems TODO remove this
     });
+
+    streamConnectionPromise.then((streamData) => {
+      this._streamAudioUrl = streamData.stream_url;
+      this._streamId = streamData.stream_id;
+      this._streamApiPath = `/streams/${this._streamId}/`;
+
+      this._heartbeatUrl = `/streams/${this._streamId}/heartbeat/`;
+
+      let heartbeatData = {
+        session_id: this._sessionId
+      };
+
+      firstPlayCallback(this._streamAudioUrl);
+
+      setInterval(() => {
+        this._apiClient.post(this._heartbeatUrl,heartbeatData);
+      },this._heartbeatInterval);
+    });
+
+    return streamConnectionPromise;
+  }
+
+  /** Tells Roundware server to pause the audio stream - you should always call this when pausing
+   * local playback, to avoid wasting server resources **/
+  pause() {
+    if (this._streamAudioUrl) {
+      let pausePlayingPath = `${this._streamApiPath}pause/`;
+      this._apiClient.post(pausePlayingPath);
+    }
   }
 
   /** Sends data to the Roundware server. If the Stream has not been established, does nothing. Can use a list of tag_ids or a position (lat/lon) to filter the assets available to the stream. 
@@ -101,12 +116,18 @@ export class Stream {
    * @param {Object} data [{}] 
    * **/
   update(data = {}) {
-    if (streamApiUrl) {
-      data.session_id = sessionId;
-      apiClient.patch(streamApiUrl,data);
+    if (this._streamApiPath) {
+      data.session_id = this._sessionId;
+      return this._apiClient.patch(this._streamApiPath,data);
     }
   }
 }
+
+/**
+ * This callback is invoked by play() the first time we connect to Roundware and get an audio stream URL
+ * @callback Streamam~firstPlayCallback
+ * @param {string} streamAudioUrl - the URL of the stream, ready to connect to an audio source for playback
+ */
 </code></pre>
         </article>
     </section>
@@ -117,13 +138,13 @@ export class Stream {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="GeoPosition.html">GeoPosition</a></li><li><a href="module.exports.html">exports</a></li><li><a href="Session.html">Session</a></li><li><a href="Stream.html">Stream</a></li><li><a href="User.html">User</a></li></ul><h3>Global</h3><ul><li><a href="global.html#start">start</a></li><li><a href="global.html#tags">tags</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="GeoPosition.html">GeoPosition</a></li><li><a href="module.exports.html">exports</a></li><li><a href="Session.html">Session</a></li><li><a href="Stream.html">Stream</a></li><li><a href="User.html">User</a></li></ul><h3>Global</h3><ul><li><a href="global.html#connect">connect</a></li><li><a href="global.html#pause">pause</a></li><li><a href="global.html#play">play</a></li><li><a href="global.html#tags">tags</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Thu Jun 01 2017 16:25:31 GMT-0400 (EDT)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Sun Jun 18 2017 10:31:53 GMT-0400 (EDT)
 </footer>
 
 <script> prettyPrint(); </script>
