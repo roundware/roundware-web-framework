@@ -36,7 +36,7 @@ Our standard is 100% unit test coverage. Run `npm run check-coverage && open cov
 ```bash
 npm test          # make sure everything passes
 npm run build     # make sure the build works
-npm run docbuild # if needed, creates jsdoc HTML files in doc/, which powers the project site
+npm run docbuild  # if needed, creates jsdoc HTML files in doc/, which powers the project site
 
 # commit changes, if any
 
