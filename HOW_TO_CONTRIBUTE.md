@@ -34,16 +34,13 @@ Our standard is 100% unit test coverage. Run `npm run check-coverage && open cov
 # How to Release
 
 ```bash
-npm test # make sure everything passes
-npm run build # make sure the build works
+npm test          # make sure everything passes
+npm run build     # make sure the build works
 npm run docbuild # if needed, creates jsdoc HTML files in doc/, which powers the project site
-# commit any changes
 
-export RW_VERSION=0.0.1-alpha.??
-npm version $RW_VERSION # also creates a git tag
-unset RW_VERSION
+# commit changes, if any
+
+npm version prerelease # or major, premajor, minor, preminor, patch, prepatch, or prerelease; also creates a git tag
 git push && git push --tags
 npm publish --tag alpha
 ```
-
-> TODO eventually we will move this to travis CI
