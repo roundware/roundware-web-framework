@@ -96,10 +96,7 @@ describe("GeoPosition",() => {
     });
 
     it('sets a promise that can be successfully waited on via .waitForGeolocation()',(done) => {
-      let promise = geoPosition.waitForInitialGeolocation();
-      expect(promise instanceof Promise).toBe(true);
-
-      promise.
+      geoPosition.waitForInitialGeolocation().
         catch(failSpecOnErrorCallback).
         then(done);
     });

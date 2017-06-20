@@ -52,7 +52,7 @@ describe('Roundware',() => {
     });
   });
 
-  it('constructor raises throws error when the server URL parameter is missing', () => {
+  it('constructor throws error when the server URL parameter is missing', () => {
     expect(() => {
       new Roundware(mockWindow,{ projectId: 1 });
     }).toThrow(jasmine.stringMatching('serverUrl'));

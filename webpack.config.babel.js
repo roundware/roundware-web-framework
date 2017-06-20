@@ -5,7 +5,7 @@ const dist    = path.resolve(__dirname,'dist');
 const webpack = require('webpack'); //to access built-in plugins
 
 export default {
-  entry: "./src/roundware.js",
+  entry: ['./src/roundware.js'],
 
   output: {
     filename: "roundware.umd.js",

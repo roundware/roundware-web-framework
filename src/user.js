@@ -37,7 +37,7 @@ export class User {
 
     // TODO need to also handle auth failures
     return apiClient.post("/users/",data).
-      done(function connectionSuccess(data) {
+      then((data) => {
         userName = data.username;
         apiClient.setAuthToken(data.token);
       });

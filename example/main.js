@@ -1,11 +1,7 @@
 var roundwareServerUrl = "http://localhost:8888/api/2";
 var roundwareProjectId = 1; // corresponds to a project setup in the roundware server developer seed script
 
-var roundware = new Roundware(window,{
-  serverUrl: roundwareServerUrl,
-  projectId: roundwareProjectId
-});
-
+var roundware;
 var streamPlayer, audioSource, pauseButton, playButton, tagIds;
 
 function startListening(streamURL) {
@@ -50,15 +46,20 @@ function ready() {
 
 // Generally we throw user-friendly messages and log a more technical message
 function handleError(userErrMsg) {
-  console.error("Roundware Error: " + userErrMsg);
+  console.error("There was a Roundware Error: " + userErrMsg);
 }
 
 $(function startApp() {
+  roundware = new Roundware(window,{
+    serverUrl: roundwareServerUrl,
+    projectId: roundwareProjectId
+  });
+
   streamPlayer = $("#streamplayer");
   audioSource  = $("#audiosource");
   pauseButton  = $("#pause");
-  playButton  = $("#play");
-  tagIds = $("#tag_ids");
+  playButton   = $("#play");
+  tagIds       = $("#tag_ids");
 
   roundware.connect().
     then(ready).

@@ -1,27 +1,41 @@
 import { logger } from "./shims";
 
-var jQuery = require('jquery');
-
 // Handles HTTP interactions with the Roundware API server, v2.
 // NOTE: Every HTTP method except ".get()" will cause most browers to issue a preflight requirements check to the server via the OPTIONS verb, 
 // to verify CORS will allow the response to load in the browser. Sometimes this OPTIONS call can get obscured in debugging tools.
 // @see http://roundware.org/docs/terminology/index.html
 export class ApiClient {
-  constructor(baseServerUrl,options = {}) {
+  /** Create a new ApiClient
+   * @param {Object} window - representing the context in which we are executing - provides reference to window.jQuery.ajax()
+   * @param {String} baseServerUrl - identifies the Roundware server to receive API requests
+   * @param {Boolean} [options.fetch = fetch] - for testing purposes, you can inject the fetch mechanism to use for making network requests **/
+  constructor(window,baseServerUrl) {
+    this._jQuery = window.jQuery;
     this._serverUrl = baseServerUrl;
-    this._ajaxInterface = options.ajaxInterface || jQuery;
   }
 
+  /** Make a GET request to the Roundware server
+   * @param {String} path - the path for your API request, such as "/streams"
+   * @param {Object} options - see the "send" method
+   * @see {send} **/
   get(path,data,options = {}) {
     options.method = "GET";
     return this.send(path,data,options);
   }
 
+  /** Make a POST request to the Roundware server
+   * @param {String} path - the path for your API request, such as "/streams"
+   * @param {Object} options - see the "send" method
+   * @see {send} **/
   post(path,data,options = {}) {
     options.method = "POST";
     return this.send(path,data,options);
   }
 
+  /** Make a PATCH request to the Roundware server
+   * @param {String} path - the path for your API request, such as "/streams"
+   * @param {Object} options - see the "send" method
+   * @see {send} **/
   patch(path,data,options = {}) {
     options.method = "PATCH";
     return this.send(path,data,options);
@@ -31,36 +45,44 @@ export class ApiClient {
    * @param path {string} - identifies the endpoint to receive the request
    * @param data {object} - the payload to send
    * @param options {object} - any additional options to add to the Ajax request 
-   * @throws Will throw user-friendly error message and a technical error message in the event of an unsuccessful request 
+   * @return {Promise} - will resolve or reject depending on the status of the request
    * @todo might be a good place to implement exponential retry of certain types of errors
    * **/
   send(path,data,options = {}) {
-    var url = this._serverUrl + path;
+    let method = options.method || "GET";
+    let url = this._serverUrl + path;
+
+    if (!options.headers) {
+      options.headers = {};
+    }
 
     options.data = data;
-    options.crossDomain = true;
+    options.mode = "no-cors";
 
-    let requestPromise = this._ajaxInterface.ajax(url,options);
+    if (!options.timeout) {
+      options.timeout = 30000; // 30 seconds, arbitrary
+    }
 
-    let errorHandlingRequestPromise = requestPromise.catch((xhr,textStatus,errorThrown) => {
-      // We catch and rethrow the error so it can bubble up as a useful error message to the user
-      let techMsg = `API connection problem: '${textStatus}'; error thrown: (${errorThrown})`;
-      logger.error(techMsg);
+    let deferred = this._jQuery.Deferred();
+    let promise = deferred.promise();
 
-      let usrMsg = "We were unable to contact the audio server. Please try again.";
-      throw(usrMsg);
-    });
+    this._jQuery.ajax(url,options).
+      then((data) => deferred.resolve(data)).
+      fail((jqXHR,textStatus,errorThrown) => {
+        let techMsg = `${textStatus}: ${errorThrown}`;
+        let usrMsg = `We were unable to contact the audio server due to a network problem; please try again: '${techMsg}'`;
+        logger.error(techMsg,jqXHR);
+        deferred.reject(usrMsg);
+      });
 
-    return errorHandlingRequestPromise;
+    return promise;
   }
 
+  /** Set the authorization token to use as the header for future API requests. Most Roundware API calls require an auth token to be set 
+   * @param {String} authToken - characters to use in the authorization header **/
   setAuthToken(authToken) {
-    var headers = {
-      Authorization: "token " + authToken
-    };
-
-    this._ajaxInterface.ajaxSetup({
-      headers: headers
+    this._jQuery.ajaxSetup({
+      headers: { "Authorization": `token ${authToken}` }
     });
   }
 }

@@ -6,14 +6,15 @@ import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { User } from "./user";
 
-const noOp = () => {};
+/** This class is the primary integration point between Roundware's server and your application 
+    NOTE that we depend on jQuery being injected, because we use its $.ajax function. As browsers
+    evolve and the whatwg-fetch polyfill evolves, we may be able to switch over to using window.fetch
 
-/** This class is the primary integration point between Roundware's server and your application
- * @example
+   @example
    var roundwareServerUrl = "http://localhost:8888/api/2";
    var roundwareProjectId = 1;
 
-   var roundware = new Roundware({
+   var roundware = new Roundware(window,{
      serverUrl: roundwareServerUrl,
      projectId: roundwareProjectId
    });
@@ -39,7 +40,7 @@ const noOp = () => {};
 
   roundware.play(startListening).catch(handleError);
 **/
-export default class Roundware {
+class Roundware {
   /** Initialize a new Roundware instance
    * @param {Object} window - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
    * @param {Object} options - Collection of parameters for configuring this Roundware instance
@@ -59,16 +60,16 @@ export default class Roundware {
       throw "Roundware objects must be initialized with a projectId";
     }
 
-    this._apiClient = new ApiClient(this._serverUrl);
+    this._apiClient = new ApiClient(window,this._serverUrl);
     options.apiClient = this._apiClient;
 
     let navigator = window.navigator;
 
-    this._user        = options.user || new User(options);
+    this._user        = options.user        || new User(options);
     this._geoPosition = options.geoPosition || new GeoPosition(navigator,options);
-    this._session     = options.session || new Session(navigator,this._projectId,this._geoPosition.geoListenEnabled,options);
-    this._project     = options.project || new Project(this._projectId,options);
-    this._stream      = options.stream || new Stream(options);
+    this._session     = options.session     || new Session(navigator,this._projectId,this._geoPosition.geoListenEnabled,options);
+    this._project     = options.project     || new Project(this._projectId,options);
+    this._stream      = options.stream      || new Stream(options);
   }
 
   /** Initiate a connection to Roundware

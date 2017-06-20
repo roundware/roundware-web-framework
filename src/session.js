@@ -36,14 +36,14 @@ export class Session {
    * @returns {Promise} represents the pending API call
    **/
   connect() {
-    let data = {
+    let requestData = {
       project_id: projectId,
       geo_listen_enabled: geoListenEnabled,
       client_system: clientSystem
     };
 
-    return apiClient.post("/sessions/",data).
-      then(function connectionSuccess(data) {
+    return apiClient.post("/sessions/",requestData).
+      then((data) => {
         sessionId = data.session_id;
         return sessionId;
       });
