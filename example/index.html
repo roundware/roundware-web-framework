@@ -18,13 +18,28 @@
     </div>
 
     <h1>Recording</h1>
-    <button id="record" style="display: none;">Record</button>
+
+    <button id="record">Record</button>
+    <button id="stop">Stop</button>
+
+    <section class="main-controls">
+      <canvas class="visualizer"></canvas>
+      <div id="buttons">
+        <button class="record">Record</button>
+        <button class="stop">Stop</button>
+      </div>
+    </section>
+
     <hr>
+
+    <section class="sound-clips"></section>
+
     <ul>
       <li>To run this example, execute <code>npm run devserver &amp;&amp; open localhost:8080</code> from the project root directory You also need to have the Roundware Server running locally, see <a href="https://github.com/roundware/roundware-server#vagrant">Roundware Vagrant setup instructions</a>.</li>
       <li>Also check out our <a href="https://subelsky.github.io/roundware_web_demo/">live demo</a> using a recent build</li>
     </ul>
 
+    <script type="text/javascript" src="modernizr-custom.js"></script>
     <script type="text/javascript" src="roundware.umd.js"></script>
     <script type="text/javascript" src="jquery-3.2.1.js"></script>
     <script type="text/javascript" src="main.js"></script>

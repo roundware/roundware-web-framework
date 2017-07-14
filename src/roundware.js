@@ -104,6 +104,13 @@ class Roundware {
   tags(tagIdStr) {
     this._stream.update({ tag_ids: tagIdStr });
   }
+
+  /** Attach new assets to the project
+   * @param {number} envelopeId - if specified, we will attach the asset to an existing envelope. Otherwise, we make an API call for a new envelope.
+   * @see Envelope.upload */
+  upload(envelopeId = null) {
+    //let envelope = 
+  }
 }
 
 // Slight hack here to export Roundware module to browser properly; see https://github.com/webpack/webpack/issues/3929
