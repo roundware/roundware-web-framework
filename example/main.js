@@ -3,7 +3,7 @@ var roundwareProjectId = 1; // corresponds to a project setup in the Roundware s
 
 var roundware;
 var streamPlayer, audioSource, pauseButton, playButton, killButton,
-    skipButton, replayButton, tagIds;
+    skipButton, replayButton, tagIds, recordButton;
 var assetMarkers = [];
 var listenMap, speakMap;
 var firstplay = false; // ultimately will be set to true initially to handle iOS playback properly
@@ -381,6 +381,7 @@ $(function startApp() {
   roundware = new Roundware(window,{
     serverUrl: roundwareServerUrl,
     projectId: roundwareProjectId,
+    geoListenEnabled: true,
     // apply any speaker filters here
     speakerFilters: {"activeyn": true},
     // apply any asset filters here
@@ -403,10 +404,13 @@ $(function startApp() {
   // Speak elements
   speakLatitude  = $("#speakLatitude");
   speakLongitude = $("#speakLongitude");
+  recordButton   = $("#record");
 
   roundware.connect().
     then(ready).
     catch(handleError);
+
+  setupRecordingControls((audioBlob,fileName) => roundware.saveAsset(audioBlob,fileName));
 });
 
 // Google Maps
