@@ -3,9 +3,7 @@ var audioCtx = new window.AudioContext();
 var canvas = document.querySelector('.visualizer');
 var canvasCtx = canvas.getContext("2d");
 
-function setupRecordingControls() {
-  // set up basic variables for app
-
+function setupRecordingControls(saveCallback) {
   var record = $(".record");
   var stop = $(".stop");
   var soundClips = $('.sound-clips');
@@ -46,16 +44,17 @@ function setupRecordingControls() {
       console.log("data available after MediaRecorder.stop() called.");
 
       var clipName = prompt('Enter a name for your sound clip?','My unnamed clip');
-      console.log(clipName);
       var clipContainer = document.createElement('article');
       var clipLabel = document.createElement('p');
       var audio = document.createElement('audio');
       var deleteButton = document.createElement('button');
+      var saveButton = document.createElement('button');
 
       clipContainer.classList.add('clip');
       audio.setAttribute('controls', '');
       deleteButton.textContent = 'Delete';
       deleteButton.className = 'delete';
+      saveButton.textContent = 'Save';
 
       if(clipName === null) {
         clipLabel.textContent = 'My unnamed clip';
@@ -66,12 +65,14 @@ function setupRecordingControls() {
       clipContainer.appendChild(audio);
       clipContainer.appendChild(clipLabel);
       clipContainer.appendChild(deleteButton);
+      clipContainer.appendChild(saveButton);
 
       soundClips.append(clipContainer);
 
       audio.controls = true;
       var blob = new Blob(chunks, { 'type' : 'audio/ogg; codecs=opus' });
       chunks = [];
+
       var audioURL = window.URL.createObjectURL(blob);
       audio.src = audioURL;
       console.log("recorder stopped");
@@ -81,10 +82,16 @@ function setupRecordingControls() {
         evtTgt.parentNode.parentNode.removeChild(evtTgt.parentNode);
       };
 
+      saveButton.onclick = function() {
+        console.info("Saving",audio);
+        saveCallback(audio);
+      };
+
       clipLabel.onclick = function() {
         var existingName = clipLabel.textContent;
         var newClipName = prompt('Enter a new name for your sound clip?');
-        if(newClipName === null) {
+
+        if (newClipName === null) {
           clipLabel.textContent = existingName;
         } else {
           clipLabel.textContent = newClipName;
