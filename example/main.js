@@ -48,13 +48,6 @@ function handleError(userErrMsg) {
   console.error("There was a Roundware Error: " + userErrMsg);
 }
 
-function saveAsset(audio) {
-  console.info("Uploading asset to Roundware",audio);
-  // Create envelope, then make PATCH call with asset data a la Landmarking's roundwareRecorder#envelopesCallback()
-  // Should be possible by directly referencing the audio blob, no need to save a file or anything
-  // https://stackoverflow.com/questions/13333378/how-can-javascript-upload-a-blob
-}
-
 $(function startApp() {
   roundware = new Roundware(window,{
     serverUrl: roundwareServerUrl,
@@ -72,5 +65,5 @@ $(function startApp() {
     then(ready).
     catch(handleError);
 
-  setupRecordingControls(saveAsset);
+  setupRecordingControls((audioBlob,fileName) => roundware.saveAsset(audioBlob,fileName));
 });

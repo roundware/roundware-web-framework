@@ -5,6 +5,7 @@ import { Stream } from "./stream";
 import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { User } from "./user";
+import { Envelope } from "./envelope";
 
 /** This class is the primary integration point between Roundware's server and your application 
     NOTE that we depend on jQuery being injected, because we use its $.ajax function. As browsers
@@ -106,10 +107,21 @@ class Roundware {
   }
 
   /** Attach new assets to the project
-   * @param {number} envelopeId - if specified, we will attach the asset to an existing envelope. Otherwise, we make an API call for a new envelope.
+   * @param {Object} audioData - the binary data from a recording to be saved as an asset
+   * @param {string} fileName - name of the file
+   * @return {promise} - represents the API calls to save an asset; can be tested to find out whether upload was successful
    * @see Envelope.upload */
-  upload(envelopeId = null) {
-    //let envelope = 
+  saveAsset(audioData,fileName) {
+    if (!this._sessionId) {
+      return Promise.reject("can't save assets without first connecting to the server");
+    }
+
+    let envelope = new Envelope(this._sessionId,this._apiClient,this._geoPosition);
+
+    return envelope.connect().
+      then(function() {
+        envelope.upload(audioData,fileName);
+      });
   }
 }
 
