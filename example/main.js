@@ -51,7 +51,8 @@ function handleError(userErrMsg) {
 $(function startApp() {
   roundware = new Roundware(window,{
     serverUrl: roundwareServerUrl,
-    projectId: roundwareProjectId
+    projectId: roundwareProjectId,
+    geoListenEnabled: true
   });
 
   streamPlayer = $("#streamplayer");

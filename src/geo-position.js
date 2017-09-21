@@ -29,6 +29,7 @@ export class GeoPosition {
   constructor(navigator,options = {}) {
     this._navigator = navigator;
     this._initialGeolocationPromise = Promise.resolve(defaultCoords);
+    this._lastCoords = defaultCoords;
 
     if (this._navigator.geolocation && options.geoListenEnabled) {
       this.geoListenEnabled = true;
@@ -40,6 +41,11 @@ export class GeoPosition {
   /** @return {String} Human-readable representation of this GeoPosition **/
   toString() { 
     return `GeoPosition (enabled: ${this.geoListenEnabled})`;
+  }
+
+  /** @return {Object} coordinates - last known coordinates received from the geolocation system (defaults to latitude 1, longitude 1) **/
+  getLastCoords() {
+    return this._lastCoords;
   }
 
   /** Attempts to get an initial rough geographic location for the listener, then sets up a callback
@@ -60,10 +66,12 @@ export class GeoPosition {
         let coords = initialPosition.coords;
         logger.info("Received initial geolocation",coords);
         geoUpdateCallback(coords);
+        this._lastCoords = coords;
 
         let geoWatchId = this._navigator.geolocation.watchPosition((updatedPosition) => {
           let newCoords = updatedPosition.coords;
           geoUpdateCallback(newCoords);
+          this._lastCoords = coords;
         },(error) => {
           logger.warn(`Unable to watch position: ${error.message} (code #${error.code})`);
         },accurateGeolocationPositionOptions);

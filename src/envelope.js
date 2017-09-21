@@ -39,12 +39,12 @@ export class Envelope {
     }
 
     let formData = new FormData();
+    let coordinates = this._geoPosition.getLastCoords();
 
     formData.append('session_id',this._sessionId);
-    //formData.append('envelope_id',this._envelopeId);
     formData.append('file',audioData);
-    //formData.append('latitude',1);// marker.position.lat());
-    //formData.append('longitude',1); //marker.position.lng());
+    formData.append('latitude',coordinates.latitude);
+    formData.append('longitude',coordinates.longitude);
 
     let path = `/envelopes/${this._envelopeId}/`;
 

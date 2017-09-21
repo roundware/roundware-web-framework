@@ -1,6 +1,6 @@
 import * as logger from 'loglevel';
 
-logger.disableAll();
+//logger.disableAll();
 
 if ((typeof(process) !== 'undefined' && process.env.ROUNDWARE_DEBUG === "true")) {
   /* istanbul ignore next */

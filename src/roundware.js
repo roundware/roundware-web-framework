@@ -76,7 +76,12 @@ class Roundware {
   /** Initiate a connection to Roundware
    *  @return {Promise} - Can be resolved in order to get the audio stream URL, or rejected to get an error message; see example above **/
   connect() {
-    this._geoPosition.connect(this._stream.update); // want to start this process as soon as possible, as it can take a few seconds
+    let that = this;
+
+    this._geoPosition.connect(function(newCoords) { 
+      // want to start this process as soon as possible, as it can take a few seconds
+      that._stream.update(newCoords);
+    });
 
     logger.info("Initializing Roundware for project ID #" + this._projectId);
 
