@@ -12,15 +12,12 @@ npm test
 # Workflow
 
 ```bash
-npm test # run test suite
+npm test                      # run test suite
 ROUNDWARE_DEBUG=true npm test # send logging statements to STDOUT
 
-npm run devstart && open http://localhost:9000 # Uses webpack to live-reload source code in your browser
-
+npm run devstart && open http://localhost:8080        # Uses webpack to live-reload source code in your browser
 npm run cover && open coverage/lcov-report/index.html # checks code coverage and opens a report in the browser
-npm run check-coverage # make sure we have 100% unit test coverage; no excuses!
-
-npm run build # see package.json for all the possible builds
+npm run check-coverage                                # make sure we have 100% unit test coverage; no excuses!
 ```
 
 # Unit Testing
