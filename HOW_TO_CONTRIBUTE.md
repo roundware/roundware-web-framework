@@ -11,6 +11,7 @@ npm test
 
 # Workflow
 
+```bash
 npm test # run test suite
 ROUNDWARE_DEBUG=true npm test # send logging statements to STDOUT
 
