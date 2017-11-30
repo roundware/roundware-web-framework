@@ -50,7 +50,7 @@ describe("ApiClient",() => {
 
       expect(jQueryDummy.ajax).toHaveBeenCalledWith(streamsUrl,jasmine.objectContaining({ 
         method: "GET", 
-        data: data,
+        data: jsonData,
         xyz: 123
       }));
     });

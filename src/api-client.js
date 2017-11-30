@@ -49,20 +49,23 @@ export class ApiClient {
    * @todo might be a good place to implement exponential retry of certain types of errors
    * **/
   send(path,data,options = {}) {
-    let method = options.method || "GET";
     let url = this._serverUrl + path;
+
+    options = Object.assign({},options);
 
     if (!options.timeout) {
       options.timeout = 30000; // 30 seconds, arbitrary
     }
 
-    if (!options.contentType) {
+    if (options.contentType) {
+      // If you specify a contentType, we assume you already have formatted your data
+      options.data = data;
+    } else {
       // If you don't specify a contentType, we assume you want us to convert your payload to JSON
       options.contentType = 'application/json';
-      data = JSON.stringify(data);
+      options.data = JSON.stringify(data);
     }
 
-    options.data = data;
     options.mode = "no-cors";
 
     let deferred = this._jQuery.Deferred();
