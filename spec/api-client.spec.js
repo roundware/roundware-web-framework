@@ -16,6 +16,7 @@ describe("ApiClient",() => {
   const streamsPath = "/streams/";
   const streamsUrl = baseUrl + streamsPath;
   const data = { a: 1 };
+  const jsonData = '{"a":1}';
 
   let failSpecOnErrorCallback = (err) => {
     /* istanbul ignore next */
@@ -65,7 +66,8 @@ describe("ApiClient",() => {
 
       expect(jQueryDummy.ajax).toHaveBeenCalledWith(streamsUrl,jasmine.objectContaining({ 
         method: "POST",
-        data: data
+        contentType: 'application/json',
+        data: jsonData
       }));
     });
 
@@ -80,7 +82,8 @@ describe("ApiClient",() => {
 
       expect(jQueryDummy.ajax).toHaveBeenCalledWith(streamsUrl,jasmine.objectContaining({ 
         method: "PATCH",
-        data: data
+        contentType: 'application/json',
+        data: jsonData
       }));
     });
 
@@ -91,7 +94,9 @@ describe("ApiClient",() => {
     it(".send() makes generic Ajax requests",(done) => {
       let customOptions = { xyz: "123", method: "POST" };
       client.send(streamsPath,data,customOptions).then(done);
-      expect(jQueryDummy.ajax).toHaveBeenCalledWith(streamsUrl,jasmine.objectContaining(customOptions));
+      expect(jQueryDummy.ajax).toHaveBeenCalledWith(streamsUrl,jasmine.objectContaining({
+        xyz: '123'
+      }));
     });
 
     it(".setAuthToken() sets authorization headers",() => {

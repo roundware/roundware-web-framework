@@ -52,18 +52,21 @@ export class ApiClient {
     let method = options.method || "GET";
     let url = this._serverUrl + path;
 
-    if (!options.headers) {
-      options.headers = {};
+    if (!options.timeout) {
+      options.timeout = 30000; // 30 seconds, arbitrary
+    }
+
+    if (!options.contentType) {
+      // If you don't specify a contentType, we assume you want us to convert your payload to JSON
+      options.contentType = 'application/json';
+      data = JSON.stringify(data);
     }
 
     options.data = data;
     options.mode = "no-cors";
 
-    if (!options.timeout) {
-      options.timeout = 30000; // 30 seconds, arbitrary
-    }
-
     let deferred = this._jQuery.Deferred();
+
     let promise = deferred.promise();
 
     this._jQuery.ajax(url,options).
