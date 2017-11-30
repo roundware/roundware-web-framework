@@ -33,7 +33,7 @@ export class Session {
   }
 
   /** Make an asynchronous API call to establish a session with the Roundware server
-   * @returns {Promise} represents the pending API call
+   * @return {Promise} represents the pending API call
    **/
   connect() {
     let requestData = {
