@@ -1,6 +1,6 @@
 {
   "name": "roundware-web-framework",
-  "version": "0.0.1-alpha.9",
+  "version": "0.0.1-alpha.10",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "main": "roundware.js",
   "files": [
