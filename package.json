@@ -17,7 +17,8 @@
     "build:umd.min": "webpack --output-filename roundware.umd.min.js -p",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
     "devstart": "webpack-dev-server",
-    "watch": "npm-watch test"
+    "watch": "npm-watch test",
+    "deploy": "npm test && npm run build && npm run push"
   },
   "watch": {
     "test": "{src,test}/*.js"

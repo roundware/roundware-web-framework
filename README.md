@@ -63,6 +63,16 @@ npm install roundware-web-framework
 
 * See [Roundware Web Demo](https://github.com/subelsky/roundware_web_demo) for an example of using Roundware inside of an application
 
+## Contributor Workflow
+
+```bash
+npm run devstart && open http://localhost:8080/ # open example/ app
+npm run test                                    # execute Jasmine test suite
+npm run deploy                                  # publish new version of package
+```
+
+See [HOW_TO_CONTRIBUTE.md](HOW_TO_CONTRIBUTE.md) for further details.
+
 ## Resources
 
 * [Code of Conduct](https://github.com/roundware/roundware-web-framework/blob/master/CODE_OF_CONDIUCT.md)
