@@ -9,6 +9,8 @@ function startListening(streamURL) {
   audioSource.prop("src",streamURL);
   streamPlayer.trigger("load");
   tagIds.prop("disabled",false);
+  latitude.prop("disabled",false);
+  longitude.prop("disabled",false);
   updateButton.prop("disabled",false);
 }
 
@@ -85,9 +87,33 @@ $(function startApp() {
   playButton   = $("#play");
   killButton   = $("#kill");
   tagIds       = $("#tag_ids");
+  latitude     = $("#latitude");
+  longitude    = $("#longitude");
   updateButton = $("#update");
 
   roundware.connect().
     then(ready).
     catch(handleError);
+  initMap();
 });
+
+// Google Maps
+
+function initMap() {
+  var initialLocation = {lat: 1, lng: 1};
+  var map = new google.maps.Map(document.getElementById('map'), {
+    zoom: 4,
+    center: initialLocation
+  });
+  var listener = new google.maps.Marker({
+    position: initialLocation,
+    map: map,
+    draggable: true
+  });
+  google.maps.event.addListener(listener, "dragend", function(event) {
+      document.getElementById("latitude").value = listener.getPosition().lat();
+      document.getElementById("longitude").value = listener.getPosition().lng();
+      map.setCenter(listener.getPosition());
+      update();
+  });
+}

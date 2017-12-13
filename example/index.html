@@ -1,6 +1,13 @@
 <html>
   <head>
-    <title>RoundwareWebListen Test</title>
+    <title>Roundware Test</title>
+
+    <style>
+       #map {
+        height: 400px;
+        width: 100%;
+       }
+    </style>
   </head>
   <body>
     <h1>Playback</h1>
@@ -17,10 +24,21 @@
       <label>Tag IDs</label>
       <input id='tag_ids' disabled="disabled"/> (comma-separated list)
     </div>
+    <div>
+      <label>Latitude</label>
+      <input id='latitude' value="1"/>
+    </div>
+    <div>
+      <label>Longitude</label>
+      <input id='longitude' value="1"/>
+    </div>
     <br>
     <div>
         <button id="update" disabled="disabled">Update Stream</button>
     </div>
+    <br>
+    <div>Move pin on map to update audio based on location.</div>
+    <div id="map"></div>
 
     <h1>Recording</h1>
     <button id="record" style="display: none;">Record</button>
@@ -30,8 +48,14 @@
       <li>Also check out our <a href="https://subelsky.github.io/roundware_web_demo/">live demo</a> using a recent build</li>
     </ul>
 
+    <!-- Google Maps -->
+    <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBjlbSCPfjFrHI_LP7gVzJFRZzkwh0Thi4">
+    </script>
+
     <script type="text/javascript" src="roundware.umd.js"></script>
     <script type="text/javascript" src="jquery-3.2.1.js"></script>
     <script type="text/javascript" src="main.js"></script>
+
   </body>
 </html>
