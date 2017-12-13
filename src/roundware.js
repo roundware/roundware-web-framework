@@ -6,7 +6,7 @@ import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { User } from "./user";
 
-/** This class is the primary integration point between Roundware's server and your application 
+/** This class is the primary integration point between Roundware's server and your application
     NOTE that we depend on jQuery being injected, because we use its $.ajax function. As browsers
     evolve and the whatwg-fetch polyfill evolves, we may be able to switch over to using window.fetch
 

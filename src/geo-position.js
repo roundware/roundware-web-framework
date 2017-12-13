@@ -8,13 +8,13 @@ const defaultCoords = {
 };
 
 // for an initial rapid, low-accuracy position
-const fastGeolocationPositionOptions = { 
+const fastGeolocationPositionOptions = {
   enableHighAccuracy: false,
   timeout: initialGeoTimeoutSeconds
 };
 
 // subsequent position monitoring should be high-accuracy
-const accurateGeolocationPositionOptions = { 
+const accurateGeolocationPositionOptions = {
   enableHighAccuracy: true
 };
 
@@ -38,7 +38,7 @@ export class GeoPosition {
   }
 
   /** @return {String} Human-readable representation of this GeoPosition **/
-  toString() { 
+  toString() {
     return `GeoPosition (enabled: ${this.geoListenEnabled})`;
   }
 

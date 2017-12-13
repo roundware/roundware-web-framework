@@ -3,7 +3,7 @@ import { logger } from "./shims";
 const defaultHeartbeatIntervalSeconds = 60;
 
 /** Establishes an audio stream with the Roundware server, and notifies Roundware of events like tag
- * and geoposition updates 
+ * and geoposition updates
  * @todo skip/ - causes currently playing asset to fade out and next available asset in playlist to begin playing thereafter
  * @todo playasset/ - causes currently playing asset to fade out and asset specified by asset_id param is played thereafter
  * @todo replayasset/ - causes currently playing asset to fade out and start playing again
@@ -11,7 +11,7 @@ const defaultHeartbeatIntervalSeconds = 60;
  * @todo resume/ - un-does pause by allowing assets to be added to stream again from the playlist
  * **/
 export class Stream {
-  /** Create a new Stream 
+  /** Create a new Stream
    * @param {Object} options - Various configuration parameters for this stream
    * @param {apiClient} options.apiClient - the API client object to use for server API calls
    * @param {Number} [options.heartbeatIntervalSeconds = 60"] how frequently to send a stream heartbeat
@@ -22,19 +22,19 @@ export class Stream {
     this._heartbeatInterval = (options.heartbeatIntervalSeconds || defaultHeartbeatIntervalSeconds) * 1000;
   }
 
-  /** @returns {String] human-readable description of this stream **/
+  /** @returns {String} human-readable description of this stream **/
   toString() {
     return `Roundware Stream #${this._streamId} (${this._streamApiPath})`;
   }
 
-  /** Request a streaming audio URL from Roundware server and establish a regular heartbeat. The heartbeat is used to keep a stream alive 
-   * during a session. Streams take a lot of resources on the server, so we put the auto-kill mechanism in place to not have useless 
+  /** Request a streaming audio URL from Roundware server and establish a regular heartbeat. The heartbeat is used to keep a stream alive
+   * during a session. Streams take a lot of resources on the server, so we put the auto-kill mechanism in place to not have useless
    * streams taking resources, but needed a method to keep them alive when we know they are still wanted. After we initially connect to Roundware,
    * subsequent calls are forwarded to the Roundware server as "resume playing" API messages.
    * @param {Number} sessionId - Identifies the current session, must have been previously established by an instance of the Session class
    * @param {Promise}  initialGeoLocation - we will wait on this promise to resolve with initial coordinates before attempting to establish a stream
    * @param {Stream~firstPlayCallback} firstPlayCallback - invoked the first time we connect to roundware and retrieve a stream URL
-   * @returns {Promise} represents the pending API call 
+   * @returns {Promise} represents the pending API call
    * @see pause()
    * **/
   play(sessionId,initialLocation,firstPlayCallback = (streamAudioUrl) => {}) {
@@ -42,7 +42,7 @@ export class Stream {
       let resumePlayingPath = `${this._streamApiPath}resume/`;
       return this._apiClient.post(resumePlayingPath);
     }
-    
+
     this._sessionId = sessionId;
 
     // Object.assign(createStreamData,initialLocation,{ session_id: this._sessionId });
@@ -90,10 +90,10 @@ export class Stream {
     }
   }
 
-  /** Sends data to the Roundware server. If the Stream has not been established, does nothing. Can use a list of tag_ids or a position (lat/lon) to filter the assets available to the stream. 
-   * Typically for a normal geo-listen project, the position PATCH calls are triggered automatically by the client’s GPS/location system: every time a new position is registered by the client, 
-   * a PATCH call is sent to let the server know and the server acts accordingly by adjusting the underlying music mix as well as modifying the playlist of available assets to be played. 
-   * @param {Object} data [{}] 
+  /** Sends data to the Roundware server. If the Stream has not been established, does nothing. Can use a list of tag_ids or a position (lat/lon) to filter the assets available to the stream.
+   * Typically for a normal geo-listen project, the position PATCH calls are triggered automatically by the client’s GPS/location system: every time a new position is registered by the client,
+   * a PATCH call is sent to let the server know and the server acts accordingly by adjusting the underlying music mix as well as modifying the playlist of available assets to be played.
+   * @param {Object} data [{}]
    * **/
   update(data = {}) {
     if (this._streamApiPath) {

@@ -1,7 +1,7 @@
 import { logger } from "./shims";
 
 // Handles HTTP interactions with the Roundware API server, v2.
-// NOTE: Every HTTP method except ".get()" will cause most browers to issue a preflight requirements check to the server via the OPTIONS verb, 
+// NOTE: Every HTTP method except ".get()" will cause most browsers to issue a preflight requirements check to the server via the OPTIONS verb,
 // to verify CORS will allow the response to load in the browser. Sometimes this OPTIONS call can get obscured in debugging tools.
 // @see http://roundware.org/docs/terminology/index.html
 export class ApiClient {
@@ -15,7 +15,7 @@ export class ApiClient {
   }
 
   /** Make a GET request to the Roundware server
-   * @param {String} path - the path for your API request, such as "/streams"
+   * @param {String} path - the path for your API request, such as "/streams/"
    * @param {Object} options - see the "send" method
    * @see {send} **/
   get(path,data,options = {}) {
@@ -25,7 +25,7 @@ export class ApiClient {
   }
 
   /** Make a POST request to the Roundware server
-   * @param {String} path - the path for your API request, such as "/streams"
+   * @param {String} path - the path for your API request, such as "/streams/"
    * @param {Object} options - see the "send" method
    * @see {send} **/
   post(path,data,options = {}) {
@@ -34,7 +34,7 @@ export class ApiClient {
   }
 
   /** Make a PATCH request to the Roundware server
-   * @param {String} path - the path for your API request, such as "/streams"
+   * @param {String} path - the path for your API request, such as "/streams/"
    * @param {Object} options - see the "send" method
    * @see {send} **/
   patch(path,data,options = {}) {
@@ -45,7 +45,7 @@ export class ApiClient {
   /** Transmit an Ajax request to the Roundware API. Note that the Roundware Server expects paths to end with a trailing slash: /sessions/ instead of /sessions
    * @param path {string} - identifies the endpoint to receive the request
    * @param data {object} - the payload to send
-   * @param options {object} - any additional options to add to the Ajax request 
+   * @param options {object} - any additional options to add to the Ajax request
    * @return {Promise} - will resolve or reject depending on the status of the request
    * @todo might be a good place to implement exponential retry of certain types of errors
    * **/
@@ -90,7 +90,7 @@ export class ApiClient {
     return promise;
   }
 
-  /** Set the authorization token to use as the header for future API requests. Most Roundware API calls require an auth token to be set 
+  /** Set the authorization token to use as the header for future API requests. Most Roundware API calls require an auth token to be set.
    * @param {String} authToken - characters to use in the authorization header **/
   setAuthToken(authToken) {
     this._jQuery.ajaxSetup({
