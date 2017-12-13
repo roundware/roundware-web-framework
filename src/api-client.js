@@ -20,6 +20,7 @@ export class ApiClient {
    * @see {send} **/
   get(path,data,options = {}) {
     options.method = "GET";
+    options.contentType = 'x-www-form-urlencoded';
     return this.send(path,data,options);
   }
 
@@ -57,8 +58,13 @@ export class ApiClient {
       options.timeout = 30000; // 30 seconds, arbitrary
     }
 
-    if (options.contentType) {
-      // If you specify a contentType, we assume you already have formatted your data
+    // If you specify a contentType, we assume you already have formatted your data
+    if (options.contentType === 'multipart/form-data') {
+      // multipart/form-data requires special treatment with jquery.ajax
+      // in order to properly format the POST data
+      options.data = data;
+      options.contentType = false;
+    } else if (options.contentType === 'x-www-form-urlencoded') {
       options.data = data;
     } else {
       // If you don't specify a contentType, we assume you want us to convert your payload to JSON
