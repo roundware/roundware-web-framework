@@ -45,11 +45,19 @@ export class Stream {
     
     this._sessionId = sessionId;
 
-    let createStreamData = {};
-    Object.assign(createStreamData,initialLocation,{ session_id: this._sessionId });
+    // Object.assign(createStreamData,initialLocation,{ session_id: this._sessionId });
+
+    let createStreamData = new FormData();
+
+    createStreamData.append('session_id',this._sessionId);
+    createStreamData.append('latitude',initialLocation.latitude); // marker.position.lat());
+    createStreamData.append('longitude',initialLocation.longitude); //marker.position.lng());
+    console.log(createStreamData.get('session_id'));
 
     let streamConnectionPromise = this._apiClient.post("/streams/",createStreamData,{
-      cache: true // to avoid CORS problems TODO remove this
+      cache: true, // to avoid CORS problems TODO remove this
+      processData: false,
+      contentType: 'multipart/form-data'
     });
 
     streamConnectionPromise.then((streamData) => {
@@ -89,8 +97,21 @@ export class Stream {
    * **/
   update(data = {}) {
     if (this._streamApiPath) {
+      let updateStreamData = new FormData();
+
+      updateStreamData.append('session_id',this._sessionId);
+      updateStreamData.append('latitude',data.latitude);
+      updateStreamData.append('longitude',data.longitude);
+      updateStreamData.append('tag_ids',data.tagIds);
+
       data.session_id = this._sessionId;
-      return this._apiClient.patch(this._streamApiPath,data);
+      return this._apiClient.patch(this._streamApiPath,updateStreamData,{
+        cache: true, // to avoid CORS problems TODO remove this
+        processData: false,
+        contentType: 'multipart/form-data'
+      });
+    }
+  }
 
   /** Tells Roundware server to kill the audio stream **/
   kill() {
