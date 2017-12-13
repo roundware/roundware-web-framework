@@ -99,7 +99,13 @@ class Roundware {
     this._stream.pause();
   }
 
-  /** Update the Roundware stream with new tag IDs 
+  /** Tell Roundware server to kill the audio stream.
+   * @see Stream.kill **/
+  kill() {
+    this._stream.kill();
+  }
+
+  /** Update the Roundware stream with new tag IDs
    * @param {string} tagIdStr - comma-separated list of tag IDs to send to the streams API **/
   tags(tagIdStr) {
     this._stream.update({ tag_ids: tagIdStr });

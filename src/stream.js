@@ -91,6 +91,12 @@ export class Stream {
     if (this._streamApiPath) {
       data.session_id = this._sessionId;
       return this._apiClient.patch(this._streamApiPath,data);
+
+  /** Tells Roundware server to kill the audio stream **/
+  kill() {
+    if (this._streamAudioUrl) {
+      let killPlayingPath = `${this._streamApiPath}kill/`;
+      this._apiClient.post(killPlayingPath);
     }
   }
 }

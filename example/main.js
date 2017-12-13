@@ -1,8 +1,8 @@
 var roundwareServerUrl = "http://localhost:8888/api/2";
-var roundwareProjectId = 1; // corresponds to a project setup in the roundware server developer seed script
+var roundwareProjectId = 1; // corresponds to a project setup in the Roundware server developer seed script
 
 var roundware;
-var streamPlayer, audioSource, pauseButton, playButton, tagIds;
+var streamPlayer, audioSource, pauseButton, playButton, killButton, tagIds;
 
 function startListening(streamURL) {
   console.info("Loading " + streamURL);
@@ -18,6 +18,7 @@ function play(streamURL) {
       streamPlayer.trigger("play");
       pauseButton.prop("disabled",false);
       playButton.prop("disabled",true);
+      killButton.prop("disabled",false);
     }).
     catch(handleError);
 }
@@ -30,6 +31,15 @@ function pause() {
   roundware.pause();
 }
 
+function kill() {
+  console.info("killing");
+  streamPlayer.trigger("pause");
+  pauseButton.prop("disabled",true);
+  playButton.prop("disabled",false);
+  killButton.prop("disabled",true);
+  roundware.kill();
+}
+
 function handleTagInput(evt) {
   roundware.tags(tagIds.val().join(","));
 }
@@ -40,6 +50,7 @@ function ready() {
   playButton.prop("disabled",false);
   playButton.click(play);
   pauseButton.click(pause);
+  killButton.click(kill);
 
   tagIds.change(handleTagInput);
 }
@@ -59,6 +70,7 @@ $(function startApp() {
   audioSource  = $("#audiosource");
   pauseButton  = $("#pause");
   playButton   = $("#play");
+  killButton   = $("#kill");
   tagIds       = $("#tag_ids");
 
   roundware.connect().
