@@ -9,6 +9,7 @@ function startListening(streamURL) {
   audioSource.prop("src",streamURL);
   streamPlayer.trigger("load");
   tagIds.prop("disabled",false);
+  updateButton.prop("disabled",false);
 }
 
 function play(streamURL) {
@@ -40,6 +41,16 @@ function kill() {
   roundware.kill();
 }
 
+function update() {
+  console.info("updating stream");
+  let updateData = {};
+  updateData.latitude = latitude.val();
+  updateData.longitude = longitude.val();
+  updateData.tagIds = tagIds.val();
+  console.log(updateData);
+  roundware.update(updateData);
+}
+
 function handleTagInput(evt) {
   roundware.tags(tagIds.val().join(","));
 }
@@ -51,8 +62,10 @@ function ready() {
   playButton.click(play);
   pauseButton.click(pause);
   killButton.click(kill);
+  updateButton.click(update);
 
-  tagIds.change(handleTagInput);
+  // tagIds.change(handleTagInput);
+
 }
 
 // Generally we throw user-friendly messages and log a more technical message
@@ -72,6 +85,7 @@ $(function startApp() {
   playButton   = $("#play");
   killButton   = $("#kill");
   tagIds       = $("#tag_ids");
+  updateButton = $("#update");
 
   roundware.connect().
     then(ready).

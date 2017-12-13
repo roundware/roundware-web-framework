@@ -110,6 +110,13 @@ class Roundware {
   tags(tagIdStr) {
     this._stream.update({ tag_ids: tagIdStr });
   }
+
+  /** Update the Roundware stream with new tag IDs and or geo-position
+   * @param {object} data - containing keys latitude, longitude and tagIds **/
+  update(data = {}) {
+    // Object.keys(data).map(e => console.log(`key=${e}  value=${data[e]}`));
+    this._stream.update(data);
+  }
 }
 
 // Slight hack here to export Roundware module to browser properly; see https://github.com/webpack/webpack/issues/3929
