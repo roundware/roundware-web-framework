@@ -44,7 +44,7 @@ export class Session {
 
     return apiClient.post("/sessions/",requestData).
       then((data) => {
-        sessionId = data.session_id;
+        sessionId = data.id;
         return sessionId;
       });
   }
