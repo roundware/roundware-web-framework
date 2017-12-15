@@ -46,15 +46,15 @@ function kill() {
 function update() {
   console.info("updating stream");
   let updateData = {};
+  let tagIds = $("#uiDisplay input:checked").map(function() {
+    return this.value;
+  }).get().join();
+
   updateData.latitude = latitude.val();
   updateData.longitude = longitude.val();
-  updateData.tagIds = tagIds.val();
+  updateData.tagIds = tagIds;
   console.log(updateData);
   roundware.update(updateData);
-}
-
-function handleTagInput(evt) {
-  roundware.tags(tagIds.val().join(","));
 }
 
 function ready() {
@@ -66,8 +66,27 @@ function ready() {
   killButton.click(kill);
   updateButton.click(update);
 
-  // tagIds.change(handleTagInput);
+  displayTags();
+}
 
+function displayTags() {
+  console.log(roundware._uiConfig.listen);
+  let listenUi = roundware._uiConfig.listen;
+  $.each(listenUi, function(index,element) {
+    console.log(index + ": " + element.header_display_text);
+    let str = "";
+    str += `<h4>${element.header_display_text}</h4>`;
+    str += "<form>";
+    $.each(element.display_items, function(index,element) {
+      let checked = "";
+      if (element.default_state) {
+        checked = "checked";
+      }
+      str += `<input type="checkbox" value=${element.tag_id} ${checked}>${element.tag_display_text}<br>`;
+    });
+    str += "</form>";
+    $('#uiDisplay').append(str);
+  });
 }
 
 // Generally we throw user-friendly messages and log a more technical message
