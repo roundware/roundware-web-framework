@@ -29,4 +29,18 @@ export class Project {
         return sessionId;
       });
   }
+
+  uiconfig(sessionId) {
+    var path = "/projects/" + projectId + "/uiconfig/";
+
+    var data = {
+      session_id: sessionId
+    };
+
+    return apiClient.get(path,data).
+      then(function connectionSuccess(data) {
+        // let this._uiConfig = data;
+        return data;
+      });
+  }
 }
