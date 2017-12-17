@@ -1,5 +1,6 @@
 import { Project } from "./project";
 import { Session } from "./session";
+import { Speaker } from "./speaker";
 import { GeoPosition } from "./geo-position";
 import { Stream } from "./stream";
 import { logger } from "./shims";
@@ -70,6 +71,7 @@ class Roundware {
     this._session     = options.session     || new Session(navigator,this._projectId,this._geoPosition.geoListenEnabled,options);
     this._project     = options.project     || new Project(this._projectId,options);
     this._stream      = options.stream      || new Stream(options);
+    this._speaker     = options.speaker     || new Speaker(this._projectId,options);
   }
 
   /** Initiate a connection to Roundware
@@ -84,7 +86,9 @@ class Roundware {
       then(this._project.connect).
       then((sessionId) => this._sessionId = sessionId).
       then(this._project.uiconfig).
-      then((uiConfig) => this._uiConfig = uiConfig);
+      then((uiConfig) => this._uiConfig = uiConfig).
+      then(this._speaker.connect).
+      then((speakerData) => this._speakerData = speakerData);
   }
   }
 

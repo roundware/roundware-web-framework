@@ -67,6 +67,7 @@ function ready() {
   updateButton.click(update);
 
   displayTags();
+  setupMap();
 }
 
 function displayTags() {
@@ -86,6 +87,50 @@ function displayTags() {
     });
     str += "</form>";
     $('#uiDisplay').append(str);
+  });
+}
+
+function mapSpeakers(map) {
+  console.log(roundware._speakerData[0].shape);
+  let speakers = roundware._speakerData;
+
+  $.each(speakers, function (i, item) {
+    if (item.activeyn == true) {
+      map.data.addGeoJson({
+        "type": "Feature",
+        "geometry": item.shape,
+        "properties": {
+          "speaker_id": item.id,
+          "name": "outer"
+        }
+      });
+      map.data.addGeoJson({
+        "type": "Feature",
+        "geometry": item.attenuation_border,
+        "properties": {
+          "speaker_id": item.id,
+          "name": "inner"
+        }
+      });
+      map.data.setStyle(function(feature) {
+        if (feature.getProperty('name') == "outer") {
+          return {
+            fillColor: '#aaaaaa',
+            fillOpacity: .5,
+            strokeWeight: 1,
+            strokeOpacity: .5
+          };
+        }
+        else if (feature.getProperty('name') == "inner") {
+          return {
+            fillColor: '#555555',
+            fillOpacity: 0,
+            strokeWeight: 1,
+            strokeOpacity: .2
+          };
+        }
+      });
+    }
   });
 }
 
@@ -113,12 +158,11 @@ $(function startApp() {
   roundware.connect().
     then(ready).
     catch(handleError);
-  initMap();
 });
 
 // Google Maps
 
-function initMap() {
+function setupMap() {
   var initialLocation = {lat: 1, lng: 1};
   var map = new google.maps.Map(document.getElementById('map'), {
     zoom: 4,
@@ -130,9 +174,10 @@ function initMap() {
     draggable: true
   });
   google.maps.event.addListener(listener, "dragend", function(event) {
-      document.getElementById("latitude").value = listener.getPosition().lat();
-      document.getElementById("longitude").value = listener.getPosition().lng();
-      map.setCenter(listener.getPosition());
-      update();
+    document.getElementById("latitude").value = listener.getPosition().lat();
+    document.getElementById("longitude").value = listener.getPosition().lng();
+    map.setCenter(listener.getPosition());
+    update();
   });
+  mapSpeakers(map);
 }
