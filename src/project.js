@@ -2,7 +2,7 @@ import { logger } from "./shims";
 
 var projectId, apiClient;
 var projectName = "(unknown)";
-var pubDate, audioFormat;
+var pubDate, audioFormat, recordingRadius, location, geoListenEnabled;
 
 export class Project {
   constructor(newProjectId,options) {
@@ -12,6 +12,10 @@ export class Project {
 
   toString() {
     return `Roundware Project '${projectName}' (#${projectId})`;
+  }
+
+  getRecordingRadius() {
+    return recordingRadius;
   }
 
   connect(sessionId) {
@@ -26,6 +30,7 @@ export class Project {
         projectName = data.name;
         pubDate = data.pub_date;
         audioFormat = data.audio_format;
+        recordingRadius = data.recording_radius;
         return sessionId;
       });
   }
