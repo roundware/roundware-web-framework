@@ -14,23 +14,25 @@ export class Project {
     return `Roundware Project '${projectName}' (#${projectId})`;
   }
 
-  getRecordingRadius() {
-    return recordingRadius;
-  }
+  // getRecordingRadius() {
+  //   return recordingRadius;
+  // }
 
   connect(sessionId) {
-    var path = "/projects/" + projectId;
+    var path = "/projects/" + projectId + "/";
 
     var data = {
       session_id: sessionId
     };
+
+    let that = this;
 
     return apiClient.get(path,data).
       then(function connectionSuccess(data) {
         projectName = data.name;
         pubDate = data.pub_date;
         audioFormat = data.audio_format;
-        recordingRadius = data.recording_radius;
+        that.recordingRadius = data.recording_radius;
         return sessionId;
       });
   }

@@ -83,7 +83,7 @@ class Roundware {
 
     return this._user.connect().
       then(this._session.connect).
-      then(this._project.connect).
+      then((sessionId) => this._project.connect(sessionId)).
       then((sessionId) => this._sessionId = sessionId).
       then(this._project.uiconfig).
       then((uiConfig) => this._uiConfig = uiConfig).

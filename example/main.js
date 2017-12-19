@@ -68,7 +68,7 @@ function ready() {
 
   displayTags();
   setupMap();
-  console.log(`project recording radius = ${roundware._project.getRecordingRadius()}`);
+  console.log(`project recording radius = ${roundware._project.recordingRadius}`);
 }
 
 function displayTags() {
