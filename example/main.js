@@ -3,6 +3,8 @@ var roundwareProjectId = 1; // corresponds to a project setup in the Roundware s
 
 var roundware;
 var streamPlayer, audioSource, pauseButton, playButton, killButton, tagIds;
+var assetMarkers = [];
+var map;
 
 function startListening(streamURL) {
   console.info("Loading " + streamURL);
@@ -68,6 +70,7 @@ function ready() {
 
   displayTags();
   setupMap();
+  console.log(roundware._assetData);
   console.log(`project recording radius = ${roundware._project.recordingRadius}`);
 }
 
@@ -89,10 +92,16 @@ function displayTags() {
     str += "</form>";
     $('#uiDisplay').append(str);
   });
+
+  // setup tag change listeners
+  $('#uiDisplay input:checkbox').change(
+    function() {
+      update();
+      showHideMarkers();
+    });
 }
 
 function mapSpeakers(map) {
-  console.log(roundware._speakerData[0].shape);
   let speakers = roundware._speakerData;
 
   $.each(speakers, function (i, item) {
@@ -135,6 +144,96 @@ function mapSpeakers(map) {
   });
 }
 
+function mapAssets(map) {
+  console.log(roundware._assetData[0]);
+  let assets = roundware._assetData;
+
+  $.each(assets, function (i, item) {
+    var marker_img = new google.maps.MarkerImage('https://www.google.com/intl/en_us/mapfiles/ms/micons/yellow-dot.png');
+    var point = new google.maps.LatLng(item.latitude, item.longitude);
+    // var tag_ids = item.tag_ids.toString();
+    // console.log('tag_ids = ' + tag_ids);
+
+    var marker = new google.maps.Marker({
+    position: point,
+    map: map,
+    icon: marker_img
+    });
+    marker.id = item.id;
+    marker.rw_tags = [];
+    if (item.tag_ids) {
+    marker.rw_tags = item.tag_ids;
+    }
+    // display asset shape if exists
+    if (item.shape) {
+    console.log("map the asset's shape");
+    marker.shape = new google.maps.Data();
+    marker.shape.addGeoJson({
+      "type": "Feature",
+      "geometry": item.shape,
+      "properties": {
+        "asset_id": item.id,
+        "name": "assetRange"
+      }
+    });
+    marker.shape.setStyle(function(feature) {
+      if (feature.getProperty('name') == "assetRange") {
+        return {
+          fillColor: '#6292CF',
+          fillOpacity: .25,
+          strokeWeight: 1,
+          strokeOpacity: .8,
+          strokeColor: '#6292CF'
+        };
+      }
+    });
+    }
+    // if no asset shape, display default circle range
+    else {
+    var circle = {
+      strokeColor: '#6292CF',
+      strokeOpacity: 0.8,
+      strokeWeight: 1,
+      fillColor: '#6292CF',
+      fillOpacity: 0.25,
+      map: map,
+      center: new google.maps.LatLng(item.latitude, item.longitude),
+      radius: roundware._project.recordingRadius
+    };
+    marker.circle = new google.maps.Circle(circle);
+    }
+    assetMarkers.push(marker);
+    });
+}
+
+function showHideMarkers() {
+  $.each(assetMarkers, function(i, item) {
+    // if any item tags are not included in selected tags, hide marker, otherwise show it
+    let selectedTagIds = $("#uiDisplay input:checked").map(function() {
+      return Number(this.value);
+    }).get();
+	var is_visible = true;
+	$.each(item.rw_tags, function(j, tag_id) {
+      // if tag_id isn't selected, set to false and return
+      if (!(selectedTagIds.includes(tag_id))) {
+        is_visible = false;
+	    return;
+	  }
+	});
+	item.setVisible(is_visible);
+    if (item.circle) {
+      item.circle.setVisible(is_visible);
+    }
+    if (item.shape) {
+      if (is_visible) {
+        item.shape.setMap(map);
+      } else if (!is_visible) {
+        item.shape.setMap(null);
+      }
+    }
+  });
+}
+
 // Generally we throw user-friendly messages and log a more technical message
 function handleError(userErrMsg) {
   console.error("There was a Roundware Error: " + userErrMsg);
@@ -164,8 +263,9 @@ $(function startApp() {
 // Google Maps
 
 function setupMap() {
-  var initialLocation = {lat: 1, lng: 1};
-  var map = new google.maps.Map(document.getElementById('map'), {
+  var initialLocation = {lat: roundware._project.location.latitude,
+                         lng: roundware._project.location.longitude};
+  map = new google.maps.Map(document.getElementById('map'), {
     zoom: 4,
     center: initialLocation
   });
@@ -180,5 +280,8 @@ function setupMap() {
     map.setCenter(listener.getPosition());
     update();
   });
+  mapAssets(map);
   mapSpeakers(map);
+  showHideMarkers();
+
 }
