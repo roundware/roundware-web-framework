@@ -120,6 +120,22 @@ export class Stream {
       this._apiClient.post(killPlayingPath);
     }
   }
+
+  /** Tells Roundware server to replay the current asset **/
+  replay() {
+    if (this._streamAudioUrl) {
+      let replayPlayingPath = `${this._streamApiPath}replayasset/`;
+      this._apiClient.post(replayPlayingPath);
+    }
+  }
+
+  /** Tells Roundware server to skip the current asset **/
+  skip() {
+    if (this._streamAudioUrl) {
+      let skipPlayingPath = `${this._streamApiPath}skipasset/`;
+      this._apiClient.post(skipPlayingPath);
+    }
+  }
 }
 
 /**

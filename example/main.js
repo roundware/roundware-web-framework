@@ -2,7 +2,8 @@ var roundwareServerUrl = "http://localhost:8888/api/2";
 var roundwareProjectId = 1; // corresponds to a project setup in the Roundware server developer seed script
 
 var roundware;
-var streamPlayer, audioSource, pauseButton, playButton, killButton, tagIds;
+var streamPlayer, audioSource, pauseButton, playButton, killButton,
+    skipButton, replayButton, tagIds;
 var assetMarkers = [];
 var map;
 
@@ -24,6 +25,8 @@ function play(streamURL) {
       pauseButton.prop("disabled",false);
       playButton.prop("disabled",true);
       killButton.prop("disabled",false);
+      replayButton.prop("disabled",false);
+      skipButton.prop("disabled",false);
     }).
     catch(handleError);
 }
@@ -33,6 +36,8 @@ function pause() {
   streamPlayer.trigger("pause");
   pauseButton.prop("disabled",true);
   playButton.prop("disabled",false);
+  replayButton.prop("disabled",true);
+  skipButton.prop("disabled",true);
   roundware.pause();
 }
 
@@ -42,7 +47,19 @@ function kill() {
   pauseButton.prop("disabled",true);
   playButton.prop("disabled",false);
   killButton.prop("disabled",true);
+  replayButton.prop("disabled",true);
+  skipButton.prop("disabled",true);
   roundware.kill();
+}
+
+function replay() {
+  console.log("replaying");
+  roundware.replay();
+}
+
+function skip() {
+  console.log("skipping");
+  roundware.skip();
 }
 
 function update() {
@@ -66,6 +83,8 @@ function ready() {
   playButton.click(play);
   pauseButton.click(pause);
   killButton.click(kill);
+  replayButton.click(replay);
+  skipButton.click(skip);
   updateButton.click(update);
 
   displayTags();
@@ -250,6 +269,8 @@ $(function startApp() {
   pauseButton  = $("#pause");
   playButton   = $("#play");
   killButton   = $("#kill");
+  replayButton = $("#replay");
+  skipButton   = $("#skip");
   tagIds       = $("#tag_ids");
   latitude     = $("#latitude");
   longitude    = $("#longitude");

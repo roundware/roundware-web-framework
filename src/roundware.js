@@ -115,6 +115,18 @@ class Roundware {
     this._stream.kill();
   }
 
+  /** Tell Roundware server to replay the current asset.
+   * @see Stream.replay **/
+  replay() {
+    this._stream.replay();
+  }
+
+  /** Tell Roundware server to skip the current asset.
+   * @see Stream.skip **/
+  skip() {
+    this._stream.skip();
+  }
+
   /** Update the Roundware stream with new tag IDs
    * @param {string} tagIdStr - comma-separated list of tag IDs to send to the streams API **/
   tags(tagIdStr) {
