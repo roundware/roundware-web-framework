@@ -3,6 +3,7 @@ import { Session } from "./session";
 import { Speaker } from "./speaker";
 import { GeoPosition } from "./geo-position";
 import { Stream } from "./stream";
+import { Asset } from "./asset";
 import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { User } from "./user";
@@ -72,6 +73,7 @@ class Roundware {
     this._project     = options.project     || new Project(this._projectId,options);
     this._stream      = options.stream      || new Stream(options);
     this._speaker     = options.speaker     || new Speaker(this._projectId,options);
+    this._asset       = options.asset       || new Asset(this._projectId,options);
   }
 
   /** Initiate a connection to Roundware
@@ -88,11 +90,12 @@ class Roundware {
       then(this._project.uiconfig).
       then((uiConfig) => this._uiConfig = uiConfig).
       then(this._speaker.connect).
-      then((speakerData) => this._speakerData = speakerData);
-  }
+      then((speakerData) => this._speakerData = speakerData).
+      then(this._asset.connect).
+      then((assetData) => this._assetData = assetData);
   }
 
-  /** Create or resume the audio stream o
+  /** Create or resume the audio stream
    * @see Stream.play **/
   play(firstPlayCallback = () => {}) {
     return this._geoPosition.waitForInitialGeolocation().then((initialCoordinates) => {
