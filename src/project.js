@@ -33,6 +33,8 @@ export class Project {
         pubDate = data.pub_date;
         audioFormat = data.audio_format;
         that.recordingRadius = data.recording_radius;
+        that.location = {"latitude": data.latitude,
+                         "longitude": data.longitude};
         return sessionId;
       });
   }
