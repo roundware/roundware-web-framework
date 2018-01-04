@@ -6,6 +6,9 @@ var streamPlayer, audioSource, pauseButton, playButton, killButton,
     skipButton, replayButton, tagIds;
 var assetMarkers = [];
 var map;
+var firstplay = false; // ultimately will be set to true initially to handle iOS playback properly
+var use_listener_range = false;
+var listener_circle_max, listener_circle_min;
 
 function startListening(streamURL) {
   console.info("Loading " + streamURL);
@@ -62,7 +65,7 @@ function skip() {
   roundware.skip();
 }
 
-function update() {
+function update(data) {
   console.info("updating stream");
   let updateData = {};
   let tagIds = $("#uiDisplay input:checked").map(function() {
@@ -72,6 +75,10 @@ function update() {
   updateData.latitude = latitude.val();
   updateData.longitude = longitude.val();
   updateData.tagIds = tagIds;
+  // handle any additional data params
+  Object.keys(data).forEach(function(key) {
+    updateData[key] = data[key];
+  });
   console.log(updateData);
   roundware.update(updateData);
 }
@@ -89,6 +96,17 @@ function ready() {
 
   displayTags();
   setupMap();
+
+  // setup range listening toggle listener
+  $('#isrange input:checkbox').change(
+    function() {
+      if ($(this).is(':checked')) {
+        add_listener_range();
+      } else {
+        remove_listener_range();
+      }
+    }
+  );
   console.log(roundware._assetData);
   console.log(`project recording radius = ${roundware._project.recordingRadius}`);
 }
@@ -253,6 +271,78 @@ function showHideMarkers() {
   });
 }
 
+/**
+ * Add editable circles centered on listener pin that define the listener_range
+ * every time either circle is edited, a PATCH streams/ is sent with lat/lon and listener_range_min/max
+ */
+function add_listener_range() {
+    use_listener_range = true;
+    var mapCenter = new google.maps.LatLng(latitude.val(),
+                                           longitude.val());
+    listener_circle_max = new google.maps.Circle({
+        strokeColor: '#000000',
+        strokeOpacity: 0.4,
+        strokeWeight: 1,
+        fillColor: '#000000',
+        fillOpacity: 0.08,
+        map: map,
+        center: mapCenter,
+        radius: roundware._project.recordingRadius * 100,
+        editable: true,
+        draggable: false,
+        geodesic: true
+    });
+    listener_circle_min = new google.maps.Circle({
+        strokeColor: '#000000',
+        strokeOpacity: 0.4,
+        strokeWeight: 1,
+        fillColor: '#000000',
+        fillOpacity: 0,
+        map: map,
+        center: mapCenter,
+        radius: roundware._project.recordingRadius * 50,
+        editable: true,
+        draggable: false,
+        geodesic: true
+    });
+    map.setCenter(mapCenter);
+
+    google.maps.event.addListener(listener_circle_max, "radius_changed", function (event) {
+        lr_max = Math.round(listener_circle_max.getRadius());
+        lr_min = Math.round(listener_circle_min.getRadius());
+        // ensure listener_range_max isn't smaller than listener_range_min
+        if (lr_max < lr_min) {
+            listener_circle_max.setRadius(lr_min);
+            console.log("maximum range can't be smaller than minimum range!")
+        }
+        if (!firstplay) {
+          var data = { "listener_range_max": lr_max,
+                       "listener_range_min": lr_min }
+          update(data);
+        }
+        console.log("max range = " + lr_max);
+    });
+    google.maps.event.addListener(listener_circle_min, "radius_changed", function (event) {
+        lr_min = Math.round(listener_circle_min.getRadius());
+        lr_max = Math.round(listener_circle_max.getRadius());
+        // ensure listener_range_min isn't larger than listener_range_max
+        if (lr_min > lr_max) {
+            listener_circle_min.setRadius(lr_max);
+            console.log("minimum range can't be bigger than maximum range!")
+        }
+        if (!firstplay) {
+          var data = { "listener_range_max": lr_max,
+                       "listener_range_min": lr_min }
+          update(data);
+        }
+    });
+}
+
+function remove_listener_range() {
+  use_listener_range = false;
+  listener_circle_max.setMap(null);
+  listener_circle_min.setMap(null);
+}
 // Generally we throw user-friendly messages and log a more technical message
 function handleError(userErrMsg) {
   console.error("There was a Roundware Error: " + userErrMsg);
@@ -299,10 +389,18 @@ function setupMap() {
     document.getElementById("latitude").value = listener.getPosition().lat();
     document.getElementById("longitude").value = listener.getPosition().lng();
     map.setCenter(listener.getPosition());
-    update();
+    var data = {};
+    if (use_listener_range === true) {
+      listener_circle_max.setCenter(new google.maps.LatLng(listener.getPosition().lat(),
+                                                           listener.getPosition().lng()));
+      listener_circle_min.setCenter(new google.maps.LatLng(listener.getPosition().lat(),
+                                                           listener.getPosition().lng()));
+      data = { "listener_range_max": Math.round(listener_circle_max.getRadius()),
+               "listener_range_min": Math.round(listener_circle_min.getRadius())}
+    }
+    update(data);
   });
   mapAssets(map);
   mapSpeakers(map);
   showHideMarkers();
-
 }

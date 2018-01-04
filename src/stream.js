@@ -103,6 +103,12 @@ export class Stream {
       updateStreamData.append('latitude',data.latitude);
       updateStreamData.append('longitude',data.longitude);
       updateStreamData.append('tag_ids',data.tagIds);
+      if ('listener_range_max' in data) {
+        updateStreamData.append('listener_range_max',data.listener_range_max);
+      }
+      if ('listener_range_min' in data) {
+        updateStreamData.append('listener_range_min',data.listener_range_min);
+      }
 
       data.session_id = this._sessionId;
       return this._apiClient.patch(this._streamApiPath,updateStreamData,{
