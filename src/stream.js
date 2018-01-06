@@ -1,6 +1,7 @@
 import { logger } from "./shims";
 
 const defaultHeartbeatIntervalSeconds = 60;
+let heartbeatIntervalId;
 
 /** Establishes an audio stream with the Roundware server, and notifies Roundware of events like tag
  * and geoposition updates
@@ -73,7 +74,7 @@ export class Stream {
 
       firstPlayCallback(this._streamAudioUrl);
 
-      setInterval(() => {
+      heartbeatIntervalId = setInterval(() => {
         this._apiClient.post(this._heartbeatUrl,heartbeatData);
       },this._heartbeatInterval);
     });
@@ -121,6 +122,7 @@ export class Stream {
 
   /** Tells Roundware server to kill the audio stream **/
   kill() {
+    clearInterval(heartbeatIntervalId);
     if (this._streamAudioUrl) {
       let killPlayingPath = `${this._streamApiPath}kill/`;
       this._apiClient.post(killPlayingPath);
