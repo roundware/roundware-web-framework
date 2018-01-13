@@ -53,6 +53,7 @@ class Roundware {
   constructor(window,options = {}) {
     this._serverUrl = options.serverUrl;
     this._projectId = options.projectId;
+    this._speakerFilters = options.speakerFilters;
 
     if (this._serverUrl === undefined) {
       throw "Roundware objects must be initialized with a serverUrl";
@@ -89,7 +90,7 @@ class Roundware {
       then((sessionId) => this._sessionId = sessionId).
       then(this._project.uiconfig).
       then((uiConfig) => this._uiConfig = uiConfig).
-      then(this._speaker.connect).
+      then((data) => this._speaker.connect(this._speakerFilters)).
       then((speakerData) => this._speakerData = speakerData).
       then(this._asset.connect).
       then((assetData) => this._assetData = assetData);

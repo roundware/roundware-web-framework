@@ -142,42 +142,40 @@ function mapSpeakers(map) {
   let speakers = roundware._speakerData;
 
   $.each(speakers, function (i, item) {
-    if (item.activeyn == true) {
-      map.data.addGeoJson({
-        "type": "Feature",
-        "geometry": item.shape,
-        "properties": {
-          "speaker_id": item.id,
-          "name": "outer"
-        }
-      });
-      map.data.addGeoJson({
-        "type": "Feature",
-        "geometry": item.attenuation_border,
-        "properties": {
-          "speaker_id": item.id,
-          "name": "inner"
-        }
-      });
-      map.data.setStyle(function(feature) {
-        if (feature.getProperty('name') == "outer") {
-          return {
-            fillColor: '#aaaaaa',
-            fillOpacity: .5,
-            strokeWeight: 1,
-            strokeOpacity: .5
-          };
-        }
-        else if (feature.getProperty('name') == "inner") {
-          return {
-            fillColor: '#555555',
-            fillOpacity: 0,
-            strokeWeight: 1,
-            strokeOpacity: .2
-          };
-        }
-      });
-    }
+    map.data.addGeoJson({
+      "type": "Feature",
+      "geometry": item.shape,
+      "properties": {
+        "speaker_id": item.id,
+        "name": "outer"
+      }
+    });
+    map.data.addGeoJson({
+      "type": "Feature",
+      "geometry": item.attenuation_border,
+      "properties": {
+        "speaker_id": item.id,
+        "name": "inner"
+      }
+    });
+    map.data.setStyle(function(feature) {
+      if (feature.getProperty('name') == "outer") {
+        return {
+          fillColor: '#aaaaaa',
+          fillOpacity: .5,
+          strokeWeight: 1,
+          strokeOpacity: .5
+        };
+      }
+      else if (feature.getProperty('name') == "inner") {
+        return {
+          fillColor: '#555555',
+          fillOpacity: 0,
+          strokeWeight: 1,
+          strokeOpacity: .2
+        };
+      }
+    });
   });
 }
 
@@ -351,7 +349,9 @@ function handleError(userErrMsg) {
 $(function startApp() {
   roundware = new Roundware(window,{
     serverUrl: roundwareServerUrl,
-    projectId: roundwareProjectId
+    projectId: roundwareProjectId,
+    // apply any speaker filters here
+    speakerFilters: {"activeyn": true}
   });
 
   streamPlayer = $("#streamplayer");

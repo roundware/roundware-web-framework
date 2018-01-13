@@ -12,13 +12,10 @@ export class Speaker {
     return `Roundware Speaker '${projectName}' (#${projectId})`;
   }
 
-  connect(sessionId) {
+  connect(data={}) {
     var path = "/speakers/";
-
-    var data = {
-      project_id: projectId,
-      activeyn: true
-    };
+    // add project_id to any incoming filter data
+    data['project_id'] = projectId
 
     return apiClient.get(path,data).
       then(function connectionSuccess(data) {
