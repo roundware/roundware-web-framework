@@ -54,6 +54,7 @@ class Roundware {
     this._serverUrl = options.serverUrl;
     this._projectId = options.projectId;
     this._speakerFilters = options.speakerFilters;
+    this._assetFilters = options.assetFilters;
 
     if (this._serverUrl === undefined) {
       throw "Roundware objects must be initialized with a serverUrl";
@@ -92,7 +93,7 @@ class Roundware {
       then((uiConfig) => this._uiConfig = uiConfig).
       then((data) => this._speaker.connect(this._speakerFilters)).
       then((speakerData) => this._speakerData = speakerData).
-      then(this._asset.connect).
+      then((data) => this._asset.connect(this._assetFilters)).
       then((assetData) => this._assetData = assetData);
   }
 

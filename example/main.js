@@ -351,7 +351,10 @@ $(function startApp() {
     serverUrl: roundwareServerUrl,
     projectId: roundwareProjectId,
     // apply any speaker filters here
-    speakerFilters: {"activeyn": true}
+    speakerFilters: {"activeyn": true},
+    // apply any asset filters here
+    assetFilters: {"submitted": true,
+                   "media_type": "audio"}
   });
 
   streamPlayer = $("#streamplayer");

@@ -12,15 +12,10 @@ export class Asset {
     return `Roundware Assets '${projectName}' (#${projectId})`;
   }
 
-  connect(sessionId) {
+  connect(data={}) {
     var path = "/assets/";
-
-    // TODO: add other available filtering params
-    var data = {
-      project_id: projectId,
-      submitted: true,
-      media_type: 'audio'
-    };
+    // add project_id to any incoming filter data
+    data['project_id'] = projectId;
 
     return apiClient.get(path,data).
       then(function connectionSuccess(data) {
