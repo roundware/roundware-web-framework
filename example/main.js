@@ -5,7 +5,7 @@ var roundware;
 var streamPlayer, audioSource, pauseButton, playButton, killButton,
     skipButton, replayButton, tagIds;
 var assetMarkers = [];
-var map;
+var listenMap, speakMap;
 var firstplay = false; // ultimately will be set to true initially to handle iOS playback properly
 var use_listener_range = false;
 var listener_circle_max, listener_circle_min;
@@ -95,7 +95,7 @@ function ready() {
   updateButton.click(update);
 
   displayListenTags();
-  setupMap();
+  setupListenMap();
 
   // setup range listening toggle listener
   $('#isrange input:checkbox').change(
@@ -261,7 +261,7 @@ function showHideMarkers() {
     }
     if (item.shape) {
       if (is_visible) {
-        item.shape.setMap(map);
+        item.shape.setMap(listenMap);
       } else if (!is_visible) {
         item.shape.setMap(null);
       }
@@ -283,7 +283,7 @@ function add_listener_range() {
         strokeWeight: 1,
         fillColor: '#000000',
         fillOpacity: 0.08,
-        map: map,
+        map: listenMap,
         center: mapCenter,
         radius: roundware._project.recordingRadius * 100,
         editable: true,
@@ -296,14 +296,14 @@ function add_listener_range() {
         strokeWeight: 1,
         fillColor: '#000000',
         fillOpacity: 0,
-        map: map,
+        map: listenMap,
         center: mapCenter,
         radius: roundware._project.recordingRadius * 50,
         editable: true,
         draggable: false,
         geodesic: true
     });
-    map.setCenter(mapCenter);
+    listenMap.setCenter(mapCenter);
 
     google.maps.event.addListener(listener_circle_max, "radius_changed", function (event) {
         lr_max = Math.round(listener_circle_max.getRadius());
@@ -376,22 +376,22 @@ $(function startApp() {
 
 // Google Maps
 
-function setupMap() {
+function setupListenMap() {
   var initialLocation = {lat: roundware._project.location.latitude,
                          lng: roundware._project.location.longitude};
-  map = new google.maps.Map(document.getElementById('map'), {
+  listenMap = new google.maps.Map(document.getElementById('listenMap'), {
     zoom: 8,
     center: initialLocation
   });
   var listener = new google.maps.Marker({
     position: initialLocation,
-    map: map,
+    map: listenMap,
     draggable: true
   });
   google.maps.event.addListener(listener, "dragend", function(event) {
     document.getElementById("latitude").value = listener.getPosition().lat();
     document.getElementById("longitude").value = listener.getPosition().lng();
-    map.setCenter(listener.getPosition());
+    listenMap.setCenter(listener.getPosition());
     var data = {};
     if (use_listener_range === true) {
       listener_circle_max.setCenter(new google.maps.LatLng(listener.getPosition().lat(),
@@ -403,7 +403,7 @@ function setupMap() {
     }
     update(data);
   });
-  mapAssets(map);
-  mapSpeakers(map);
+  mapAssets(listenMap);
+  mapSpeakers(listenMap);
   showHideMarkers();
 }
