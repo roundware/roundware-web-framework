@@ -15,8 +15,8 @@ function startListening(streamURL) {
   audioSource.prop("src",streamURL);
   streamPlayer.trigger("load");
   tagIds.prop("disabled",false);
-  latitude.prop("disabled",false);
-  longitude.prop("disabled",false);
+  listenLatitude.prop("disabled",false);
+  listenLongitude.prop("disabled",false);
   updateButton.prop("disabled",false);
 }
 
@@ -72,8 +72,8 @@ function update(data) {
     return this.value;
   }).get().join();
 
-  updateData.latitude = latitude.val();
-  updateData.longitude = longitude.val();
+  updateData.latitude = listenLatitude.val();
+  updateData.longitude = listenLongitude.val();
   updateData.tagIds = tagIds;
   // handle any additional data params
   Object.keys(data).forEach(function(key) {
@@ -275,8 +275,8 @@ function showHideMarkers() {
  */
 function add_listener_range() {
     use_listener_range = true;
-    var mapCenter = new google.maps.LatLng(latitude.val(),
-                                           longitude.val());
+    var mapCenter = new google.maps.LatLng(listenLatitude.val(),
+                                           listenLongitude.val());
     listener_circle_max = new google.maps.Circle({
         strokeColor: '#000000',
         strokeOpacity: 0.4,
@@ -357,17 +357,17 @@ $(function startApp() {
                    "media_type": "audio"}
   });
 
-  streamPlayer = $("#streamplayer");
-  audioSource  = $("#audiosource");
-  pauseButton  = $("#pause");
-  playButton   = $("#play");
-  killButton   = $("#kill");
-  replayButton = $("#replay");
-  skipButton   = $("#skip");
-  tagIds       = $("#tag_ids");
-  latitude     = $("#latitude");
-  longitude    = $("#longitude");
-  updateButton = $("#update");
+  streamPlayer    = $("#streamplayer");
+  audioSource     = $("#audiosource");
+  pauseButton     = $("#pause");
+  playButton      = $("#play");
+  killButton      = $("#kill");
+  replayButton    = $("#replay");
+  skipButton      = $("#skip");
+  tagIds          = $("#tag_ids");
+  listenLatitude  = $("#listenLatitude");
+  listenLongitude = $("#listenLongitude");
+  updateButton    = $("#update");
 
   roundware.connect().
     then(ready).
