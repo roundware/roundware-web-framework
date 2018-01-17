@@ -68,7 +68,7 @@ function skip() {
 function update(data) {
   console.info("updating stream");
   let updateData = {};
-  let tagIds = $("#uiDisplay input:checked").map(function() {
+  let tagIds = $("#uiListenDisplay input:checked").map(function() {
     return this.value;
   }).get().join();
 
@@ -94,7 +94,7 @@ function ready() {
   skipButton.click(skip);
   updateButton.click(update);
 
-  displayTags();
+  displayListenTags();
   setupMap();
 
   // setup range listening toggle listener
@@ -111,7 +111,7 @@ function ready() {
   console.log(`project recording radius = ${roundware._project.recordingRadius}`);
 }
 
-function displayTags() {
+function displayListenTags() {
   console.log(roundware._uiConfig.listen);
   let listenUi = roundware._uiConfig.listen;
   $.each(listenUi, function(index,element) {
@@ -127,11 +127,11 @@ function displayTags() {
       str += `<input type="checkbox" value=${element.tag_id} ${checked}>${element.tag_display_text}<br>`;
     });
     str += "</form>";
-    $('#uiDisplay').append(str);
+    $('#uiListenDisplay').append(str);
   });
 
   // setup tag change listeners
-  $('#uiDisplay input:checkbox').change(
+  $('#uiListenDisplay input:checkbox').change(
     function() {
       update();
       showHideMarkers();
@@ -180,7 +180,7 @@ function mapSpeakers(map) {
 }
 
 function mapAssets(map) {
-  console.log(roundware._assetData[0]);
+  // console.log(roundware._assetData[0]);
   let assets = roundware._assetData;
 
   $.each(assets, function (i, item) {
@@ -225,26 +225,26 @@ function mapAssets(map) {
     }
     // if no asset shape, display default circle range
     else {
-    var circle = {
-      strokeColor: '#6292CF',
-      strokeOpacity: 0.8,
-      strokeWeight: 1,
-      fillColor: '#6292CF',
-      fillOpacity: 0.25,
-      map: map,
-      center: new google.maps.LatLng(item.latitude, item.longitude),
-      radius: roundware._project.recordingRadius
-    };
-    marker.circle = new google.maps.Circle(circle);
-    }
-    assetMarkers.push(marker);
+      var circle = {
+        strokeColor: '#6292CF',
+        strokeOpacity: 0.8,
+        strokeWeight: 1,
+        fillColor: '#6292CF',
+        fillOpacity: 0.25,
+        map: map,
+        center: new google.maps.LatLng(item.latitude, item.longitude),
+        radius: roundware._project.recordingRadius
+      };
+      marker.circle = new google.maps.Circle(circle);
+      }
+      assetMarkers.push(marker);
     });
 }
 
 function showHideMarkers() {
   $.each(assetMarkers, function(i, item) {
     // if any item tags are not included in selected tags, hide marker, otherwise show it
-    let selectedTagIds = $("#uiDisplay input:checked").map(function() {
+    let selectedTagIds = $("#uiListenDisplay input:checked").map(function() {
       return Number(this.value);
     }).get();
 	var is_visible = true;
@@ -380,7 +380,7 @@ function setupMap() {
   var initialLocation = {lat: roundware._project.location.latitude,
                          lng: roundware._project.location.longitude};
   map = new google.maps.Map(document.getElementById('map'), {
-    zoom: 4,
+    zoom: 8,
     center: initialLocation
   });
   var listener = new google.maps.Marker({
