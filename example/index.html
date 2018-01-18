@@ -7,6 +7,10 @@
         height: 400px;
         width: 100%;
        }
+       #speakMap {
+        height: 400px;
+        width: 100%;
+       }
     </style>
   </head>
   <body>
@@ -49,6 +53,16 @@
     <h1>Recording</h1>
     <div id="uiSpeakDisplay"></div>
     <button id="record" style="display: none;">Record</button>
+    <h3>Select a location for your contribution</h3>
+    <div>
+      <label>Contribution Latitude</label>
+      <input id='speakLatitude' value="1"/>
+    </div>
+    <div>
+      <label>Contribution Longitude</label>
+      <input id='speakLongitude' value="1"/>
+    </div>
+    <div id="speakMap"></div>
     <hr>
     <ul>
       <li>To run this example, execute <code>npm run devserver &amp;&amp; open localhost:8080</code> from the project root directory You also need to have the Roundware Server running locally, see <a href="https://github.com/roundware/roundware-server#vagrant">Roundware Vagrant setup instructions</a>.</li>

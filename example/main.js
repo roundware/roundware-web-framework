@@ -96,6 +96,7 @@ function ready() {
   displayListenTags();
   displaySpeakTags();
   setupListenMap();
+  setupSpeakMap();
 
   // setup range listening toggle listener
   $('#isrange input:checkbox').change(
@@ -399,6 +400,10 @@ $(function startApp() {
   listenLongitude = $("#listenLongitude");
   updateButton    = $("#update");
 
+  // Speak elements
+  speakLatitude  = $("#speakLatitude");
+  speakLongitude = $("#speakLongitude");
+
   roundware.connect().
     then(ready).
     catch(handleError);
@@ -436,4 +441,24 @@ function setupListenMap() {
   mapAssets(listenMap);
   mapSpeakers(listenMap);
   showHideMarkers();
+}
+
+function setupSpeakMap() {
+  // TODO: change to location sensed by browser
+  var initialLocation = {lat: roundware._project.location.latitude,
+                         lng: roundware._project.location.longitude};
+  speakMap = new google.maps.Map(document.getElementById('speakMap'), {
+    zoom: 4,
+    center: initialLocation
+  });
+  var contributor = new google.maps.Marker({
+    position: initialLocation,
+    map: speakMap,
+    draggable: true
+  });
+  google.maps.event.addListener(contributor, "dragend", function(event) {
+    document.getElementById("speakLatitude").value = contributor.getPosition().lat();
+    document.getElementById("speakLongitude").value = contributor.getPosition().lng();
+    listenMap.setCenter(contributor.getPosition());
+  });
 }
