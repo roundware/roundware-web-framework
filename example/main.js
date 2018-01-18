@@ -94,6 +94,7 @@ function ready() {
   updateButton.click(update);
 
   displayListenTags();
+  displaySpeakTags();
   setupListenMap();
 
   // setup range listening toggle listener
@@ -134,6 +135,36 @@ function displayListenTags() {
     function() {
       update();
       showHideMarkers();
+    });
+}
+
+function displaySpeakTags() {
+  console.log(roundware._uiConfig.speak);
+  let listenUi = roundware._uiConfig.speak;
+  $.each(listenUi, function(index,element) {
+    console.log(index + ": " + element.header_display_text);
+    let str = "";
+    str += `<h4>${element.header_display_text}</h4>`;
+    str += "<form>";
+    $.each(element.display_items, function(index,element) {
+      let checked = "";
+      if (element.default_state) {
+        checked = "checked";
+      }
+      str += `<input type="checkbox" value=${element.tag_id} ${checked}>${element.tag_display_text}<br>`;
+    });
+    str += "</form>";
+    $('#uiSpeakDisplay').append(str);
+  });
+
+  // setup tag change listeners
+  $('#uiSpeakDisplay input:checkbox').change(
+    function() {
+      let speakTagIds = $("#uiSpeakDisplay input:checked").map(function() {
+        return this.value;
+      }).get().join();
+      // update();
+      console.log(`speak tags updated: ${speakTagIds}`);
     });
 }
 
