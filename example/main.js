@@ -14,7 +14,6 @@ function startListening(streamURL) {
   console.info("Loading " + streamURL);
   audioSource.prop("src",streamURL);
   streamPlayer.trigger("load");
-  tagIds.prop("disabled",false);
   listenLatitude.prop("disabled",false);
   listenLongitude.prop("disabled",false);
   updateButton.prop("disabled",false);
@@ -65,16 +64,16 @@ function skip() {
   roundware.skip();
 }
 
-function update(data) {
+function update(data={}) {
   console.info("updating stream");
   let updateData = {};
-  let tagIds = $("#uiListenDisplay input:checked").map(function() {
+  let listenTagIds = $("#uiListenDisplay input:checked").map(function() {
     return this.value;
   }).get().join();
 
   updateData.latitude = listenLatitude.val();
   updateData.longitude = listenLongitude.val();
-  updateData.tagIds = tagIds;
+  updateData.tagIds = listenTagIds;
   // handle any additional data params
   Object.keys(data).forEach(function(key) {
     updateData[key] = data[key];
@@ -244,13 +243,13 @@ function mapAssets(map) {
 function showHideMarkers() {
   $.each(assetMarkers, function(i, item) {
     // if any item tags are not included in selected tags, hide marker, otherwise show it
-    let selectedTagIds = $("#uiListenDisplay input:checked").map(function() {
+    let selectedListenTagIds = $("#uiListenDisplay input:checked").map(function() {
       return Number(this.value);
     }).get();
 	var is_visible = true;
 	$.each(item.rw_tags, function(j, tag_id) {
       // if tag_id isn't selected, set to false and return
-      if (!(selectedTagIds.includes(tag_id))) {
+      if (!(selectedListenTagIds.includes(tag_id))) {
         is_visible = false;
 	    return;
 	  }
@@ -357,6 +356,7 @@ $(function startApp() {
                    "media_type": "audio"}
   });
 
+  // Listen elements
   streamPlayer    = $("#streamplayer");
   audioSource     = $("#audiosource");
   pauseButton     = $("#pause");
@@ -364,7 +364,6 @@ $(function startApp() {
   killButton      = $("#kill");
   replayButton    = $("#replay");
   skipButton      = $("#skip");
-  tagIds          = $("#tag_ids");
   listenLatitude  = $("#listenLatitude");
   listenLongitude = $("#listenLongitude");
   updateButton    = $("#update");
@@ -389,8 +388,8 @@ function setupListenMap() {
     draggable: true
   });
   google.maps.event.addListener(listener, "dragend", function(event) {
-    document.getElementById("latitude").value = listener.getPosition().lat();
-    document.getElementById("longitude").value = listener.getPosition().lng();
+    document.getElementById("listenLatitude").value = listener.getPosition().lat();
+    document.getElementById("listenLongitude").value = listener.getPosition().lng();
     listenMap.setCenter(listener.getPosition());
     var data = {};
     if (use_listener_range === true) {
