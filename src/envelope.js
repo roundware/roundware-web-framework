@@ -2,7 +2,7 @@ export class Envelope {
   /** Create an Envelope
    * @param {number} sessionId - identifies the session associated with this asset
    * @param {ApiClient} apiClient - the API client object to use for server API calls
-   * @param {geoPosition} geoPosition - 
+   * @param {geoPosition} geoPosition -
    **/
   constructor(sessionId,apiClient,geoPosition) {
     this._envelopeId = "(unknown)";
@@ -25,7 +25,7 @@ export class Envelope {
 
     return this._apiClient.post("/envelopes/",data).
       then((data) => {
-        this._envelopeId = data.envelope_id;
+        this._envelopeId = data.id;
       });
   }
 
@@ -34,9 +34,9 @@ export class Envelope {
    * @param {string} fileName - name of the file
    * @return {Promise} - represents the API call */
   upload(audioData,fileName,data={}) {
-    // if (!this._envelopeId) {
-    //   return Promise.reject("cannot upload audio without first connecting this envelope to the server");
-    // }
+    if (!this._envelopeId) {
+      return Promise.reject("cannot upload audio without first connecting this envelope to the server");
+    }
 
     let formData = new FormData();
     let coordinates = this._geoPosition.getLastCoords();
@@ -51,8 +51,7 @@ export class Envelope {
       formData.append('tag_ids',data.tag_ids);
     }
 
-    // let path = `/envelopes/${this._envelopeId}/`;
-    let path = `/envelopes/11/`;
+    let path = `/envelopes/${this._envelopeId}/`;
 
     console.info(`Uploading ${fileName} to envelope ${path}`);
 
