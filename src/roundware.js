@@ -153,7 +153,7 @@ class Roundware {
    * @param {string} fileName - name of the file
    * @return {promise} - represents the API calls to save an asset; can be tested to find out whether upload was successful
    * @see Envelope.upload */
-  saveAsset(audioData,fileName) {
+  saveAsset(audioData,fileName,data) {
     if (!this._sessionId) {
       return Promise.reject("can't save assets without first connecting to the server");
     }
@@ -162,7 +162,7 @@ class Roundware {
 
     return envelope.connect().
       then(function() {
-        envelope.upload(audioData,fileName);
+        envelope.upload(audioData,fileName,data);
       });
   }
 }

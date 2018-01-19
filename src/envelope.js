@@ -29,29 +29,35 @@ export class Envelope {
       });
   }
 
-  /** Sends an audio file to the server 
-   * @param {blob} audioData 
+  /** Sends an audio file to the server
+   * @param {blob} audioData
    * @param {string} fileName - name of the file
    * @return {Promise} - represents the API call */
-  upload(audioData,fileName) {
-    if (!this._envelopeId) {
-      return Promise.reject("cannot upload audio without first connecting this envelope to the server");
-    }
+  upload(audioData,fileName,data={}) {
+    // if (!this._envelopeId) {
+    //   return Promise.reject("cannot upload audio without first connecting this envelope to the server");
+    // }
 
     let formData = new FormData();
     let coordinates = this._geoPosition.getLastCoords();
+    console.log(coordinates);
 
     formData.append('session_id',this._sessionId);
     formData.append('file',audioData);
     formData.append('latitude',coordinates.latitude);
     formData.append('longitude',coordinates.longitude);
 
-    let path = `/envelopes/${this._envelopeId}/`;
+    if ('tag_ids' in data) {
+      formData.append('tag_ids',data.tag_ids);
+    }
+
+    // let path = `/envelopes/${this._envelopeId}/`;
+    let path = `/envelopes/11/`;
 
     console.info(`Uploading ${fileName} to envelope ${path}`);
 
     let options = {
-      contentType: false,
+      contentType: 'multipart/form-data',
       processData: false
     };
 

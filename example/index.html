@@ -3,14 +3,17 @@
     <title>Roundware Test</title>
 
     <style>
-       #listenMap {
+      #listenMap {
         height: 400px;
         width: 100%;
-       }
-       #speakMap {
+      }
+      #speakMap {
         height: 400px;
         width: 100%;
-       }
+      }
+      ul { list-style: none; }
+      li { margin: 1em; }
+      audio { display: block; }
     </style>
   </head>
   <body>
@@ -76,6 +79,18 @@
 
     <section class="sound-clips"></section>
 
+    <hr>
+    <h3>Opus Recorder Example</h3>
+    <h2>Commands</h2>
+    <button id="startRecordButton" disabled>Start Recording</button>
+    <button id="stopRecordButton" disabled>Stop Recording</button>
+    <button id="uploadButton" disabled>Upload to RW</button>
+
+    <h2>Recordings</h2>
+    <ul id="recordingslist"></ul>
+
+    <hr>
+
     <ul>
       <li>To run this example, execute <code>npm run devserver &amp;&amp; open localhost:8080</code> from the project root directory You also need to have the Roundware Server running locally, see <a href="https://github.com/roundware/roundware-server#vagrant">Roundware Vagrant setup instructions</a>.</li>
       <li>Also check out our <a href="https://subelsky.github.io/roundware_web_demo/">live demo</a> using a recent build</li>
@@ -91,6 +106,7 @@
     <script type="text/javascript" src="jquery-3.2.1.js"></script>
     <script type="text/javascript" src="WavAudioEncoder.js"></script>
     <script type="text/javascript" src="recording.js"></script>
+    <script type="text/javascript" src="recorder.min.js"></script>
     <script type="text/javascript" src="main.js"></script>
 
   </body>

@@ -445,6 +445,7 @@ function setupListenMap() {
   mapAssets(listenMap);
   mapSpeakers(listenMap);
   showHideMarkers();
+  initRecording();
 }
 
 function setupSpeakMap() {
