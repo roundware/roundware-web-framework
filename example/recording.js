@@ -43,24 +43,29 @@ function initRecording() {
 
   recorder.addEventListener( "dataAvailable", function(e){
     uploadButton.disabled = false;
+    playbackButton.disabled = false;
     var dataBlob = new Blob( [e.detail], { type: 'audio/wav' } );
     var wavFileName = new Date().toISOString() + ".wav";
     var url = URL.createObjectURL( dataBlob );
 
-    var audio = document.createElement('audio');
-    audio.controls = true;
-    audio.src = url;
-
-    var link = document.createElement('a');
-    link.href = url;
-    link.download = wavFileName;
-    link.innerHTML = link.download;
-
-    var li = document.createElement('li');
-    li.appendChild(link);
-    li.appendChild(audio);
-
-    recordingslist.appendChild(li);
+    // display waveform with wavesurfer.js
+    var wavesurfer = WaveSurfer.create({
+      container: '#waveform',
+      waveColor: 'red',
+      progressColor: 'purple',
+      barWidth: 2
+    });
+    wavesurfer.load(url);
+    wavesurfer.on('ready', function () {
+      var timeline = Object.create(WaveSurfer.Timeline);
+      timeline.init({
+        wavesurfer: wavesurfer,
+        container: '#waveform-timeline'
+      });
+    });
+    playbackButton.addEventListener( "click", function(){
+      wavesurfer.playPause();
+    });
 
     uploadButton.addEventListener( "click", function(){
       let data = {};
