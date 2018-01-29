@@ -11,6 +11,12 @@
         height: 400px;
         width: 100%;
       }
+      #inputmeter {
+        border: 1px black solid;
+        background-color: #ffffff;
+        height: 200px;
+        width: 300px;
+      }
       ul { list-style: none; }
       li { margin: 1em; }
       audio { display: block; }
@@ -82,6 +88,7 @@
     <hr>
     <h3>Opus Recorder Example</h3>
     <h2>Commands</h2>
+    <div id="inputmeter"></div>
     <button id="startRecordButton" disabled>Start Recording</button>
     <button id="stopRecordButton" disabled>Stop Recording</button>
     <button id="uploadButton" disabled>Upload to RW</button>
@@ -107,6 +114,8 @@
     <script type="text/javascript" src="WavAudioEncoder.js"></script>
     <script type="text/javascript" src="recording.js"></script>
     <script type="text/javascript" src="recorder.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/1.4.0/wavesurfer.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/1.4.0/plugin/wavesurfer.microphone.min.js"></script>
     <script type="text/javascript" src="main.js"></script>
 
   </body>

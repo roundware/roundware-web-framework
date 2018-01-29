@@ -1,7 +1,4 @@
-// Audio recording code roughly adapted from https://github.com/mdn/web-dictaphone/ example
-var audioCtx = new window.AudioContext();
-var canvas = document.querySelector('.visualizer');
-var canvasCtx = canvas.getContext("2d");
+var microphone;
 
 function initRecording() {
   var recorder;
@@ -15,7 +12,7 @@ function initRecording() {
   }
 
   recorder = new Recorder({
-    // monitorGain: parseInt(monitorGain.value, 10),
+    monitorGain: 0,
     // numberOfChannels: parseInt(numberOfChannels.value, 10),
     // wavBitDepth: parseInt(bitDepth.value,10),
     encoderPath: "waveWorker.min.js"
@@ -25,11 +22,13 @@ function initRecording() {
     console.log('Recorder is started');
     startRecordButton.disabled = true;
     stopRecordButton.disabled = false;
+    microphone.start();
   });
 
   recorder.addEventListener( "stop", function(e){
     console.log('Recorder is stopped');
     stopRecordButton.disabled = startRecordButton.disabled = true;
+    microphone.stop();
   });
 
   recorder.addEventListener( "streamError", function(e){
@@ -195,55 +194,23 @@ function setupRecordingControls(saveCallback) {
 }
 
 function visualize(stream) {
-  var source = audioCtx.createMediaStreamSource(stream);
-
-  var analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 2048;
-  var bufferLength = analyser.frequencyBinCount;
-  var dataArray = new Uint8Array(bufferLength);
-
-  source.connect(analyser);
-  //analyser.connect(audioCtx.destination);
-
-  WIDTH = canvas.width;
-  HEIGHT = canvas.height;
-
-  draw();
-
-  function draw() {
-
-    requestAnimationFrame(draw);
-
-    analyser.getByteTimeDomainData(dataArray);
-
-    canvasCtx.fillStyle = 'rgb(200, 200, 200)';
-    canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
-
-    canvasCtx.lineWidth = 2;
-    canvasCtx.strokeStyle = 'rgb(0, 0, 0)';
-
-    canvasCtx.beginPath();
-
-    var sliceWidth = WIDTH * 1.0 / bufferLength;
-    var x = 0;
-
-
-    for(var i = 0; i < bufferLength; i++) {
-
-      var v = dataArray[i] / 128.0;
-      var y = v * HEIGHT/2;
-
-      if(i === 0) {
-        canvasCtx.moveTo(x, y);
-      } else {
-        canvasCtx.lineTo(x, y);
-      }
-
-      x += sliceWidth;
-    }
-
-    canvasCtx.lineTo(canvas.width, canvas.height/2);
-    canvasCtx.stroke();
-
-  }
+  // input meter visual display
+  var wavesurferInput = WaveSurfer.create({
+    container: '#inputmeter',
+    waveColor: 'red',
+    height: 200,
+    barWidth: 2,
+    barHeight: 1.2,
+    cursorWidth: 0
+  });
+  microphone = Object.create(WaveSurfer.Microphone);
+  microphone.init({
+    wavesurfer: wavesurferInput
+  });
+  microphone.on('deviceReady', function(stream) {
+    console.log('Microphone ready!', stream);
+  });
+  microphone.on('deviceError', function(code) {
+    console.warn('Microphone error: ' + code);
+  });
 }
