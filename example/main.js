@@ -410,7 +410,7 @@ $(function startApp() {
     then(ready).
     catch(handleError);
 
-  setupRecordingControls((audioBlob,fileName) => roundware.saveAsset(audioBlob,fileName));
+  initRecording();
 });
 
 // Google Maps
@@ -445,7 +445,6 @@ function setupListenMap() {
   mapAssets(listenMap);
   mapSpeakers(listenMap);
   showHideMarkers();
-  initRecording();
 }
 
 function setupSpeakMap() {
