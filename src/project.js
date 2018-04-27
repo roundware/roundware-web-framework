@@ -35,6 +35,7 @@ export class Project {
         that.recordingRadius = data.recording_radius;
         that.location = {"latitude": data.latitude,
                          "longitude": data.longitude};
+        that.maxRecordingLength = data.max_recording_length;
         return sessionId;
       });
   }

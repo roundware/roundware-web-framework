@@ -1,4 +1,6 @@
 var microphone;
+var time_remaining = 0;
+var time_remaining_interval_id = -1;
 
 function initRecording() {
   var recorder;
@@ -24,12 +26,14 @@ function initRecording() {
     stopRecordButton.disabled = false;
     microphone.start();
   });
+    startCountdown();
 
   recorder.addEventListener( "stop", function(e){
     console.log('Recorder is stopped');
     stopRecordButton.disabled = startRecordButton.disabled = true;
     microphone.stop();
   });
+    resetCountdown();
 
   recorder.addEventListener( "streamError", function(e){
     console.log('Error encountered: ' + e.error.name );
@@ -103,4 +107,43 @@ function visualize(stream) {
   microphone.on('deviceError', function(code) {
     console.warn('Microphone error: ' + code);
   });
+}
+
+/**
+ * read max_recording_length from the project config and then use it
+ * to display a countdown-timer.
+ */
+function startCountdown() {
+  time_remaining = roundware._project.maxRecordingLength;
+  var minutes = Math.floor(time_remaining / 60);
+  var seconds = time_remaining % 60;
+  // console.log( hours +':'+ ('0'+minutes).slice(-2) +':'+ ('0'+seconds).slice(-2) );
+  $('#countdown').text(minutes + ':' + ('0'+seconds).slice(-2)).css( "visibility", "visible");
+  time_remaining_interval_id = setInterval(updateCountdown, 1000, time_remaining);
+}
+
+/**
+ * callback for startCountdown: update the countdown timer until it reaches
+ * 0, then clear the interval timer and trigger a click on the record/stop/play
+ * button.
+ */
+function updateCountdown(seconds) {
+  time_remaining = --time_remaining;
+  var minutes = Math.floor(time_remaining / 60);
+  var seconds = time_remaining % 60;
+  $('#countdown').text(minutes + ':' + ('0'+seconds).slice(-2));
+
+  if (0 == time_remaining) {
+      clearInterval(time_remaining_interval_id);
+      $('#stopRecordButton').trigger('click');
+  }
+}
+
+// reset counter to max recording length
+
+function resetCountdown() {
+  var minutes = Math.floor(roundware._project.maxRecordingLength / 60);
+  var seconds = roundware._project.maxRecordingLength % 60;
+  $('#countdown').text(minutes + ':' + ('0'+seconds).slice(-2));
+  clearInterval(time_remaining_interval_id);
 }
