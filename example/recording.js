@@ -77,7 +77,9 @@ function initRecording() {
         return this.value;
       }).get().join();
       if (speakTagIds != "") {
-        data = {"tag_ids": speakTagIds};
+        data = {"tag_ids": speakTagIds, "latitude": document.getElementById("speakLatitude").value, "longitude": document.getElementById("speakLongitude").value};
+      } else {
+        data = {"latitude": document.getElementById("speakLatitude").value, "longitude": document.getElementById("speakLongitude").value};
       }
       roundware.saveAsset(dataBlob,wavFileName,data);
     });
