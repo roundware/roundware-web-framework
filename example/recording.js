@@ -20,35 +20,29 @@ function initRecording() {
     encoderPath: "waveWorker.min.js"
   });
 
-  recorder.addEventListener( "start", function(e){
+  recorder.onstart = function(){
     console.log('Recorder is started');
     startRecordButton.disabled = true;
     stopRecordButton.disabled = false;
     microphone.start();
-  });
     startCountdown();
+  };
 
-  recorder.addEventListener( "stop", function(e){
+  recorder.onstop = function(){
     console.log('Recorder is stopped');
     stopRecordButton.disabled = startRecordButton.disabled = true;
     microphone.stop();
-  });
     resetCountdown();
+  };
 
-  recorder.addEventListener( "streamError", function(e){
+  recorder.onstreamerror = function(e){
     console.log('Error encountered: ' + e.error.name );
-  });
+  };
 
-  recorder.addEventListener( "streamReady", function(e){
-    stopRecordButton.disabled = true;
-    startRecordButton.disabled = false;
-    console.log('Audio stream is ready.');
-  });
-
-  recorder.addEventListener( "dataAvailable", function(e){
+  recorder.ondataavailable = function( typedArray ){
     uploadButton.disabled = false;
     playbackButton.disabled = false;
-    var dataBlob = new Blob( [e.detail], { type: 'audio/wav' } );
+    var dataBlob = new Blob( [typedArray], { type: 'audio/wav' } );
     var wavFileName = new Date().toISOString() + ".wav";
     var url = URL.createObjectURL( dataBlob );
 
@@ -83,13 +77,12 @@ function initRecording() {
       }
       roundware.saveAsset(dataBlob,wavFileName,data);
     });
-  });
+  };
 
-  recorder.initStream().
-    then((stream) => visualize(stream));
+  visualize();
 }
 
-function visualize(stream) {
+function visualize() {
   // input meter visual display
   var wavesurferInput = WaveSurfer.create({
     container: '#inputmeter',
