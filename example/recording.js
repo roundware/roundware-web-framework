@@ -1,11 +1,17 @@
-var microphone;
+var MicrophonePlugin;
+var wavesurferInput;
 var time_remaining = 0;
 var time_remaining_interval_id = -1;
 
 function initRecording() {
   var recorder;
 
-  startRecordButton.addEventListener( "click", function(){ recorder.start(); });
+  // startRecordButton.addEventListener( "click", function(){ recorder.start(); });
+  // for future reference, if anything needs to be triggered post-recorder init, do this:
+  startRecordButton.addEventListener( "click", function(){
+    recorder.start().then(() => visualize());
+    // recorder.start();
+  });
   stopRecordButton.addEventListener( "click", function(){ recorder.stop(); });
   // uploadButton.addEventListener( "click", function(){ recorder.stop(); });
 
@@ -24,14 +30,14 @@ function initRecording() {
     console.log('Recorder is started');
     startRecordButton.disabled = true;
     stopRecordButton.disabled = false;
-    microphone.start();
+    uploadButton.disabled = false;
     startCountdown();
   };
 
   recorder.onstop = function(){
     console.log('Recorder is stopped');
-    stopRecordButton.disabled = startRecordButton.disabled = true;
-    microphone.stop();
+    stopRecordButton.disabled = true
+    wavesurferInput.microphone.stop();
     resetCountdown();
   };
 
@@ -45,27 +51,35 @@ function initRecording() {
     var dataBlob = new Blob( [typedArray], { type: 'audio/wav' } );
     var wavFileName = new Date().toISOString() + ".wav";
     var url = URL.createObjectURL( dataBlob );
+    var TimelinePlugin = window.WaveSurfer.timeline;
 
     // display waveform with wavesurfer.js
     var wavesurfer = WaveSurfer.create({
       container: '#waveform',
       waveColor: 'red',
       progressColor: 'purple',
-      barWidth: 2
+      barWidth: 2,
+      plugins: [
+        TimelinePlugin.create({
+            container: '#waveform-timeline'
+        })
+      ]
     });
     wavesurfer.load(url);
     wavesurfer.on('ready', function () {
-      var timeline = Object.create(WaveSurfer.Timeline);
-      timeline.init({
-        wavesurfer: wavesurfer,
-        container: '#waveform-timeline'
-      });
+      // var timeline = Object.create(WaveSurfer.Timeline);
+      // timeline.init({
+      //   wavesurfer: wavesurfer,
+      //   container: '#waveform-timeline'
+      // });
+      console.log("wavesurfer ready to display waveform");
     });
     playbackButton.addEventListener( "click", function(){
       wavesurfer.playPause();
     });
 
     uploadButton.addEventListener( "click", function(){
+      uploadButton.disabled = true;
       let data = {};
       let speakTagIds = $("#uiSpeakDisplay input:checked").map(function() {
         return this.value;
@@ -78,30 +92,46 @@ function initRecording() {
       roundware.saveAsset(dataBlob,wavFileName,data);
     });
   };
-
-  visualize();
+  // visualize();
 }
 
+// input meter visual display
 function visualize() {
-  // input meter visual display
-  var wavesurferInput = WaveSurfer.create({
+  console.log("visualizing!");
+
+  wavesurferInput = WaveSurfer.create({
     container: '#inputmeter',
     waveColor: 'red',
     height: 200,
     barWidth: 2,
     barHeight: 1.2,
-    cursorWidth: 0
+    cursorWidth: 0,
+    plugins: [
+      WaveSurfer.microphone.create()
+    ]
   });
-  microphone = Object.create(WaveSurfer.Microphone);
-  microphone.init({
-    wavesurfer: wavesurferInput
+  // MicrophonePlugin.play;
+  console.log(wavesurferInput);
+  // microphone = Object.create(WaveSurfer.Microphone);
+  // microphone.init({
+  //   wavesurfer: wavesurferInput
+  // });
+  wavesurferInput.microphone.on('deviceReady', function(stream) {
+      console.log('Device ready!', stream);
   });
-  microphone.on('deviceReady', function(stream) {
-    console.log('Microphone ready!', stream);
+  wavesurferInput.microphone.on('deviceError', function(code) {
+      console.warn('Device error: ' + code);
   });
-  microphone.on('deviceError', function(code) {
-    console.warn('Microphone error: ' + code);
-  });
+  wavesurferInput.microphone.start();
+  // // MicrophonePlugin.on('deviceReady', function(stream) {
+  // MicrophonePlugin.deviceReady = function(stream){
+  //
+  //   console.log('Microphone ready!', stream);
+  // };
+  // // MicrophonePlugin.on('deviceError', function(code) {
+  // MicrophonePlugin.deviceError = function(code){
+  //   console.log('Microphone error: ' + code);
+  // };
 }
 
 /**

@@ -410,7 +410,12 @@ $(function startApp() {
     then(ready).
     catch(handleError);
 
-  initRecording();
+  document.getElementById("initRecorder").addEventListener( "click", function(){
+    initRecording();
+    startRecordButton.disabled = false;
+    initRecorder.disabled = true;
+  });
+
 });
 
 // Google Maps
