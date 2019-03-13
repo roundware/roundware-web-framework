@@ -67,8 +67,12 @@
     <h1>Recording</h1>
     <h2>1. Select Metadata</h2>
     <div id="uiSpeakDisplay"></div>
-    <button id="record" style="display: none;">Record</button>
+    <!-- <button id="record" style="display: none;">Record</button> -->
     <h3>Select a location for your contribution</h3>
+    <div>
+      <button id="setBrowserLocation" style="">Set to Browser Location</button>
+    </div>
+    <br>
     <div>
       <label>Contribution Latitude</label>
       <input id='speakLatitude' value="1"/>
@@ -102,22 +106,42 @@
 
     <!-- Google Maps -->
     <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBjlbSCPfjFrHI_LP7gVzJFRZzkwh0Thi4">
+    src="https://maps.googleapis.com/maps/api/js?key=<<insert yours here>>">
     </script>
 
     <script type="text/javascript" src="modernizr-custom.js"></script>
-    <script type="text/javascript" src="roundware.umd.js"></script>
+    <!-- local development -->
+    <!-- <script type="text/javascript" src="roundware.umd.js"></script> -->
+    <!-- online deployment -->
+    <script type="text/javascript" src="https://unpkg.com/roundware-web-framework@0.0.1-alpha.11/dist/roundware.umd.min.js"></script>
     <script type="text/javascript" src="jquery-3.2.1.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bowser/1.9.4/bowser.js"></script>
     <script type="text/javascript" src="WavAudioEncoder.js"></script>
     <script type="text/javascript" src="recording.js"></script>
     <script type="text/javascript" src="recorder.min.js"></script>
+    <!-- <script type="text/javascript" src="wavesurfer/wavesurfer-2.1.0/src/wavesurfer.js"></script> -->
+    <!-- <script type="text/javascript" src="wavesurfer/wavesurfer.umd.js"></script> -->
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/1.4.0/wavesurfer.min.js"></script> -->
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/1.4.0/plugin/wavesurfer.timeline.min.js"></script> -->
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/1.4.0/plugin/wavesurfer.microphone.min.js"></script> -->
-    <script src="//cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/2.0.5/wavesurfer.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/2.0.5/plugin/wavesurfer.timeline.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/2.0.5/plugin/wavesurfer.microphone.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/2.1.0/wavesurfer.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/2.1.0/plugin/wavesurfer.timeline.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/2.1.0/plugin/wavesurfer.microphone.min.js"></script>
     <script type="text/javascript" src="main.js"></script>
+
+    <script>
+      const bowser = window.bowser.detect(window.navigator.userAgent);
+      if (bowser.ios && bowser.safari) {
+        console.log("you are using mobile safari");
+      }
+      else if (bowser.ios && bowser.chrome) {
+        alert("you are using chrome on an iOS device");
+      } else {
+        console.log("you are NOT using an iOS device");
+      }
+      console.log(bowser);
+
+    </script>
 
   </body>
 </html>

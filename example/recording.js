@@ -9,11 +9,16 @@ function initRecording() {
   // startRecordButton.addEventListener( "click", function(){ recorder.start(); });
   // for future reference, if anything needs to be triggered post-recorder init, do this:
   startRecordButton.addEventListener( "click", function(){
-    recorder.start().then(() => visualize());
-    // recorder.start();
+    console.log("bowser available in recording.js");
+    if (bowser.ios && bowser.safari) {
+      console.log("you are using mobile safari, disable level meter visualization.");
+      recorder.start();
+    } else {
+      console.log("you are NOT using mobile safari.");
+      recorder.start().then(() => visualize());
+    }
   });
   stopRecordButton.addEventListener( "click", function(){ recorder.stop(); });
-  // uploadButton.addEventListener( "click", function(){ recorder.stop(); });
 
   if (!Recorder.isRecordingSupported()) {
     console.log("Recording features are not supported in your browser.");
@@ -89,7 +94,9 @@ function initRecording() {
       } else {
         data = {"latitude": document.getElementById("speakLatitude").value, "longitude": document.getElementById("speakLongitude").value};
       }
-      roundware.saveAsset(dataBlob,wavFileName,data);
+      roundware.saveAsset(dataBlob,wavFileName,data).then(function(data) {
+        console.log("asset uploaded!" + data);
+      });
     });
   };
   // visualize();
