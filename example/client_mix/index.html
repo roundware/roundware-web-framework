@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Roundware Web Framework ClientMixer Demo</title>
+
+    <style>
+      #mixMap {
+        height: 800px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Roundware Web Framework ClientMixer Demo</h1>
+    <div>
+      <button id="pause" disabled="disabled">Pause</button>
+      <button id="play" disabled="disabled">Play</button>
+    </div>
+
+    <br>
+
+    <div>Move pin on map to update audio based on location.</div>
+    <div id="mixMap"></div>
+
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="../roundware.js"></script> 
+    <script type="text/javascript" src="./main.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?callback=setupMap&key="></script>
+  </body>
+</html>
