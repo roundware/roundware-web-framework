@@ -97,10 +97,10 @@ export default class Roundware {
       then((sessionId) => this._sessionId = sessionId).
       then(this._project.uiconfig).
       then((uiConfig) => this._uiConfig = uiConfig).
-      then((data) => this._speaker.connect(this._speakerFilters)).
-      then((speakerData) => this._speakerData = speakerData).
-      then((data) => this._asset.connect(this._assetFilters)).
-      then((assetData) => this._assetData = assetData);
+      then(() => this._speaker.connect(this._speakerFilters)).
+      then(speakerData => this._speakerData = speakerData).
+      then(() => this._asset.connect(this._assetFilters)).
+      then(assetData => this._assetData = assetData);
   }
 
   /** Create or resume the audio stream
@@ -146,6 +146,14 @@ export default class Roundware {
   update(data = {}) {
     // Object.keys(data).map(e => console.log(`key=${e}  value=${data[e]}`));
     this._stream.update(data);
+  }
+
+  speakers() {
+    return this._speakerData || [];
+  }
+
+  assets() {
+    return this._assetData || [];
   }
 
   /** Attach new assets to the project

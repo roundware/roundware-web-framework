@@ -1,141 +1,146 @@
-/* global google, Roundware */
+/* global $, google, Roundware */
 const ROUNDWARE_SERVER_URL = 'https://simw.roundware.com/api/2';
 const ROUNDWARE_DEFAULT_PROJECT_ID = 9;
 const ROUNDWARE_INITIAL_LATITUDE=39.22101;
 const ROUNDWARE_INITIAL_LONGITUDE=-85.897893;
 
-//function mapSpeakers(map) {
-  //let speakers = roundware._speakerData;
+function mapSpeakers(map,roundware) {
+  const speakers = roundware.speakers();
 
-  //$.each(speakers,function (i, item) {
-    //map.data.addGeoJson({
-      //"type": "Feature",
-      //"geometry": item.shape,
-      //"properties": {
-        //"speaker_id": item.id,
-        //"name": "outer"
-      //}
-    //});
+  $.each(speakers,function (i, item) {
+    map.data.addGeoJson({
+      "type": "Feature",
+      "geometry": item.shape,
+      "properties": {
+        "speaker_id": item.id,
+        "name": "outer"
+      }
+    });
 
-    //map.data.addGeoJson({
-      //"type": "Feature",
-      //"geometry": item.attenuation_border,
-      //"properties": {
-        //"speaker_id": item.id,
-        //"name": "inner"
-      //}
-    //});
+    map.data.addGeoJson({
+      "type": "Feature",
+      "geometry": item.attenuation_border,
+      "properties": {
+        "speaker_id": item.id,
+        "name": "inner"
+      }
+    });
 
-    //map.data.setStyle(function(feature) {
-      //if (feature.getProperty('name') == "outer") {
-        //return {
-          //fillColor: '#aaaaaa',
-          //fillOpacity: .5,
-          //strokeWeight: 1,
-          //strokeOpacity: .5
-        //};
-      //}
-      //else if (feature.getProperty('name') == "inner") {
-        //return {
-          //fillColor: '#555555',
-          //fillOpacity: 0,
-          //strokeWeight: 1,
-          //strokeOpacity: .2
-        //};
-      //}
-    //});
-  //});
-//}
+    map.data.setStyle(function(feature) {
+      if (feature.getProperty('name') == "outer") {
+        return {
+          fillColor: '#aaaaaa',
+          fillOpacity: .5,
+          strokeWeight: 1,
+          strokeOpacity: .5
+        };
+      }
+      else if (feature.getProperty('name') == "inner") {
+        return {
+          fillColor: '#555555',
+          fillOpacity: 0,
+          strokeWeight: 1,
+          strokeOpacity: .2
+        };
+      }
+    });
+  });
+}
 
-//function mapAssets(map) {
-  //// console.log(roundware._assetData[0]);
-  //let assets = roundware._assetData;
+function mapAssets(map,roundware) {
+  const assets = roundware.assets();
+  const assetMarkers = [];
 
-  //$.each(assets, function (i, item) {
-    //var marker_img = new google.maps.MarkerImage('https://www.google.com/intl/en_us/mapfiles/ms/micons/yellow-dot.png');
-    //var point = new google.maps.LatLng(item.latitude, item.longitude);
-    //// var tag_ids = item.tag_ids.toString();
-    //// console.log('tag_ids = ' + tag_ids);
+  $.each(assets, function (i, item) {
+    var marker_img = new google.maps.MarkerImage('https://www.google.com/intl/en_us/mapfiles/ms/micons/yellow-dot.png');
+    var point = new google.maps.LatLng(item.latitude, item.longitude);
+    // var tag_ids = item.tag_ids.toString();
+    // console.log('tag_ids = ' + tag_ids);
 
-    //var marker = new google.maps.Marker({
-    //position: point,
-    //map: map,
-    //icon: marker_img
-    //});
-    //marker.id = item.id;
-    //marker.rw_tags = [];
-    //if (item.tag_ids) {
-    //marker.rw_tags = item.tag_ids;
-    //}
-    //// display asset shape if exists
-    //if (item.shape) {
-    //console.log("map the asset's shape");
-    //marker.shape = new google.maps.Data();
-    //marker.shape.addGeoJson({
-      //"type": "Feature",
-      //"geometry": item.shape,
-      //"properties": {
-        //"asset_id": item.id,
-        //"name": "assetRange"
-      //}
-    //});
-    //marker.shape.setStyle(function(feature) {
-      //if (feature.getProperty('name') == "assetRange") {
-        //return {
-          //fillColor: '#6292CF',
-          //fillOpacity: .25,
-          //strokeWeight: 1,
-          //strokeOpacity: .8,
-          //strokeColor: '#6292CF'
-        //};
-      //}
-    //});
-    //}
-    //// if no asset shape, display default circle range
-    //else {
-      //var circle = {
-        //strokeColor: '#6292CF',
-        //strokeOpacity: 0.8,
-        //strokeWeight: 1,
-        //fillColor: '#6292CF',
-        //fillOpacity: 0.25,
-        //map: map,
-        //center: new google.maps.LatLng(item.latitude, item.longitude),
-        //radius: roundware._project.recordingRadius
-      //};
-      //marker.circle = new google.maps.Circle(circle);
-      //}
-      //assetMarkers.push(marker);
-    //});
-//}
+    var marker = new google.maps.Marker({
+    position: point,
+    map: map,
+    icon: marker_img
+    });
+    marker.id = item.id;
+    marker.rw_tags = [];
+    if (item.tag_ids) {
+    marker.rw_tags = item.tag_ids;
+    }
+    // display asset shape if exists
+    if (item.shape) {
+    console.log("map the asset's shape");
+    marker.shape = new google.maps.Data();
+    marker.shape.addGeoJson({
+      "type": "Feature",
+      "geometry": item.shape,
+      "properties": {
+        "asset_id": item.id,
+        "name": "assetRange"
+      }
+    });
+    marker.shape.setStyle(function(feature) {
+      if (feature.getProperty('name') == "assetRange") {
+        return {
+          fillColor: '#6292CF',
+          fillOpacity: .25,
+          strokeWeight: 1,
+          strokeOpacity: .8,
+          strokeColor: '#6292CF'
+        };
+      }
+    });
+    }
+    // if no asset shape, display default circle range
+    else {
+      var circle = {
+        strokeColor: '#6292CF',
+        strokeOpacity: 0.8,
+        strokeWeight: 1,
+        fillColor: '#6292CF',
+        fillOpacity: 0.25,
+        map: map,
+        center: new google.maps.LatLng(item.latitude, item.longitude),
+        radius: roundware._project.recordingRadius
+      };
+      marker.circle = new google.maps.Circle(circle);
+      }
+      assetMarkers.push(marker);
+    });
 
-//function showHideMarkers() {
-  //$.each(assetMarkers, function(i, item) {
-    //// if any item tags are not included in selected tags, hide marker, otherwise show it
-    //let selectedListenTagIds = $("#uiListenDisplay input:checked").map(function() {
-      //return Number(this.value);
-    //}).get();
-	//var is_visible = true;
-	//$.each(item.rw_tags, function(j, tag_id) {
-      //// if tag_id isn't selected, set to false and return
-      //if (!(selectedListenTagIds.includes(tag_id))) {
-        //is_visible = false;
-			//return;
-		//}
-	//});
-	//item.setVisible(is_visible);
-    //if (item.circle) {
-      //item.circle.setVisible(is_visible);
-    //}
-    //if (item.shape) {
-      //if (is_visible) {
-        //item.shape.setMap(listenMap);
-      //} else if (!is_visible) {
-        //item.shape.setMap(null);
-      //}
-    //}
-  //});
-//}
+  return assetMarkers;
+}
+
+function showHideMarkers(map,assetMarkers) {
+  $.each(assetMarkers,function(i,item) {
+    // if any item tags are not included in selected tags, hide marker, otherwise show it
+    let selectedListenTagIds = $("#uiListenDisplay input:checked").map(function() {
+      return Number(this.value);
+    }).get();
+    var is_visible = true;
+
+    $.each(item.rw_tags, function(j, tag_id) {
+      // if tag_id isn't selected, set to false and return
+      if (!(selectedListenTagIds.includes(tag_id))) {
+        is_visible = false;
+        return;
+      }
+    });
+
+    item.setVisible(is_visible);
+
+    if (item.circle) {
+      item.circle.setVisible(is_visible);
+    }
+    if (item.shape) {
+      if (is_visible) {
+        item.shape.setMap(map);
+      } else if (!is_visible) {
+        item.shape.setMap(null);
+      }
+    }
+  });
+}
 
 /**
  * Add editable circles centered on listener pin that define the listener_range
@@ -214,7 +219,7 @@ const ROUNDWARE_INITIAL_LONGITUDE=-85.897893;
   //console.error("There was a Roundware Error: " + userErrMsg);
 //}
 
-function runDemo() {
+function setupRoundwareClient() {
   const roundware = new Roundware(window,{
     serverUrl: ROUNDWARE_SERVER_URL,
     projectId: ROUNDWARE_DEFAULT_PROJECT_ID,
@@ -223,14 +228,17 @@ function runDemo() {
     assetFilters:   { submitted: true, media_type: "audio" }
   });
 
-  roundware.connect().
-    then(() => console.log('Roundware connected')).
+  return roundware.connect().
+    then(() => {
+      console.log('Roundware connected');
+      return roundware;
+    }).
     catch(err => console.error('There was a Roundware connection error',err));
 }
 
 /* eslint-disable no-unused-vars */
 // this function gets called by the google APIs script tax, see index.html
-function setupMap() {
+function initDemo() {
   const center = { 
     lat: ROUNDWARE_INITIAL_LATITUDE,
     lng: ROUNDWARE_INITIAL_LONGITUDE
@@ -239,7 +247,7 @@ function setupMap() {
   const listenMapEl = document.getElementById('mixMap');
 
   const map = new google.maps.Map(listenMapEl,{
-    zoom: 16,
+    zoom: 14,
     center
   });
   
@@ -250,7 +258,9 @@ function setupMap() {
   });
 
   google.maps.event.addListener(listener, "dragend",() => {
-    map.setCenter(listener.getPosition());
+    const position = listener.getPosition();
+    console.log('LATLNG:',position.lat(),position.lng());
+    map.setCenter(position);
 
     //var data = {};
 
@@ -270,10 +280,11 @@ function setupMap() {
     //update(data);
   });
 
-  //mapAssets(listenMap);
-  //mapSpeakers(listenMap);
-  //showHideMarkers();
+  setupRoundwareClient().
+    then(client => {
+      mapSpeakers(map,client);
+      const assetMarkers = mapAssets(map,client);
+      showHideMarkers(assetMarkers);
+    });
 }
 /* eslint-enable no-unused-vars */
-
-window.onload = runDemo();

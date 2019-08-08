@@ -61,14 +61,14 @@ export class GeoPosition {
 
     logger.info("Initializing geolocation system");
 
-    this._initialGeolocationPromise = new Promise((resolve,reject) => {
-      this._navigator.geolocation.getCurrentPosition((initialPosition) => {
+    this._initialGeolocationPromise = new Promise(resolve => {
+      this._navigator.geolocation.getCurrentPosition(initialPosition => {
         let coords = initialPosition.coords;
         logger.info("Received initial geolocation",coords);
         geoUpdateCallback(coords);
         this._lastCoords = coords;
 
-        let geoWatchId = this._navigator.geolocation.watchPosition((updatedPosition) => {
+        let geoWatchId = this._navigator.geolocation.watchPosition(updatedPosition => {
           let newCoords = updatedPosition.coords;
           geoUpdateCallback(newCoords);
           this._lastCoords = coords;

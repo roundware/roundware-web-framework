@@ -1,5 +1,3 @@
-import { logger } from "./shims";
-
 var projectId, apiClient;
 
 export class Speaker {
@@ -9,13 +7,13 @@ export class Speaker {
   }
 
   toString() {
-    return `Roundware Speaker '${projectName}' (#${projectId})`;
+    return `Roundware Speaker (#${projectId})`;
   }
 
   connect(data={}) {
     var path = "/speakers/";
     // add project_id to any incoming filter data
-    data['project_id'] = projectId
+    data['project_id'] = projectId;
 
     return apiClient.get(path,data).
       then(function connectionSuccess(data) {
