@@ -1,8 +1,5 @@
-var path = require("path");
-
-const include = path.resolve(__dirname,'src');
-//const dist    = path.resolve(__dirname,'dist');
-const webpack = require('webpack'); //to access built-in plugins
+const path = require('path');
+const plugins = [];
 
 module.exports = {
   entry: ['./src/roundware.js'],
@@ -14,14 +11,15 @@ module.exports = {
     libraryExport: "default",
     library: "Roundware",
 
-    //path: dist,
   },
 
-  devtool: "source-map",
+  devtool: 'cheap-module-eval-source-map',
 
   devServer: {
     port: 8080,
     contentBase: [path.resolve(__dirname,"example")],
+    disableHostCheck: true,
+    
     watchContentBase: true,
 
     watchOptions: {
@@ -32,13 +30,13 @@ module.exports = {
       warnings: true,
       errors: true
     },
-
-    stats: "verbose"
   },
 
   module: {
     rules: [
       { test: /\.js$/, exclude: /node_modules/, loader: "babel-loader" }
     ]
-  }
+  },
+
+  plugins
 };

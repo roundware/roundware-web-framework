@@ -20,7 +20,8 @@
     "build:umd.min": "webpack --output-filename roundware.umd.min.js -p",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
     "devstart": "webpack-dev-server",
-    "deploy": "npm test && npm run build && npm run push"
+    "deploy": "npm test && npm run build && npm run push",
+    "lint": "eslint ."
   },
   "watch": {
     "test": "{src,test}/*.js"
@@ -43,7 +44,8 @@
     "rimraf": "~2.6.3",
     "webpack": "~4.39.1",
     "webpack-cli": "~3.3.6",
-    "webpack-dev-server": "~3.7.2"
+    "webpack-dev-server": "~3.7.2",
+    "eslint": "6.1.0"
   },
   "jshintConfig": {
     "esversion": 6
