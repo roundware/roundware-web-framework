@@ -1,5 +1,3 @@
-import { logger } from "./shims";
-
 const defaultHeartbeatIntervalSeconds = 60;
 let heartbeatIntervalId;
 
@@ -38,7 +36,7 @@ export class Stream {
    * @returns {Promise} represents the pending API call
    * @see pause()
    * **/
-  play(sessionId,initialLocation,firstPlayCallback = (streamAudioUrl) => {}) {
+  play(sessionId,initialLocation,firstPlayCallback = () => {}) {
     if (this._streamApiPath) {
       let resumePlayingPath = `${this._streamApiPath}resume/`;
       return this._apiClient.post(resumePlayingPath);

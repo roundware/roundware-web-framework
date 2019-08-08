@@ -1,8 +1,6 @@
-import { logger } from "./shims";
-
 var projectId, apiClient;
 var projectName = "(unknown)";
-var pubDate, audioFormat, recordingRadius, location, geoListenEnabled;
+//var pubDate, audioFormat, recordingRadius, location, geoListenEnabled;
 
 export class Project {
   constructor(newProjectId,options) {
@@ -30,11 +28,11 @@ export class Project {
     return apiClient.get(path,data).
       then(function connectionSuccess(data) {
         projectName = data.name;
-        pubDate = data.pub_date;
-        audioFormat = data.audio_format;
-        that.recordingRadius = data.recording_radius;
-        that.location = {"latitude": data.latitude,
-                         "longitude": data.longitude};
+        //pubDate = data.pub_date;
+        //audioFormat = data.audio_format;
+        //that.recordingRadius = data.recording_radius;
+        //that.location = {"latitude": data.latitude,
+                         //"longitude": data.longitude};
         that.maxRecordingLength = data.max_recording_length;
         return sessionId;
       });

@@ -10,7 +10,6 @@ module.exports = {
     libraryTarget: "umd",
     libraryExport: "default",
     library: "Roundware",
-
   },
 
   devtool: 'cheap-module-eval-source-map',
@@ -19,7 +18,7 @@ module.exports = {
     port: 8080,
     contentBase: [path.resolve(__dirname,"example")],
     disableHostCheck: true,
-    
+
     watchContentBase: true,
 
     watchOptions: {
@@ -34,7 +33,17 @@ module.exports = {
 
   module: {
     rules: [
-      { test: /\.js$/, exclude: /node_modules/, loader: "babel-loader" }
+      {
+        enforce: "pre",
+        test: /\.js$/,
+        exclude: /node_modules/,
+        loader: "eslint-loader"
+      },
+      { 
+        test: /\.js$/, 
+        exclude: /node_modules/, 
+        loader: "babel-loader" 
+      }
     ]
   },
 

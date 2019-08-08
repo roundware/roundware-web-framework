@@ -1,5 +1,3 @@
-import { logger } from "./shims";
-
 var clientSystem = "Unknown";
 var projectId, sessionId, geoListenEnabled;
 var apiClient = {};

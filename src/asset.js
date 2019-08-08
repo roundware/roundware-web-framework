@@ -1,5 +1,3 @@
-import { logger } from "./shims";
-
 var projectId, apiClient;
 
 export class Asset {
@@ -9,7 +7,7 @@ export class Asset {
   }
 
   toString() {
-    return `Roundware Assets '${projectName}' (#${projectId})`;
+    return `Roundware Assets (#${projectId})`;
   }
 
   connect(data={}) {

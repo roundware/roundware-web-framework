@@ -1,8 +1,5 @@
-import { logger } from "./shims";
-
-var deviceId, clientType, userName, apiClient;
-var authToken = "UNKNOWN";
-var userName = "(anonymous)";
+let deviceId, clientType, apiClient;
+let userName = "(anonymous)";
 
 /** Responsible for identifying the user to the Roundware server and retrieving an auth token **/
 export class User {

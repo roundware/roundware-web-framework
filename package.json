@@ -21,7 +21,7 @@
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
     "devstart": "webpack-dev-server",
     "deploy": "npm test && npm run build && npm run push",
-    "lint": "eslint ."
+    "lint": "eslint src/"
   },
   "watch": {
     "test": "{src,test}/*.js"
@@ -39,18 +39,20 @@
     "@babel/core": "~7.5.5",
     "@babel/preset-env": "~7.5.5",
     "babel-loader": "~8.0.6",
+    "eslint": "6.1.0",
+    "eslint-loader": "2.2.1",
     "jsdoc": "~3.6.3",
     "npm-run-all": "~4.1.5",
     "rimraf": "~2.6.3",
     "webpack": "~4.39.1",
     "webpack-cli": "~3.3.6",
-    "webpack-dev-server": "~3.7.2",
-    "eslint": "6.1.0"
+    "webpack-dev-server": "~3.7.2"
   },
   "jshintConfig": {
     "esversion": 6
   },
   "dependencies": {
+    "eslint-plugin-compat": "3.3.0",
     "loglevel": "latest"
   }
 }

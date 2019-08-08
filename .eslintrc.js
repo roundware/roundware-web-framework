@@ -4,6 +4,12 @@ module.exports = {
     'es6': true
   },
 
+  "plugins": [
+    "compat"
+  ],
+  "rules": {
+    "compat/compat": "warn"
+  },
   'extends': 'eslint:recommended',
   'globals': {
     'Atomics': 'readonly',
