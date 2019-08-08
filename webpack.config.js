@@ -1,18 +1,20 @@
 var path = require("path");
 
 const include = path.resolve(__dirname,'src');
-const dist    = path.resolve(__dirname,'dist');
+//const dist    = path.resolve(__dirname,'dist');
 const webpack = require('webpack'); //to access built-in plugins
 
-export default {
+module.exports = {
   entry: ['./src/roundware.js'],
 
   output: {
-    filename: "roundware.umd.js",
-    path: dist,
-    pathinfo: true,
+    filename: "roundware.js",
+
     libraryTarget: "umd",
+    libraryExport: "default",
     library: "Roundware",
+
+    //path: dist,
   },
 
   devtool: "source-map",
@@ -35,9 +37,8 @@ export default {
   },
 
   module: {
-    loaders: [
-      {test: /\.js$/, loader: 'babel-loader', include},
-      {test: /\.json$/, 'loader': 'json-loader', include},
+    rules: [
+      { test: /\.js$/, exclude: /node_modules/, loader: "babel-loader" }
     ]
   }
 };

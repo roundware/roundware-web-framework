@@ -1,6 +1,11 @@
 {
   "name": "roundware-web-framework",
-  "version": "0.0.1-alpha.10",
+  "homepage": "https://roundware.github.io/roundware-web-framework/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roundware/roundware-web.git"
+  },
+  "version": "0.0.2",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "main": "roundware.js",
   "files": [
@@ -8,8 +13,6 @@
   ],
   "scripts": {
     "test": "./node_modules/.bin/babel-node ./node_modules/jasmine/bin/jasmine.js",
-    "cover": "nyc --reporter=lcov -x spec/mocks -x spec/helpers npm test",
-    "check-coverage": "nyc check-coverage --statement 100 --branches 100 --function 100 --lines 100",
     "prebuild": "rimraf dist",
     "build": "npm-run-all --parallel build:*",
     "build:main": "babel --copy-files --out-dir dist src",
@@ -17,55 +20,35 @@
     "build:umd.min": "webpack --output-filename roundware.umd.min.js -p",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
     "devstart": "webpack-dev-server",
-    "watch": "npm-watch test",
     "deploy": "npm test && npm run build && npm run push"
   },
   "watch": {
     "test": "{src,test}/*.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/roundware/roundware-web.git"
   },
   "keywords": [
     "audio",
     "roundware"
   ],
   "author": "Mike Subelsky <mike@subelsky.com> (http://www.subelsky.com/)",
-  "license": "Affero GPL",
+  "license": "AGPL-3.0-only",
   "bugs": {
     "url": "https://github.com/roundware/roundware-web/issues"
   },
-  "homepage": "https://roundware.github.io/roundware-web-framework/",
   "devDependencies": {
-    "babel-cli": "6.24.1",
-    "babel-core": "6.24.1",
-    "babel-loader": "7.0.0",
-    "babel-preset-es2015": "6.24.1",
-    "babel-preset-stage-2": "6.24.1",
-    "file-loader": "0.11.1",
-    "jasmine": "2.8.0",
-    "jsdoc": "3.4.3",
-    "json-loader": "0.5.4",
-    "npm-run-all": "4.0.2",
-    "npm-watch": "0.1.9",
-    "nyc": "10.3.2",
-    "path": "0.12.7",
-    "pryjs": "1.0.3",
-    "rimraf": "2.6.1",
-    "webpack": "2.5.1",
-    "webpack-dev-server": "2.4.5"
+    "@babel/core": "~7.5.5",
+    "@babel/preset-env": "~7.5.5",
+    "babel-loader": "~8.0.6",
+    "jsdoc": "~3.6.3",
+    "npm-run-all": "~4.1.5",
+    "rimraf": "~2.6.3",
+    "webpack": "~4.39.1",
+    "webpack-cli": "~3.3.6",
+    "webpack-dev-server": "~3.7.2"
   },
   "jshintConfig": {
     "esversion": 6
   },
-  "babel": {
-    "presets": [
-      "es2015",
-      "stage-2"
-    ]
-  },
   "dependencies": {
-    "loglevel": "1.4.1"
+    "loglevel": "latest"
   }
 }

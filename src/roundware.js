@@ -43,7 +43,7 @@ import { Envelope } from "./envelope";
 
   roundware.play(startListening).catch(handleError);
 **/
-class Roundware {
+export default class Roundware {
   /** Initialize a new Roundware instance
    * @param {Object} window - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
    * @param {Object} options - Collection of parameters for configuring this Roundware instance
@@ -166,6 +166,3 @@ class Roundware {
       });
   }
 }
-
-// Slight hack here to export Roundware module to browser properly; see https://github.com/webpack/webpack/issues/3929
-module.exports = Roundware;

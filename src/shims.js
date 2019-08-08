@@ -7,6 +7,4 @@ if ((typeof(process) !== 'undefined' && process.env.ROUNDWARE_DEBUG === "true"))
   logger.setDefaultLevel('debug');
 }
 
-module.exports = {
-  logger: logger
-};
+export { logger };
