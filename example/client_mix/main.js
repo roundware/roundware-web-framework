@@ -224,7 +224,7 @@ function setupRoundwareClient() {
     serverUrl: ROUNDWARE_SERVER_URL,
     projectId: ROUNDWARE_DEFAULT_PROJECT_ID,
     geoListenEnabled: true,
-    speakerFilters: { activeyn: true},
+    speakerFilters: { activeyn: true },
     assetFilters:   { submitted: true, media_type: "audio" }
   });
 
@@ -285,6 +285,10 @@ function initDemo() {
       mapSpeakers(map,client);
       const assetMarkers = mapAssets(map,client);
       showHideMarkers(assetMarkers);
+
+      const audioCtx = new AudioContext();
+      const mixer = client.activateMixer(audioCtx);
+      mixer.play();
     });
 }
 /* eslint-enable no-unused-vars */

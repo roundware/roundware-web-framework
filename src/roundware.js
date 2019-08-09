@@ -8,6 +8,8 @@ import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { User } from "./user";
 import { Envelope } from "./envelope";
+import { Mixer } from "./mixer";
+import { Audiotrack } from "./audiotrack";
 
 /** This class is the primary integration point between Roundware's server and your application
     NOTE that we depend on jQuery being injected, because we use its $.ajax function. As browsers
@@ -77,6 +79,7 @@ export default class Roundware {
     this._stream      = options.stream      || new Stream(options);
     this._speaker     = options.speaker     || new Speaker(this._projectId,options);
     this._asset       = options.asset       || new Asset(this._projectId,options);
+    this._audiotrack  = options.audiotrack  || new Audiotrack(this._projectId,options);
   }
 
   /** Initiate a connection to Roundware
@@ -91,16 +94,19 @@ export default class Roundware {
 
     logger.info("Initializing Roundware for project ID #" + this._projectId);
 
+    // TODO refactor the callsafter session connection into independent sets of promises, since some of these requests can run in in parallel; then we can just wait on a single Promise.all() call
     return this._user.connect().
       then(this._session.connect).
-      then((sessionId) => this._project.connect(sessionId)).
-      then((sessionId) => this._sessionId = sessionId).
+      then(sessionId => this._project.connect(sessionId)).
+      then(sessionId => this._sessionId = sessionId).
       then(this._project.uiconfig).
-      then((uiConfig) => this._uiConfig = uiConfig).
+      then(uiConfig => this._uiConfig = uiConfig).
       then(() => this._speaker.connect(this._speakerFilters)).
       then(speakerData => this._speakerData = speakerData).
       then(() => this._asset.connect(this._assetFilters)).
-      then(assetData => this._assetData = assetData);
+      then(assetData => this._assetData = assetData).
+      then(() => this._audiotrack.connect()).
+      then(audioTracksData => this._audioTracksData = audioTracksData);
   }
 
   /** Create or resume the audio stream
@@ -156,6 +162,10 @@ export default class Roundware {
     return this._assetData || [];
   }
 
+  audiotracks() {
+    return this._audioTracksData || [];
+  }
+
   /** Attach new assets to the project
    * @param {Object} audioData - the binary data from a recording to be saved as an asset
    * @param {string} fileName - name of the file
@@ -172,5 +182,10 @@ export default class Roundware {
       then(function() {
         envelope.upload(audioData,fileName,data);
       });
+  }
+
+  activateMixer(audioCtx) {
+    this._mixer = new Mixer(this,audioCtx);
+    return this._mixer;
   }
 }
