@@ -41,8 +41,10 @@ export class Playlist {
     this.sortMethods = sortMethods;
   }
 
-  onNextAsset() {
-    // STOPPED HERE -- start making this into a filtered, sorted queue
-    return Promise.resolve(this.assets[0]);
+  provideAsset() {
+    // TODO make this into a filtered, sorted queue
+    // for now use naive approach, play each asset once from a queue
+    const asset = this.assets.pop();
+    return Promise.resolve(asset);
   }
 }

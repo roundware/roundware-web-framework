@@ -1,8 +1,18 @@
 /* global $, google, Roundware */
-const ROUNDWARE_SERVER_URL = 'https://simw.roundware.com/api/2';
-const ROUNDWARE_DEFAULT_PROJECT_ID = 9;
-const ROUNDWARE_INITIAL_LATITUDE=39.22101;
-const ROUNDWARE_INITIAL_LONGITUDE=-85.897893;
+const ROUNDWARE_SERVER_URL = 'https://prod.roundware.com/api/2';
+
+//const ROUNDWARE_SERVER_URL = 'https://simw.roundware.com/api/2';
+//const ROUNDWARE_DEFAULT_PROJECT_ID = 9;
+//const ROUNDWARE_INITIAL_LATITUDE=39.22101;
+//const ROUNDWARE_INITIAL_LONGITUDE=-85.897893;
+
+//const ROUNDWARE_DEFAULT_PROJECT_ID = 10;
+//const ROUNDWARE_INITIAL_LATITUDE = 42.337060559285234;
+//const ROUNDWARE_INITIAL_LONGITUDE = -71.09792028045655;
+
+const ROUNDWARE_DEFAULT_PROJECT_ID = 1;
+const ROUNDWARE_INITIAL_LATITUDE = 41.0408653367726; 
+const ROUNDWARE_INITIAL_LONGITUDE = -73.22926793670655;
 
 function mapSpeakers(map,roundware) {
   const speakers = roundware.speakers();
@@ -58,38 +68,37 @@ function mapAssets(map,roundware) {
     // console.log('tag_ids = ' + tag_ids);
 
     var marker = new google.maps.Marker({
-    position: point,
-    map: map,
-    icon: marker_img
+      position: point,
+      map: map,
+      icon: marker_img
     });
     marker.id = item.id;
     marker.rw_tags = [];
     if (item.tag_ids) {
-    marker.rw_tags = item.tag_ids;
+      marker.rw_tags = item.tag_ids;
     }
     // display asset shape if exists
     if (item.shape) {
-    console.log("map the asset's shape");
-    marker.shape = new google.maps.Data();
-    marker.shape.addGeoJson({
-      "type": "Feature",
-      "geometry": item.shape,
-      "properties": {
-        "asset_id": item.id,
-        "name": "assetRange"
-      }
-    });
-    marker.shape.setStyle(function(feature) {
-      if (feature.getProperty('name') == "assetRange") {
-        return {
-          fillColor: '#6292CF',
-          fillOpacity: .25,
-          strokeWeight: 1,
-          strokeOpacity: .8,
-          strokeColor: '#6292CF'
-        };
-      }
-    });
+      marker.shape = new google.maps.Data();
+      marker.shape.addGeoJson({
+        "type": "Feature",
+        "geometry": item.shape,
+        "properties": {
+          "asset_id": item.id,
+          "name": "assetRange"
+        }
+      });
+      marker.shape.setStyle(function(feature) {
+        if (feature.getProperty('name') == "assetRange") {
+          return {
+            fillColor: '#6292CF',
+            fillOpacity: .25,
+            strokeWeight: 1,
+            strokeOpacity: .8,
+            strokeColor: '#6292CF'
+          };
+        }
+      });
     }
     // if no asset shape, display default circle range
     else {
@@ -104,9 +113,9 @@ function mapAssets(map,roundware) {
         radius: roundware._project.recordingRadius
       };
       marker.circle = new google.maps.Circle(circle);
-      }
-      assetMarkers.push(marker);
-    });
+    }
+    assetMarkers.push(marker);
+  });
 
   return assetMarkers;
 }
@@ -142,103 +151,9 @@ function showHideMarkers(map,assetMarkers) {
   });
 }
 
-/**
- * Add editable circles centered on listener pin that define the listener_range
- * every time either circle is edited, a PATCH streams/ is sent with lat/lon and listener_range_min/max
- */
-//function add_listener_range() {
-    //use_listener_range = true;
-    //var mapCenter = new google.maps.LatLng(listenLatitude.val(),
-                                           //listenLongitude.val());
-    //listener_circle_max = new google.maps.Circle({
-        //strokeColor: '#000000',
-        //strokeOpacity: 0.4,
-        //strokeWeight: 1,
-        //fillColor: '#000000',
-        //fillOpacity: 0.08,
-        //map: listenMap,
-        //center: mapCenter,
-        //radius: roundware._project.recordingRadius * 100,
-        //editable: true,
-        //draggable: false,
-        //geodesic: true
-    //});
-    //listener_circle_min = new google.maps.Circle({
-        //strokeColor: '#000000',
-        //strokeOpacity: 0.4,
-        //strokeWeight: 1,
-        //fillColor: '#000000',
-        //fillOpacity: 0,
-        //map: listenMap,
-        //center: mapCenter,
-        //radius: roundware._project.recordingRadius * 50,
-        //editable: true,
-        //draggable: false,
-        //geodesic: true
-    //});
-    //listenMap.setCenter(mapCenter);
-
-    //google.maps.event.addListener(listener_circle_max, "radius_changed", function (event) {
-        //lr_max = Math.round(listener_circle_max.getRadius());
-        //lr_min = Math.round(listener_circle_min.getRadius());
-        //// ensure listener_range_max isn't smaller than listener_range_min
-        //if (lr_max < lr_min) {
-            //listener_circle_max.setRadius(lr_min);
-            //console.log("maximum range can't be smaller than minimum range!")
-        //}
-        //if (!firstplay) {
-          //var data = { "listener_range_max": lr_max,
-                       //"listener_range_min": lr_min }
-          //update(data);
-        //}
-        //console.log("max range = " + lr_max);
-    //});
-    //google.maps.event.addListener(listener_circle_min, "radius_changed", function (event) {
-        //lr_min = Math.round(listener_circle_min.getRadius());
-        //lr_max = Math.round(listener_circle_max.getRadius());
-        //// ensure listener_range_min isn't larger than listener_range_max
-        //if (lr_min > lr_max) {
-            //listener_circle_min.setRadius(lr_max);
-            //console.log("minimum range can't be bigger than maximum range!")
-        //}
-        //if (!firstplay) {
-          //var data = { "listener_range_max": lr_max,
-                       //"listener_range_min": lr_min }
-          //update(data);
-        //}
-    //});
-//}
-
-//function remove_listener_range() {
-  //use_listener_range = false;
-  //listener_circle_max.setMap(null);
-  //listener_circle_min.setMap(null);
-//}
-//// Generally we throw user-friendly messages and log a more technical message
-//function handleError(userErrMsg) {
-  //console.error("There was a Roundware Error: " + userErrMsg);
-//}
-
-function setupRoundwareClient() {
-  const roundware = new Roundware(window,{
-    serverUrl: ROUNDWARE_SERVER_URL,
-    projectId: ROUNDWARE_DEFAULT_PROJECT_ID,
-    geoListenEnabled: true,
-    speakerFilters: { activeyn: true },
-    assetFilters:   { submitted: true, media_type: "audio" }
-  });
-
-  return roundware.connect().
-    then(() => {
-      console.log('Roundware connected');
-      return roundware;
-    }).
-    catch(err => console.error('There was a Roundware connection error',err));
-}
-
-/* eslint-disable no-unused-vars */
-// this function gets called by the google APIs script tax, see index.html
-function initDemo() {
+// This function is intended to be invoked by the google API callback; see index.html
+/* eslint-disable-next-line no-unused-vars */
+function initDemo() { 
   const center = { 
     lat: ROUNDWARE_INITIAL_LATITUDE,
     lng: ROUNDWARE_INITIAL_LONGITUDE
@@ -247,10 +162,10 @@ function initDemo() {
   const listenMapEl = document.getElementById('mixMap');
 
   const map = new google.maps.Map(listenMapEl,{
-    zoom: 14,
+    zoom: 9,
     center
   });
-  
+
   const listener = new google.maps.Marker({
     position: center,
     map,
@@ -261,34 +176,29 @@ function initDemo() {
     const position = listener.getPosition();
     console.log('LATLNG:',position.lat(),position.lng());
     map.setCenter(position);
-
-    //var data = {};
-
-    //if (use_listener_range === true) {
-      //listener_circle_max.setCenter(new google.maps.LatLng(listener.getPosition().lat(),
-                                                           //listener.getPosition().lng()));
-
-      //listener_circle_min.setCenter(new google.maps.LatLng(listener.getPosition().lat(),
-                                                           //listener.getPosition().lng()));
-
-      //data = { 
-        //"listener_range_max": Math.round(listener_circle_max.getRadius()),
-        //"listener_range_min": Math.round(listener_circle_min.getRadius()) 
-      //};
-    //}
-
-    //update(data);
   });
 
-  setupRoundwareClient().
-    then(client => {
-      mapSpeakers(map,client);
-      const assetMarkers = mapAssets(map,client);
+  const roundware = new Roundware(window,{
+    serverUrl: ROUNDWARE_SERVER_URL,
+    projectId: ROUNDWARE_DEFAULT_PROJECT_ID,
+    geoListenEnabled: true,
+    speakerFilters: { activeyn: true },
+    assetFilters:   { submitted: true, media_type: "audio" }
+  });
+
+  roundware.
+    connect().
+    catch(err => console.log('Roundware connection error',err)).
+    then(() => console.log('Roundware connected')).
+    then(() => {
+      mapSpeakers(map,roundware);
+
+      const assetMarkers = mapAssets(map,roundware);
       showHideMarkers(assetMarkers);
 
       const audioCtx = new AudioContext();
-      const mixer = client.activateMixer(audioCtx);
+      const mixer = roundware.activateMixer({ audioCtx });
+
       mixer.play();
     });
 }
-/* eslint-enable no-unused-vars */

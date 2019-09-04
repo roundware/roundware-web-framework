@@ -109,6 +109,11 @@ export default class Roundware {
       then(audioTracksData => this._audioTracksData = audioTracksData);
   }
 
+  activateMixer(options = {}) {
+    this.mixer = new Mixer({ client: this, ...options });
+  }
+
+  
   /** Create or resume the audio stream
    * @see Stream.play **/
   play(firstPlayCallback = () => {}) {
@@ -182,10 +187,5 @@ export default class Roundware {
       then(function() {
         envelope.upload(audioData,fileName,data);
       });
-  }
-
-  activateMixer(audioCtx) {
-    this._mixer = new Mixer(this,audioCtx);
-    return this._mixer;
   }
 }

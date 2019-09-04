@@ -1,32 +1,57 @@
 export class PlaylistTrack {
-  constructor(audioCtx,audioTrack,nextAssetCallback) {
-    this.destination = audioCtx.destination;
-    this.audioTrack = audioTrack;
-    this.nextAssetCallback = nextAssetCallback;
+  constructor({ audioCtx, audioData = {}, playlist }) {
     this.audioCtx = audioCtx;
+    this.destination = audioCtx.destination;
+    this.data = audioData;
+    this.playlist = playlist;
+    this.playing = false;
+  }
+
+  toString() {
+    const { id } = this.data;
+    return `PlaylistTrack (audiotrack ${id})`;
+  }
+
+  pause() {
+    console.log('Pausing',this);
+    this.playing = false;
   }
 
   async play() {
-    const nextAsset = await this.nextAssetCallback();
-    // TODO need to check for play/paused state -- maybe nextAsset returns null
+    const { playlist, audioCtx, destination } = this;
+    this.playing = true;
 
-    const { file: audioURL } = nextAsset;
-    const audio = new Audio(audioURL);
-    audio.crossOrigin = 'anonymous';
+    while (this.playing) {
+      const asset = await playlist.provideAsset();
 
-    const audioSrc = this.audioCtx.createMediaElementSource(audio);
-    
-    audioSrc.connect(this.destination);
+      if (!asset) {
+        console.log(this,'shutdown');
+        this.pause();
+        return;
+      }
 
-    const logline = `asset '${audioURL}' for track ${this.audioTrack.id}`;
+      const { file: audioURL } = asset;
+      const audio = new Audio(audioURL);
+      //audio.crossOrigin = 'anonymous';
 
-    try {
-      console.log('Playing',logline);
-      await audio.play();
-    } catch(err) {
-      console.error('Unable to play',logline,err);
+      const audioSrc = audioCtx.createMediaElementSource(audio);
+      audioSrc.connect(destination);
+
+      const logline = `asset '${audioURL}' for ${this}`;
+
+      const whilePlayingPromise = new Promise(resolve =>
+        audio.addEventListener('ended',evt => resolve(evt))
+      );
+
+      try {
+        await audio.play();
+        console.log('Playing',logline);
+
+        await whilePlayingPromise;
+        console.log('Finished playing',logline);
+      } catch(err) {
+        console.error('Unable to play',logline,err);
+      }
     }
-
-    this.play(); // wait for next asset, if any
   }
 }
