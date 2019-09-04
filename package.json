@@ -38,10 +38,14 @@
   "devDependencies": {
     "@babel/core": "~7.5.5",
     "@babel/preset-env": "~7.5.5",
+    "@turf/helpers": "6.1.4",
     "babel-loader": "~8.0.6",
+    "core-js": "3.2.0",
     "eslint": "6.1.0",
     "eslint-loader": "2.2.1",
+    "eslint-plugin-compat": "3.3.0",
     "jsdoc": "~3.6.3",
+    "loglevel": "latest",
     "npm-run-all": "~4.1.5",
     "rimraf": "~2.6.3",
     "webpack": "~4.39.1",
@@ -51,9 +55,5 @@
   "jshintConfig": {
     "esversion": 6
   },
-  "dependencies": {
-    "core-js": "3.2.0",
-    "eslint-plugin-compat": "3.3.0",
-    "loglevel": "latest"
-  }
+  "dependencies": {}
 }
