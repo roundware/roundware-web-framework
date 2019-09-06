@@ -1,13 +1,11 @@
-import { Playlist } from './playlist';
-//import { PlaylistTrack } from './playlist_track';
 import { SpeakerTrack } from './speaker_track';
+import { Playlist } from './playlist';
+import { coordsToPoints } from './utils';
+//import { PlaylistTrack } from './playlist_track';
 
 export class Mixer {
-  constructor({ client, audioCtx, filters, sortMethods }) {
-    //this.client = client;
-    // TODO: need to tell the client to notify us when geoposition or tags change,
-    // so we can recompute the playlist
-    this.audioCtx = audioCtx;
+  constructor({ client, startingListenerCoordinates, filters, sortMethods, audioCtx }) {
+    this.audioCtx = audioCtx || new AudioContext();
     this.audiotracks = client.audiotracks();
     this.assets = client.assets();
     this.speakers = client.speakers();
@@ -27,21 +25,50 @@ export class Mixer {
       //return track;
     //});
 
+    const startingListenerPoint = coordsToPoints(startingListenerCoordinates);
+
     this.speakerTracks = this.speakers.map(speakerData => {
       return new SpeakerTrack({
         audioCtx: this.audioCtx,
+        startingListenerPoint,
         data: speakerData,
       });
     });
+
+    this.playing = false;
+  }
+
+  updatePosition(newCoordinates) {
+    const newPoint = coordsToPoints(newCoordinates);
+    this.speakerTracks.forEach(s => s.updateListenerPoint(newPoint.geometry));
   }
 
   toString() {
     return 'Roundware Mixer';
   }
 
-  play() {
-    console.log('Playing',this);
-    this.speakerTracks.forEach(s => s.play());
-    //this.playlistTracks.forEach(t => t.play());
+  async toggle() {
+    const promises = [];
+
+    if (this.playing) {
+      console.log(`Pausing ${this}`);
+      this.playing = false;
+      this.speakerTracks.forEach(s => promises.push(s.pause()));
+      // TODO pause playlisttracks
+    } else {
+      console.log(`Playing ${this}`);
+      this.playing = true;
+      this.speakerTracks.forEach(s => promises.push(s.play()));
+      // TODO play playlisttracks
+    }
+
+    try {
+      await Promise.all(promises);
+      console.log(`All ${this} tracks`,this.playing ? 'playing' : 'paused');
+    } catch (err) {
+      console.error(`Unable to toggle all ${this} tracks due to error`,err);
+    }
+
+    return this.playing;
   }
 }

@@ -23,7 +23,7 @@ function mapSpeakers(map,roundware) {
       "geometry": item.shape,
       "properties": {
         "speaker_id": item.id,
-        "name": "outer"
+        "title": "outer"
       }
     });
 
@@ -32,7 +32,7 @@ function mapSpeakers(map,roundware) {
       "geometry": item.attenuation_border,
       "properties": {
         "speaker_id": item.id,
-        "name": "inner"
+        "title": "inner"
       }
     });
 
@@ -160,6 +160,7 @@ function initDemo() {
   };
 
   const listenMapEl = document.getElementById('mixMap');
+  const togglePlayBtn = document.getElementById('togglePlayBtn');
 
   const map = new google.maps.Map(listenMapEl,{
     zoom: 9,
@@ -172,12 +173,6 @@ function initDemo() {
     draggable: true
   });
 
-  google.maps.event.addListener(listener, "dragend",() => {
-    const position = listener.getPosition();
-    console.log('LATLNG:',position.lat(),position.lng());
-    map.setCenter(position);
-  });
-
   const roundware = new Roundware(window,{
     serverUrl: ROUNDWARE_SERVER_URL,
     projectId: ROUNDWARE_DEFAULT_PROJECT_ID,
@@ -186,9 +181,13 @@ function initDemo() {
     assetFilters:   { submitted: true, media_type: "audio" }
   });
 
+  const toggle = mixer => {
+    const isPlaying = mixer.toggle();
+    togglePlayBtn.value = isPlaying ? 'Pause' : 'Play';
+  };
+
   roundware.
     connect().
-    catch(err => console.log('Roundware connection error',err)).
     then(() => console.log('Roundware connected')).
     then(() => {
       mapSpeakers(map,roundware);
@@ -196,9 +195,26 @@ function initDemo() {
       const assetMarkers = mapAssets(map,roundware);
       showHideMarkers(assetMarkers);
 
-      const audioCtx = new AudioContext();
-      const mixer = roundware.activateMixer({ audioCtx });
+      const mixer = roundware.activateMixer({ 
+        startingListenerCoordinates: {
+          latitude: ROUNDWARE_INITIAL_LATITUDE,
+          longitude: ROUNDWARE_INITIAL_LONGITUDE
+        }
+      });
 
-      mixer.play();
-    });
+      google.maps.event.addListener(listener, "dragend",() => {
+        const position = listener.getPosition();
+        map.setCenter(position);
+        
+        const latitude = position.lat();
+        const longitude = position.lng();
+
+        console.log('Position change',{ latitude, longitude });
+        mixer.updatePosition({ latitude, longitude });
+      });
+
+      togglePlayBtn.addEventListener('click',() => toggle(mixer));
+      togglePlayBtn.disabled = false;
+    }).
+    catch(err => console.log('Roundware connection error',err));
 }

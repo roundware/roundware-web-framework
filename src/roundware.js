@@ -110,7 +110,8 @@ export default class Roundware {
   }
 
   activateMixer(options = {}) {
-    this.mixer = new Mixer({ client: this, ...options });
+    this._mixer = new Mixer({ client: this, ...options });
+    return this._mixer;
   }
 
   
