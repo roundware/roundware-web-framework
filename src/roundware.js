@@ -94,7 +94,7 @@ export default class Roundware {
 
     logger.info("Initializing Roundware for project ID #" + this._projectId);
 
-    // TODO refactor the callsafter session connection into independent sets of promises, since some of these requests can run in in parallel; then we can just wait on a single Promise.all() call
+    // TODO refactor the calls after session connection into independent sets of promises, since some of these requests can run in in parallel; then we can just wait on a single Promise.all() call
     return this._user.connect().
       then(this._session.connect).
       then(sessionId => this._project.connect(sessionId)).

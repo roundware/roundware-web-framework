@@ -160,7 +160,7 @@ function initDemo() {
   };
 
   const listenMapEl = document.getElementById('mixMap');
-  const togglePlayBtn = document.getElementById('togglePlayBtn');
+  const playPauseBtn = document.getElementById('playPauseBtn');
 
   const map = new google.maps.Map(listenMapEl,{
     zoom: 9,
@@ -180,11 +180,6 @@ function initDemo() {
     speakerFilters: { activeyn: true },
     assetFilters:   { submitted: true, media_type: "audio" }
   });
-
-  const toggle = mixer => {
-    const isPlaying = mixer.toggle();
-    togglePlayBtn.value = isPlaying ? 'Pause' : 'Play';
-  };
 
   roundware.
     connect().
@@ -213,8 +208,12 @@ function initDemo() {
         mixer.updatePosition({ latitude, longitude });
       });
 
-      togglePlayBtn.addEventListener('click',() => toggle(mixer));
-      togglePlayBtn.disabled = false;
+      playPauseBtn.addEventListener('click',() => {
+        const isPlaying = mixer.toggle();
+        playPauseBtn.textContent = isPlaying ? 'Pause' : 'Play';
+      });
+
+      playPauseBtn.disabled = false;
     }).
     catch(err => console.log('Roundware connection error',err));
 }

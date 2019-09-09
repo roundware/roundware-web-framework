@@ -1,7 +1,7 @@
 import { SpeakerTrack } from './speaker_track';
 import { Playlist } from './playlist';
 import { coordsToPoints } from './utils';
-//import { PlaylistTrack } from './playlist_track';
+import { PlaylistTrack } from './playlist_track';
 
 export class Mixer {
   constructor({ client, startingListenerCoordinates, filters, sortMethods, audioCtx }) {
@@ -16,14 +16,15 @@ export class Mixer {
       sortMethods
     });
 
-    //this.playlistTracks = this.audiotracks.map(audioData => {
-      //const track = new PlaylistTrack({ 
-        //audioCtx: this.audioCtx, 
-        //playlist: this.playlist,
-        //audioData
-      //});
-      //return track;
-    //});
+    this.playlistTracks = this.audiotracks.map(audioData => {
+      const track = new PlaylistTrack({ 
+        audioCtx: this.audioCtx, 
+        playlist: this.playlist,
+        audioData
+      });
+
+      return track;
+    });
 
     const startingListenerPoint = coordsToPoints(startingListenerCoordinates);
 
@@ -47,26 +48,17 @@ export class Mixer {
     return 'Roundware Mixer';
   }
 
-  async toggle() {
-    const promises = [];
-
+  toggle() {
     if (this.playing) {
       console.log(`Pausing ${this}`);
       this.playing = false;
-      this.speakerTracks.forEach(s => promises.push(s.pause()));
-      // TODO pause playlisttracks
+      this.speakerTracks.forEach(s => s.pause());
+      this.playlistTracks.forEach(p => p.pause());
     } else {
       console.log(`Playing ${this}`);
       this.playing = true;
-      this.speakerTracks.forEach(s => promises.push(s.play()));
-      // TODO play playlisttracks
-    }
-
-    try {
-      await Promise.all(promises);
-      console.log(`All ${this} tracks`,this.playing ? 'playing' : 'paused');
-    } catch (err) {
-      console.error(`Unable to toggle all ${this} tracks due to error`,err);
+      this.speakerTracks.forEach(s => s.play());
+      this.playlistTracks.forEach(p => p.play());
     }
 
     return this.playing;

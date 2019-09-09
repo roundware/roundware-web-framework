@@ -32,7 +32,7 @@ export class PlaylistTrack {
 
       const { file: audioURL } = asset;
       const audio = new Audio(audioURL);
-      //audio.crossOrigin = 'anonymous';
+      audio.crossOrigin = 'anonymous';
 
       const audioSrc = audioCtx.createMediaElementSource(audio);
       audioSrc.connect(destination);
