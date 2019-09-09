@@ -1,6 +1,7 @@
 import * as turf from '@turf/turf'; // TODO try to use smaller packages since turf is so modular
 
 const convertLinesToPolygon = shape => turf.lineToPolygon(shape);
+const FADE_DURATION = 3; // seconds
 
 /** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners. 
  * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker’s defined zone.'
@@ -22,15 +23,16 @@ export class SpeakerTrack {
     this.speakerId = speakerId;
     this.maxVolume = maxVolume;
     this.minVolume = minVolume;
-    this.attenuationDistance = attenuationDistance;
+    this.attenuationDistanceKm = attenuationDistance / 1000;
     this.uri = uri;
     this.listenerPoint = startingListenerPoint;
     this.playing = false;
 
-    this.attenuationBorder = convertLinesToPolygon(attenuation_border);
-    this.attenuationPoints = turf.explode(this.attenuationBorder);
+    this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
+    this.attenuationBorderLineString = attenuation_border;
 
     this.outerBoundary = convertLinesToPolygon(boundary);
+    this.currentVolume = 0;
   }
 
   outerBoundaryContains(point) {
@@ -38,28 +40,16 @@ export class SpeakerTrack {
   }
 
   attenuationShapeContains(point) {
-    return turf.booleanPointInPolygon(point,this.attenuationBorder);
-  }
-
-  distance(toPoint) {
-    return turf.distance(this.outerBoundary,toPoint);
+    return turf.booleanPointInPolygon(point,this.attenuationBorderPolygon);
   }
 
   attenuationRatio(atPoint) {
-    const nearestPoint = turf.nearestPoint(
-      atPoint,
-      this.attenuationPoints
-    );
-
-    const distToInnerShape = turf.distance(nearestPoint,atPoint);
-    const ratio = 1 - (distToInnerShape / this.attenuationDistance);
-
-    console.log('attenuationRatio',this,nearestPoint,distToInnerShape,ratio);
-
+    const distToInnerShapeKm = turf.pointToLineDistance(atPoint,this.attenuationBorderLineString,{ units: 'kilometers' });
+    const ratio = 1 - (distToInnerShapeKm / this.attenuationDistanceKm);
     return ratio;
   }
 
-  calculateCurrentVolume() {
+  calculateVolume() {
     const { listenerPoint } = this;
 
     if (this.attenuationShapeContains(listenerPoint)) {
@@ -77,8 +67,8 @@ export class SpeakerTrack {
     if (this.audio) return this.audio;
 
     const { audioCtx, uri } = this;
-    const audio = new Audio(uri);
 
+    const audio = new Audio(uri);
     audio.crossOrigin = 'anonymous';
     audio.loop = true;
 
@@ -90,6 +80,7 @@ export class SpeakerTrack {
 
     this.gainNode = gainNode;
     this.audio = audio;
+    this.audioCtx = audioCtx;
 
     return this.audio;
   }
@@ -101,44 +92,25 @@ export class SpeakerTrack {
   }
 
   updateVolume() {
-    const newVolume = this.calculateCurrentVolume();
+    const newVolume = this.calculateVolume();
 
-    console.log(`Setting ${this} volume: ${newVolume}`);
+    if (newVolume === this.currentVolume) return false;
 
-    if (newVolume <= 0.05 && this.gainNode) {
-      // only set the gain if the node has been created; if we never got near enough to hear the speaker, avoid lazily creating
-      this.gainNode.gain.value = 0;
-      console.log(`Silenced ${this}`);
-      return;
+    this.currentVolume = newVolume;
+
+    if (newVolume <= 0.05 && !this.gainNode) {
+      // avoid creating web audio objects for silent speakers which have not yet been lazily created
+      return false;
     }
 
-    this.buildAudio();
-        
-    this.gainNode.gain.value = newVolume;
-    console.info(`Set ${this} volume ${newVolume}`);
+    const secondsFromNow = this.audioCtx.currentTime + FADE_DURATION;
 
-    // TODO setup fading per below swift code
-    
-    //fadeTimer?.removeAllObservers(thenStop: true)
-    //if let player = self.player {
-        //let totalDiff = vol - player.volume
-        //let delta: Float = 0.075
-        //fadeTimer = .every(.seconds(Double(delta))) { timer in
-            //let currDiff = vol - player.volume
-            //if currDiff.sign != totalDiff.sign || abs(currDiff) < 0.05 {
-                //// we went just enough or too far
-                //player.volume = vol
-                
-                //if vol < 0.05 {
-                    //// we can't hear it anymore, so pause it.
-                    //player.pause()
-                //}
-                //timer.removeAllObservers(thenStop: true)
-            //} else {
-                //player.volume += totalDiff * delta / Speaker.fadeDuration
-            //}
-        //}
-    //}
+    this.buildAudio();
+    this.gainNode.gain.linearRampToValueAtTime(newVolume,secondsFromNow);
+
+    console.info(`Setting ${this} volume to ${newVolume.toFixed(2)} over ${FADE_DURATION} seconds`);
+
+    return true;
   }
 
   get logline() {
@@ -146,12 +118,11 @@ export class SpeakerTrack {
   }
 
   async play() {
-    const audio = this.buildAudio();
-    this.updateVolume();
+    if (!this.updateVolume()) return;
 
     try {
       console.log('Playing',this.logline);
-      await audio.play();
+      await this.audio.play();
       this.playing = true;
     } catch(err) {
       console.error('Unable to play',this.logline,err);
