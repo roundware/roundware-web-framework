@@ -1,10 +1,4 @@
-const DEFAULT_FILTERS = [];
-const DEFAULT_SORT_METHODS = [];
-const DEFAULTS = {
-  filters: DEFAULT_FILTERS,
-  sortMethods: DEFAULT_SORT_METHODS
-};
-
+import * as sortMethods from './sortMethods';
 
 /*
 // Accept an asset if one of the following conditions is true
@@ -34,11 +28,16 @@ AnyAssetFilters([
     ])
 */
 
+function mapSortMethods(sortMethodNames) {
+  return sortMethodNames.map(name => sortMethods[name]);
+}
+
 export class Playlist {
-  constructor({ assets, filters, sortMethods } = DEFAULTS) {
+  constructor({ assets = [], filters = [], sortMethods = [] }) {
     this.assets = assets;
     this.filters = filters;
-    this.sortMethods = sortMethods;
+    this.sortMethods = mapSortMethods(sortMethods);
+    this.computeList();
   }
 
   provideAsset() {
@@ -46,5 +45,9 @@ export class Playlist {
     // for now use naive approach, play each asset once from a queue
     const asset = this.assets.pop();
     return Promise.resolve(asset);
+  }
+
+  computeList() {
+    this.sortMethods.forEach(sortMethod => sortMethod(this.assets));
   }
 }
