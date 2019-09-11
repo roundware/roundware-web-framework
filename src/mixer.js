@@ -4,19 +4,22 @@ import { coordsToPoints } from './utils';
 import { PlaylistTrack } from './playlist_track';
 
 export class Mixer {
-  constructor({ client, startingListenerCoordinates, filters, sortMethods, audioCtx }) {
+  constructor({ client, startingListenerCoordinates, filters = [], sortMethods = [], audioCtx, mixParams = {} }) {
     this.audioCtx = audioCtx || new AudioContext();
-    this.audiotracks = client.audiotracks();
-    this.assets = client.assets();
-    this.speakers = client.speakers();
+
+    const audiotracks = client.audiotracks();
+    const assets = client.assets();
+    const speakers = client.speakers();
+    const startingListenerPoint = coordsToPoints(startingListenerCoordinates);
 
     this.playlist = new Playlist({ 
-      assets: this.assets,
+      assets,
       filters,
-      sortMethods
+      sortMethods,
+      mixParams
     });
 
-    this.playlistTracks = this.audiotracks.map(audioData => {
+    this.playlistTracks = audiotracks.map(audioData => {
       const track = new PlaylistTrack({ 
         audioCtx: this.audioCtx, 
         playlist: this.playlist,
@@ -26,9 +29,7 @@ export class Mixer {
       return track;
     });
 
-    const startingListenerPoint = coordsToPoints(startingListenerCoordinates);
-
-    this.speakerTracks = this.speakers.map(speakerData => {
+    this.speakerTracks = speakers.map(speakerData => {
       return new SpeakerTrack({
         audioCtx: this.audioCtx,
         startingListenerPoint,
@@ -41,6 +42,7 @@ export class Mixer {
 
   updatePosition(newCoordinates) {
     const newPoint = coordsToPoints(newCoordinates);
+    // TODO need to propagate this to playlist, which updates mixParams using new location
     this.speakerTracks.forEach(s => s.updateListenerPoint(newPoint.geometry));
   }
 

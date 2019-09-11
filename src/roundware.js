@@ -109,8 +109,24 @@ export default class Roundware {
       then(audioTracksData => this._audioTracksData = audioTracksData);
   }
 
+  get currentLocation() {
+    throw 'need to implement';
+  }
+
   activateMixer(options = {}) {
-    this._mixer = new Mixer({ client: this, ...options });
+    const mixParams = { 
+      ...this._project.data,
+      currentLocation: this.currentLocation
+    };
+
+    console.info('MIXPARAMS',mixParams);
+
+    this._mixer = new Mixer({ 
+      client: this, 
+      mixParams, 
+      ...options 
+    });
+
     return this._mixer;
   }
 

@@ -6,6 +6,7 @@ export class Project {
   constructor(newProjectId,options) {
     projectId = newProjectId;
     apiClient = options.apiClient;
+    this.data = {};
   }
 
   toString() {
@@ -27,6 +28,8 @@ export class Project {
 
     return apiClient.get(path,data).
       then(function connectionSuccess(data) {
+        this.data = data;
+
         projectName = data.name;
         //pubDate = data.pub_date;
         //audioFormat = data.audio_format;
