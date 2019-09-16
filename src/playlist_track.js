@@ -22,12 +22,11 @@ export class PlaylistTrack {
     this.playing = true;
 
     while (this.playing) {
-      const asset = await playlist.provideAsset();
+      const asset = playlist.next(self);
 
       if (!asset) {
         console.log(this,'shutdown');
-        this.pause();
-        return;
+        return this.pause();
       }
 
       const { file: audioURL } = asset;

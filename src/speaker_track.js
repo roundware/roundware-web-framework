@@ -8,7 +8,7 @@ const FADE_DURATION = 3; // seconds
  * (quoted from https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/Speaker.swift)
  * */
 export class SpeakerTrack {
-  constructor({ audioCtx, startingListenerPoint, data }) {
+  constructor({ audioCtx, listenerPoint, data }) {
     const {
       id: speakerId,
       maxvolume: maxVolume,
@@ -25,7 +25,7 @@ export class SpeakerTrack {
     this.minVolume = minVolume;
     this.attenuationDistanceKm = attenuationDistance / 1000;
     this.uri = uri;
-    this.listenerPoint = startingListenerPoint;
+    this.listenerPoint = listenerPoint;
     this.playing = false;
 
     this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
@@ -87,7 +87,6 @@ export class SpeakerTrack {
 
   updateListenerPoint(point) {
     this.listenerPoint = point;
-    //console.info('ULP',this.listenerPoint);
     this.updateVolume();
   }
 

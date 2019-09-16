@@ -6,3 +6,6 @@ export function coordsToPoints({ latitude, longitude }) {
   // NOTE we need to reverse the order here to make geolocations compatible with Roundware geometries, which have points listed w/ longitude first
   return point([+longitude,+latitude]); // NOTE we need to reverse the order here to make geolocations compatible with Roundware geometries, which have points listed w/ longitude first
 }
+
+// @see https://stackoverflow.com/a/24403771/308448
+export const isEmpty = array => !array || array.length < 1;

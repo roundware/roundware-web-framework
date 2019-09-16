@@ -10,9 +10,13 @@ const ROUNDWARE_SERVER_URL = 'https://prod.roundware.com/api/2';
 //const ROUNDWARE_INITIAL_LATITUDE = 42.337060559285234;
 //const ROUNDWARE_INITIAL_LONGITUDE = -71.09792028045655;
 
-const ROUNDWARE_DEFAULT_PROJECT_ID = 1;
-const ROUNDWARE_INITIAL_LATITUDE = 41.0408653367726; 
-const ROUNDWARE_INITIAL_LONGITUDE = -73.22926793670655;
+//const ROUNDWARE_DEFAULT_PROJECT_ID = 1;
+//const ROUNDWARE_INITIAL_LATITUDE = 41.0408653367726; 
+//const ROUNDWARE_INITIAL_LONGITUDE = -73.22926793670655;
+
+const ROUNDWARE_DEFAULT_PROJECT_ID = 27;
+const ROUNDWARE_INITIAL_LATITUDE = 34.02233;
+const ROUNDWARE_INITIAL_LONGITUDE = -118.286364;
 
 function mapSpeakers(map,roundware) {
   const speakers = roundware.speakers();
@@ -72,11 +76,14 @@ function mapAssets(map,roundware) {
       map: map,
       icon: marker_img
     });
+
     marker.id = item.id;
     marker.rw_tags = [];
+
     if (item.tag_ids) {
       marker.rw_tags = item.tag_ids;
     }
+
     // display asset shape if exists
     if (item.shape) {
       marker.shape = new google.maps.Data();
@@ -88,6 +95,7 @@ function mapAssets(map,roundware) {
           "name": "assetRange"
         }
       });
+
       marker.shape.setStyle(function(feature) {
         if (feature.getProperty('name') == "assetRange") {
           return {
@@ -99,10 +107,9 @@ function mapAssets(map,roundware) {
           };
         }
       });
-    }
-    // if no asset shape, display default circle range
-    else {
-      var circle = {
+    } else {
+      // if no asset shape, display default circle range
+      const circle = { 
         strokeColor: '#6292CF',
         strokeOpacity: 0.8,
         strokeWeight: 1,
@@ -112,8 +119,10 @@ function mapAssets(map,roundware) {
         center: new google.maps.LatLng(item.latitude, item.longitude),
         radius: roundware._project.recordingRadius
       };
+
       marker.circle = new google.maps.Circle(circle);
     }
+
     assetMarkers.push(marker);
   });
 
@@ -154,21 +163,26 @@ function showHideMarkers(map,assetMarkers) {
 // This function is intended to be invoked by the google API callback; see index.html
 /* eslint-disable-next-line no-unused-vars */
 function initDemo() { 
-  const center = { 
+  const googleMapsCenter = { 
     lat: ROUNDWARE_INITIAL_LATITUDE,
     lng: ROUNDWARE_INITIAL_LONGITUDE
+  };
+
+  const listenerLocation = { 
+    latitude: ROUNDWARE_INITIAL_LATITUDE,
+    longitude: ROUNDWARE_INITIAL_LONGITUDE
   };
 
   const listenMapEl = document.getElementById('mixMap');
   const playPauseBtn = document.getElementById('playPauseBtn');
 
   const map = new google.maps.Map(listenMapEl,{
-    zoom: 9,
-    center
+    zoom: 12,
+    center: googleMapsCenter
   });
 
   const listener = new google.maps.Marker({
-    position: center,
+    position: googleMapsCenter,
     map,
     draggable: true
   });
@@ -178,24 +192,19 @@ function initDemo() {
     projectId: ROUNDWARE_DEFAULT_PROJECT_ID,
     geoListenEnabled: true,
     speakerFilters: { activeyn: true },
-    assetFilters:   { submitted: true, media_type: "audio" }
+    assetFilters:   { submitted: true, media_type: "audio" },
+    listenerLocation
   });
 
   roundware.
     connect().
-    then(() => console.log('Roundware connected')).
     then(() => {
       mapSpeakers(map,roundware);
 
       const assetMarkers = mapAssets(map,roundware);
       showHideMarkers(assetMarkers);
 
-      const mixer = roundware.activateMixer({ 
-        startingListenerCoordinates: {
-          latitude: ROUNDWARE_INITIAL_LATITUDE,
-          longitude: ROUNDWARE_INITIAL_LONGITUDE
-        }
-      });
+      const mixer = roundware.activateMixer();
 
       google.maps.event.addListener(listener, "dragend",() => {
         const position = listener.getPosition();
@@ -204,8 +213,7 @@ function initDemo() {
         const latitude = position.lat();
         const longitude = position.lng();
 
-        console.log('Position change',{ latitude, longitude });
-        mixer.updatePosition({ latitude, longitude });
+        roundware.updateLocation({ latitude, longitude });
       });
 
       playPauseBtn.addEventListener('click',() => {

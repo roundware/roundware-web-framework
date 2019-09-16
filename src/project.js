@@ -1,57 +1,47 @@
-var projectId, apiClient;
-var projectName = "(unknown)";
+//var projectId, apiClient;
+//var projectName = "(unknown)";
 //var pubDate, audioFormat, recordingRadius, location, geoListenEnabled;
 
 export class Project {
-  constructor(newProjectId,options) {
-    projectId = newProjectId;
-    apiClient = options.apiClient;
-    this.data = {};
+  constructor(newProjectId,{ apiClient }) {
+    this.projectId = newProjectId;
+    this.projectName = "(unknown)";
+    this.apiClient = apiClient;
+    this.mixParams = {};
   }
 
   toString() {
-    return `Roundware Project '${projectName}' (#${projectId})`;
+    return `Roundware Project '${this.projectName}' (#${this.projectId})`;
   }
 
-  // getRecordingRadius() {
-  //   return recordingRadius;
-  // }
+  async connect(sessionId) {
+    const path = "/projects/" + this.projectId + "/";
 
-  connect(sessionId) {
-    var path = "/projects/" + projectId + "/";
+    const requestData = { session_id: sessionId };
 
-    var data = {
-      session_id: sessionId
-    };
+    try {
+      const data = await this.apiClient.get(path,requestData);
+      //console.info({ PROJECTDATA: data });
 
-    let that = this;
+      this.projectName = data.name;
 
-    return apiClient.get(path,data).
-      then(function connectionSuccess(data) {
-        this.data = data;
+      this.mixParams = { 
+        geoListenEnabled: data.geo_listen_enabled,
+        recordingRadius: data.recording_radius,
+        ordering: data.ordering,
+        ...this.mixParams, 
+      };
 
-        projectName = data.name;
-        //pubDate = data.pub_date;
-        //audioFormat = data.audio_format;
-        //that.recordingRadius = data.recording_radius;
-        //that.location = {"latitude": data.latitude,
-                         //"longitude": data.longitude};
-        that.maxRecordingLength = data.max_recording_length;
-        return sessionId;
-      });
+      return sessionId;
+    } catch(err) {
+      console.error("Unable to get Project details",err);
+    }
   }
 
   uiconfig(sessionId) {
-    var path = "/projects/" + projectId + "/uiconfig/";
+    const path = "/projects/" + this.projectId + "/uiconfig/";
+    const data = { session_id: sessionId };
 
-    var data = {
-      session_id: sessionId
-    };
-
-    return apiClient.get(path,data).
-      then(function connectionSuccess(data) {
-        // let this._uiConfig = data;
-        return data;
-      });
+    return this.apiClient.get(path,data);
   }
 }

@@ -53,11 +53,13 @@ export default class Roundware {
    * @param {Number} options.projectId - identifies the Roundware project to connect
    * @param {Boolean} options.geoListenEnabled - whether or not to attempt to initialize geolocation-based listening
    * @throws Will throw an error if serveUrl or projectId are missing **/
-  constructor(window,options = {}) {
-    this._serverUrl = options.serverUrl;
-    this._projectId = options.projectId;
-    this._speakerFilters = options.speakerFilters;
-    this._assetFilters = options.assetFilters;
+  constructor(window,{ serverUrl, projectId, speakerFilters, assetFilters, listenerLocation, user, geoPosition, session, project, stream, speaker, asset, audiotrack, ...options }) {
+    this._serverUrl = serverUrl;
+    this._projectId = projectId;
+    this._speakerFilters = speakerFilters;
+    this._assetFilters = assetFilters;
+    this._listenerLocation = listenerLocation;
+    //alert(JSON.stringify(this._listenerLocation));
 
     if (this._serverUrl === undefined) {
       throw "Roundware objects must be initialized with a serverUrl";
@@ -72,59 +74,60 @@ export default class Roundware {
 
     let navigator = window.navigator;
 
-    this._user        = options.user        || new User(options);
-    this._geoPosition = options.geoPosition || new GeoPosition(navigator,options);
-    this._session     = options.session     || new Session(navigator,this._projectId,this._geoPosition.geoListenEnabled,options);
-    this._project     = options.project     || new Project(this._projectId,options);
-    this._stream      = options.stream      || new Stream(options);
-    this._speaker     = options.speaker     || new Speaker(this._projectId,options);
-    this._asset       = options.asset       || new Asset(this._projectId,options);
-    this._audiotrack  = options.audiotrack  || new Audiotrack(this._projectId,options);
+    this._user        = user        || new User(options);
+    this._geoPosition = geoPosition || new GeoPosition(navigator,options);
+    this._session     = session     || new Session(navigator,this._projectId,this._geoPosition.geoListenEnabled,options);
+    this._project     = project     || new Project(this._projectId,options);
+    this._stream      = stream      || new Stream(options);
+    this._speaker     = speaker     || new Speaker(this._projectId,options);
+    this._asset       = asset       || new Asset(this._projectId,options);
+    this._audiotrack  = audiotrack  || new Audiotrack(this._projectId,options);
+  }
+
+  updateLocation(newLocation) {
+    this._listenerLocation = newLocation;
+    console.log('Position change',newLocation);
+
+    if (this._stream) this._stream.update(newLocation);
+    if (this._mixer) this._mixer.updateListenerLocation(newLocation);
   }
 
   /** Initiate a connection to Roundware
    *  @return {Promise} - Can be resolved in order to get the audio stream URL, or rejected to get an error message; see example above **/
-  connect() {
-    let that = this;
+  async connect() {
+    // want to start this process as soon as possible, as it can take a few seconds
+    this._geoPosition.connect(newLocation => this.updateLocation(newLocation));
 
-    this._geoPosition.connect(function(newCoords) {
-      // want to start this process as soon as possible, as it can take a few seconds
-      that._stream.update(newCoords);
-    });
+    logger.info(`Initializing Roundware for project ID ${this._projectId}`);
 
-    logger.info("Initializing Roundware for project ID #" + this._projectId);
+    try {
+      await this._user.connect();
+      const sessionId = await this._session.connect();
+      this._sessionId = sessionId;
 
-    // TODO refactor the calls after session connection into independent sets of promises, since some of these requests can run in in parallel; then we can just wait on a single Promise.all() call
-    return this._user.connect().
-      then(this._session.connect).
-      then(sessionId => this._project.connect(sessionId)).
-      then(sessionId => this._sessionId = sessionId).
-      then(this._project.uiconfig).
-      then(uiConfig => this._uiConfig = uiConfig).
-      then(() => this._speaker.connect(this._speakerFilters)).
-      then(speakerData => this._speakerData = speakerData).
-      then(() => this._asset.connect(this._assetFilters)).
-      then(assetData => this._assetData = assetData).
-      then(() => this._audiotrack.connect()).
-      then(audioTracksData => this._audioTracksData = audioTracksData);
+      const promises = [
+        this._project.connect(sessionId),
+        this._project.uiconfig(sessionId).then(uiConfig => this._uiConfig = uiConfig),
+        this._speaker.connect(this._speakerFilters).then(speakerData => this._speakerData = speakerData),
+        this._asset.connect(this._assetFilters).then(assetData => this._assetData = assetData),
+        this._audiotrack.connect().then(audioTracksData => this._audioTracksData = audioTracksData)
+      ];
+
+      await Promise.all(promises);
+      console.info('Roundware connected');
+    } catch(err) {
+      console.error("Unable to connect to Roundware",err);
+      throw "Sorry, we were unable to connect to Roundware. Please try again.";
+    }
   }
 
-  get currentLocation() {
-    throw 'need to implement';
-  }
-
-  activateMixer(options = {}) {
-    const mixParams = { 
-      ...this._project.data,
-      currentLocation: this.currentLocation
-    };
-
-    console.info('MIXPARAMS',mixParams);
+  activateMixer() {
+    const mixParams = this._project.mixParams;
 
     this._mixer = new Mixer({ 
-      client: this, 
+      client: this,
+      listenerLocation: this._listenerLocation,
       mixParams, 
-      ...options 
     });
 
     return this._mixer;

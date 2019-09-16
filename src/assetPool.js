@@ -4,13 +4,8 @@ import {
   assetFilters
 } from './assetFilters';
 
-function mapFilterMethods(filterNamesOrFuncs) {
-  return filterNamesOrFuncs.map(f => typeof f === 'function' ? f : assetFilters[f]);
-}
-
-function prefilterAssets(assets,ineligibleAssets) {
-  return assets.filter(candidateAsset => !!ineligibleAssets[candidateAsset]);
-}
+const mapFilterMethods = filterNamesOrFuncs => filterNamesOrFuncs.map(f => typeof f === 'function' ? f : assetFilters[f]);
+const prefilterAssets = (assets,ineligibleAssets) => assets.filter(candidateAsset => !!ineligibleAssets[candidateAsset]);
 
 function mapSortMethods(sortMethodNames) {
   return sortMethodNames.map(name => sortMethods[name]);
@@ -24,19 +19,21 @@ export class AssetPool {
     this.sortAssets();
 
     const materializedFilters = mapFilterMethods(filters);
-    this.filterChain = assetFilters.AllAssetFilter(materializedFilters,{ ...mixParams });
+    this.filterChain = assetFilters.allAssetFilter(materializedFilters,{ ...mixParams });
   }
 
-  nextForTrack(track,{ filterOutAssets }) {
+  nextForTrack(track,{ filterOutAssets, ...stateParams }) {
     const prefilteredAssets = prefilterAssets(this.assets,filterOutAssets);
 
     const rankedAssets = prefilteredAssets.reduce((rankings,asset) => {
-      const rank = this.filterChain(asset);
+      const rank = this.filterChain(asset,stateParams);
 
-      console.info('ASSET',asset,'RANK',rank);
+      console.info('NEXTFORTRACK',{ asset, stateParams, rank });
 
-      rankings[rank] = rankings[rank] || [];
-      rankings[rank].push(asset);
+      if (rank) {
+        rankings[rank] = rankings[rank] || [];
+        rankings[rank].push(asset);
+      }
 
       return rankings;
     },{});
@@ -44,7 +41,12 @@ export class AssetPool {
     const sortedRankings = Object.keys(rankedAssets).sort();
     const topPriorityRanking = sortedRankings[0];
 
-    // play less played assets first
+    if (!topPriorityRanking) {
+      console.warn('All assets filtered out');
+      return;
+    }
+
+    // play least-recently played assets first
     const priorityAssets = rankedAssets[topPriorityRanking].
       filter((a,b) => a.playCount <= b.playCount);
 

@@ -1,7 +1,8 @@
 import * as turf from '@turf/turf'; // TODO try to use smaller packages since turf is so modular
+import { isEmpty } from './utils';
 
 export const ASSET_PRIORITIES = Object.freeze({
-  DISCARD: -1,
+  DISCARD: false,
   NEUTRAL:  0,
   LOWEST: 1,
   NORMAL: 100,
@@ -54,19 +55,19 @@ AnyAssetFilters([
     ])
 */
 
-// @see https://stackoverflow.com/a/24403771/308448
-const isEmpty = array => !array || array.length < 1;
+//const alwaysNeutral = () => ASSET_PRIORITIES.NEUTRAL;
+const alwaysLowest = () => ASSET_PRIORITIES.LOWEST;
 
 /** Filter composed of multiple inner filters that accepts assets which pass every inner filter. */
 function allAssetFilter(filters = [],{ ...mixParams }) {
-  if (isEmpty(filters)) return ASSET_PRIORITIES.LOWEST;
+  if (isEmpty(filters)) return alwaysLowest;
   
-  return asset => {
+  return (asset,{ ...stateParams }) => {
     const ranks = {};
 
     for (let i = 0;i < filters.length;i++) {
       let filter = filters[i];
-      let rank = filter(asset,{ ...mixParams });
+      let rank = filter(asset,{ ...mixParams, ...stateParams });
 
       if (rank === ASSET_PRIORITIES.DISCARD) return rank; // can skip remaining filters
 
@@ -74,31 +75,59 @@ function allAssetFilter(filters = [],{ ...mixParams }) {
     }
 
     // return highest-priority (lowest integer) ranking for the asset
-  return Object.keys(ranks).sort((a,b) => a - b);
+    return Object.keys(ranks).sort((a,b) => a - b);
   };
 }
 
-/** Only accepts an asset if the user is within the project-configured recording radius  */
-function distanceFixedFilter(asset,{ listenerLocation, recordingRadius = Infinity, geoListenEnabled = false }) {
-  if (!geoListenEnabled) return ASSET_PRIORITIES.NEUTRAL;
-  
+const rankForGeofilteringEligibility = (asset,{ listenerLocation, geoListenEnabled = false }) => {
+  if (!geoListenEnabled || !listenerLocation || !asset) return ASSET_PRIORITIES.NEUTRAL;
+
   const { location: assetLocation } = asset;
   if (!assetLocation) return ASSET_PRIORITIES.NETURAL;
+};
 
-  const distanceInMeters = turf.distance(listenerLocation,assetLocation,{ units: 'kilometers' }) / 1000.;
+const calculateDistanceInMeters = (loc1,loc2) => turf.distance(loc1,loc2,{ units: 'kilometers' }) / 1000.;
 
-  if (distanceInMeters < recordingRadius) {
-    return ASSET_PRIORITIES.NORMAL;
-  } else {
-    return ASSET_PRIORITIES.DISCARD;
-  }
+/** Only accepts an asset if the user is within the project-configured recording radius  */
+function distanceFixedFilter() {
+  const filter = (asset,{ listenerLocation, recordingRadius = Infinity }) => {
+    const { location: assetLocation } = asset;
+    const distance = calculateDistanceInMeters(listenerLocation,assetLocation);
+
+    if (distance < recordingRadius) {
+      return ASSET_PRIORITIES.NORMAL;
+    } else {
+      return ASSET_PRIORITIES.DISCARD;
+    }
+  };
+
+  return allAssetFilter([
+    rankForGeofilteringEligibility,
+    filter
+  ]);
 }
 
+/**
+ Accepts an asset if the user is within range of it based on the current dynamic distance range.
+ */
 function distanceRangesFilter() {
-  console.warn('Have not implemented distanceRangesFilter yet');
-  return () => ASSET_PRIORITIES.NEUTRAL;
-}
+  const filter = (asset,{ listenerLocation, minDist = 0, maxDist = Infinity }) => {
+    const { location: assetLocation } = asset;
+    const distance = calculateDistanceInMeters(listenerLocation,assetLocation);
 
+    if (distance >= minDist && distance <= maxDist) {
+      return ASSET_PRIORITIES.NORMAL;
+    } else {
+      return ASSET_PRIORITIES.DISCARD;
+    }
+  };
+
+  return allAssetFilter([
+    rankForGeofilteringEligibility,
+    filter
+  ]);
+}
+  
 function allTagsFilter() {
   console.warn('Have not implemented allTagsFilter yet');
   return () => ASSET_PRIORITIES.NEUTRAL;
