@@ -5,7 +5,6 @@ import {
 } from './assetFilters';
 
 const mapFilterMethods = filterNamesOrFuncs => filterNamesOrFuncs.map(f => typeof f === 'function' ? f : assetFilters[f]);
-const prefilterAssets = (assets,ineligibleAssets) => assets.filter(candidateAsset => !!ineligibleAssets[candidateAsset]);
 
 function mapSortMethods(sortMethodNames) {
   return sortMethodNames.map(name => sortMethods[name]);
@@ -13,22 +12,22 @@ function mapSortMethods(sortMethodNames) {
 
 export class AssetPool {
   constructor({ assets = [], filters = [], sortMethods = [], mixParams = {} }) {
-    this.assets = assets;
+    this.assets = assets.map(a => ({ playCount: 0, ...a }));
+    
     this.sortMethods = mapSortMethods(sortMethods);
     this.playingTracks = {};
     this.sortAssets();
 
     const materializedFilters = mapFilterMethods(filters);
+
     this.filterChain = assetFilters.allAssetFilter(materializedFilters,{ ...mixParams });
   }
 
-  nextForTrack(track,{ filterOutAssets, ...stateParams }) {
-    const prefilteredAssets = prefilterAssets(this.assets,filterOutAssets);
+  nextForTrack(track,{ filterOutAssets = [], ...stateParams }) {
+    const rankedAssets = this.assets.reduce((rankings,asset) => {
+      if (filterOutAssets.includes(asset)) return rankings;
 
-    const rankedAssets = prefilteredAssets.reduce((rankings,asset) => {
       const rank = this.filterChain(asset,stateParams);
-
-      console.info('NEXTFORTRACK',{ asset, stateParams, rank });
 
       if (rank) {
         rankings[rank] = rankings[rank] || [];
@@ -38,23 +37,22 @@ export class AssetPool {
       return rankings;
     },{});
 
-    const sortedRankings = Object.keys(rankedAssets).sort();
-    const topPriorityRanking = sortedRankings[0];
+    const rankingGroups = Object.keys(rankedAssets);
 
-    if (!topPriorityRanking) {
+    if (rankingGroups === []) {
       console.warn('All assets filtered out');
       return;
     }
 
-    // play least-recently played assets first
-    const priorityAssets = rankedAssets[topPriorityRanking].
-      filter((a,b) => a.playCount <= b.playCount);
+    const topPriorityRanking = rankingGroups.sort()[0];
 
-    console.info('PRIORITY ASSETS',priorityAssets);
+    // play least-recently played assets first
+    const priorityAssets = rankedAssets[topPriorityRanking];
+    priorityAssets.sort((a,b) => b.playCount - a.playCount);
 
     const nextAsset = priorityAssets.pop();
+    nextAsset.playCount++;
 
-    console.info('NEXT ASSET',nextAsset);
     return nextAsset;
   }
 

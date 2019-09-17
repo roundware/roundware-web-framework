@@ -1,32 +1,32 @@
 import { SpeakerTrack } from './speaker_track';
 import { Playlist } from './playlist';
 import { coordsToPoints } from './utils';
-import { PlaylistTrack } from './playlist_track';
+import { AssetPool } from './assetPool';
 
 export class Mixer {
   constructor({ client, listenerLocation, filters = [], sortMethods = [], audioCtx, mixParams = {} }) {
     this.audioCtx = audioCtx || new AudioContext();
 
-    const audiotracks = client.audiotracks();
+    const audioTracks = client.audiotracks();
     const assets = client.assets();
     const speakers = client.speakers();
     const listenerPoint = coordsToPoints(listenerLocation);
 
-    this.playlist = new Playlist({ 
+    const assetPool = new AssetPool({
       assets,
       filters,
       sortMethods,
-      mixParams,
+      mixParams
+    });
+
+    this.playlist = new Playlist({ 
+      audioTracks,
+      listenerPoint,
+      assetPool,
+      audioCtx: this.audioCtx,
     });
 
     //console.info({ assets, filters, sortMethods, mixParams });
-
-    this.playlistTracks = audiotracks.map(audioData => new PlaylistTrack({ 
-      audioCtx: this.audioCtx, 
-      playlist: this.playlist,
-      audioData,
-      listenerPoint
-    }));
 
     this.speakerTracks = speakers.map(speakerData => new SpeakerTrack({
       audioCtx: this.audioCtx,
@@ -39,7 +39,6 @@ export class Mixer {
 
   updateListenerLocation(newCoordinates) {
     const newPoint = coordsToPoints(newCoordinates);
-    // TODO need to propagate this to playlist, which updates mixParams using new location
     [this.playlist,...this.speakerTracks].forEach(t => t.updateListenerPoint(newPoint.geometry));
   }
 
@@ -52,14 +51,14 @@ export class Mixer {
       console.log(`Pausing ${this}`);
 
       this.playing = false;
+      this.playlist.pause();
       this.speakerTracks.forEach(s => s.pause());
-      this.playlistTracks.forEach(p => p.pause());
     } else {
       console.log(`Playing ${this}`);
       
       this.playing = true;
+      this.playlist.play();
       this.speakerTracks.forEach(s => s.play());
-      this.playlistTracks.forEach(p => p.play());
     }
 
     return this.playing;
