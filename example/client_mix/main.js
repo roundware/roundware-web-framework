@@ -177,7 +177,7 @@ function initDemo() {
   const playPauseBtn = document.getElementById('playPauseBtn');
 
   const map = new google.maps.Map(listenMapEl,{
-    zoom: 12,
+    zoom: 18,
     center: googleMapsCenter
   });
 
