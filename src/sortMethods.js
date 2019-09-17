@@ -17,7 +17,7 @@ export function sortRandomly(assetsArray) {
  Sort assets destructively, in descending order of assigned weight.
  */
 export function sortByWeight(assetsArray) {
-  assetsArray.sort((assetA,assetB) => Math.sign(assetA.weight,assetB.weight));
+  assetsArray.sort((assetA,assetB) => assetA.weight - assetB.weight);
 }
 
 /**
