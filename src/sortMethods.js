@@ -28,6 +28,18 @@ export function sortByLikes(assetsArray) { // eslint-disable-line no-unused-vars
   console.warn("sortByLikes not implemented yet"); // TODO: implement sortByLikes
 }
 
+export function sortByProjectDefault(ordering) {
+  switch (ordering) {
+    case "by_weight":
+      return sortByWeight;
+    case "by_like":
+      return sortByLikes;
+    case "random":
+    default:
+      return sortRandomly;
+  }
+}
+
 // swift code for 'sortByRanking':
 //private var assetVotes: [Int: Int]? = nil
 

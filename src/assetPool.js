@@ -1,26 +1,14 @@
-import * as sortMethods from './sortMethods';
-
-import {
-  assetFilters
-} from './assetFilters';
-
-const mapFilterMethods = filterNamesOrFuncs => filterNamesOrFuncs.map(f => typeof f === 'function' ? f : assetFilters[f]);
-
-function mapSortMethods(sortMethodNames) {
-  return sortMethodNames.map(name => sortMethods[name]);
-}
+import { AssetSorter } from './assetSorter';
+import { roundwareDefaultFilterChain } from './assetFilters';
 
 export class AssetPool {
-  constructor({ assets = [], filters = [], sortMethods = [], mixParams = {} }) {
+  constructor({ assets = [], filterChain = roundwareDefaultFilterChain, sortMethods = [], mixParams = {} }) {
     this.assets = assets.map(a => ({ playCount: 0, ...a }));
-    
-    this.sortMethods = mapSortMethods(sortMethods);
+    this.assetSorter = new AssetSorter({ sortMethods, ...mixParams });
     this.playingTracks = {};
+    this.mixParams = mixParams;
+    this.filterChain = filterChain;
     this.sortAssets();
-
-    const materializedFilters = mapFilterMethods(filters);
-
-    this.filterChain = assetFilters.allAssetFilter(materializedFilters,{ ...mixParams });
   }
 
   nextForTrack(track,{ filterOutAssets = [], ...stateParams }) {
@@ -57,6 +45,6 @@ export class AssetPool {
   }
 
   sortAssets() {
-    this.sortMethods.forEach(sortMethod => sortMethod(this.assets));
+    this.assetSorter.sort(this.assets);
   }
 }

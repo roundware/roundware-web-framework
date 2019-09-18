@@ -9,54 +9,21 @@ export const ASSET_PRIORITIES = Object.freeze({
   HIGHEST: 999
 });
 
-/** 
-"Regarding filters, here is a vaguely prioritized list (names taken from Swift version):
-
-1. DistanceFixedFilter
-2. DistanceRangesFilter
-3. AllTagsFilter
-4. AnyTagsFilter
-5. TimedAssetFilter
-6. AssetShapeFilter
-7. TimedRepeatFilter
-8. TrackTagsFilter
-9. BlockedAssetsFilter
-10. AngleFilter
-11. DynamicTagFilter
-
-The first four are the crucial ones; basically filtering by location and by tag. The others are important, but not as critical to the core functionality."
-*/
-
-/*
-// Accept an asset if one of the following conditions is true
-AnyAssetFilters([
-  // if an asset is scheduled to play right now
-  TimedAssetFilter(),
-  // If an asset has a shape and we AREN'T in it, reject entirely.
-  AssetShapeFilter(),
-  // if it has no shape, consider a fixed distance from it
-  DistanceFixedFilter(),
-  // or a user-specified distance range
-  AllAssetFilters([DistanceRangesFilter(), AngleFilter()]),
-]),
-  // only repeat assets if there's no other choice
-  TimedRepeatFilter(),
-  // skip blocked assets and users
-  BlockedAssetsFilter(),
-  // all the tags on an asset must be in our list of tags to listen for
-  AnyTagsFilter(),
-  // if any track-level tag filters exist, apply them
-  TrackTagsFilter(),
-  DynamicTagFilter("_ten_most_recent_days", MostRecentFilter(days: 10))
-
-  sortBy: [
-        SortRandomly(),
-        SortByLikes(),
-    ])
-*/
-
-//const alwaysNeutral = () => ASSET_PRIORITIES.NEUTRAL;
 const alwaysLowest = () => ASSET_PRIORITIES.LOWEST;
+
+// Accept an asset if any one of the provided filters passes, returns the first non-discarded rank
+function anyAssetFilter(filters = [],{ ...mixParams }) {
+  if (isEmpty(filters)) return alwaysLowest;
+
+  return (asset,{ ...stateParams }) => {
+    for (let filter of filters) {
+      let rank = filter(asset,{ ...mixParams, ...stateParams });
+      if (rank !== ASSET_PRIORITIES.DISCARD) return rank;
+    }
+
+    return ASSET_PRIORITIES.DISCARD;
+  };
+}
 
 /** Filter composed of multiple inner filters that accepts assets which pass every inner filter. */
 function allAssetFilter(filters = [],{ ...mixParams }) {
@@ -65,8 +32,7 @@ function allAssetFilter(filters = [],{ ...mixParams }) {
   return (asset,{ ...stateParams }) => {
     const ranks = {};
 
-    for (let i = 0;i < filters.length;i++) {
-      let filter = filters[i];
+    for (let filter of filters) {
       let rank = filter(asset,{ ...mixParams, ...stateParams });
 
       if (rank === ASSET_PRIORITIES.DISCARD) return rank; // can skip remaining filters
@@ -75,7 +41,8 @@ function allAssetFilter(filters = [],{ ...mixParams }) {
     }
 
     // return highest-priority (lowest integer) ranking for the asset
-    return Object.keys(ranks).sort((a,b) => a - b);
+    const sortedRanks = Object.keys(ranks).sort((a,b) => a - b);
+    return sortedRanks[0];
   };
 }
 
@@ -140,6 +107,7 @@ function anyTagsFilter() {
 
 /** TODO implement all remaining filters */
  
+// if an asset is scheduled to play right now
 function timedAssetFilter() {
   console.warn('Have not implemented timedAssetFilter yet');
   return () => ASSET_PRIORITIES.NEUTRAL;
@@ -175,7 +143,31 @@ function dynamicTagFilter() {
   return () => ASSET_PRIORITIES.NEUTRAL;
 }
 
-export const assetFilters = {
+const roundwareDefaultFilterChain = allAssetFilter([
+  anyAssetFilter([
+    timedAssetFilter(),                                     // if an asset is scheduled to play right now, or
+    assetShapeFilter(),                                     // if an asset has a shape and we AREN'T in it, reject entirely, or
+    distanceFixedFilter(),                                  // if it has no shape, consider a fixed distance from it, or
+    allAssetFilter([distanceRangesFilter(),angleFilter()]) // if the listener is within a user-configured distance or angle range
+  ]),
+
+  timedRepeatFilter(),   // only repeat assets if there's no other choice
+  blockedAssetsFilter(), // skip blocked assets and users
+  anyTagsFilter(),       // all the tags on an asset must be in our list of tags to listen for
+  trackTagsFilter(),     // if any track-level tag filters exist, apply them
+  dynamicTagFilter("_ten_most_recent_days",mostRecentFilter({ days: 10 })) // Only pass assets created within the most recent 10 days
+]);
+
+/**
+ Only pass assets created within the most recent given time range.  `MostRecentFilter(days: 7)` accepts assets published within the last week.
+ */
+function mostRecentFilter() {
+  console.warn('Have not implemented mostRecentFilter yet');
+  return () => ASSET_PRIORITIES.NEUTRAL;
+}
+
+export {
+  roundwareDefaultFilterChain,
   allAssetFilter,
   distanceFixedFilter,
   distanceRangesFilter,
@@ -187,5 +179,6 @@ export const assetFilters = {
   trackTagsFilter,
   blockedAssetsFilter,
   angleFilter,
-  dynamicTagFilter
+  dynamicTagFilter,
+  mostRecentFilter
 };

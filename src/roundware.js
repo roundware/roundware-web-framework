@@ -121,13 +121,14 @@ export default class Roundware {
     }
   }
 
-  activateMixer() {
+  activateMixer({ ...mixerConstructorOptions }) {
     const mixParams = this._project.mixParams;
 
     this._mixer = new Mixer({ 
       client: this,
       listenerLocation: this._listenerLocation,
       mixParams, 
+      ...mixerConstructorOptions
     });
 
     return this._mixer;
