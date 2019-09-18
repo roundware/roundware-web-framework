@@ -14,7 +14,7 @@ export class AssetSorter {
       this.sortMethods = mapSortMethods(sortMethods);
     }
 
-    console.info({ ordering, sortMethods, thisSortMethods: this.sortMethods });
+    //console.info({ ordering, sortMethods, thisSortMethods: this.sortMethods });
   }
 
   sort(assets) {
