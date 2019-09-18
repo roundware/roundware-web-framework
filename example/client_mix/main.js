@@ -61,20 +61,22 @@ function mapSpeakers(map,roundware) {
   });
 }
 
+const MARKER_IMG_SRC = 'https://www.google.com/intl/en_us/mapfiles/ms/micons/yellow-dot.png';
+
 function mapAssets(map,roundware) {
   const assets = roundware.assets();
   const assetMarkers = [];
+  const markerImg = new google.maps.MarkerImage(MARKER_IMG_SRC);
 
   $.each(assets, function (i, item) {
-    var marker_img = new google.maps.MarkerImage('https://www.google.com/intl/en_us/mapfiles/ms/micons/yellow-dot.png');
-    var point = new google.maps.LatLng(item.latitude, item.longitude);
+    const point = new google.maps.LatLng(item.latitude,item.longitude);
     // var tag_ids = item.tag_ids.toString();
     // console.log('tag_ids = ' + tag_ids);
 
-    var marker = new google.maps.Marker({
+    const marker = new google.maps.Marker({
       position: point,
       map: map,
-      icon: marker_img
+      icon: markerImg
     });
 
     marker.id = item.id;
@@ -83,6 +85,21 @@ function mapAssets(map,roundware) {
     if (item.tag_ids) {
       marker.rw_tags = item.tag_ids;
     }
+
+    const content = `<p><b>Asset ${item.id}</b></br>
+                     <em>${item.file}</em></br></p>
+                     <table>
+                      <tr><th>Volume</th><td>${item.volume}</td></tr>
+                      <tr><th>Created</th><td>${item.created.slice(0,19)}</td></tr>
+                      <tr><th>Weight</th><td>${item.weight}</td></tr>
+                      <tr><th>Tags</th><td>${item.tag_ids}</td></tr>
+                      </table>`;
+
+    const infoWindow = new google.maps.InfoWindow({ content });
+
+    marker.addListener('click', function() {
+      infoWindow.open(map,marker);
+    });
 
     // display asset shape if exists
     if (item.shape) {
