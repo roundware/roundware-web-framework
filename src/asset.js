@@ -1,23 +1,18 @@
-var projectId, apiClient;
+const PATH = "/assets/";
+//const PATH = "/assets/?created__lte=2019-08-15T18:06:39"; // TODO remove this
 
 export class Asset {
-  constructor(newProjectId,options) {
-    projectId = newProjectId;
-    apiClient = options.apiClient;
+  constructor(projectId,{ apiClient }) {
+    this.projectId = projectId;
+    this.apiClient = apiClient;
   }
 
   toString() {
-    return `Roundware Assets (#${projectId})`;
+    return `Roundware Assets (#${this.projectId})`;
   }
 
-  connect(data={}) {
-    var path = "/assets/";
-    // add project_id to any incoming filter data
-    data['project_id'] = projectId;
-
-    return apiClient.get(path,data).
-      then(function connectionSuccess(data) {
-        return data;
-      });
+  connect({ ...data }) {
+    const options = { ...data, project_id: this.projectId };
+    return this.apiClient.get(PATH,options);
   }
 }
