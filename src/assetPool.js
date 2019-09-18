@@ -2,8 +2,9 @@ import { AssetSorter } from './assetSorter';
 import { roundwareDefaultFilterChain } from './assetFilters';
 
 export class AssetPool {
-  constructor({ assets = [], filterChain = roundwareDefaultFilterChain, sortMethods = [], mixParams = {} }) {
+  constructor({ assets = [], timedAssets = [], filterChain = roundwareDefaultFilterChain, sortMethods = [], mixParams = {} }) {
     this.assets = assets.map(a => ({ playCount: 0, ...a }));
+    this.timedAssets = timedAssets;
     this.assetSorter = new AssetSorter({ sortMethods, ...mixParams });
     this.playingTracks = {};
     this.mixParams = mixParams;
@@ -12,6 +13,7 @@ export class AssetPool {
   }
 
   nextForTrack(track,{ filterOutAssets = [], ...stateParams }) {
+    // TODO need to account for timedAssets in the below code
     const rankedAssets = this.assets.reduce((rankings,asset) => {
       if (filterOutAssets.includes(asset)) return rankings;
 

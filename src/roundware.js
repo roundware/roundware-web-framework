@@ -4,6 +4,7 @@ import { Speaker } from "./speaker";
 import { GeoPosition } from "./geo-position";
 import { Stream } from "./stream";
 import { Asset } from "./asset";
+import { TimedAsset } from "./timed_asset";
 import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { User } from "./user";
@@ -52,8 +53,9 @@ export default class Roundware {
    * @param {String} options.serverUrl - identifies the Roundware server
    * @param {Number} options.projectId - identifies the Roundware project to connect
    * @param {Boolean} options.geoListenEnabled - whether or not to attempt to initialize geolocation-based listening
-   * @throws Will throw an error if serveUrl or projectId are missing **/
-  constructor(window,{ serverUrl, projectId, speakerFilters, assetFilters, listenerLocation, user, geoPosition, session, project, stream, speaker, asset, audiotrack, ...options }) {
+   * @throws Will throw an error if serveUrl or projectId are missing
+    TODO need to provide a more modern/ES6-aware architecture here vs burdening the constructor with all of these details **/
+  constructor(window,{ serverUrl, projectId, speakerFilters, assetFilters, listenerLocation, user, geoPosition, session, project, stream, speaker, asset, timedAsset, audiotrack, ...options }) {
     this._serverUrl = serverUrl;
     this._projectId = projectId;
     this._speakerFilters = speakerFilters;
@@ -74,6 +76,7 @@ export default class Roundware {
 
     let navigator = window.navigator;
 
+    // TODO need to reorganize/refactor these classes
     this._user        = user        || new User(options);
     this._geoPosition = geoPosition || new GeoPosition(navigator,options);
     this._session     = session     || new Session(navigator,this._projectId,this._geoPosition.geoListenEnabled,options);
@@ -81,6 +84,7 @@ export default class Roundware {
     this._stream      = stream      || new Stream(options);
     this._speaker     = speaker     || new Speaker(this._projectId,options);
     this._asset       = asset       || new Asset(this._projectId,options);
+    this._timed_asset = timedAsset  || new TimedAsset(this._projectId,options);
     this._audiotrack  = audiotrack  || new Audiotrack(this._projectId,options);
   }
 
@@ -110,6 +114,7 @@ export default class Roundware {
         this._project.uiconfig(sessionId).then(uiConfig => this._uiConfig = uiConfig),
         this._speaker.connect(this._speakerFilters).then(speakerData => this._speakerData = speakerData),
         this._asset.connect(this._assetFilters).then(assetData => this._assetData = assetData),
+        this._timed_asset.connect().then(data => this._timedAssetData = data),
         this._audiotrack.connect().then(audioTracksData => this._audioTracksData = audioTracksData)
       ];
 
@@ -186,6 +191,10 @@ export default class Roundware {
 
   assets() {
     return this._assetData || [];
+  }
+
+  timedAssets() {
+    return this._timedAssets || [];
   }
 
   audiotracks() {

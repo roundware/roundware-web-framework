@@ -9,11 +9,13 @@ export class Mixer {
 
     const audioTracks = client.audiotracks();
     const assets = client.assets();
+    const timedAssets = client.timedAssets();
     const speakers = client.speakers();
     const listenerPoint = coordsToPoints(listenerLocation);
 
     const assetPool = new AssetPool({
       assets,
+      timedAssets,
       filters,
       sortMethods,
       mixParams
