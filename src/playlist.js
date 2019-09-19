@@ -1,4 +1,4 @@
-import { PlaylistTrack } from './playlist_track';
+import { PlaylistAudiotrack } from './playlistAudioTrack';
 
 export class Playlist {
   constructor({ audioTracks = [], listenerPoint = {}, assetPool, ...playlistTrackOptions }) {
@@ -12,7 +12,7 @@ export class Playlist {
     const trackMap = new Map();
 
     audioTracks.forEach(audioData => {
-      const track = new PlaylistTrack({ 
+      const track = new PlaylistAudiotrack({ 
         audioData,
         playlist,
         listenerPoint,
