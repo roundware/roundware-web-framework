@@ -239,6 +239,9 @@ function initDemo() {
       });
 
       playPauseBtn.disabled = false;
+
+      $('#loadingIndicator').remove();
+      $('#instructions').show();
     }).
     catch(err => console.log('Roundware connection error',err));
 }

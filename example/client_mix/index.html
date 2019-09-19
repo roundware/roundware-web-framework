@@ -13,10 +13,17 @@
   <body>
     <h1>Roundware Web Framework Mixer Acceptance Test</h1>
     <div>
+      <span id="loadingIndicator">
+        <img id="loadingSpinner" src="./loader.gif" alt="Animated rogress indicator made of rotating line segments" style="float: left;" />
+        <em>Connecting and downloading...</em>
+      </span>
       <button id="playPauseBtn" disabled="disabled">Start</button>
     </div>
 
-    <div>Move pin on map to update audio based on location.</div>
+    <div id="instructions" style="display: none;">
+      Move pin on map to update audio based on location.
+   </div>
+
     <div id="mixMap"></div>
 
     <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
