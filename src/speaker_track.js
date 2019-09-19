@@ -1,7 +1,7 @@
 import * as turf from '@turf/turf'; // TODO try to use smaller packages since turf is so modular
 
 const convertLinesToPolygon = shape => turf.lineToPolygon(shape);
-const FADE_DURATION = 3; // seconds
+const FADE_DURATION_SECONDS = 3;
 
 /** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners. 
  * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker’s defined zone.'
@@ -63,6 +63,7 @@ export class SpeakerTrack {
     }
   }
 
+  // @see https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/createGain
   buildAudio() {
     if (this.audio) return this.audio;
 
@@ -93,21 +94,14 @@ export class SpeakerTrack {
   updateVolume() {
     const newVolume = this.calculateVolume();
 
-    if (newVolume === this.currentVolume) return false;
-
     this.currentVolume = newVolume;
 
-    if (newVolume <= 0.05 && !this.gainNode) {
-      // avoid creating web audio objects for silent speakers which have not yet been lazily created
-      return false;
-    }
-
-    const secondsFromNow = this.audioCtx.currentTime + FADE_DURATION;
+    const secondsFromNow = this.audioCtx.currentTime + FADE_DURATION_SECONDS;
 
     this.buildAudio();
     this.gainNode.gain.linearRampToValueAtTime(newVolume,secondsFromNow);
 
-    console.info(`Setting ${this} volume to ${newVolume.toFixed(2)} over ${FADE_DURATION} seconds`);
+    console.info(`Setting '${this}' volume: ${newVolume.toFixed(2)} over ${FADE_DURATION_SECONDS} seconds`);
 
     return true;
   }
@@ -117,7 +111,7 @@ export class SpeakerTrack {
   }
 
   async play() {
-    if (!this.updateVolume()) return;
+    this.updateVolume();
 
     try {
       console.log('Playing',this.logline);
