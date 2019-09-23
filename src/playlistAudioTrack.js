@@ -29,23 +29,9 @@ export class PlaylistAudiotrack {
   constructor({ audioCtx, audioData = {}, playlist }) {
     this.data = audioData;
     this.playlist = playlist;
-
     this.playing = false;
 
-    const audioElement = new Audio();
-    audioElement.crossOrigin = 'anonymous';
-
-    audioElement.addEventListener('ended',() => {
-      this.playing = false;
-      console.log(this,'ended playing');
-      this.play(); // makes play() recursive
-    }); 
-
-    const audioSrc = audioCtx.createMediaElementSource(audioElement);
-    audioSrc.connect(audioCtx.destination);
-
-    this.audioElement = audioElement;
-
+    this.buildAudio(audioCtx);
     //self.id = id
     //self.volume = volume
     //self.duration = duration
@@ -72,6 +58,21 @@ export class PlaylistAudiotrack {
                 //fadeOutWhenFiltered: it["fadeout_when_filtered"]?.bool ?? true
   }
 
+  buildAudio(audioCtx) {
+    const audioElement = new Audio();
+    audioElement.crossOrigin = 'anonymous';
+
+    audioElement.addEventListener('ended',() => {
+      audioElement.src = '';
+      if (this.playing) this.play(); // makes play() recursive
+    }); 
+
+    const audioSrc = audioCtx.createMediaElementSource(audioElement);
+    audioSrc.connect(audioCtx.destination);
+
+    this.audioElement = audioElement;
+  }
+
   async play() {
     if (this.playing) return;
 
@@ -95,7 +96,7 @@ export class PlaylistAudiotrack {
   async pause() {
     if (!this.playing) return;
 
-    console.log('Pausing',this);
+    console.log(`Pausing ${this}`);
 
     if (this.audioElement) await this.audioElement.pause();
     this.playing = false;
@@ -103,6 +104,6 @@ export class PlaylistAudiotrack {
 
   toString() {
     const { id } = this.data;
-    return `PlaylistAudiotrack (audiotrack ${id})`;
+    return `PlaylistAudiotrack (Audiotrack ID #${id})`;
   }
 }

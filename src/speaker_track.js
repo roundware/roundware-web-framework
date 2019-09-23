@@ -101,9 +101,9 @@ export class SpeakerTrack {
     this.buildAudio();
     this.gainNode.gain.linearRampToValueAtTime(newVolume,secondsFromNow);
 
-    console.info(`Setting '${this}' volume: ${newVolume.toFixed(2)} over ${FADE_DURATION_SECONDS} seconds`);
+    //console.info(`Setting '${this}' volume: ${newVolume.toFixed(2)} over ${FADE_DURATION_SECONDS} seconds`);
 
-    return true;
+    return newVolume;
   }
 
   get logline() {
@@ -111,7 +111,9 @@ export class SpeakerTrack {
   }
 
   async play() {
-    this.updateVolume();
+    const newVolume = this.updateVolume();
+
+    if (newVolume < 0.05) return;
 
     try {
       console.log('Playing',this.logline);
@@ -123,7 +125,7 @@ export class SpeakerTrack {
   }
 
   async pause() {
-    if (!this.audio) return; // may not have been created yet, so there's nothing to pause
+    if (!this.playing) return;
     
     try {
       console.log('Pausing',this.logline);

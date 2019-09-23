@@ -49,21 +49,22 @@ function allAssetFilter(filters = [],{ ...mixParams }) {
 
 // a "pre-filter" used by geo-enabled filters to make sure if we are missing data, or geoListenEnabled is false, 
 // we always return a neutral ranking
-const rankForGeofilteringEligibility = (asset,{ listenerPoint, geoListenEnabled = false }) => {
-  if (!geoListenEnabled || !listenerPoint || !asset) return alwaysNeutral;
-
-  const { location: assetLocation } = asset;
-  if (!assetLocation) return ASSET_PRIORITIES.NETURAL;
-};
+function rankForGeofilteringEligibility(asset,{ listenerPoint, geoListenEnabled }) {
+  return geoListenEnabled && listenerPoint && asset;
+}
 
 // Converts between turf units (kilometers) and web geolocation units (meters);
 const calculateDistanceInMeters = (loc1,loc2) => turf.distance(loc1,loc2,{ units: 'kilometers' }) / 1000.;
 
 /** Only accepts an asset if the user is within the project-configured recording radius  */
 function distanceFixedFilter() {
-  const filter = (asset,{ listenerPoint, recordingRadius = Infinity }) => {
-    const { location: assetLocation } = asset;
-    const distance = calculateDistanceInMeters(listenerPoint,assetLocation);
+  return (asset,options = {}) => {
+    if (!rankForGeofilteringEligibility(asset,options)) return ASSET_PRIORITIES.NEUTRAL;
+
+    const { locationPoint: assetLocationPoint } = asset;
+    const { listenerPoint, recordingRadius } = options;
+
+    const distance = calculateDistanceInMeters(listenerPoint,assetLocationPoint);
 
     if (distance < recordingRadius) {
       return ASSET_PRIORITIES.NORMAL;
@@ -71,20 +72,19 @@ function distanceFixedFilter() {
       return ASSET_PRIORITIES.DISCARD;
     }
   };
-
-  return allAssetFilter([
-    rankForGeofilteringEligibility,
-    filter
-  ]);
 }
 
 /**
  Accepts an asset if the user is within range of it based on the current dynamic distance range.
  */
 function distanceRangesFilter() {
-  const filter = (asset,{ listenerPoint, minDist = 0, maxDist = Infinity }) => {
-    const { location: assetLocation } = asset;
-    const distance = calculateDistanceInMeters(listenerPoint,assetLocation);
+  return (asset,options) => {
+    if (!rankForGeofilteringEligibility(asset,options)) return ASSET_PRIORITIES.NEUTRAL;
+
+    const { listenerPoint, minDist = 0, maxDist = Infinity } = options;
+
+    const { locationPoint } = asset;
+    const distance = calculateDistanceInMeters(listenerPoint,locationPoint);
 
     if (distance >= minDist && distance <= maxDist) {
       return ASSET_PRIORITIES.NORMAL;
@@ -92,11 +92,6 @@ function distanceRangesFilter() {
       return ASSET_PRIORITIES.DISCARD;
     }
   };
-
-  return allAssetFilter([
-    rankForGeofilteringEligibility,
-    filter
-  ]);
 }
   
 // TODO: implement allTagsFilter per below Swift code
@@ -177,10 +172,12 @@ function timedAssetFilter() {
 
 // Accept an asset if the user is currently within its defined shape
 function assetShapeFilter() {
-  const filter = (asset,{ listenerPoint }) => {
+  return (asset,options = {}) => {
     const { shape } = asset;
 
-    if (!shape) return ASSET_PRIORITIES.NEUTRAL;
+    if (!(shape && rankForGeofilteringEligibility(asset,options))) return ASSET_PRIORITIES.NEUTRAL;
+
+    const { listenerPoint } = options;
 
     if (turf.booleanPointInPolygon(listenerPoint,shape)) {
       return ASSET_PRIORITIES.NORMAL;
@@ -188,11 +185,6 @@ function assetShapeFilter() {
       return ASSET_PRIORITIES.DISCARD;
     }
   };
-
-  return allAssetFilter([
-    rankForGeofilteringEligibility,
-    filter
-  ]);
 }
 
 // Prevents assets from repeating until a certain time threshold has passed
@@ -348,7 +340,7 @@ function mostRecentFilter() {
 
 const roundwareDefaultFilterChain = allAssetFilter([
   anyAssetFilter([
-    timedAssetFilter(),                                    // if an asset is scheduled to play right now, or
+    //timedAssetFilter(),                                    // if an asset is scheduled to play right now, or
     assetShapeFilter(),                                    // if an asset has a shape and we AREN'T in it, reject entirely, or
     distanceFixedFilter(),                                 // if it has no shape, consider a fixed distance from it, or
     allAssetFilter([distanceRangesFilter(),angleFilter()]) // if the listener is within a user-configured distance or angle range

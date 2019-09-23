@@ -1,9 +1,14 @@
 import { AssetSorter } from './assetSorter';
 import { roundwareDefaultFilterChain } from './assetFilters';
+import { coordsToPoints } from './utils';
 
 export class AssetPool {
   constructor({ assets = [], timedAssets = [], filterChain = roundwareDefaultFilterChain, sortMethods = [], mixParams = {} }) {
-    this.assets = assets.map(a => ({ playCount: 0, ...a }));
+    this.assets = assets.map(a => ({ 
+      locationPoint: coordsToPoints(a),
+      playCount: 0, 
+      ...a 
+    }));
     this.timedAssets = timedAssets;
     this.assetSorter = new AssetSorter({ sortMethods, ...mixParams });
     this.playingTracks = {};
@@ -17,7 +22,7 @@ export class AssetPool {
     const rankedAssets = this.assets.reduce((rankings,asset) => {
       if (filterOutAssets.includes(asset)) return rankings;
 
-      const rank = this.filterChain(asset,stateParams);
+      const rank = this.filterChain(asset,{ ...stateParams, ...this.mixParams });
 
       if (rank) {
         rankings[rank] = rankings[rank] || [];

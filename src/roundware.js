@@ -61,7 +61,6 @@ export default class Roundware {
     this._speakerFilters = speakerFilters;
     this._assetFilters = assetFilters;
     this._listenerLocation = listenerLocation;
-    //alert(JSON.stringify(this._listenerLocation));
 
     if (this._serverUrl === undefined) {
       throw "Roundware objects must be initialized with a serverUrl";
@@ -127,7 +126,10 @@ export default class Roundware {
   }
 
   activateMixer({ ...mixerConstructorOptions }) {
-    const mixParams = this._project.mixParams;
+    const mixParams = {
+      ...this._project.mixParams,
+      geoListenEnabled: this._geoPosition.geoListenEnabled
+    };
 
     this._mixer = new Mixer({ 
       client: this,

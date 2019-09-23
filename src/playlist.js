@@ -57,8 +57,6 @@ export class Playlist {
       listenerPoint: this.listenerPoint
     });
 
-    console.info('NEXT ASSET',nextAsset);
-
     this.trackMap[forTrack] = nextAsset;
 
     return nextAsset;
