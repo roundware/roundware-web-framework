@@ -1,23 +1,16 @@
-var projectId, apiClient;
+const PATH = "/speakers/";
 
 export class Speaker {
-  constructor(newProjectId,options) {
-    projectId = newProjectId;
-    apiClient = options.apiClient;
+  constructor(projectId,{ apiClient }) {
+    this.projectId = projectId;
+    this.apiClient = apiClient;
   }
 
   toString() {
-    return `Roundware Speaker (#${projectId})`;
+    return `Roundware Speaker (#${this.projectId})`;
   }
 
-  connect(data={}) {
-    var path = "/speakers/";
-    // add project_id to any incoming filter data
-    data['project_id'] = projectId;
-
-    return apiClient.get(path,data).
-      then(function connectionSuccess(data) {
-        return data;
-      });
+  connect({ ...data }) {
+    return this.apiClient.get(PATH,{ ...data, project_id: this.projectId });
   }
 }
