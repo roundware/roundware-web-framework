@@ -15,6 +15,8 @@ const ROUNDWARE_SERVER_URL = 'https://prod.roundware.com/api/2';
 //const ROUNDWARE_INITIAL_LONGITUDE = -73.22926793670655;
 
 const ROUNDWARE_DEFAULT_PROJECT_ID = 27;
+//const ROUNDWARE_INITIAL_LATITUDE = 33.86878099505993;
+//const ROUNDWARE_INITIAL_LONGITUDE = -118.71928792609322;
 const ROUNDWARE_INITIAL_LATITUDE = 34.02233;
 const ROUNDWARE_INITIAL_LONGITUDE = -118.286364;
 
@@ -177,6 +179,19 @@ function showHideMarkers(map,assetMarkers) {
   });
 }
 
+const drawListeningCircle = (map,center,radius) => (
+  new google.maps.Circle({
+    strokeColor: '#FF0000',
+    strokeOpacity: 0.8,
+    strokeWeight: 2,
+    fillColor: '#FF0000',
+    fillOpacity: 0.35,
+    map,
+    center,
+    radius
+  })
+);
+
 // This function is intended to be invoked by the google API callback; see index.html
 /* eslint-disable-next-line no-unused-vars */
 function initDemo() { 
@@ -221,6 +236,10 @@ function initDemo() {
       const assetMarkers = mapAssets(map,roundware);
       showHideMarkers(assetMarkers);
 
+      const { recordingRadius = 25 } = roundware.mixParams;
+
+      let listeningCircle = drawListeningCircle(map,googleMapsCenter,recordingRadius);
+
       const mixer = roundware.activateMixer();
 
       google.maps.event.addListener(listener, "dragend",() => {
@@ -231,6 +250,9 @@ function initDemo() {
         const longitude = position.lng();
 
         roundware.updateLocation({ latitude, longitude });
+
+        listeningCircle.setMap(null);
+        listeningCircle = drawListeningCircle(map,position,recordingRadius);
       });
 
       playPauseBtn.addEventListener('click',() => {

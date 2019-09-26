@@ -3,23 +3,24 @@ import { isEmpty } from './utils';
 
 const ASSET_PRIORITIES = Object.freeze({
   DISCARD: false,
-  NEUTRAL:  0,
-  LOWEST: 1,
-  NORMAL: 100,
-  HIGHEST: 999
+  LOWEST:  1,
+  NORMAL:  100,
+  HIGHEST: 999,
+  NEUTRAL: 1000
 });
 
 const alwaysLowest = () => ASSET_PRIORITIES.LOWEST;
 const alwaysNeutral = () => ASSET_PRIORITIES.NEUTRAL;
 
-// Accept an asset if any one of the provided filters passes, returns the first non-discarded rank
+// Accept an asset if any one of the provided filters passes, returns the first non-discarded/non-neutral rank
 function anyAssetFilter(filters = [],{ ...mixParams }) {
   if (isEmpty(filters)) return alwaysLowest;
 
   return (asset,{ ...stateParams }) => {
     for (let filter of filters) {
       let rank = filter(asset,{ ...mixParams, ...stateParams });
-      if (rank !== ASSET_PRIORITIES.DISCARD) return rank;
+      //console.log('AAF',{ asset, rank, filter: filter.name });
+      if (rank !== ASSET_PRIORITIES.DISCARD && rank !== ASSET_PRIORITIES.NEUTRAL) return rank;
     }
 
     return ASSET_PRIORITIES.DISCARD;
@@ -33,7 +34,9 @@ function allAssetFilter(filters = [],{ ...mixParams }) {
   return (asset,{ ...stateParams }) => {
     const ranks = {};
 
+    //console.info("CONSOLEDEBUG",{ AAF_FILTERS: filters });
     for (let filter of filters) {
+      //console.info("CONSOLEDEBUG",filter);
       let rank = filter(asset,{ ...mixParams, ...stateParams });
 
       if (rank === ASSET_PRIORITIES.DISCARD) return rank; // can skip remaining filters
@@ -54,7 +57,11 @@ function rankForGeofilteringEligibility(asset,{ listenerPoint, geoListenEnabled 
 }
 
 // Converts between turf units (kilometers) and web geolocation units (meters);
-const calculateDistanceInMeters = (loc1,loc2) => turf.distance(loc1,loc2,{ units: 'kilometers' }) / 1000.;
+const calculateDistanceInMeters = (loc1,loc2) => {
+  const dist = turf.distance(loc2,loc1);
+  console.info("DIST",{ loc1, loc2, dist, distDiv: dist/1000 });
+  return dist;
+};
 
 /** Only accepts an asset if the user is within the project-configured recording radius  */
 function distanceFixedFilter() {
@@ -65,6 +72,8 @@ function distanceFixedFilter() {
     const { listenerPoint, recordingRadius } = options;
 
     const distance = calculateDistanceInMeters(listenerPoint,assetLocationPoint);
+
+    console.log("distanceFixedFilter data",{ distance, recordingRadius, truth: (distance < recordingRadius)});
 
     if (distance < recordingRadius) {
       return ASSET_PRIORITIES.NORMAL;

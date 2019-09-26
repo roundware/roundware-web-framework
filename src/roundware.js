@@ -125,9 +125,13 @@ export default class Roundware {
     }
   }
 
+  get mixParams() {
+    return (this._project || {}).mixParams;
+  }
+
   activateMixer({ ...mixerConstructorOptions }) {
     const mixParams = {
-      ...this._project.mixParams,
+      ...this.mixParams,
       geoListenEnabled: this._geoPosition.geoListenEnabled
     };
 

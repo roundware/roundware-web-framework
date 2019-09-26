@@ -9,6 +9,7 @@ export class AssetPool {
       playCount: 0, 
       ...a 
     }));
+
     this.timedAssets = timedAssets;
     this.assetSorter = new AssetSorter({ sortMethods, ...mixParams });
     this.playingTracks = {};

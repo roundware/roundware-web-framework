@@ -1,5 +1,5 @@
-const PATH = "/assets/";
-//const PATH = "/assets/?created__lte=2019-08-15T18:06:39"; // TODO remove this
+//const PATH = "/assets/";
+const PATH = "/assets/?created__lte=2019-08-15T18:06:39"; // TODO remove this
 
 export class Asset {
   constructor(projectId,{ apiClient }) {
