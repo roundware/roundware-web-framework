@@ -10,7 +10,7 @@ const ASSET_PRIORITIES = Object.freeze({
 });
 
 const alwaysLowest = () => ASSET_PRIORITIES.LOWEST;
-const alwaysNeutral = () => ASSET_PRIORITIES.NEUTRAL;
+//const alwaysNeutral = () => ASSET_PRIORITIES.NEUTRAL;
 
 // Accept an asset if any one of the provided filters passes, returns the first non-discarded/non-neutral rank
 function anyAssetFilter(filters = [],{ ...mixParams }) {
@@ -37,7 +37,6 @@ function allAssetFilter(filters = [],{ ...mixParams }) {
   return (asset,{ ...stateParams }) => {
     const ranks = [];
 
-    //console.info("CONSOLEDEBUG",{ AAF_FILTERS: filters });
     for (let filter of filters) {
       //console.info("CONSOLEDEBUG",filter);
       let rank = filter(asset,{ ...mixParams, ...stateParams });
@@ -242,10 +241,10 @@ if blocked.contains(asset.id) {
 } **/
   
 // Accept an asset if it's within the current angle range.
-function angleFilter() {
-  console.warn('Have not implemented angleFilter yet');
-  return alwaysNeutral;
-}
+//function angleFilter() {
+  //console.warn('Have not implemented angleFilter yet');
+  //return alwaysNeutral;
+//}
   
 //func keep(_ asset: Asset, playlist: Playlist, track: AudioTrack) -> AssetPriority {
   //guard playlist.project.geo_listen_enabled,
@@ -322,10 +321,11 @@ function angleFilter() {
 /**
  Only pass assets created within the most recent given time range.  `MostRecentFilter(days: 7)` accepts assets published within the last week.
  */
-function mostRecentFilter() {
-  console.warn('Have not implemented mostRecentFilter yet');
-  return alwaysNeutral;
-}
+//function mostRecentFilter() {
+  //console.warn('Have not implemented mostRecentFilter yet');
+  //return alwaysNeutral;
+//}
+
 // Oldest age of assets to accept.
 //private let maxAge: TimeInterval
 
@@ -360,10 +360,6 @@ const roundwareDefaultFilterChain = allAssetFilter([
   //dynamicTagFilter("_ten_most_recent_days",mostRecentFilter({ days: 10 })) // Only pass assets created within the most recent 10 days
 ]);
 
-//const roundwareDefaultFilterChain = allAssetFilter([
-  //distanceFixedFilter(),                                 // if it has no shape, consider a fixed distance from it, or
-//]);
-
 export {
   roundwareDefaultFilterChain,
   allAssetFilter,
@@ -376,7 +372,7 @@ export {
   //timedRepeatFilter,
   //trackTagsFilter,
   //blockedAssetsFilter,
-  angleFilter,
+  //angleFilter,
   //dynamicTagFilter,
-  mostRecentFilter
+  //mostRecentFilter
 };
