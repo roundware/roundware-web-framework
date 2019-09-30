@@ -46,18 +46,18 @@ export class PlaylistAudiotrack {
     //self.startWithSilence = startWithSilence
     //self.fadeOutWhenFiltered = fadeOutWhenFiltered
     
-                //return AudioTrack(
-                //id: it["id"]!.int!,
-                //volume: (it["minvolume"]!.float!)...(it["maxvolume"]!.float!),
-                //duration: (it["minduration"]!.float!)...(it["maxduration"]!.float!),
-                //deadAir: (it["mindeadair"]!.float!)...(it["maxdeadair"]!.float!),
-                //fadeInTime: (it["minfadeintime"]!.float!)...(it["maxfadeintime"]!.float!),
-                //fadeOutTime: (it["minfadeouttime"]!.float!)...(it["maxfadeouttime"]!.float!),
-                //repeatRecordings: it["repeatrecordings"]?.bool ?? false,
-                //tags: it["tag_filters"]?.array?.map { $0.int! },
-                //bannedDuration: it["banned_duration"]?.double ?? 600,
-                //startWithSilence: it["start_with_silence"]?.bool ?? true,
-                //fadeOutWhenFiltered: it["fadeout_when_filtered"]?.bool ?? true
+    //return AudioTrack(
+    //id: it["id"]!.int!,
+    //volume: (it["minvolume"]!.float!)...(it["maxvolume"]!.float!),
+    //duration: (it["minduration"]!.float!)...(it["maxduration"]!.float!),
+    //deadAir: (it["mindeadair"]!.float!)...(it["maxdeadair"]!.float!),
+    //fadeInTime: (it["minfadeintime"]!.float!)...(it["maxfadeintime"]!.float!),
+    //fadeOutTime: (it["minfadeouttime"]!.float!)...(it["maxfadeouttime"]!.float!),
+    //repeatRecordings: it["repeatrecordings"]?.bool ?? false,
+    //tags: it["tag_filters"]?.array?.map { $0.int! },
+    //bannedDuration: it["banned_duration"]?.double ?? 600,
+    //startWithSilence: it["start_with_silence"]?.bool ?? true,
+    //fadeOutWhenFiltered: it["fadeout_when_filtered"]?.bool ?? true
   }
 
   buildAudio(audioCtx) {
@@ -66,7 +66,7 @@ export class PlaylistAudiotrack {
 
     audioElement.addEventListener('ended',() => {
       audioElement.src = '';
-      if (this.playing) this.play(); // makes play() recursive
+      if (this.playing) this.play(); // NOTE: makes play() recursive
     }); 
 
     const audioSrc = audioCtx.createMediaElementSource(audioElement);
@@ -76,8 +76,6 @@ export class PlaylistAudiotrack {
   }
 
   async play() {
-    if (this.playing) return;
-
     const { playlist, audioElement } = this;
 
     if (audioElement.src === '' || audioElement.ended) {
