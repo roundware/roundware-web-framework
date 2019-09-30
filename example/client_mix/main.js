@@ -1,4 +1,5 @@
-/* global $, google, Roundware */
+/* global $, google, Roundware, turf */
+
 const ROUNDWARE_SERVER_URL = 'https://prod.roundware.com/api/2';
 
 //const ROUNDWARE_SERVER_URL = 'https://simw.roundware.com/api/2';
@@ -65,7 +66,7 @@ function mapSpeakers(map,roundware) {
 
 const MARKER_IMG_SRC = 'https://www.google.com/intl/en_us/mapfiles/ms/micons/yellow-dot.png';
 
-function mapAssets(map,roundware) {
+function mapAssets(map,listener,roundware) {
   const assets = roundware.assets();
   const assetMarkers = [];
   const markerImg = new google.maps.MarkerImage(MARKER_IMG_SRC);
@@ -101,6 +102,23 @@ function mapAssets(map,roundware) {
 
     marker.addListener('click', function() {
       infoWindow.open(map,marker);
+
+      let longitude = marker.position.lng();
+      let latitude = marker.position.lat();
+
+      const assetLocationPoint = turf.point([longitude,latitude]);
+
+      longitude = listener.position.lng();
+      latitude = listener.position.lat();
+
+      const listenerLocationPoint = turf.point([longitude,latitude]);
+
+      const dist = turf.distance(listenerLocationPoint,assetLocationPoint,{ units: 'meters' });
+
+      console.info(`Asset ${marker.id}: ${dist} meters from listener`,{ 
+        assetLocationPoint: assetLocationPoint.geometry.coordinates, 
+        listenerLocationPoint: listenerLocationPoint.geometry.coordinates 
+      });
     });
 
     // display asset shape if exists
@@ -233,7 +251,7 @@ function initDemo() {
     then(() => {
       mapSpeakers(map,roundware);
 
-      const assetMarkers = mapAssets(map,roundware);
+      const assetMarkers = mapAssets(map,listener,roundware);
       showHideMarkers(assetMarkers);
 
       const { recordingRadius = 25 } = roundware.mixParams;
