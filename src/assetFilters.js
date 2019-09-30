@@ -3,10 +3,10 @@ import { isEmpty } from './utils';
 
 const ASSET_PRIORITIES = Object.freeze({
   DISCARD: false,
+  NEUTRAL: 0,
   LOWEST:  1,
   NORMAL:  100,
   HIGHEST: 999,
-  NEUTRAL: 1000
 });
 
 const alwaysLowest = () => ASSET_PRIORITIES.LOWEST;
@@ -20,7 +20,10 @@ function anyAssetFilter(filters = [],{ ...mixParams }) {
     for (let filter of filters) {
       let rank = filter(asset,{ ...mixParams, ...stateParams });
       //console.log('AAF',{ asset, rank, filter: filter.name });
-      if (rank !== ASSET_PRIORITIES.DISCARD && rank !== ASSET_PRIORITIES.NEUTRAL) return rank;
+      if (rank !== ASSET_PRIORITIES.DISCARD && rank !== ASSET_PRIORITIES.NEUTRAL) {
+        console.log(`Asset ${asset.id}: ${rank}`);
+        return rank;
+      }
     }
 
     return ASSET_PRIORITIES.DISCARD;
@@ -32,7 +35,7 @@ function allAssetFilter(filters = [],{ ...mixParams }) {
   if (isEmpty(filters)) return alwaysLowest;
   
   return (asset,{ ...stateParams }) => {
-    const ranks = {};
+    const ranks = [];
 
     //console.info("CONSOLEDEBUG",{ AAF_FILTERS: filters });
     for (let filter of filters) {
@@ -41,12 +44,11 @@ function allAssetFilter(filters = [],{ ...mixParams }) {
 
       if (rank === ASSET_PRIORITIES.DISCARD) return rank; // can skip remaining filters
 
-      ranks[rank] = 1;
+      ranks.push(rank);
     }
 
-    // return highest-priority (lowest integer) ranking for the asset
-    const sortedRanks = Object.keys(ranks).sort((a,b) => a - b);
-    return sortedRanks[0];
+    const finalRank = ranks.find(r => r !== ASSET_PRIORITIES.NEUTRAL) || ranks[0];
+    return finalRank;
   };
 }
 
@@ -56,58 +58,50 @@ function rankForGeofilteringEligibility(asset,{ listenerPoint, geoListenEnabled 
   return geoListenEnabled && listenerPoint && asset;
 }
 
-// Converts between turf units (kilometers) and web geolocation units (meters);
-const calculateDistanceInMeters = (loc1,loc2) => {
-  const dist = turf.distance(loc2,loc1);
-  console.info("DIST",{ loc1, loc2, dist, distDiv: dist/1000 });
-  return dist;
-};
+const calculateDistanceInMeters = (loc1,loc2) => turf.distance(loc1,loc2,{ units: 'meters' });
 
 /** Only accepts an asset if the user is within the project-configured recording radius  */
-function distanceFixedFilter() {
-  return (asset,options = {}) => {
-    if (!rankForGeofilteringEligibility(asset,options)) return ASSET_PRIORITIES.NEUTRAL;
+const distanceFixedFilter = () => (asset,options = {}) => {
+  if (!rankForGeofilteringEligibility(asset,options)) return ASSET_PRIORITIES.NEUTRAL;
 
-    const { locationPoint: assetLocationPoint } = asset;
-    const { listenerPoint, recordingRadius } = options;
+  const { locationPoint: assetLocationPoint } = asset;
+  const { listenerPoint, recordingRadius } = options;
 
-    const distance = calculateDistanceInMeters(listenerPoint,assetLocationPoint);
+  const distance = calculateDistanceInMeters(listenerPoint,assetLocationPoint);
 
-    console.log("distanceFixedFilter data",{ distance, recordingRadius, truth: (distance < recordingRadius)});
-
-    if (distance < recordingRadius) {
-      return ASSET_PRIORITIES.NORMAL;
-    } else {
-      return ASSET_PRIORITIES.DISCARD;
-    }
-  };
-}
+  if (distance < recordingRadius) {
+    return ASSET_PRIORITIES.NORMAL;
+  } else {
+    return ASSET_PRIORITIES.DISCARD;
+  }
+};
 
 /**
  Accepts an asset if the user is within range of it based on the current dynamic distance range.
  */
-function distanceRangesFilter() {
-  return (asset,options) => {
-    if (!rankForGeofilteringEligibility(asset,options)) return ASSET_PRIORITIES.NEUTRAL;
+const distanceRangesFilter = () => (asset,options = {}) => {
+  if (!rankForGeofilteringEligibility(asset,options)) return ASSET_PRIORITIES.NEUTRAL;
 
-    const { listenerPoint, minDist = 0, maxDist = Infinity } = options;
+  const { listenerPoint, minDist, maxDist } = options;
 
-    const { locationPoint } = asset;
-    const distance = calculateDistanceInMeters(listenerPoint,locationPoint);
+  if (minDist === undefined || maxDist === undefined) return ASSET_PRIORITIES.NEUTRAL;
 
-    if (distance >= minDist && distance <= maxDist) {
-      return ASSET_PRIORITIES.NORMAL;
-    } else {
-      return ASSET_PRIORITIES.DISCARD;
-    }
-  };
-}
+  const { locationPoint } = asset;
+
+  const distance = calculateDistanceInMeters(listenerPoint,locationPoint);
+
+  if (distance >= minDist && distance <= maxDist) {
+    return ASSET_PRIORITIES.NORMAL;
+  } else {
+    return ASSET_PRIORITIES.DISCARD;
+  }
+};
   
 // TODO: implement allTagsFilter per below Swift code
-function allTagsFilter() {
-  console.warn('Have not implemented allTagsFilter yet');
-  return alwaysNeutral;
-}
+//function allTagsFilter() {
+  //console.warn('Have not implemented allTagsFilter yet');
+  //return alwaysNeutral;
+//}
 
 /** Swift code for this filter below :
   // List of tag_ids to listen for.
@@ -137,10 +131,10 @@ function anyTagsFilter() {
 }
 
 // if an asset is scheduled to play right now
-function timedAssetFilter() {
-  console.warn('Have not implemented timedAssetFilter yet');
-  return alwaysNeutral;
-}
+//function timedAssetFilter() {
+  //console.warn('Have not implemented timedAssetFilter yet');
+  //return alwaysNeutral;
+//}
   
 /** here is the iOS code for TimedAssetFilter
   func keep(_ asset: Asset, playlist: Playlist, track: AudioTrack) -> AssetPriority {
@@ -197,10 +191,11 @@ function assetShapeFilter() {
 }
 
 // Prevents assets from repeating until a certain time threshold has passed
-function timedRepeatFilter() {
-  console.warn('Have not implemented timedRepeatFilter yet');
-  return alwaysNeutral;
-}
+//function timedRepeatFilter() {
+  //console.warn('Have not implemented timedRepeatFilter yet');
+  //return alwaysNeutral;
+//}
+
 // TODO implement timedRepeatFilter using below Swift code as a guide
 //if let listenDate = playlist.lastListenDate(for: asset) {
 //let timeout = track.bannedDuration
@@ -213,10 +208,10 @@ function timedRepeatFilter() {
 //return .normal
 //}
   
-function trackTagsFilter() {
-  console.warn('Have not implemented trackTagsFilter yet');
-  return alwaysNeutral;
-}
+//function trackTagsFilter() {
+  //console.warn('Have not implemented trackTagsFilter yet');
+  //return alwaysNeutral;
+//}
 
 /** func keep(_ asset: Asset, playlist: Playlist, track: AudioTrack) -> AssetPriority {
   guard let trackTags = track.tags,
@@ -231,10 +226,10 @@ function trackTagsFilter() {
 } **/
 
 // Skips assets that the user has blocked, or assets published by someone that the user has blocked
-function blockedAssetsFilter() {
-  console.warn('Have not implemented blockedAssetsFilter yet');
-  return alwaysNeutral;
-}
+//function blockedAssetsFilter() {
+  //console.warn('Have not implemented blockedAssetsFilter yet');
+  //return alwaysNeutral;
+//}
 
 /**
 guard let blocked = self.blockedAssets
@@ -290,10 +285,10 @@ function angleFilter() {
   //return .discard
 
 // Accept assets that pass an inner filter if the tag with a given filter key is enabled
-function dynamicTagFilter() {
-  console.warn('Have not implemented dynamicTagFilter yet');
-  return alwaysNeutral;
-}
+//function dynamicTagFilter() {
+  //console.warn('Have not implemented dynamicTagFilter yet');
+  //return alwaysNeutral;
+//}
 
 /// Mapping of dynamic filter name to tag id
 //private static let tags = try! JSON(
@@ -352,29 +347,36 @@ const roundwareDefaultFilterChain = allAssetFilter([
     //timedAssetFilter(),                                    // if an asset is scheduled to play right now, or
     assetShapeFilter(),                                    // if an asset has a shape and we AREN'T in it, reject entirely, or
     distanceFixedFilter(),                                 // if it has no shape, consider a fixed distance from it, or
-    allAssetFilter([distanceRangesFilter(),angleFilter()]) // if the listener is within a user-configured distance or angle range
+    allAssetFilter([
+      distanceRangesFilter(),
+      //angleFilter() // if the listener is within a user-configured distance or angle range
+    ])
   ]),
 
-  timedRepeatFilter(),   // only repeat assets if there's no other choice
-  blockedAssetsFilter(), // skip blocked assets and users
+  //timedRepeatFilter(),   // only repeat assets if there's no other choice
+  //blockedAssetsFilter(), // skip blocked assets and users
   anyTagsFilter(),       // all the tags on an asset must be in our list of tags to listen for
-  trackTagsFilter(),     // if any track-level tag filters exist, apply them
-  dynamicTagFilter("_ten_most_recent_days",mostRecentFilter({ days: 10 })) // Only pass assets created within the most recent 10 days
+  //trackTagsFilter(),     // if any track-level tag filters exist, apply them
+  //dynamicTagFilter("_ten_most_recent_days",mostRecentFilter({ days: 10 })) // Only pass assets created within the most recent 10 days
 ]);
+
+//const roundwareDefaultFilterChain = allAssetFilter([
+  //distanceFixedFilter(),                                 // if it has no shape, consider a fixed distance from it, or
+//]);
 
 export {
   roundwareDefaultFilterChain,
   allAssetFilter,
   distanceFixedFilter,
   distanceRangesFilter,
-  allTagsFilter,
+  //allTagsFilter,
   anyTagsFilter,
-  timedAssetFilter,
+  //timedAssetFilter,
   assetShapeFilter,
-  timedRepeatFilter,
-  trackTagsFilter,
-  blockedAssetsFilter,
+  //timedRepeatFilter,
+  //trackTagsFilter,
+  //blockedAssetsFilter,
   angleFilter,
-  dynamicTagFilter,
+  //dynamicTagFilter,
   mostRecentFilter
 };
