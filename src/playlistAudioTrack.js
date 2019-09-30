@@ -1,3 +1,5 @@
+import { hasOwnProperty } from './utils';
+
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
 
@@ -27,40 +29,32 @@
    "project_id": 9
  }] 
 */
+
+class TrackOptions {
+  constructor(audioData = {}) {
+    this.volumeRange = [audioData.minvolume,audioData.maxvolume];
+    this.duration = [audioData.minduration,audioData.maxduration];
+    this.deadAir = [audioData.mindeadair,audioData.maxdeadair];
+    this.fadeInTime = [audioData.minfadeintime,audioData.maxfadeintime];
+    this.fadeOutTime = [audioData.minfadeouttime,audioData.maxfadeouttime];
+    this.repeatRecordings = !!audioData.repeatrecordings;
+    this.tags = audioData.tag_filters;
+    this.bannedDuration = audioData.banned_duration || 600,
+    this.startWithSilence = hasOwnProperty(audioData,'start_with_silence') ? !!audioData.start_with_silence : true;
+    this.fadeOutWhenFiltered = hasOwnProperty(audioData,'fadeout_when_filtered') ? !!audioData.fadeout_when_filtered : true;
+  }
+}
+
 export class PlaylistAudiotrack {
   constructor({ audioCtx, audioData = {}, playlist }) {
     this.data = audioData;
     this.playlist = playlist;
     this.playing = false;
 
-    this.buildAudio(audioCtx);
-    //self.id = id
-    //self.volume = volume
-    //self.duration = duration
-    //self.deadAir = deadAir
-    //self.fadeInTime = fadeInTime
-    //self.fadeOutTime = fadeOutTime
-    //self.repeatRecordings = repeatRecordings
-    //self.tags = tags
-    //self.bannedDuration = bannedDuration
-    //self.startWithSilence = startWithSilence
-    //self.fadeOutWhenFiltered = fadeOutWhenFiltered
-    
-    //return AudioTrack(
-    //id: it["id"]!.int!,
-    //volume: (it["minvolume"]!.float!)...(it["maxvolume"]!.float!),
-    //duration: (it["minduration"]!.float!)...(it["maxduration"]!.float!),
-    //deadAir: (it["mindeadair"]!.float!)...(it["maxdeadair"]!.float!),
-    //fadeInTime: (it["minfadeintime"]!.float!)...(it["maxfadeintime"]!.float!),
-    //fadeOutTime: (it["minfadeouttime"]!.float!)...(it["maxfadeouttime"]!.float!),
-    //repeatRecordings: it["repeatrecordings"]?.bool ?? false,
-    //tags: it["tag_filters"]?.array?.map { $0.int! },
-    //bannedDuration: it["banned_duration"]?.double ?? 600,
-    //startWithSilence: it["start_with_silence"]?.bool ?? true,
-    //fadeOutWhenFiltered: it["fadeout_when_filtered"]?.bool ?? true
-  }
+    this.id = audioData.id;
 
-  buildAudio(audioCtx) {
+    this.trackOptions = new TrackOptions(audioData);
+    
     const audioElement = new Audio();
     audioElement.crossOrigin = 'anonymous';
 

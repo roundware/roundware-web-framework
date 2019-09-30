@@ -9,3 +9,6 @@ export function coordsToPoints({ latitude, longitude }) {
 
 // @see https://stackoverflow.com/a/24403771/308448
 export const isEmpty = array => !array || array.length < 1;
+
+// @see https://eslint.org/docs/rules/no-prototype-builtins
+export const hasOwnProperty = (target,propName) => Object.prototype.hasOwnProperty.call(target,propName);
