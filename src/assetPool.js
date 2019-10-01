@@ -43,11 +43,11 @@ export class AssetPool {
     const topPriorityRanking = rankingGroups.sort()[0];
 
     // play least-recently played assets first
-    const priorityAssets = rankedAssets[topPriorityRanking];
+    const priorityAssets = rankedAssets[topPriorityRanking] || [];
     priorityAssets.sort((a,b) => b.playCount - a.playCount);
 
     const nextAsset = priorityAssets.pop();
-    nextAsset.playCount++;
+    if (nextAsset) nextAsset.playCount++;
 
     return nextAsset;
   }
