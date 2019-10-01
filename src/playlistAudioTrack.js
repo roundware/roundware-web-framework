@@ -46,7 +46,7 @@ class TrackOptions {
 }
 
 export class PlaylistAudiotrack {
-  constructor({ audioCtx, audioData = {}, playlist }) {
+  constructor({ audioContext, audioData = {}, playlist }) {
     this.data = audioData;
     this.playlist = playlist;
     this.playing = false;
@@ -63,8 +63,8 @@ export class PlaylistAudiotrack {
       if (this.playing) this.play(); // NOTE: makes play() recursive
     }); 
 
-    const audioSrc = audioCtx.createMediaElementSource(audioElement);
-    audioSrc.connect(audioCtx.destination);
+    const audioSrc = audioContext.createMediaElementSource(audioElement);
+    audioSrc.connect(audioContext.destination);
 
     this.audioElement = audioElement;
   }

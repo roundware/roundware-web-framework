@@ -4,8 +4,8 @@ import { coordsToPoints } from './utils';
 import { AssetPool } from './assetPool';
 
 export class Mixer {
-  constructor({ client, listenerLocation, filters = [], sortMethods = [], audioCtx, mixParams = {} }) {
-    this.audioCtx = audioCtx || new AudioContext();
+  constructor({ client, audioContext, listenerLocation, filters = [], sortMethods = [], mixParams = {} }) {
+    this.audioContext = audioContext;
 
     const audioTracks = client.audiotracks();
     const assets = client.assets();
@@ -25,13 +25,13 @@ export class Mixer {
       audioTracks,
       listenerPoint,
       assetPool,
-      audioCtx: this.audioCtx,
+      audioContext
     });
 
     //console.info({ assets, filters, sortMethods, mixParams });
 
     this.speakerTracks = speakers.map(speakerData => new SpeakerTrack({
-      audioCtx: this.audioCtx,
+      audioContext,
       listenerPoint,
       data: speakerData
     }));

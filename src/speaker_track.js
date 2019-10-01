@@ -8,7 +8,7 @@ const FADE_DURATION_SECONDS = 3;
  * (quoted from https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/Speaker.swift)
  * */
 export class SpeakerTrack {
-  constructor({ audioCtx, listenerPoint, data }) {
+  constructor({ audioContext, listenerPoint, data }) {
     const {
       id: speakerId,
       maxvolume: maxVolume,
@@ -19,7 +19,7 @@ export class SpeakerTrack {
       uri,
     } = data;
 
-    this.audioCtx = audioCtx;
+    this.audioContext = audioContext;
     this.speakerId = speakerId;
     this.maxVolume = maxVolume;
     this.minVolume = minVolume;
@@ -67,21 +67,21 @@ export class SpeakerTrack {
   buildAudio() {
     if (this.audio) return this.audio;
 
-    const { audioCtx, uri } = this;
+    const { audioContext, uri } = this;
 
     const audio = new Audio(uri);
     audio.crossOrigin = 'anonymous';
     audio.loop = true;
 
-    const audioSrc = audioCtx.createMediaElementSource(audio);
-    const gainNode = audioCtx.createGain();
+    const audioSrc = audioContext.createMediaElementSource(audio);
+    const gainNode = audioContext.createGain();
 
     audioSrc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    gainNode.connect(audioContext.destination);
 
     this.gainNode = gainNode;
     this.audio = audio;
-    this.audioCtx = audioCtx;
+    this.audioContext = audioContext;
 
     return this.audio;
   }
@@ -96,7 +96,7 @@ export class SpeakerTrack {
 
     this.currentVolume = newVolume;
 
-    const secondsFromNow = this.audioCtx.currentTime + FADE_DURATION_SECONDS;
+    const secondsFromNow = this.audioContext.currentTime + FADE_DURATION_SECONDS;
 
     this.buildAudio();
     this.gainNode.gain.linearRampToValueAtTime(newVolume,secondsFromNow);
