@@ -19,11 +19,7 @@ function anyAssetFilter(filters = [],{ ...mixParams }) {
   return (asset,{ ...stateParams }) => {
     for (let filter of filters) {
       let rank = filter(asset,{ ...mixParams, ...stateParams });
-      //console.log('AAF',{ asset, rank, filter: filter.name });
-      if (rank !== ASSET_PRIORITIES.DISCARD && rank !== ASSET_PRIORITIES.NEUTRAL) {
-        console.log(`Asset ${asset.id}: ${rank}`);
-        return rank;
-      }
+      if (rank !== ASSET_PRIORITIES.DISCARD && rank !== ASSET_PRIORITIES.NEUTRAL) return rank;
     }
 
     return ASSET_PRIORITIES.DISCARD;
