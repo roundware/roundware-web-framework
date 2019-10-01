@@ -4,7 +4,7 @@ import { coordsToPoints } from './utils';
 import { AssetPool } from './assetPool';
 
 export class Mixer {
-  constructor({ client, audioContext, listenerLocation, filters = [], sortMethods = [], mixParams = {} }) {
+  constructor({ client, audioContext, windowScope, listenerLocation, filters = [], sortMethods = [], mixParams = {} }) {
     this.audioContext = audioContext;
 
     const audioTracks = client.audiotracks();
@@ -25,7 +25,8 @@ export class Mixer {
       audioTracks,
       listenerPoint,
       assetPool,
-      audioContext
+      audioContext,
+      windowScope
     });
 
     //console.info({ assets, filters, sortMethods, mixParams });

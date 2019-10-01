@@ -48,14 +48,15 @@ import { Audiotrack } from "./audiotrack";
 **/
 export default class Roundware {
   /** Initialize a new Roundware instance
-   * @param {Object} window - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
+   * @param {Object} windowScope - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
    * @param {Object} options - Collection of parameters for configuring this Roundware instance
    * @param {String} options.serverUrl - identifies the Roundware server
    * @param {Number} options.projectId - identifies the Roundware project to connect
    * @param {Boolean} options.geoListenEnabled - whether or not to attempt to initialize geolocation-based listening
    * @throws Will throw an error if serveUrl or projectId are missing
     TODO need to provide a more modern/ES6-aware architecture here vs burdening the constructor with all of these details **/
-  constructor(window,{ serverUrl, projectId, speakerFilters, assetFilters, listenerLocation, user, geoPosition, session, project, stream, speaker, asset, timedAsset, audiotrack, ...options }) {
+  constructor(windowScope,{ serverUrl, projectId, speakerFilters, assetFilters, listenerLocation, user, geoPosition, session, project, stream, speaker, asset, timedAsset, audiotrack, ...options }) {
+    this.windowScope = windowScope;
     this._serverUrl = serverUrl;
     this._projectId = projectId;
     this._speakerFilters = speakerFilters;
@@ -137,6 +138,7 @@ export default class Roundware {
 
     this._mixer = new Mixer({ 
       client: this,
+      windowScope: this.windowScope,
       listenerLocation: this._listenerLocation,
       mixParams, 
       audioContext
