@@ -102,7 +102,7 @@ export class PlaylistAudiotrack {
     
     LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach(name => audioElement.addEventListener(name,() => console.log(`${this}: ${name}`)));
 
-    audioElement.addEventListener('error',evt => console.warn('audio element error',evt));
+    audioElement.addEventListener('error',() => this.onAudioError());
     audioElement.addEventListener('ended',() => this.onAudioEnded());
 
     this.audioContext = audioContext;
@@ -111,12 +111,24 @@ export class PlaylistAudiotrack {
     this.state = makeInitialTrackState(this,this.trackOptions);
   }
 
+  onAudioError() {
+    console.warn(`${this} audio element error, skipping to next track`);
+    const newState = new LoadingState(this,this.trackOptions);
+    this.transition(newState);
+  }
+
   onAudioEnded() {
-    this.audioElement.src = '';
+    const { audioElement, trackOptions, currentAsset } = this;
+
     console.log(`${this} audio ended`);
+
+    audioElement.src = ''; // not sure if this truly needed
+
+    currentAsset.playCount++;
+    currentAsset.lastListenTime = new Date();
     delete this.currentAsset;
 
-    const newState = new LoadingState(this,this.trackOptions);
+    const newState = new LoadingState(this,trackOptions);
     this.transition(newState);
   } 
   

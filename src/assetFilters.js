@@ -10,7 +10,7 @@ const ASSET_PRIORITIES = Object.freeze({
 });
 
 const alwaysLowest = () => ASSET_PRIORITIES.LOWEST;
-//const alwaysNeutral = () => ASSET_PRIORITIES.NEUTRAL;
+const alwaysNeutral = () => ASSET_PRIORITIES.NEUTRAL; // eslint-disable-line no-unused-vars
 
 // Accept an asset if any one of the provided filters passes, returns the first non-discarded/non-neutral rank
 function anyAssetFilter(filters = [],{ ...mixParams }) {
@@ -186,23 +186,20 @@ function assetShapeFilter() {
 }
 
 // Prevents assets from repeating until a certain time threshold has passed
-//function timedRepeatFilter() {
-  //console.warn('Have not implemented timedRepeatFilter yet');
-  //return alwaysNeutral;
-//}
+const timedRepeatFilter = () => (asset,{ bannedDuration = 600 }) => {
+  const { lastListenTime } = asset;
 
-// TODO implement timedRepeatFilter using below Swift code as a guide
-//if let listenDate = playlist.lastListenDate(for: asset) {
-//let timeout = track.bannedDuration
-//if Date().timeIntervalSince(listenDate) > timeout {
-  //return .lowest
-//} else {
-  //return .discard
-//}
-//} else {
-//return .normal
-//}
-  
+  if (!lastListenTime) return ASSET_PRIORITIES.NORMAL; // e.g. asset has never been heard before
+
+  const durationSinceLastListen = ((new Date()) - lastListenTime) / 1000;
+    
+  if (durationSinceLastListen <= bannedDuration) {
+    return ASSET_PRIORITIES.DISCARD;
+  } else {
+    return ASSET_PRIORITIES.LOWEST;
+  }
+};
+
 //function trackTagsFilter() {
   //console.warn('Have not implemented trackTagsFilter yet');
   //return alwaysNeutral;
@@ -349,7 +346,7 @@ const roundwareDefaultFilterChain = allAssetFilter([
     ])
   ]),
 
-  //timedRepeatFilter(),   // only repeat assets if there's no other choice
+  timedRepeatFilter(),   // only repeat assets if there's no other choice
   //blockedAssetsFilter(), // skip blocked assets and users
   anyTagsFilter(),       // all the tags on an asset must be in our list of tags to listen for
   //trackTagsFilter(),     // if any track-level tag filters exist, apply them
@@ -365,7 +362,7 @@ export {
   anyTagsFilter,
   //timedAssetFilter,
   assetShapeFilter,
-  //timedRepeatFilter,
+  timedRepeatFilter,
   //trackTagsFilter,
   //blockedAssetsFilter,
   //angleFilter,
