@@ -13,8 +13,7 @@ export const isEmpty = array => !array || array.length < 1;
 // @see https://eslint.org/docs/rules/no-prototype-builtins
 export const hasOwnProperty = (target,propName) => Object.prototype.hasOwnProperty.call(target,propName);
 
-// @see https://github.com/you-dont-need/You-Dont-Need-Lodash-Underscore#_minby-and-_maxby
-//const makeSelect = (comparator) => (a,b) => comparator(a,b) ? a : b;
+// @see https://github.com/you-dont-need/You-Dont-Need-Lodash-Underscore#_minby-and-_maxby //const makeSelect = (comparator) => (a,b) => comparator(a,b) ? a : b;
 //export const minValue = makeSelect((a,b) => a <= b);
 //const minByValue = makeSelect((a, b) => a.value <= b.value)
 //const maxByValue = makeSelect((a, b) => a.value >= b.value)
@@ -33,3 +32,5 @@ export const randomInt = (a = 1, b = 0) => {
 
   return Math.floor(lower + Math.random() * (upper - lower + 1));
 };
+
+export const NO_OP = () => {};
