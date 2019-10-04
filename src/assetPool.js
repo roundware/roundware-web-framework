@@ -2,14 +2,25 @@ import { AssetSorter } from './assetSorter';
 import { roundwareDefaultFilterChain } from './assetFilters';
 import { coordsToPoints } from './utils';
 
+// add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
+const decorateAsset = a => { 
+  const activeRegionLowerBound = a.start_time || 0;
+  const activeRegionUpperBound = a.end_time   || 0;
+  const activeRegionLength = activeRegionUpperBound - activeRegionLowerBound;
+
+  return {
+    locationPoint: coordsToPoints(a),
+    playCount: 0, 
+    activeRegionLength,
+    activeRegionUpperBound,
+    activeRegionLowerBound,
+    ...a 
+  };
+};
+
 export class AssetPool {
   constructor({ assets = [], timedAssets = [], filterChain = roundwareDefaultFilterChain, sortMethods = [], mixParams = {} }) {
-    this.assets = assets.map(a => ({ 
-      locationPoint: coordsToPoints(a),
-      playCount: 0, 
-      ...a 
-    }));
-
+    this.assets = assets.map(decorateAsset);
     this.timedAssets = timedAssets;
     this.assetSorter = new AssetSorter({ sortMethods, ...mixParams });
     this.playingTracks = {};
