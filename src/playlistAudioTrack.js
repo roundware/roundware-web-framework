@@ -140,13 +140,7 @@ class TrackOptions {
   }
 }
 
-const LOGGABLE_AUDIO_ELEMENT_EVENTS = [
-  'abort',
-  'loadstart',
-  'loadeddata',
-  'playing',
-  'stalled',
-];
+const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['loadstart','playing','stalled','waiting']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
 
 export class PlaylistAudiotrack {
   constructor({ audioContext, windowScope, audioData = {}, playlist }) {
@@ -166,7 +160,7 @@ export class PlaylistAudiotrack {
     audioSrc.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach(name => audioElement.addEventListener(name,() => console.log(`${this}: ${name}`)));
+    LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach(name => audioElement.addEventListener(name,() => console.log(`${this}: audio ${name}`)));
 
     audioElement.addEventListener('error',() => this.onAudioError());
     audioElement.addEventListener('ended',() => this.onAudioEnded());
@@ -184,11 +178,9 @@ export class PlaylistAudiotrack {
   }
 
   onAudioEnded() {
-    const { audioElement, trackOptions, currentAsset } = this;
+    const { trackOptions, currentAsset } = this;
 
     console.log(`${this} audio ended`);
-
-    audioElement.src = ''; // not sure if this truly needed
 
     currentAsset.playCount++;
     currentAsset.lastListenTime = new Date();
