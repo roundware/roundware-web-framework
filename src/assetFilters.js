@@ -125,48 +125,20 @@ function anyTagsFilter() {
   };
 }
 
-// if an asset is scheduled to play right now
-//function timedAssetFilter() {
-  //console.warn('Have not implemented timedAssetFilter yet');
-  //return alwaysNeutral;
-//}
-  
-/** here is the iOS code for TimedAssetFilter
-  func keep(_ asset: Asset, playlist: Playlist, track: AudioTrack) -> AssetPriority {
-    if timedAssets == nil {
-        timedAssets = []
-        // load the timed assets
-        RWFramework.sharedInstance.apiGetTimedAssets([
-            "project_id": String(playlist.project.id)
-        ]).then { data in
-            self.timedAssets = data
-        }
-        return .neutral
-    } else if timedAssets!.isEmpty {
-        return .discard
-    }
-    
-    // keep assets that are slated to start now or in the past few minutes
-    //      AND haven't been played before
-    // Units: seconds
-    let now = Date().timeIntervalSince(playlist.startTime)
-    if (timedAssets!.contains { it in
-        it.asset_id == asset.id &&
-            it.start <= now &&
-            it.end >= now &&
-            // it hasn't been played before.
-            playlist.userAssetData[it.asset_id] == nil
-    }) {
-        // Prioritize timed assets only if the project is configured to.
-        if playlist.project.timed_asset_priority {
-            return .highest
-        } else {
-            return .normal
-        }
-    }
-    
-    return .discard
-**/
+// keep assets that are slated to start now or in the past few minutes AND haven't been played before
+function timedAssetFilter() {
+  return (asset,{ playlistStartTime, timedAssetPriority }) => {
+    const { timedAssetStart, timedAssetEnd, playCount } = asset;
+
+    if (!timedAssetStart || !timedAssetEnd) return ASSET_PRIORITIES.DISCARD;
+
+    const now = (new Date() - playlistStartTime);
+
+    if (timedAssetStart >= now || timedAssetEnd <= now || playCount > 0) return ASSET_PRIORITIES.DISCARD;
+
+    return timedAssetPriority ? ASSET_PRIORITIES.HIGHEST : ASSET_PRIORITIES.NORMAL;
+  };
+}
 
 // Accept an asset if the user is currently within its defined shape
 function assetShapeFilter() {
@@ -337,7 +309,7 @@ if blocked.contains(asset.id) {
 
 const roundwareDefaultFilterChain = allAssetFilter([
   anyAssetFilter([
-    //timedAssetFilter(),                                    // if an asset is scheduled to play right now, or
+    timedAssetFilter(),                                    // if an asset is scheduled to play right now, or
     assetShapeFilter(),                                    // if an asset has a shape and we AREN'T in it, reject entirely, or
     distanceFixedFilter(),                                 // if it has no shape, consider a fixed distance from it, or
     allAssetFilter([
@@ -360,7 +332,7 @@ export {
   distanceRangesFilter,
   //allTagsFilter,
   anyTagsFilter,
-  //timedAssetFilter,
+  timedAssetFilter,
   assetShapeFilter,
   timedRepeatFilter,
   //trackTagsFilter,

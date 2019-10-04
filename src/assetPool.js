@@ -3,25 +3,40 @@ import { roundwareDefaultFilterChain } from './assetFilters';
 import { coordsToPoints } from './utils';
 
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
-const decorateAsset = a => { 
-  const activeRegionLowerBound = a.start_time || 0;
-  const activeRegionUpperBound = a.end_time   || 0;
-  const activeRegionLength = activeRegionUpperBound - activeRegionLowerBound;
+const assetDecorationMapper = timedAssets => {
+  const timedAssetLookup = timedAssets.reduce((lookupTable,timedAsset) => ({
+    ...lookupTable,
+    [timedAsset.asset_id]: timedAsset
+  }),{});
 
-  return {
-    locationPoint: coordsToPoints(a),
-    playCount: 0, 
-    activeRegionLength,
-    activeRegionUpperBound,
-    activeRegionLowerBound,
-    ...a 
+  return asset => {
+    const activeRegionLowerBound = asset.start_time || 0;
+    const activeRegionUpperBound = asset.end_time   || 0;
+    const activeRegionLength = activeRegionUpperBound - activeRegionLowerBound;
+
+    const decoratedAsset = {
+      locationPoint: coordsToPoints(asset),
+      playCount: 0, 
+      activeRegionLength,
+      activeRegionUpperBound,
+      activeRegionLowerBound,
+      ...asset,
+    };
+
+    const timedAsset = timedAssetLookup[asset.id];
+    
+    if (timedAsset) {
+      decoratedAsset.timedAssetStart = timedAsset.start;
+      decoratedAsset.timedAssetEnd = timedAsset.end;
+    }
+
+    return decoratedAsset;
   };
 };
 
 export class AssetPool {
   constructor({ assets = [], timedAssets = [], filterChain = roundwareDefaultFilterChain, sortMethods = [], mixParams = {} }) {
-    this.assets = assets.map(decorateAsset);
-    this.timedAssets = timedAssets;
+    this.assets = assets.map(assetDecorationMapper(timedAssets));
     this.assetSorter = new AssetSorter({ sortMethods, ...mixParams });
     this.playingTracks = {};
     this.mixParams = mixParams;
@@ -30,7 +45,6 @@ export class AssetPool {
   }
 
   nextForTrack(track,{ filterOutAssets = [], ...stateParams }) {
-    // TODO need to account for timedAssets in the below code
     const rankedAssets = this.assets.reduce((rankings,asset) => {
       if (filterOutAssets.includes(asset)) return rankings;
 

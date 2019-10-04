@@ -6,17 +6,15 @@ export class Playlist {
     this.playingTracks = {};
     this.assetPool = assetPool;
     this.playing = false;
-
-    const playlist = this;
+    this.startTime = new Date();
 
     const trackMap = new Map();
 
     audioTracks.forEach(audioData => {
       const track = new PlaylistAudiotrack({ 
         audioData,
-        playlist,
-        listenerPoint,
-        ...playlistTrackOptions
+        ...playlistTrackOptions,
+        playlist: this,
       });
 
       trackMap.set(track,null);
@@ -54,6 +52,7 @@ export class Playlist {
 
     const nextAsset = this.assetPool.nextForTrack(forTrack,{
       filterOutAssets,
+      playlistStartTime: this.startTime,
       listenerPoint: this.listenerPoint
     });
 

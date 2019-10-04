@@ -252,8 +252,6 @@ export class PlaylistAudiotrack {
 
   nextAsset() {
     const asset = this.playlist.next(this);
-    //console.log(`${this} next: ${asset}`);
-
     return asset;
   }
 
