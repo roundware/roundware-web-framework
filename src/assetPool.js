@@ -58,7 +58,7 @@ export class AssetPool {
       return rankings;
     },{});
 
-    const rankingGroups = Object.keys(rankedAssets);
+    const rankingGroups = Object.keys(rankedAssets).map(a => Number.parseInt(a));
 
     if (rankingGroups === []) {
       console.warn('All assets filtered out');
