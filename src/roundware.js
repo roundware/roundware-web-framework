@@ -202,7 +202,7 @@ export default class Roundware {
   }
 
   timedAssets() {
-    return this._timedAssets || [];
+    return this._timedAssetData || [];
   }
 
   audiotracks() {
