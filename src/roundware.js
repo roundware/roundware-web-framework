@@ -130,18 +130,18 @@ export default class Roundware {
     return (this._project || {}).mixParams;
   }
 
-  activateMixer({ audioContext }) {
+  activateMixer(activationParams = {}) {
     const mixParams = {
       ...this.mixParams,
-      geoListenEnabled: this._geoPosition.geoListenEnabled
+      geoListenEnabled: this._geoPosition.geoListenEnabled,
+      ...activationParams
     };
 
     this._mixer = new Mixer({ 
       client: this,
       windowScope: this.windowScope,
       listenerLocation: this._listenerLocation,
-      mixParams, 
-      audioContext
+      mixParams
     });
 
     return this._mixer;

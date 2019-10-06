@@ -1,11 +1,11 @@
 import { SpeakerTrack } from './speaker_track';
 import { Playlist } from './playlist';
-import { coordsToPoints } from './utils';
+import { buildAudioContext, coordsToPoints } from './utils';
 import { AssetPool } from './assetPool';
 
 export class Mixer {
-  constructor({ client, audioContext, windowScope, listenerLocation, filters = [], sortMethods = [], mixParams = {} }) {
-    this.audioContext = audioContext;
+  constructor({ client, windowScope, listenerLocation, filters = [], sortMethods = [], mixParams = {} }) {
+    const audioContext = buildAudioContext(windowScope);
 
     const audioTracks = client.audiotracks();
     const assets = client.assets();
@@ -20,6 +20,8 @@ export class Mixer {
       sortMethods,
       mixParams
     });
+
+    this.audioContext = audioContext;
 
     this.playlist = new Playlist({ 
       audioTracks,

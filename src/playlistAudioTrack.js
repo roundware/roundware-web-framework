@@ -152,7 +152,9 @@ export class PlaylistAudiotrack {
     this.windowScope = windowScope;
     
     const audioElement = new Audio();
+
     audioElement.crossOrigin = 'anonymous';
+    audioElement.loop = false;
 
     const audioSrc = audioContext.createMediaElementSource(audioElement);
     const gainNode = audioContext.createGain();
@@ -186,6 +188,7 @@ export class PlaylistAudiotrack {
     currentAsset.lastListenTime = new Date();
     delete this.currentAsset;
 
+    this.audioElement.src = null;
     const newState = new LoadingState(this,trackOptions);
     this.transition(newState);
   } 

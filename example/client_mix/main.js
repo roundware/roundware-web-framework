@@ -258,8 +258,7 @@ function initDemo() {
 
       let listeningCircle = drawListeningCircle(map,googleMapsCenter,recordingRadius);
 
-      const audioContext = new (window.AudioContext || window.webkitAudioContext);
-      const mixer = roundware.activateMixer({ audioContext });
+      const mixer = roundware.activateMixer();
 
       google.maps.event.addListener(listener, "dragend",() => {
         const position = listener.getPosition();

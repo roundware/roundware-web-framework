@@ -33,4 +33,26 @@ export const randomInt = (a = 1, b = 0) => {
   return Math.floor(lower + Math.random() * (upper - lower + 1));
 };
 
+const UNLOCK_AUDIO_EVENTS = ['touchstart','touchend', 'mousedown','keydown'];
+
+/** Helps stabilize WebAudio startup
+ @thanks https://www.mattmontag.com/web/unlock-web-audio-in-safari-for-ios-and-macos */
+function unlockAudioContext(body,audioCtx) {
+  if (audioCtx.state !== 'suspended') return;
+
+  function unlock() { audioCtx.resume().then(clean); }
+  function clean() { UNLOCK_AUDIO_EVENTS.forEach(e => body.removeEventListener(e,unlock)); }
+
+  UNLOCK_AUDIO_EVENTS.forEach(e => body.addEventListener(e,unlock,false));
+}
+
+export function buildAudioContext(windowScope) {
+  const audioContext = new (window.AudioContext || window.webkitAudioContext);
+  const { document: { body } } = windowScope;
+  unlockAudioContext(body,audioContext);
+  
+  return audioContext;
+}
+
+
 export const NO_OP = () => {};
