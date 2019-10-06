@@ -260,7 +260,7 @@ function initDemo() {
 
       const mixer = roundware.activateMixer();
 
-      google.maps.event.addListener(listener, "dragend",() => {
+      google.maps.event.addListener(listener,"dragend",() => {
         const position = listener.getPosition();
         map.setCenter(position);
         

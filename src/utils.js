@@ -33,7 +33,7 @@ export const randomInt = (a = 1, b = 0) => {
   return Math.floor(lower + Math.random() * (upper - lower + 1));
 };
 
-const UNLOCK_AUDIO_EVENTS = ['touchstart','touchend', 'mousedown','keydown'];
+const UNLOCK_AUDIO_EVENTS = ['touchstart','touchend','mousedown','keydown'];
 
 /** Helps stabilize WebAudio startup
  @thanks https://www.mattmontag.com/web/unlock-web-audio-in-safari-for-ios-and-macos */

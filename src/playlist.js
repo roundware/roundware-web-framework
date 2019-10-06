@@ -34,7 +34,7 @@ export class Playlist {
 
   updateListenerPoint(point) {
     this.listenerPoint = point;
-    if (this.playing) this.play(); // in case new assets are now available
+    this.tracks.forEach(t => t.wakeUp());
   }
 
   play() {

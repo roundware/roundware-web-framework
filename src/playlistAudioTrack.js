@@ -140,7 +140,8 @@ class TrackOptions {
   }
 }
 
-const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['loadstart','playing','stalled','waiting']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
+//const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['loadstart','playing','stalled','waiting']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
+const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['playing','stalled']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
 
 export class PlaylistAudiotrack {
   constructor({ audioContext, windowScope, audioData = {}, playlist }) {
@@ -175,12 +176,11 @@ export class PlaylistAudiotrack {
 
   onAudioError() {
     console.warn(`${this} audio element error, skipping to next track`);
-    const newState = new LoadingState(this,this.trackOptions);
-    this.transition(newState);
+    this.setLoadingState();
   }
 
   onAudioEnded() {
-    const { trackOptions, currentAsset } = this;
+    const { currentAsset } = this;
 
     console.log(`${this} audio ended`);
 
@@ -189,13 +189,16 @@ export class PlaylistAudiotrack {
     delete this.currentAsset;
 
     this.audioElement.src = null;
-    const newState = new LoadingState(this,trackOptions);
-    this.transition(newState);
+    this.setLoadingState();
   } 
   
   play() {
     console.log(`Starting ${this}: '${this.state}'`);
     this.state.start();
+  }
+
+  wakeUp() {
+    if (this.state.isWaitingState) this.setLoadingState();
   }
 
   fadeOut(fadeOutDurationSeconds) {
@@ -236,10 +239,9 @@ export class PlaylistAudiotrack {
     }
   }
 
-  async pause() {
+  pause() {
     console.log(`Pausing ${this}`);
-
-    if (this.audioElement) await this.audioElement.pause();
+    if (this.audioElement) this.audioElement.pause();
   }
 
   transition(newState) {
@@ -250,6 +252,7 @@ export class PlaylistAudiotrack {
 
     this.state = newState;
     console.log(`Starting ${this.state}`);
+
     this.state.start();
   }
 
@@ -262,4 +265,10 @@ export class PlaylistAudiotrack {
     const { id } = this.data;
     return `Audiotrack #${id}`;
   }
+
+  setLoadingState() {
+    const newState = new LoadingState(this,this.trackOptions);
+    this.transition(newState);
+  }
+
 }

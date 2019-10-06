@@ -162,6 +162,11 @@ class PlayingState extends TimedTrackState {
 const DEFAULT_WAITING_FOR_ASSET_INTERVAL_MILLISECONDS = 10000;
 
 class WaitingForAssetState extends TimedTrackState {
+  constructor(track,trackOptions) {
+    super(track,trackOptions);
+    this.isWaitingState = true;
+  }
+
   start() {
     this.setNextStateTimer(DEFAULT_WAITING_FOR_ASSET_INTERVAL_MILLISECONDS);
   }
