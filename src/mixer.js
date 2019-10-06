@@ -7,7 +7,7 @@ export class Mixer {
   constructor({ client, windowScope, listenerLocation, filters = [], sortMethods = [], mixParams = {} }) {
     const audioContext = buildAudioContext(windowScope);
 
-    const audioTracks = client.audiotracks();
+    const audioTracks = client.audiotracks().filter(t => t.id !== 40); // temporarily disabling one track for testing purposes
     const assets = client.assets();
     const timedAssets = client.timedAssets();
     const speakers = client.speakers();
