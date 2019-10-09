@@ -12,37 +12,27 @@ export class LoadingState {
     this.asset = null;
   }
 
-  start() {
+  play() {
+    const { track, trackOptions } = this;
+    const asset = track.loadNextAsset();
+    
     let newState;
-    const nextAsset = this.asset || this.track.nextAsset();
 
-    if (nextAsset) {
-      const activeRegionLength = nextAsset.activeRegionLength; // activeRegion.upperBound - next.activeRegion.lowerBound
-      const { durationUpperBound, durationLowerBound } = this.trackOptions;
-
-      const minDuration = Math.min(durationLowerBound,activeRegionLength);
-      const maxDuration = Math.min(durationUpperBound,activeRegionLength);
-      const duration = random(minDuration,maxDuration);
-
-      const latestStart = nextAsset.activeRegionUpperBound - duration;
-      const start = random(nextAsset.activeRegionLowerBound,latestStart);
-
-      newState = new PlayingState(this.track,this.trackOptions,{ 
-        asset: nextAsset,
-        start, 
-        duration 
-      });
-
-      this.asset = nextAsset;
+    if (asset) {
+      const assetEnvelope = new AssetEnvelope(trackOptions,asset);
+      newState = new FadingInState(track,trackOptions,{ assetEnvelope });
     } else {
-      newState = new WaitingForAssetState(this.track,this.trackOptions);
+      newState = new WaitingForAssetState(track,trackOptions);
     }
 
     this.track.transition(newState);
   }
 
+  pause() {}
+  finish() {}
+
   toString() {
-    return `LoadingState Track ${this.track.id}`;
+    return 'Loading';
   }
 }
 
@@ -54,15 +44,50 @@ class TimedTrackState {
     this.timerId = null;
   }
 
-  setNextStateTimer(timeMs,nextStateArgs) {
-    this.timerId = this.windowScope.setTimeout(() => {
-      this.setNextState(nextStateArgs);
-    },timeMs);
+  play(nextStateSecs = 0) {
+    const { timerId, timeRemainingMs } = this;
+
+    if (timerId) return; // state is already active/playing
+
+    if (timeRemainingMs) {
+      const timeRemainingSecs = timeRemainingMs / 1000;
+      console.log(`Resuming track state ${this}: ${timeRemainingSecs.toFixed(1)}s remaining`);
+
+      this.setNextStateTimer(timeRemainingMs);
+      return timeRemainingSecs;
+    }
+
+    //console.log(`Playing track state ${this}: ${nextStateSecs}s`); 
+
+    const nextStateMs = nextStateSecs * 1000;
+    console.info(`\tNext state timer: ${nextStateSecs.toFixed(1)}s`);
+    this.setNextStateTimer(nextStateMs);
+
+    return nextStateSecs;
+  }
+
+  pause() {
+    const { timerId, windowScope, timerApproximateEndingAt } = this;
+
+    if (timerId) {
+      windowScope.clearTimeout(timerId);
+      this.timeRemainingMs = (new Date) - timerApproximateEndingAt;
+      delete this.timerApproximateEndingAt;
+    }
   }
 
   finish() {
-    if (this.timerId) this.windowScope.clearTimeout(this.timerId);
+    const { timerId, windowScope } = this;
+    if (timerId) windowScope.clearTimeout(timerId);
+
     delete this.timerId;
+    delete this.timeRemainingMs;
+    delete this.timerApproximateEndingAt;
+  }
+
+  setNextStateTimer(timeMs) {
+    this.timerId = this.windowScope.setTimeout(() => this.setNextState(),timeMs);
+    this.timerApproximateEndingAt = (new Date).getTime() + timeMs;
   }
 
   setNextState() {
@@ -80,82 +105,145 @@ class DeadAirState extends TimedTrackState {
     this.deadAirSeconds = this.trackOptions.randomDeadAir;
   }
   
-  start() {
-    this.setNextStateTimer(this.deadAirSeconds * 1000);
+  play() {
+    super.play(this.deadAirSeconds);
   }
 
   setNextState() {
-    console.log(`Moving ${this} from DeadAir to Loading`);
     this.setLoadingState();
   }
 
   toString() {
-    return `DeadAirState Track ${this.track.id} (dead for ${this.deadAirSeconds.toFixed(1)} secs)`;
+    return `DeadAir (${this.deadAirSeconds.toFixed(1)}s)`;
   }
 }
 
-class FadingOutState extends TimedTrackState {
-  constructor(track,trackOptions,{ fadeOutDuration }) {
-    super(track,trackOptions);
-    this.fadeOutDuration = fadeOutDuration;
-  }
+class AssetEnvelope {
+  constructor(trackOptions,asset) {
+    this.trackOptions = trackOptions;
+    this.asset = asset;
+    this.assetId = asset.id;
 
-  start() {
-    const { track, fadeOutDuration } = this;
+    this.activeRegionLowerBound = asset.start_time;
+    this.activeRegionUpperBound = asset.end_time;
+    this.activeRegionLength = this.activeRegionUpperBound - this.activeRegionLowerBound;
 
-    if (track.fadeOut(fadeOutDuration)) {
-      this.stateCompleteSeconds = fadeOutDuration * 1000;
-      this.setNextStateTimer(this.stateCompleteSeconds * 1000);
-    } else {
-      this.setLoadingState();
-    }
-  }
+    this.minDuration = Math.min(trackOptions.durationLowerBound,this.activeRegionLength);
+    this.maxDuration = Math.min(trackOptions.durationUpperBound,this.activeRegionLength);
+    this.duration = random(this.minDuration,this.maxDuration);
 
-  setNextState() {
-    this.track.transition(new DeadAirState(this.track,this.trackOptions));
+    this.latestStart = this.activeRegionUpperBound - this.duration;
+    this.start = random(this.activeRegionLowerBound,this.latestStart);
+
+    this.fadeInDuration = Math.min(trackOptions.randomFadeInDuration,this.duration / 2);
+    this.fadeOutDuration = Math.min(trackOptions.randomFadeOutDuration,this.duration / 2);
+
+    this.startFadingOutSecs = this.duration - this.fadeInDuration - this.fadeOutDuration;
   }
 
   toString() {
-    return `FadingOutState Track ${this.track.id}`;
+    const { asset: { id: assetId } } = this;
+
+    const data = [
+      'activeRegionLowerBound',
+      'activeRegionUpperBound',
+      'activeRegionLength',
+      'minDuration',
+      'maxDuration',
+      'duration',
+      'latestStart',
+      'start',
+      'fadeInDuration',
+      'fadeOutDuration',
+      'startFadingOutSecs'
+    ].map(key => `${key}: ${this[key].toFixed(1)}`).join('; ');
+
+    return `Asset #${assetId} envelope (${data})`;
+  }
+}
+
+class FadingInState extends TimedTrackState {
+  constructor(track,trackOptions,{ assetEnvelope }) {
+    super(track,trackOptions);
+    this.assetEnvelope = assetEnvelope;
+  }
+
+  play() {
+    const { track, assetEnvelope: { fadeInDuration } } = this;
+    const fadeInSecondsRemaining = super.play(fadeInDuration);
+
+    if (!fadeInSecondsRemaining) return;
+
+    const success = track.fadeIn(fadeInSecondsRemaining);
+
+    if (!success) this.setLoadingState();
+  }
+
+  pause() {
+    super.pause();
+    this.track.holdGain();
+  }
+
+  setNextState() {
+    const { track, trackOptions, assetEnvelope } = this;
+    track.transition(new PlayingState(track,trackOptions,{ assetEnvelope }));
+  }
+
+  toString() {
+    const { assetEnvelope: { fadeInDuration, fadeOutDuration, assetId, duration } } = this;
+    return `FadingIn Asset #${assetId} (fade-in ${fadeInDuration.toFixed(1)}s, fade-out ${fadeOutDuration.toFixed(1)}s, total duration ${duration.toFixed(1)}s)`;
   }
 }
 
 class PlayingState extends TimedTrackState {
-  constructor(track,trackOptions,{ asset, start = 0, duration }) {
+  constructor(track,trackOptions,{ assetEnvelope }) {
     super(track,trackOptions);
-    this.asset = asset;
-    this.startAt = start;
-    this.duration = duration;
+    this.assetEnvelope = assetEnvelope;
   }
 
-  start() {
-    const { 
-      asset,
-      track,
-      duration,
-      trackOptions: { 
-        randomFadeInDuration: fadeInDuration,
-        randomFadeOutDuration: fadeOutDuration 
-      }
-    } = this;
-
-    const finalVolume = random(track.volume);
-
-    if (track.playAsset(asset,{ fadeInDuration, finalVolume })) {
-      const startFadingOutMs = (duration - fadeOutDuration) * 1000;
-      this.setNextStateTimer(startFadingOutMs,fadeOutDuration);
-    } else {
-      this.setLoadingState(); // unable to play asset, so we try to load a new one
-    }
+  play() {
+    const { assetEnvelope: { startFadingOutSecs } } = this;
+    super.play(startFadingOutSecs);
+    //console.log(`Playing asset #${assetId} (start fading out: ${remainingSeconds.toFixed(1)}s)`);
   }
 
   toString() {
-    return `PlayingState Track ${this.track.id} (${Math.round(this.duration.toFixed(1))} duration secs)`;
+    const { assetEnvelope: { assetId, startFadingOutSecs } } = this;
+    return `Playing asset #${assetId} (${startFadingOutSecs.toFixed(1)}s)`;
   }
   
-  setNextState(fadeOutDuration) {
-    const { track, trackOptions } = this;
-    track.transition(new FadingOutState(track,trackOptions,{ fadeOutDuration }));
+  setNextState() {
+    const { track, trackOptions, assetEnvelope } = this;
+    track.transition(new FadingOutState(track,trackOptions,{ assetEnvelope }));
+  }
+}
+
+class FadingOutState extends TimedTrackState {
+  constructor(track,trackOptions,{ assetEnvelope }) {
+    super(track,trackOptions);
+    this.assetEnvelope = assetEnvelope;
+  }
+
+  play() {
+    const { track, assetEnvelope: { fadeOutDuration } } = this;
+    const remainingSeconds = super.play(fadeOutDuration);
+
+    if (!remainingSeconds) return;
+    if (!track.fadeOut(remainingSeconds)) this.setLoadingState();
+  }
+
+  pause() {
+    super.pause();
+    this.track.holdGain();
+  }
+
+  setNextState() {
+    this.track.transition(new DeadAirState(this.track,this.trackOptions,{ assetEnvelope: this.assetEnvelope }));
+  }
+
+  toString() {
+    const { assetEnvelope: { assetId, fadeOutDuration } } = this;
+    return `FadingOut asset #${assetId} (${fadeOutDuration.toFixed(1)}s)`;
   }
 }
 
@@ -164,12 +252,16 @@ const DEFAULT_WAITING_FOR_ASSET_INTERVAL_MILLISECONDS = 10000;
 class WaitingForAssetState extends TimedTrackState {
   constructor(track,trackOptions) {
     super(track,trackOptions);
-    this.isWaitingState = true;
   }
 
-  start() {
-    this.setNextStateTimer(DEFAULT_WAITING_FOR_ASSET_INTERVAL_MILLISECONDS);
+  play() {
+    super.play(DEFAULT_WAITING_FOR_ASSET_INTERVAL_MILLISECONDS);
   }
+
+  //wakeUp() {
+    //this.finish();
+    //this.setNextState();
+  //}
 
   setNextState() {
     const { track, trackOptions } = this;
@@ -180,7 +272,7 @@ class WaitingForAssetState extends TimedTrackState {
 
   toString() {
     const secs = (DEFAULT_WAITING_FOR_ASSET_INTERVAL_MILLISECONDS / 1000).toFixed(1);
-    return `WaitingForAssetState Track ${this.track.id} (wait for ${secs} secs)`;
+    return `WaitingForAsset (${secs}s)`;
   }
 }
 
