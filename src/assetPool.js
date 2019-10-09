@@ -24,7 +24,7 @@ const assetDecorationMapper = timedAssets => {
     };
 
     const timedAsset = timedAssetLookup[asset.id];
-    
+
     if (timedAsset) {
       decoratedAsset.timedAssetStart = timedAsset.start;
       decoratedAsset.timedAssetEnd = timedAsset.end;

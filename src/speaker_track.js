@@ -116,7 +116,7 @@ export class SpeakerTrack {
     if (newVolume < 0.05) return;
 
     try {
-      console.log('Playing',this.logline);
+      //console.log('Playing',this.logline);
       await this.audio.play();
       this.playing = true;
     } catch(err) {
@@ -128,7 +128,7 @@ export class SpeakerTrack {
     if (!this.playing) return;
     
     try {
-      console.log('Pausing',this.logline);
+      //console.log('Pausing',this.logline);
       await this.audio.pause();
       this.playing = false;
     } catch(err) {

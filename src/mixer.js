@@ -53,13 +53,13 @@ export class Mixer {
 
   toggle() {
     if (this.playing) {
-      console.log(`Pausing ${this}`);
+      //console.log(`Pausing ${this}`);
 
       this.playing = false;
       this.playlist.pause();
       this.speakerTracks.forEach(s => s.pause());
     } else {
-      console.log(`Playing ${this}`);
+      //console.log(`Playing ${this}`);
       
       this.playing = true;
       this.playlist.play();
