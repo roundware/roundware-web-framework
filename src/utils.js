@@ -54,5 +54,14 @@ export function buildAudioContext(windowScope) {
   return audioContext;
 }
 
+export const timestamp = {
+  toString: (time = new Date) => {
+    const hour = time.getHours().toString().padStart(2,'0');
+    const mins = time.getMinutes().toString().padStart(2,'0');
+    const secs = time.getSeconds().toString().padStart(2,'0');
+
+    return [hour,mins,secs].join(':');
+  }
+};
 
 export const NO_OP = () => {};
