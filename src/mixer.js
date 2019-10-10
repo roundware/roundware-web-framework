@@ -42,9 +42,13 @@ export class Mixer {
     this.playing = false;
   }
 
-  updateListenerLocation(newCoordinates) {
-    const newPoint = coordsToPoints(newCoordinates);
-    [this.playlist,...this.speakerTracks].forEach(t => t.updateListenerPoint(newPoint.geometry));
+  updateParams({ listenerLocation, ...params}) {
+    if (listenerLocation) {
+      params.listenerPoint = coordsToPoints(listenerLocation);
+    }
+
+    this.playlist.updateParams(params);
+    this.speakerTracks.forEach(t => t.updateParams(params));
   }
 
   toString() {

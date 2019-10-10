@@ -32,9 +32,9 @@ export class Playlist {
     return trackMapAssets.filter(Boolean); // remove null values
   }
 
-  updateListenerPoint(point) {
-    this.listenerPoint = point;
-    this.tracks.forEach(t => t.wakeUp());
+  updateParams({ listenerPoint, ...params}) {
+    if (listenerPoint) this.listenerPoint = listenerPoint;
+    this.tracks.forEach(t => t.updateParams(params));
   }
 
   play() {

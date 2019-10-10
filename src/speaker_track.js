@@ -86,8 +86,8 @@ export class SpeakerTrack {
     return this.audio;
   }
 
-  updateListenerPoint(point) {
-    this.listenerPoint = point;
+  updateParams({ listenerPoint }) {
+    if (listenerPoint) this.listenerPoint = listenerPoint.geometry;
     this.updateVolume();
   }
 

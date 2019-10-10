@@ -1,10 +1,10 @@
 import { 
-  hasOwnProperty, 
   random,
   timestamp
 } from './utils';
 
 import { makeInitialTrackState } from './TrackStates';
+import { TrackOptions } from './mixer/track_options';
 
 const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due to floating point math concerns
 
@@ -69,75 +69,6 @@ const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due
 
 */
 
-class TrackOptions {
-  constructor(params = {}) {
-    this.volumeRange = [params.minvolume,params.maxvolume];
-    this.duration = [params.minduration,params.maxduration];
-    this.deadAir = [params.mindeadair,params.maxdeadair];
-    this.fadeInTime = [params.minfadeintime,params.maxfadeintime];
-    this.fadeOutTime = [params.minfadeouttime,params.maxfadeouttime];
-    this.repeatRecordings = !!params.repeatrecordings;
-    this.tags = params.tag_filters;
-    this.bannedDuration = params.banned_duration || 600,
-    this.startWithSilence = hasOwnProperty(params,'start_with_silence') ? !!params.start_with_silence : true;
-    this.fadeOutWhenFiltered = hasOwnProperty(params,'fadeout_when_filtered') ? !!params.fadeout_when_filtered : true;
-  }
-
-  get randomDeadAir() {
-    return random(this.deadAirLowerBound,this.deadAirUpperBound);
-  }
-
-  get randomFadeInDuration() {
-    return Math.min(
-      random(this.durationLowerBound,this.fadeInLowerBound),
-      this.durationHalfway
-    );
-  }
-
-  get randomFadeOutDuration() {
-    return Math.min(
-      random(this.fadeOutLowerBound,this.fadeOutUpperBound),
-      this.durationHalfway
-    );
-  }
-
-  get deadAirLowerBound() {
-    return this.deadAir[0];
-  }
-
-  get deadAirUpperBound() {
-    return this.deadAir[1];
-  }
-
-  get durationLowerBound() {
-    return this.duration[0];
-  }
-
-  get durationUpperBound() {
-    return this.duration[1];
-  }
-
-  get durationHalfway() {
-    return (this.durationUpperBound - this.durationLowerBound) / 2;
-  }
-
-  get fadeInLowerBound() {
-    return this.fadeInTime[0];
-  }
-
-  get fadeInUpperBound() {
-    return this.fadeInTime[1];
-  }
-
-  get fadeOutLowerBound() {
-    return this.fadeOutTime[0];
-  }
-
-  get fadeOutUpperBound() {
-    return this.fadeOutTime[1];
-  }
-}
-
 //const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['loadstart','playing','stalled','waiting']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
 //const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['playing','stalled']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
 
@@ -178,12 +109,12 @@ export class PlaylistAudiotrack {
   }
 
   onAudioError(evt) {
-    console.warn(`${this} audio error, skipping to next track`,evt);
+    console.warn(`\t[${this} audio error, skipping to next track]`,evt);
     this.setInitialTrackState();
   }
 
   onAudioEnded() {
-    console.log(`[${this} audio ended event]`);
+    console.log(`\t[${this} audio ended event]`);
   } 
   
   play() {
@@ -191,8 +122,8 @@ export class PlaylistAudiotrack {
     this.state.play();
   }
 
-  wakeUp() {
-    if (this.state.wakeUp) this.state.wakeUp();
+  updateParams(params = {}) {
+    this.state.updateParams(params);
   }
 
   // Halts any scheduled gain changes and holds at current level

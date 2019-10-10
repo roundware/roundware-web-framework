@@ -88,12 +88,12 @@ export default class Roundware {
     this._audiotrack  = audiotrack  || new Audiotrack(this._projectId,options);
   }
 
-  updateLocation(newLocation) {
-    this._listenerLocation = newLocation;
-    console.log('Position change',newLocation);
+  updateLocation(listenerLocation) {
+    this._listenerLocation = listenerLocation;
+    console.log('Position change',listenerLocation);
 
-    if (this._stream) this._stream.update(newLocation);
-    if (this._mixer) this._mixer.updateListenerLocation(newLocation);
+    if (this._stream) this._stream.update(listenerLocation);
+    if (this._mixer) this._mixer.updateParams({ listenerLocation });
   }
 
   /** Initiate a connection to Roundware
