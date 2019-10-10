@@ -36,6 +36,7 @@
     "url": "https://github.com/roundware/roundware-web/issues"
   },
   "devDependencies": {
+    "@babel/cli": "7.6.3",
     "@babel/core": "~7.5.5",
     "@babel/preset-env": "~7.5.5",
     "@turf/turf": "5.1.6",
