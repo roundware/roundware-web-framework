@@ -164,7 +164,7 @@ export class PlaylistAudiotrack {
     const { gainNode, audioContext: { currentTime } } = this;
     
     try {
-      gainNode.gain.exponentialRampToValueAtTime(finalVolume,currentTime + durationSeconds);
+      gainNode.gain.linearRampToValueAtTime(finalVolume,currentTime + durationSeconds);
       return true;
     } catch(err) {
       console.warn(`Unable to ramp gain ${this}`,err);
