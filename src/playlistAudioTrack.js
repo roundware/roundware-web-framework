@@ -1,8 +1,4 @@
-import { 
-  random,
-  timestamp
-} from './utils';
-
+import { timestamp } from './utils';
 import { makeInitialTrackState } from './TrackStates';
 import { TrackOptions } from './mixer/track_options';
 
@@ -139,12 +135,10 @@ export class PlaylistAudiotrack {
   }
 
   fadeIn(fadeInDurationSeconds) {
-    const { currentAsset } = this;
-    const finalVolume = random(currentAsset.volume);
+    const { currentAsset, trackOptions: { randomVolume }} = this;
+    const finalVolume = randomVolume * currentAsset.volume;
     
-    //const logline = `asset #${nextAsset.id}`;
-    //console.log(`${timestamp} Fading-in ${this} asset ${currentAsset.id}: ${fadeInDurationSeconds.toFixed(1)}s`);
-    console.info(`Fading in #${currentAsset.id} to random volume ${finalVolume} (asset volume: ${currentAsset.volume})`);
+    console.info(`Fading in #${currentAsset.id} to random volume ${finalVolume.toFixed(1)}`);
 
     try {
       this.setZeroGain();

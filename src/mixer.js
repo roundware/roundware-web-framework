@@ -1,13 +1,20 @@
 import { SpeakerTrack } from './speaker_track';
 import { Playlist } from './playlist';
-import { buildAudioContext, coordsToPoints } from './utils';
+import { buildAudioContext, coordsToPoints, getUrlParam  } from './utils';
 import { AssetPool } from './assetPool';
 
 export class Mixer {
   constructor({ client, windowScope, listenerLocation, filters = [], sortMethods = [], mixParams = {} }) {
     const audioContext = buildAudioContext(windowScope);
+    let selectTrackId = getUrlParam(windowScope.location,'rwfSelectTrackId');
+    let audioTracks = client.audiotracks();
 
-    const audioTracks = client.audiotracks().filter(t => t.id !== 40); // temporarily disabling one track for testing purposes
+    if (selectTrackId) { 
+      selectTrackId = Number(selectTrackId);
+      audioTracks = audioTracks.filter(t => t.id === selectTrackId);
+      console.info(`isolating track #${selectTrackId}`);
+    }
+
     const assets = client.assets();
     const timedAssets = client.timedAssets();
     const speakers = client.speakers();
@@ -30,8 +37,6 @@ export class Mixer {
       audioContext,
       windowScope
     });
-
-    //console.info({ assets, filters, sortMethods, mixParams });
 
     this.speakerTracks = speakers.map(speakerData => new SpeakerTrack({
       audioContext,
@@ -57,14 +62,10 @@ export class Mixer {
 
   toggle() {
     if (this.playing) {
-      //console.log(`Pausing ${this}`);
-
       this.playing = false;
       this.playlist.pause();
       this.speakerTracks.forEach(s => s.pause());
     } else {
-      //console.log(`Playing ${this}`);
-      
       this.playing = true;
       this.playlist.play();
       this.speakerTracks.forEach(s => s.play());

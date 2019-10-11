@@ -73,8 +73,6 @@ export class Playlist {
     const elapsedSinceLastStartMs = this.elapsedTimeMs + (now - lastStartedAt);
     const elapsedSeconds = elapsedSinceLastStartMs / 1000;
 
-    console.info({ elapsedSeconds });
-
     const nextAsset = this.assetPool.nextForTrack(forTrack,{
       filterOutAssets,
       elapsedSeconds,

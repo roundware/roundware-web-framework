@@ -14,6 +14,10 @@ export class TrackOptions {
     this.fadeOutWhenFiltered = hasOwnProperty(params,'fadeout_when_filtered') ? !!params.fadeout_when_filtered : true;
   }
 
+  get randomVolume() {
+    return random(this.volumeRangeLowerBound,this.volumeRangeUpperBound);
+  }
+
   get randomDeadAir() {
     return random(this.deadAirLowerBound,this.deadAirUpperBound);
   }
@@ -30,6 +34,14 @@ export class TrackOptions {
       random(this.fadeOutLowerBound,this.fadeOutUpperBound),
       this.durationHalfway
     );
+  }
+
+  get volumeRangeLowerBound() {
+    return this.volumeRange[0];
+  }
+
+  get volumeRangeUpperBound() {
+    return this.volumeRange[1];
   }
 
   get deadAirLowerBound() {
