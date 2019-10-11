@@ -10,12 +10,14 @@ const defaultCoords = {
 // for an initial rapid, low-accuracy position
 const fastGeolocationPositionOptions = {
   enableHighAccuracy: false,
-  timeout: initialGeoTimeoutSeconds
+  timeout: initialGeoTimeoutSeconds,
+  maximumAge: 0
 };
 
 // subsequent position monitoring should be high-accuracy
 const accurateGeolocationPositionOptions = {
-  enableHighAccuracy: true
+  enableHighAccuracy: true,
+  maximumAge: 0
 };
 
 /** Responsible for tracking the user's position, when geo listening is enabled and the browser is capable
