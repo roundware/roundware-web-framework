@@ -59,7 +59,6 @@ export class Playlist {
 
     if (this.playlistLastStartedAt) {
       this.elapsedTimeMs = this.elapsedTimeMs + (new Date - this.playlistLastStartedAt);
-      console.info(`elapsed time ${(this.elapsedTimeMs / 1000).toFixed(1)}s`);
       delete this.playlistLastStartedAt;
     }
 
