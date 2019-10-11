@@ -17,7 +17,7 @@ export class Playlist {
       console.log(`Setting playlist timer to ${elapsedSecs.toFixed(1)}s`);
     }
 
-    this.elapsedTimeMs = elapsedTimeMs;
+    this._elapsedTimeMs = elapsedTimeMs;
     const trackMap = new Map();
 
     audioTracks.forEach(audioData => {
@@ -58,19 +58,24 @@ export class Playlist {
     this.tracks.forEach(t => t.pause());
 
     if (this.playlistLastStartedAt) {
-      this.elapsedTimeMs = this.elapsedTimeMs + (new Date - this.playlistLastStartedAt);
+      this._elapsedTimeMs = this._elapsedTimeMs + (new Date - this.playlistLastStartedAt);
       delete this.playlistLastStartedAt;
     }
 
     this.playing = false;
   }
 
-  next(forTrack) {
-    const filterOutAssets = this.currentlyPlayingAssets;
+  get elapsedTimeMs() {
     const now = new Date;
     const lastStartedAt = this.playlistLastStartedAt ? this.playlistLastStartedAt : now;
-    const elapsedSinceLastStartMs = this.elapsedTimeMs + (now - lastStartedAt);
-    const elapsedSeconds = elapsedSinceLastStartMs / 1000;
+    const elapsedSinceLastStartMs = now - lastStartedAt;
+
+    return this._elapsedTimeMs + elapsedSinceLastStartMs;
+  }
+
+  next(forTrack) {
+    const { currentlyPlayingAssets: filterOutAssets, elapsedTimeMs } = this;
+    const elapsedSeconds = elapsedTimeMs / 1000;
 
     const nextAsset = this.assetPool.nextForTrack(forTrack,{
       filterOutAssets,

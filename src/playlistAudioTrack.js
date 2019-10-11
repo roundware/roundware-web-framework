@@ -155,6 +155,8 @@ export class PlaylistAudiotrack {
   rampGain(finalVolume,durationSeconds,rampMethod = 'exponentialRampToValueAtTime') {
     const { gainNode: { gain }, audioContext: { currentTime } } = this;
     
+    console.log(`ramping gain of ${this} to ${finalVolume.toFixed(1)} over ${durationSeconds.toFixed(1)} seconds (${rampMethod})`);
+
     try {
       gain[rampMethod](finalVolume,currentTime + durationSeconds);
       return true;
@@ -204,7 +206,10 @@ export class PlaylistAudiotrack {
   }
 
   transition(newState) {
-    console.log(`${timestamp} ${this}: '${this.state}' ➜  '${newState}'`);
+    const { state, playlist: { elapsedTimeMs } } = this;
+
+    console.log(`${timestamp} ${this}: '${state}' ➜  '${newState}' (${(elapsedTimeMs / 1000).toFixed(1)}s elapsed runtime)`);
+
     this.state.finish();
     this.state = newState;
     this.state.play();
