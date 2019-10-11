@@ -46,13 +46,13 @@ class TimedTrackState {
   }
 
   play(nextStateSecs = 0) {
-    const { timerId, timeRemainingMs } = this;
+    const { timerId, timeRemainingMs, track: { id: trackId } } = this;
 
     if (timerId) return; // state is already active/playing
 
     if (timeRemainingMs) {
       const timeRemainingSecs = timeRemainingMs / 1000;
-      console.log(`Resuming track state ${this}: ${timeRemainingSecs.toFixed(1)}s remaining`);
+      console.log(`\t[Resuming track #${trackId} timer: next state in ${timeRemainingSecs.toFixed(1)}s]`);
 
       this.setNextStateTimer(timeRemainingMs);
       return timeRemainingSecs;
@@ -61,7 +61,6 @@ class TimedTrackState {
     //console.log(`Playing track state ${this}: ${nextStateSecs}s`); 
 
     const nextStateMs = nextStateSecs * 1000;
-    console.info(`\tNext state timer: ${nextStateSecs.toFixed(1)}s`);
     this.setNextStateTimer(nextStateMs);
 
     return nextStateSecs;
@@ -69,7 +68,7 @@ class TimedTrackState {
 
   pause() {
     this.timeRemainingMs = this.clearTimer();
-    console.log('Pausing timer',{ timeRemainingMs: this.timeRemainingMs });
+    console.log(`\t[Pausing track #${this.track.id} timer: next state in ${(this.timeRemainingMs / 1000).toFixed(1)}s`);
   }
 
   clearTimer() {
