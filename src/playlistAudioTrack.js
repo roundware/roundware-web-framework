@@ -70,7 +70,7 @@ const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due
 */
 
 //const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['loadstart','playing','stalled','waiting']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
-//const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['playing','stalled']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
+const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['pause','play','playing','waiting','stalled']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
 
 export class PlaylistAudiotrack {
   constructor({ audioContext, windowScope, audioData = {}, playlist }) {
@@ -92,7 +92,7 @@ export class PlaylistAudiotrack {
     audioSrc.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    //LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach(name => audioElement.addEventListener(name,() => console.log(`[${this} audio ${name} event]`)));
+    LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach(name => audioElement.addEventListener(name,() => console.log(`\t[${this} audio ${name} event]`)));
 
     audioElement.addEventListener('error',() => this.onAudioError());
     audioElement.addEventListener('ended',() => this.onAudioEnded());
@@ -133,25 +133,23 @@ export class PlaylistAudiotrack {
     gain.cancelAndHoldAtTime(currentTime);
   }
 
-  fadeIn(fadeInDurationSeconds) {
-    const { 
-      currentAsset,
-      audioElement, 
-      gainNode: { gain }, 
-      audioContext: { currentTime } 
-    } = this;
-
+  setZeroGain() {
+    const { gainNode: { gain } } = this;
     gain.value = NEARLY_ZERO;
+  }
 
+  fadeIn(fadeInDurationSeconds) {
+    const { currentAsset } = this;
     const finalVolume = random(currentAsset.volume);
     
     //const logline = `asset #${nextAsset.id}`;
     //console.log(`${timestamp} Fading-in ${this} asset ${currentAsset.id}: ${fadeInDurationSeconds.toFixed(1)}s`);
-    //console.info("CONSOLEDEBUG",{ currentTime, fadeInDuration, finalVolume });
+    console.info(`Fading in #${currentAsset.id} to random volume ${finalVolume} (asset volume: ${currentAsset.volume})`);
 
     try {
-      audioElement.play();
-      gain.exponentialRampToValueAtTime(finalVolume,currentTime + fadeInDurationSeconds);
+      this.setZeroGain();
+      this.playAudio();
+      this.rampGain(finalVolume,fadeInDurationSeconds);
       return true;
     } catch(err) {
       delete this.currentAsset;
@@ -160,11 +158,11 @@ export class PlaylistAudiotrack {
     }
   }
 
-  rampGain(finalVolume,durationSeconds) {
-    const { gainNode, audioContext: { currentTime } } = this;
+  rampGain(finalVolume,durationSeconds,rampMethod = 'exponentialRampToValueAtTime') {
+    const { gainNode: { gain }, audioContext: { currentTime } } = this;
     
     try {
-      gainNode.gain.linearRampToValueAtTime(finalVolume,currentTime + durationSeconds);
+      gain[rampMethod](finalVolume,currentTime + durationSeconds);
       return true;
     } catch(err) {
       console.warn(`Unable to ramp gain ${this}`,err);
@@ -173,7 +171,7 @@ export class PlaylistAudiotrack {
   }
 
   fadeOut(fadeOutDurationSeconds) {
-    return this.rampGain(NEARLY_ZERO,fadeOutDurationSeconds);
+    return this.rampGain(NEARLY_ZERO,fadeOutDurationSeconds,'linearRampToValueAtTime');
   }
 
   loadNextAsset() {
@@ -199,6 +197,15 @@ export class PlaylistAudiotrack {
   pause() {
     console.log(`${timestamp} pausing ${this}`);
     this.state.pause();
+    if (this.audioElement) this.audioElement.pause();
+  }
+
+  playAudio() {
+    if (this.audioElement) this.audioElement.play();
+  }
+  
+  pauseAudio() {
+    this.holdGain();
     if (this.audioElement) this.audioElement.pause();
   }
 

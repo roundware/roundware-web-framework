@@ -68,27 +68,35 @@ class TimedTrackState {
   }
 
   pause() {
-    const { timerId, windowScope, timerApproximateEndingAt } = this;
+    this.timeRemainingMs = this.clearTimer();
+    console.log('Pausing timer',{ timeRemainingMs: this.timeRemainingMs });
+  }
+
+  clearTimer() {
+    const now = new Date;
+    const { timerId, timerApproximateEndingAtMs = now, windowScope } = this;
 
     if (timerId) {
       windowScope.clearTimeout(timerId);
-      this.timeRemainingMs = (new Date) - timerApproximateEndingAt;
-      delete this.timerApproximateEndingAt;
+
+      delete this.timerId;
+      delete this.timerApproximateEndingAtMs;
+
+      const timeRemainingMs = Math.max(timerApproximateEndingAtMs - now.getTime(),0);
+      return timeRemainingMs;
     }
+
+    return 0;
   }
 
   finish() {
-    const { timerId, windowScope } = this;
-    if (timerId) windowScope.clearTimeout(timerId);
-
-    delete this.timerId;
+    this.clearTimer();
     delete this.timeRemainingMs;
-    delete this.timerApproximateEndingAt;
   }
 
   setNextStateTimer(timeMs) {
     this.timerId = this.windowScope.setTimeout(() => this.setNextState(),timeMs);
-    this.timerApproximateEndingAt = (new Date).getTime() + timeMs;
+    this.timerApproximateEndingAtMs = (new Date).getTime() + timeMs;
   }
 
   setNextState() {
@@ -144,7 +152,7 @@ class FadingInState extends TimedTrackState {
 
   pause() {
     super.pause();
-    this.track.holdGain();
+    this.track.pauseAudio();
   }
 
   setNextState() {
@@ -165,9 +173,15 @@ class PlayingState extends TimedTrackState {
   }
 
   play() {
-    const { assetEnvelope: { startFadingOutSecs } } = this;
+    const { track, assetEnvelope: { startFadingOutSecs } } = this;
     super.play(startFadingOutSecs);
+    track.playAudio();
     //console.log(`Playing asset #${assetId} (start fading out: ${remainingSeconds.toFixed(1)}s)`);
+  }
+
+  pause() {
+    super.pause();
+    this.track.pauseAudio();
   }
 
   toString() {
@@ -192,12 +206,17 @@ class FadingOutState extends TimedTrackState {
     const remainingSeconds = super.play(fadeOutDuration);
 
     if (!remainingSeconds) return;
-    if (!track.fadeOut(remainingSeconds)) this.setLoadingState();
+
+    if (track.fadeOut(remainingSeconds)) {
+      track.playAudio();
+    } else {
+      this.setLoadingState();
+    }
   }
 
   pause() {
     super.pause();
-    this.track.holdGain();
+    this.track.pauseAudio();
   }
 
   setNextState() {

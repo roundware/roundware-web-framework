@@ -64,4 +64,10 @@ export const timestamp = {
   }
 };
 
+export const getUrlParam = (urlStr,paramName) => {
+  const url = new URL(urlStr);
+  const params = new URLSearchParams(url.search);
+  return params.get(paramName);
+};
+
 export const NO_OP = () => {};
