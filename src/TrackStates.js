@@ -68,7 +68,7 @@ class TimedTrackState {
 
   pause() {
     this.timeRemainingMs = this.clearTimer();
-    console.log(`\t[Pausing track #${this.trackId} timer: next state in ${(this.timeRemainingMs / 1000).toFixed(1)}s`);
+    console.log(`\t[Pausing track #${this.track.trackId} timer: next state in ${(this.timeRemainingMs / 1000).toFixed(1)}s`);
   }
 
   clearTimer() {

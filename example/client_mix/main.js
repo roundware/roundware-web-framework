@@ -246,6 +246,17 @@ function initDemo() {
     listenerLocation
   });
 
+  function updateMap(listenerLocation,recordingRadius) {
+    const position = {
+      lat: listenerLocation.latitude,
+      lng: listenerLocation.longitude
+    };
+
+    map.setCenter(position);
+        
+    return drawListeningCircle(map,position,recordingRadius);
+  }
+
   roundware.
     connect().
     then(() => {
@@ -262,16 +273,17 @@ function initDemo() {
 
       google.maps.event.addListener(listener,"dragend",() => {
         const position = listener.getPosition();
-        map.setCenter(position);
-        
         const latitude = position.lat();
         const longitude = position.lng();
 
         roundware.updateLocation({ latitude, longitude });
-
-        listeningCircle.setMap(null);
-        listeningCircle = drawListeningCircle(map,position,recordingRadius);
       });
+
+      roundware.onUpdateLocation = listenerLocation => {
+        console.info("updating map",{ listenerLocation });
+        listeningCircle.setMap(null);
+        listeningCircle = updateMap(listenerLocation,recordingRadius);
+      };
 
       playPauseBtn.addEventListener('click',() => {
         const isPlaying = mixer.toggle();
