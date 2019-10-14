@@ -90,7 +90,6 @@ export default class Roundware {
 
   updateLocation(listenerLocation) {
     this._listenerLocation = listenerLocation;
-    console.log('Position change',listenerLocation);
 
     if (this._stream) this._stream.update(listenerLocation);
     if (this._mixer) this._mixer.updateParams({ listenerLocation });

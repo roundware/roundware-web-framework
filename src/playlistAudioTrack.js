@@ -70,8 +70,8 @@ const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['pause','play','playing','waiting','stall
 
 export class PlaylistAudiotrack {
   constructor({ audioContext, windowScope, audioData = {}, playlist }) {
-    this.id = audioData.id;
-    this.data = audioData;
+    this.trackId = audioData.id;
+    this.timedAssetPriority = audioData.timed_asset_priority;
     this.playlist = playlist;
     this.playing = false;
     this.trackOptions = new TrackOptions(audioData);
@@ -98,6 +98,10 @@ export class PlaylistAudiotrack {
     this.gainNode = gainNode;
 
     this.setInitialTrackState();
+  }
+
+  get mixParams() {
+    return { timedAssetPriority: this.timedAssetPriority };
   }
 
   setInitialTrackState() {
@@ -216,7 +220,6 @@ export class PlaylistAudiotrack {
   }
 
   toString() {
-    const { id } = this.data;
-    return `Track #${id}`;
+    return `Track #${this.trackId}`;
   }
 }

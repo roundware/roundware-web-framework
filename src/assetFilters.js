@@ -127,16 +127,15 @@ function anyTagsFilter() {
 
 // keep assets that are slated to start now or in the past few minutes AND haven't been played before
 function timedAssetFilter() {
-  return (asset,{ elapsedSeconds = 0, timedAssetPriority = false }) => {
+  return (asset,{ elapsedSeconds = 0, timedAssetPriority = 'normal' }) => {
     const { timedAssetStart, timedAssetEnd, playCount } = asset;
 
     if (!timedAssetStart || !timedAssetEnd) return ASSET_PRIORITIES.DISCARD;
-
     if (timedAssetStart >= elapsedSeconds || timedAssetEnd <= elapsedSeconds || playCount > 0) return ASSET_PRIORITIES.DISCARD;
 
-    const priority = timedAssetPriority ? ASSET_PRIORITIES.HIGHEST : ASSET_PRIORITIES.NORMAL;
+    const priorityEnumStr = timedAssetPriority.toUpperCase(); // "highest", "lowest", "normal", etc.
 
-    return priority;
+    return ASSET_PRIORITIES[priorityEnumStr] || ASSET_PRIORITIES.NEUTRAL;
   };
 }
 
