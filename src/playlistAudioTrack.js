@@ -212,7 +212,7 @@ export class PlaylistAudiotrack {
   transition(newState) {
     const { state, playlist: { elapsedTimeMs } } = this;
 
-    console.log(`${timestamp} ${this}: '${state}' ➜  '${newState}' (${(elapsedTimeMs / 1000).toFixed(1)}s elapsed runtime)`);
+    console.log(`${timestamp} ${this}: '${state}' ➜  '${newState}' (${(elapsedTimeMs / 1000).toFixed(1)}s elapsed)`);
 
     this.state.finish();
     this.state = newState;

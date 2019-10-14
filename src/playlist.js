@@ -29,7 +29,7 @@ export class Playlist {
         playlist: this,
       });
 
-      trackMap.set(track,null);
+      trackMap.set(track,true);
     },{});
 
     this.trackMap = trackMap;
