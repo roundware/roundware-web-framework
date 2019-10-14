@@ -241,7 +241,6 @@ class WaitingForAssetState extends TimedTrackState {
 
   updateParams(params = {}) {
     super.updateParams(params);
-    console.log('updating params',params);
     this.finish(); // move to LoadingState in case new assets are available
     this.setLoadingState();
   }

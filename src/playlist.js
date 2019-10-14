@@ -7,6 +7,7 @@ export class Playlist {
     this.playingTracks = {};
     this.assetPool = assetPool;
     this.playing = false;
+    this.listenTagIds = [];
 
     let elapsedTimeMs = 0;
     const timerSecs = getUrlParam(windowScope.location,'rwfTimerSeconds');
@@ -43,8 +44,9 @@ export class Playlist {
     return trackMapAssets.filter(Boolean); // remove null values
   }
 
-  updateParams({ listenerPoint, ...params}) {
+  updateParams({ listenerPoint, listenTagIds = [], ...params}) {
     if (listenerPoint) this.listenerPoint = listenerPoint;
+    this.listenTagIds = listenTagIds.map(t => Number(t));
     this.tracks.forEach(t => t.updateParams(params));
   }
 
@@ -74,13 +76,14 @@ export class Playlist {
   }
 
   next(forTrack) {
-    const { currentlyPlayingAssets: filterOutAssets, elapsedTimeMs } = this;
+    const { currentlyPlayingAssets: filterOutAssets, elapsedTimeMs, listenTagIds } = this;
     const elapsedSeconds = elapsedTimeMs / 1000;
 
     const nextAsset = this.assetPool.nextForTrack(forTrack,{
       filterOutAssets,
       elapsedSeconds,
       listenerPoint: this.listenerPoint,
+      listenTagIds
     });
 
     this.trackMap[forTrack] = nextAsset;

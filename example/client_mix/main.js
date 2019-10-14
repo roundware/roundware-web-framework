@@ -278,7 +278,34 @@ function initDemo() {
         playPauseBtn.textContent = isPlaying ? 'Pause' : 'Play';
       });
 
-      playPauseBtn.disabled = false;
+      const tagDiv = document.getElementById("tagSelection");
+
+      roundware.getTags().then(tagData => {
+        tagData.forEach(tag => {
+          const newCheckbox = document.createElement("input"); 
+
+          const checkboxId = `tag_checkbox_${tag.id}`;
+
+          newCheckbox.id = checkboxId;
+          newCheckbox.type = 'checkbox';
+          newCheckbox.name = 'tags';
+          newCheckbox.value = tag.id;
+
+          const newLabel = document.createElement('label');
+          newLabel.appendChild(newCheckbox);
+          const labelContent = document.createTextNode(tag.value);
+          newLabel.appendChild(labelContent);  
+
+          tagDiv.appendChild(newLabel);
+        });
+      });
+
+      playPauseBtn.style.display = 'block';
+
+      tagDiv.addEventListener('input',() => {
+        const listenTagIds = [...document.querySelectorAll('[name=tags]:checked')].map(tag => tag.value);
+        mixer.updateParams({ listenTagIds });
+      });
 
       $('#loadingIndicator').remove();
       $('#instructions').show();

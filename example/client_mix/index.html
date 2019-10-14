@@ -1,12 +1,45 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Roundware Web Framework ClientMixer Demo</title>
+    <title>Roundware Web Framework Mixer Acceptance Test</title>
 
     <style>
       #mixMap {
         height: 800px;
         width: 100%;
+      }
+
+      /** button styles from https://codepen.io/andybelldesign/pen/Vxpjvo */
+      button {
+        display: inline-block;
+        border: none;
+        padding: 1rem 2rem;
+        margin: 0;
+        text-decoration: none;
+        background: #0069ed;
+        color: #ffffff;
+        font-family: sans-serif;
+        font-size: 1rem;
+        cursor: pointer;
+        text-align: center;
+        transition: background 250ms ease-in-out, 
+        transform 150ms ease;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+      }
+
+      button:hover,
+      button:focus {
+        background: #0053ba;
+      }
+
+      button:focus {
+        outline: 1px solid #fff;
+        outline-offset: -4px;
+      }
+
+      button:active {
+        transform: scale(0.99);
       }
     </style>
   </head>
@@ -17,12 +50,10 @@
         <img id="loadingSpinner" src="./loader.gif" alt="Animated rogress indicator made of rotating line segments" style="float: left;" />
         <em>Connecting and downloading...</em>
       </span>
-      <button id="playPauseBtn" disabled>Start</button>
+      <button id="playPauseBtn" style="width: 80%; margin: 0 10%; display: none;">Start</button>
     </div>
 
-    <div id="instructions" style="display: none;">
-      Move pin on map to update audio based on location.
-   </div>
+    <div id="tagSelection" style="border: 1px solid black; padding: 0.5em; margin-top: 0.5em"></div>
 
     <div id="mixMap"></div>
 

@@ -48,7 +48,8 @@ export class AssetPool {
     const rankedAssets = this.assets.reduce((rankings,asset) => {
       if (filterOutAssets.includes(asset)) return rankings;
 
-      const rank = this.filterChain(asset,{ ...track.mixParams, ...stateParams, ...this.mixParams });
+      const mixParams = { ...track.mixParams, ...stateParams, ...this.mixParams };
+      const rank = this.filterChain(asset,mixParams);
 
       if (rank) {
         rankings[rank] = rankings[rank] || [];

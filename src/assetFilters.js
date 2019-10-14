@@ -115,7 +115,7 @@ function anyTagsFilter() {
   return (asset,{ listenTagIds }) => {
     if (isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
 
-    const { tags: assetTagIds = [] } = asset;
+    const { tag_ids: assetTagIds = [] } = asset;
 
     for (let tagId of assetTagIds) {
       if (listenTagIds.includes(tagId)) return ASSET_PRIORITIES.LOWEST; // matching only by tag should be the least-important filter
