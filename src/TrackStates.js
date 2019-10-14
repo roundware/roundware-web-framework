@@ -160,8 +160,8 @@ class FadingInState extends TimedTrackState {
   }
 
   toString() {
-    const { assetEnvelope: { fadeInDuration, fadeOutDuration, assetId, duration } } = this;
-    return `FadingIn Asset #${assetId} (fade-in ${fadeInDuration.toFixed(1)}s, fade-out ${fadeOutDuration.toFixed(1)}s, total duration ${duration.toFixed(1)}s)`;
+    const { assetEnvelope: { fadeInDuration, assetId } } = this;
+    return `FadingIn Asset #${assetId} (${fadeInDuration.toFixed(1)}s)`;
   }
 }
 

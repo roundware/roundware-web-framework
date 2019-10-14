@@ -155,7 +155,7 @@ export class PlaylistAudiotrack {
   rampGain(finalVolume,durationSeconds,rampMethod = 'exponentialRampToValueAtTime') {
     const { gainNode: { gain }, audioContext: { currentTime } } = this;
     
-    console.log(`ramping gain of ${this} to ${finalVolume.toFixed(1)} over ${durationSeconds.toFixed(1)} seconds (${rampMethod})`);
+    console.log(`\t[ramping ${this} gain to ${finalVolume.toFixed(2)} (${durationSeconds.toFixed(1)}s - ${rampMethod})]`);
 
     try {
       gain[rampMethod](finalVolume,currentTime + durationSeconds);

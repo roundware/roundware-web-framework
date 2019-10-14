@@ -132,12 +132,9 @@ function timedAssetFilter() {
 
     if (!timedAssetStart || !timedAssetEnd) return ASSET_PRIORITIES.DISCARD;
 
-    //console.info({ timedAssetStart, timedAssetEnd, playCount, elapsedSeconds });
-
     if (timedAssetStart >= elapsedSeconds || timedAssetEnd <= elapsedSeconds || playCount > 0) return ASSET_PRIORITIES.DISCARD;
 
     const priority = timedAssetPriority ? ASSET_PRIORITIES.HIGHEST : ASSET_PRIORITIES.NORMAL;
-    console.info('timedAssetFilter pri',priority,asset);
 
     return priority;
   };
