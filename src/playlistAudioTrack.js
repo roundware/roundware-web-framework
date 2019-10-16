@@ -1,8 +1,8 @@
 import { timestamp } from './utils';
 import { makeInitialTrackState } from './TrackStates';
-import { TrackOptions } from './mixer/track_options';
 
 const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due to floating point math concerns
+import { TrackOptions } from './mixer/TrackOptions';
 
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift

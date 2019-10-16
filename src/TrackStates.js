@@ -1,4 +1,4 @@
-import { AssetEnvelope } from './mixer/asset_envelope';
+import { AssetEnvelope } from './mixer/AssetEnvelope';
 
 /**
  Common sequence of states:
