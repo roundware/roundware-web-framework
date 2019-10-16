@@ -1,7 +1,7 @@
 import { hasOwnProperty, random } from '../utils';
 
 export class TrackOptions {
-  constructor(params = {}) {
+  constructor(urlParamLookup,params = {}) {
     this.volumeRange = [params.minvolume,params.maxvolume];
     this.duration = [params.minduration,params.maxduration];
     this.deadAir = [params.mindeadair,params.maxdeadair];
@@ -12,6 +12,14 @@ export class TrackOptions {
     this.bannedDuration = params.banned_duration || 600,
     this.startWithSilence = hasOwnProperty(params,'start_with_silence') ? !!params.start_with_silence : true;
     this.fadeOutWhenFiltered = hasOwnProperty(params,'fadeout_when_filtered') ? !!params.fadeout_when_filtered : true;
+    this.fadeOutMultiplier = 1;
+
+    const fadeOutMultiplierParam = urlParamLookup('rwfFadeOutMultiplier');
+
+    if (fadeOutMultiplierParam) {
+      this.fadeOutMultiplier = Number(fadeOutMultiplierParam);
+      console.log('Applying fade-out multiplier',this.fadeOutMultiplier);
+    }
   }
 
   get randomVolume() {

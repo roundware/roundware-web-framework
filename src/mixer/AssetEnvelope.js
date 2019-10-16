@@ -17,9 +17,10 @@ export class AssetEnvelope {
     this.latestStart = this.activeRegionUpperBound - this.duration;
     this.start = random(this.activeRegionLowerBound,this.latestStart);
 
-    this.fadeInDuration = Math.min(trackOptions.randomFadeInDuration,this.duration / 2);
-    this.fadeOutDuration = Math.min(trackOptions.randomFadeOutDuration,this.duration / 2);
-
+    const { randomFadeInDuration, randomFadeOutDuration, fadeOutMultiplier } = trackOptions;
+    
+    this.fadeInDuration = Math.min(randomFadeInDuration,this.duration / 2);
+    this.fadeOutDuration = Math.min(randomFadeOutDuration,this.duration / 2) * fadeOutMultiplier;
     this.startFadingOutSecs = this.duration - this.fadeInDuration - this.fadeOutDuration;
   }
 

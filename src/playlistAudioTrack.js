@@ -1,7 +1,5 @@
-import { timestamp } from './utils';
+import { getUrlParam, timestamp } from './utils';
 import { makeInitialTrackState } from './TrackStates';
-
-const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due to floating point math concerns
 import { TrackOptions } from './mixer/TrackOptions';
 
 /*
@@ -67,6 +65,7 @@ import { TrackOptions } from './mixer/TrackOptions';
 
 //const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['loadstart','playing','stalled','waiting']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
 const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['pause','play','playing','waiting','stalled']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
+const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due to floating point math concerns
 
 export class PlaylistAudiotrack {
   constructor({ audioContext, windowScope, audioData = {}, playlist }) {
@@ -74,7 +73,6 @@ export class PlaylistAudiotrack {
     this.timedAssetPriority = audioData.timed_asset_priority;
     this.playlist = playlist;
     this.playing = false;
-    this.trackOptions = new TrackOptions(audioData);
     this.windowScope = windowScope;
     
     const audioElement = new Audio();
@@ -93,9 +91,12 @@ export class PlaylistAudiotrack {
     audioElement.addEventListener('error',() => this.onAudioError());
     audioElement.addEventListener('ended',() => this.onAudioEnded());
 
+    const trackOptions = new TrackOptions(param => getUrlParam(windowScope.location,param),audioData);
+
     this.audioContext = audioContext;
     this.audioElement = audioElement;
     this.gainNode = gainNode;
+    this.trackOptions = trackOptions;
 
     this.setInitialTrackState();
   }
@@ -138,11 +139,10 @@ export class PlaylistAudiotrack {
     gain.value = NEARLY_ZERO;
   }
 
+  // exponentialRampToValueAtTime sounds more gradual for fading in
   fadeIn(fadeInDurationSeconds) {
     const { currentAsset, trackOptions: { randomVolume }} = this;
     const finalVolume = randomVolume * currentAsset.volume;
-    
-    console.info(`Fading in #${currentAsset.id} to random volume ${finalVolume.toFixed(1)}`);
 
     try {
       this.setZeroGain();
@@ -170,6 +170,7 @@ export class PlaylistAudiotrack {
     }
   }
 
+  // linearRampToValueAtTime sounds more gradual for fading out
   fadeOut(fadeOutDurationSeconds) {
     return this.rampGain(NEARLY_ZERO,fadeOutDurationSeconds,'linearRampToValueAtTime');
   }
