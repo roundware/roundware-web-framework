@@ -20,8 +20,6 @@ export class Mixer {
     const speakers = client.speakers();
     const listenerPoint = coordsToPoints(listenerLocation);
 
-    console.info('Initial listener position',listenerLocation);
-
     const assetPool = new AssetPool({
       assets,
       timedAssets,
@@ -52,7 +50,6 @@ export class Mixer {
   updateParams({ listenerLocation, ...params}) {
     if (listenerLocation) {
       params.listenerPoint = coordsToPoints(listenerLocation);
-      console.info('New listener position',listenerLocation);
     }
 
     this.playlist.updateParams(params);

@@ -79,7 +79,7 @@ export default class Roundware {
 
     // TODO need to reorganize/refactor these classes
     this._user        = user        || new User(options);
-    this._geoPosition = geoPosition || new GeoPosition(navigator,options);
+    this._geoPosition = geoPosition || new GeoPosition(navigator,{ ...options, defaultCoords: listenerLocation });
     this._session     = session     || new Session(navigator,this._projectId,this._geoPosition.geoListenEnabled,options);
     this._project     = project     || new Project(this._projectId,options);
     this._stream      = stream      || new Stream(options);
@@ -95,7 +95,16 @@ export default class Roundware {
 
     if (this._stream) this._stream.update(listenerLocation);
     if (this._mixer) this._mixer.updateParams({ listenerLocation });
-    if (this.onUpdateLocation) this.onUpdateLocation(listenerLocation);
+    if (this._onUpdateLocation) this._onUpdateLocation(listenerLocation);
+  }
+
+  set onUpdateLocation(callback) {
+    this._onUpdateLocation = callback;
+
+    if (this._geoPosition) {
+      const lastCoords = this._geoPosition.getLastCoords();
+      callback(lastCoords);
+    }
   }
 
   /** Initiate a connection to Roundware

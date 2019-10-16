@@ -1,22 +1,23 @@
 import { logger } from "./shims";
 
-const initialGeoTimeoutSeconds = 1;
+const initialGeoTimeoutSeconds = 5;
 
-const defaultCoords = {
-  latitude: 1,
-  longitude: 1
-};
+const frameworkDefaultCoords = {
+  latitude: 42.3140089,
+  longitude: -71.2504676
+}; // Boston, MA
 
 // for an initial rapid, low-accuracy position
 const fastGeolocationPositionOptions = {
   enableHighAccuracy: false,
   timeout: initialGeoTimeoutSeconds,
-  maximumAge: 0
+  maximumAge: Infinity
 };
 
 // subsequent position monitoring should be high-accuracy
 const accurateGeolocationPositionOptions = {
   enableHighAccuracy: true,
+  timeout: Infinity,
   maximumAge: 0
 };
 
@@ -27,17 +28,20 @@ export class GeoPosition {
   /** Create a new GeoPosition.
    * @param {Object} navigator - provides access to geolocation system
    * @param {Object} options - parameters for initializing this GeoPosition
-   * @param {Boolean} [options.geoListenEnabled = false] - whether or not to attempt to use geolocation **/
+   * @param {Boolean} [options.geoListenEnabled = false] - whether or not to attempt to use geolocation
+   * @param {Boolean} [options.defaultCoords] */
   constructor(navigator,options = {}) {
     this._navigator = navigator;
-    this._initialGeolocationPromise = Promise.resolve(defaultCoords);
-    this._lastCoords = defaultCoords;
+    
+    const { defaultCoords, geoListenEnabled } = options;
+    const initialCoords = defaultCoords ? defaultCoords : frameworkDefaultCoords;
 
-    if (this._navigator.geolocation && options.geoListenEnabled) {
-      this.geoListenEnabled = true;
-    } else {
-      this.geoListenEnabled = false;
-    }
+    this._initialGeolocationPromise = Promise.resolve(initialCoords);
+    this.defaultCoords = initialCoords;
+    this._lastCoords = initialCoords;
+    this.geoListenEnabled = navigator.geolocation && geoListenEnabled;
+
+    //console.info({ defaultCoords: this.defaultCoords });
   }
 
   /** @return {String} Human-readable representation of this GeoPosition **/
@@ -55,36 +59,35 @@ export class GeoPosition {
    * @param {Function} geoUpdateCallback - object that should receive geolocation coordinate updates
    * @see geoListenEnabled **/
   connect(geoUpdateCallback = () => {}) {
-    if (!this.geoListenEnabled) {
-      logger.info("Geolocation disabled");
-      this._initialGeolocationPromise = Promise.resolve({});
+    const { geoListenEnabled, defaultCoords, _navigator: { geolocation } } = this;
+
+    if (!geoListenEnabled) {
+      logger.info("Geolisten disabled");
       return;
     }
 
-    logger.info("Initializing geolocation system");
+    logger.log("Initializing geolocation system");
 
     this._initialGeolocationPromise = new Promise(resolve => {
-      this._navigator.geolocation.getCurrentPosition(initialPosition => {
-        let coords = initialPosition.coords;
-        logger.info("Received initial geolocation",coords);
-        geoUpdateCallback(coords);
+      geolocation.getCurrentPosition(initialPosition => {
+        const { coords } = initialPosition;
         this._lastCoords = coords;
-
-        let geoWatchId = this._navigator.geolocation.watchPosition(updatedPosition => {
-          let newCoords = updatedPosition.coords;
-          geoUpdateCallback(newCoords);
-          this._lastCoords = coords;
-        },(error) => {
-          logger.warn(`Unable to watch position: ${error.message} (code #${error.code})`);
-        },accurateGeolocationPositionOptions);
-
-        logger.info(`Monitoring geoposition updates (watch ID ${geoWatchId})`);
+        logger.info("Received initial geolocation:",coords);
+        geoUpdateCallback(coords);
         resolve(coords);
       },function initialGeoError(error) {
-        logger.warn(`Unable to get initial geolocation: ${error.message} (code #${error.code})`);
+        logger.warn(`Unable to get initial geolocation: ${error.message} (code #${error.code}), falling back to default coordinates for initial listener location`);
         resolve(defaultCoords);
       },fastGeolocationPositionOptions);
     });
+
+    geolocation.watchPosition(updatedPosition => {
+      const { coords } = updatedPosition;
+      this._lastCoords = coords;
+      logger.info("Received updated geolocation:",coords);
+      geoUpdateCallback(coords);
+    },error => logger.warn(`Unable to watch geoposition changes: ${error.message} (code #${error.code})`),
+    accurateGeolocationPositionOptions);
   }
 
   /** Allows you to wait on the progress of the .connect() behavior, attempting to get an initial

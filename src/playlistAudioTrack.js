@@ -187,7 +187,7 @@ export class PlaylistAudiotrack {
     this.currentAsset = asset;
 
     if (asset) {
-      //console.log(`Loading next asset`,asset);
+      console.log(`\t[loading next asset for ${this}: ${asset.file}`);
       audioElement.src = asset.file;
       return asset;
     } else {

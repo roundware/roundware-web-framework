@@ -225,6 +225,7 @@ function initDemo() {
 
   const listenMapEl = document.getElementById('mixMap');
   const playPauseBtn = document.getElementById('playPauseBtn');
+  const transportBtn = document.getElementById('transportBtn');
 
   const map = new google.maps.Map(listenMapEl,{
     zoom: 18,
@@ -280,7 +281,7 @@ function initDemo() {
       });
 
       roundware.onUpdateLocation = listenerLocation => {
-        console.info("updating map",{ listenerLocation });
+        //console.info("updating map",{ listenerLocation });
         listeningCircle.setMap(null);
         listeningCircle = updateMap(listenerLocation,recordingRadius);
       };
@@ -289,6 +290,15 @@ function initDemo() {
         const isPlaying = mixer.toggle();
         playPauseBtn.textContent = isPlaying ? 'Pause' : 'Play';
       });
+
+      transportBtn.addEventListener('click',() => {
+        roundware.updateLocation({
+          latitude: ROUNDWARE_INITIAL_LATITUDE,
+          longitude: ROUNDWARE_INITIAL_LONGITUDE
+        });
+
+        transportBtn.remove();
+      },{ once: true });
 
       const tagDiv = document.getElementById("tagSelection");
 
@@ -313,6 +323,7 @@ function initDemo() {
       });
 
       playPauseBtn.style.display = 'block';
+      transportBtn.style.display = 'block';
 
       tagDiv.addEventListener('input',() => {
         const listenTagIds = [...document.querySelectorAll('[name=tags]:checked')].map(tag => tag.value);
@@ -324,3 +335,12 @@ function initDemo() {
     }).
     catch(err => console.log('Roundware connection error',err));
 }
+
+const currentUrl = new URL(window.location);
+const params = new URLSearchParams(currentUrl.search);
+const googleMapsApiKey = params.get('mapsApiKey') || '';
+
+const scriptTag = document.createElement('script');
+scriptTag.src = `https://maps.googleapis.com/maps/api/js?callback=initDemo&key=${googleMapsApiKey}`;
+
+document.body.appendChild(scriptTag);

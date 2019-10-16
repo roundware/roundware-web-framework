@@ -50,7 +50,8 @@
         <img id="loadingSpinner" src="./loader.gif" alt="Animated rogress indicator made of rotating line segments" style="float: left;" />
         <em>Connecting and downloading...</em>
       </span>
-      <button id="playPauseBtn" style="width: 80%; margin: 0 10%; display: none;">Start</button>
+      <button id="playPauseBtn" style="width: 80%; margin: 0 10% 1% 10%; display: none;">Start</button>
+      <button id="transportBtn" style="width: 80%; margin: 0 10% 1% 10%; display: none;">Transport to Manzanar</button>
     </div>
 
     <div id="tagSelection" style="border: 1px solid black; padding: 0.5em; margin-top: 0.5em"></div>
@@ -59,8 +60,7 @@
 
     <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="../roundware.js"></script> 
-    <script type="text/javascript" src="./main.js"></script>
     <script src="https://npmcdn.com/@turf/turf/turf.min.js"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?callback=initDemo&key="></script> <!-- TODO need to get google maps API key from ENV via babel/webpack using a .env file -->
+    <script type="text/javascript" src="./main.js"></script>
   </body>
 </html>
