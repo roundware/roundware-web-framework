@@ -3,6 +3,7 @@ import { roundwareDefaultFilterChain } from './assetFilters';
 import { coordsToPoints } from './utils';
 
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
+// also rewrite .wav as .mp3
 const assetDecorationMapper = timedAssets => {
   const timedAssetLookup = timedAssets.reduce((lookupTable,timedAsset) => ({
     ...lookupTable,
@@ -13,6 +14,7 @@ const assetDecorationMapper = timedAssets => {
     const activeRegionLowerBound = asset.start_time || 0;
     const activeRegionUpperBound = asset.end_time   || 0;
     const activeRegionLength = activeRegionUpperBound - activeRegionLowerBound;
+    const mp3Url = asset.file.replace(/\.wav$/i,'.mp3');
 
     const decoratedAsset = {
       locationPoint: coordsToPoints(asset),
@@ -21,6 +23,7 @@ const assetDecorationMapper = timedAssets => {
       activeRegionUpperBound,
       activeRegionLowerBound,
       ...asset,
+      file: mp3Url
     };
 
     const timedAsset = timedAssetLookup[asset.id];
