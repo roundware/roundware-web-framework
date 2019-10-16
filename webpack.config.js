@@ -1,5 +1,7 @@
-/* eslint-disable */ 
+/* global require, module, __dirname */
+
 const path = require('path');
+
 const plugins = [];
 
 module.exports = {
