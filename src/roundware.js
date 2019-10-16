@@ -11,7 +11,6 @@ import { User } from "./user";
 import { Envelope } from "./envelope";
 import { Mixer } from "./mixer";
 import { Audiotrack } from "./audiotrack";
-import { Tag } from "./tag";
 
 /** This class is the primary integration point between Roundware's server and your application
     NOTE that we depend on jQuery being injected, because we use its $.ajax function. As browsers
@@ -87,7 +86,7 @@ export default class Roundware {
     this._asset       = asset       || new Asset(this._projectId,options);
     this._timed_asset = timedAsset  || new TimedAsset(this._projectId,options);
     this._audiotrack  = audiotrack  || new Audiotrack(this._projectId,options);
-    this._tag         = new Tag(this._projectId,options);
+    this.uiconfig = {};
   }
 
   updateLocation(listenerLocation) {
@@ -122,7 +121,7 @@ export default class Roundware {
 
       const promises = [
         this._project.connect(sessionId),
-        this._project.uiconfig(sessionId).then(uiConfig => this._uiConfig = uiConfig),
+        this._project.uiconfig(sessionId).then(uiConfig => this.uiConfig = uiConfig),
         this._speaker.connect(this._speakerFilters).then(speakerData => this._speakerData = speakerData),
         this._asset.connect(this._assetFilters).then(assetData => this._assetData = assetData),
         this._timed_asset.connect().then(data => this._timedAssetData = data),
@@ -131,6 +130,7 @@ export default class Roundware {
 
       await Promise.all(promises);
       console.info('Roundware connected');
+      return { uiConfig: this.uiConfig };
     } catch(err) {
       console.error("Unable to connect to Roundware",err);
       throw "Sorry, we were unable to connect to Roundware. Please try again.";
@@ -195,10 +195,6 @@ export default class Roundware {
    * @param {string} tagIdStr - comma-separated list of tag IDs to send to the streams API **/
   tags(tagIdStr) {
     this._stream.update({ tag_ids: tagIdStr });
-  }
-
-  getTags() {
-    return this._tag.connect();
   }
 
   /** Update the Roundware stream with new tag IDs and or geo-position
