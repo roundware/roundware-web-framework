@@ -48,6 +48,7 @@ export class ApiClient {
    * @param options {object} - any additional options to add to the Ajax request
    * @return {Promise} - will resolve or reject depending on the status of the request
    * @todo might be a good place to implement exponential retry of certain types of errors
+   * @todo as of 2019, the fetch() polyfills are good enough that we should be able to get rid of JQuery dependency
    * **/
   send(path,data,options = {}) {
     let url = this._serverUrl + path;
@@ -79,10 +80,10 @@ export class ApiClient {
     let promise = deferred.promise();
 
     this._jQuery.ajax(url,options).
-      then((data) => deferred.resolve(data)).
+      then(data => deferred.resolve(data)).
       fail((jqXHR,textStatus,errorThrown) => {
-        let techMsg = `${textStatus}: ${errorThrown}`;
-        let usrMsg = `We were unable to contact the audio server due to a network problem; please try again: '${techMsg}'`;
+        const techMsg = `${textStatus}: ${errorThrown}`;
+        const usrMsg = `We were unable to contact the audio server due to a network problem; please try again: '${techMsg}'`;
         logger.error(techMsg,jqXHR);
         deferred.reject(usrMsg);
       });
