@@ -13,8 +13,6 @@ import { Mixer } from "./mixer";
 import { Audiotrack } from "./audiotrack";
 
 /** This class is the primary integration point between Roundware's server and your application
-    NOTE that we depend on jQuery being injected, because we use its $.ajax function. As browsers
-    evolve and the whatwg-fetch polyfill evolves, we may be able to switch over to using window.fetch
 
    @example
    var roundwareServerUrl = "http://localhost:8888/api/2";
@@ -131,8 +129,7 @@ export default class Roundware {
       await Promise.all(promises);
       console.info('Roundware connected');
       return { uiConfig: this.uiConfig };
-    } catch(err) {
-      console.error("Unable to connect to Roundware",err);
+    } catch {
       throw "Sorry, we were unable to connect to Roundware. Please try again.";
     }
   }

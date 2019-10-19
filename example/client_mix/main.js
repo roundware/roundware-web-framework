@@ -1,4 +1,4 @@
-/* global $, google, Roundware, turf */
+/* global google, Roundware, turf */
 
 const ROUNDWARE_SERVER_URL = 'https://prod.roundware.com/api/2';
 
@@ -24,7 +24,7 @@ const ROUNDWARE_INITIAL_LONGITUDE = -118.286364;
 function mapSpeakers(map,roundware) {
   const speakers = roundware.speakers();
 
-  $.each(speakers,function (i, item) {
+  speakers.forEach((i,item) => {
     map.data.addGeoJson({
       "type": "Feature",
       "geometry": item.shape,
@@ -71,10 +71,8 @@ function mapAssets(map,listener,roundware) {
   const assetMarkers = [];
   const markerImg = new google.maps.MarkerImage(MARKER_IMG_SRC);
 
-  $.each(assets, function (i, item) {
+  assets.forEach((i,item) => {
     const point = new google.maps.LatLng(item.latitude,item.longitude);
-    // var tag_ids = item.tag_ids.toString();
-    // console.log('tag_ids = ' + tag_ids);
 
     const marker = new google.maps.Marker({
       position: point,
@@ -89,14 +87,17 @@ function mapAssets(map,listener,roundware) {
       marker.rw_tags = item.tag_ids;
     }
 
-    const content = `<p><b>Asset ${item.id}</b></br>
-                     <em>${item.file}</em></br></p>
-                     <table>
-                      <tr><th>Volume</th><td>${item.volume}</td></tr>
-                      <tr><th>Created</th><td>${item.created.slice(0,19)}</td></tr>
-                      <tr><th>Weight</th><td>${item.weight}</td></tr>
-                      <tr><th>Tags</th><td>${item.tag_ids}</td></tr>
-                      </table>`;
+    const { id: itemId, file, volume, created = '', weight, tag_ids } = item;
+
+    const content = `
+    <p><b>Asset ${itemId}</b></br>
+    <em>${file}</em></br></p>
+    <table>
+      <tr><th>Volume</th><td>${volume}</td></tr>
+      <tr><th>Created</th><td>${created.slice(0,19)}</td></tr>
+      <tr><th>Weight</th><td>${weight}</td></tr>
+      <tr><th>Tags</th><td>${tag_ids}</td></tr>
+    </table>`;
 
     const infoWindow = new google.maps.InfoWindow({ content });
 
@@ -133,8 +134,8 @@ function mapAssets(map,listener,roundware) {
         }
       });
 
-      marker.shape.setStyle(function(feature) {
-        if (feature.getProperty('name') == "assetRange") {
+      marker.shape.setStyle(feature => {
+        if (feature.getProperty('name') === "assetRange") {
           return {
             fillColor: '#6292CF',
             fillOpacity: .25,
@@ -142,6 +143,8 @@ function mapAssets(map,listener,roundware) {
             strokeOpacity: .8,
             strokeColor: '#6292CF'
           };
+        } else {
+          return {};
         }
       });
     } else {
@@ -166,35 +169,38 @@ function mapAssets(map,listener,roundware) {
   return assetMarkers;
 }
 
-function showHideMarkers(map,assetMarkers) {
-  $.each(assetMarkers,function(i,item) {
-    // if any item tags are not included in selected tags, hide marker, otherwise show it
-    let selectedListenTagIds = $("#uiListenDisplay input:checked").map(function() {
-      return Number(this.value);
-    }).get();
-    var is_visible = true;
+function showHideMarkers() { // map,assetMarkers) {
+  //assetMarkers.forEach((i,item) => {
+  //// if any item tags are not included in selected tags, hide marker, otherwise show it
+  //const selectedListenTagIds = $("#uiListenDisplay input:checked").map(function() {
+  //return Number(this.value);
+  //}).get();
 
-    $.each(item.rw_tags, function(j, tag_id) {
-      // if tag_id isn't selected, set to false and return
-      if (!(selectedListenTagIds.includes(tag_id))) {
-        is_visible = false;
-        return;
-      }
-    });
+  ////let is_visible = true;
 
-    item.setVisible(is_visible);
+  ////const { rw_tags = [] } = item;
 
-    if (item.circle) {
-      item.circle.setVisible(is_visible);
-    }
-    if (item.shape) {
-      if (is_visible) {
-        item.shape.setMap(map);
-      } else if (!is_visible) {
-        item.shape.setMap(null);
-      }
-    }
-  });
+  ////rw_tags.forEach((j,tag_id) =>{
+  ////// if tag_id isn't selected, set to false and return
+  ////if (!(selectedListenTagIds.includes(tag_id))) {
+  ////is_visible = false;
+  ////return;
+  ////}
+  ////});
+
+  //item.setVisible(is_visible);
+
+  //if (item.circle) {
+  //item.circle.setVisible(is_visible);
+  //}
+  //if (item.shape) {
+  //if (is_visible) {
+  //item.shape.setMap(map);
+  //} else if (!is_visible) {
+  //item.shape.setMap(null);
+  //}
+  //}
+  //});
 }
 
 const drawListeningCircle = (map,center,radius) => (
@@ -254,7 +260,7 @@ function initDemo() {
     };
 
     map.setCenter(position);
-        
+
     return drawListeningCircle(map,position,recordingRadius);
   }
 
@@ -264,7 +270,7 @@ function initDemo() {
       mapSpeakers(map,roundware);
 
       const assetMarkers = mapAssets(map,listener,roundware);
-      showHideMarkers(assetMarkers);
+      showHideMarkers(map,assetMarkers);
 
       const { recordingRadius = 25 } = roundware.mixParams;
 
@@ -281,7 +287,6 @@ function initDemo() {
       });
 
       roundware.onUpdateLocation = listenerLocation => {
-        //console.info("updating map",{ listenerLocation });
         listeningCircle.setMap(null);
         listeningCircle = updateMap(listenerLocation,recordingRadius);
       };
@@ -308,19 +313,19 @@ function initDemo() {
         console.info({ tag });
         //const newCheckbox = document.createElement("input"); 
 
-          //const checkboxId = `tag_checkbox_${tag.id}`;
+        //const checkboxId = `tag_checkbox_${tag.id}`;
 
-          //newCheckbox.id = checkboxId;
-          //newCheckbox.type = 'checkbox';
-          //newCheckbox.name = 'tags';
-          //newCheckbox.value = tag.id;
+        //newCheckbox.id = checkboxId;
+        //newCheckbox.type = 'checkbox';
+        //newCheckbox.name = 'tags';
+        //newCheckbox.value = tag.id;
 
-          //const newLabel = document.createElement('label');
-          //newLabel.appendChild(newCheckbox);
-          //const labelContent = document.createTextNode(tag.value);
-          //newLabel.appendChild(labelContent);  
+        //const newLabel = document.createElement('label');
+        //newLabel.appendChild(newCheckbox);
+        //const labelContent = document.createTextNode(tag.value);
+        //newLabel.appendChild(labelContent);  
 
-          //tagDiv.appendChild(newLabel);
+        //tagDiv.appendChild(newLabel);
       });
 
       playPauseBtn.style.display = 'block';
@@ -330,11 +335,13 @@ function initDemo() {
         const listenTagIds = [...document.querySelectorAll('[name=tags]:checked')].map(tag => tag.value);
         mixer.updateParams({ listenTagIds });
       });
-
-      $('#loadingIndicator').remove();
-      $('#instructions').show();
     }).
-    catch(err => console.log('Roundware connection error',err));
+    catch(err => {
+      const errBox = document.getElementById('errorDisplay');
+      errBox.style.display = 'block';
+      errBox.appendChild(document.createTextNode(err));
+    }).
+    then(() => document.getElementById('loadingIndicator').remove());
 }
 
 const currentUrl = new URL(window.location);

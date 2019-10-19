@@ -33,7 +33,7 @@ export class User {
     try {
       const responseData = await this.apiClient.post("/users/",data);
       this.userName = responseData.username;
-      this.apiClient.setAuthToken(responseData.token);
+      this.apiClient.authToken = responseData.token;
       return responseData;
     } catch (err) {
       console.error('Auth failure',err);

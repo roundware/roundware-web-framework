@@ -41,6 +41,16 @@
       button:active {
         transform: scale(0.99);
       }
+      
+      #errorDisplay {
+        background-color: #F00;
+        color: black;
+        margin: 1em 5%;
+        padding: 1em;
+        font-weight: bold;
+        font-size: x-large;
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -54,11 +64,11 @@
       <button id="transportBtn" style="width: 80%; margin: 0 10% 1% 10%; display: none;">Transport to Manzanar</button>
     </div>
 
+    <div id="errorDisplay"></div>
     <div id="tagSelection" style="border: 1px solid black; padding: 0.5em; margin-top: 0.5em"></div>
 
     <div id="mixMap"></div>
 
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="../roundware.js"></script> 
     <script src="https://npmcdn.com/@turf/turf/turf.min.js"></script>
     <script type="text/javascript" src="./main.js"></script>
