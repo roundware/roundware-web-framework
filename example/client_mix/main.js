@@ -1,30 +1,15 @@
 /* global google, Roundware, turf */
 
+// TODO: eventually should get this stuff from dotenv file
 const ROUNDWARE_SERVER_URL = 'https://prod.roundware.com/api/2';
-
-//const ROUNDWARE_SERVER_URL = 'https://simw.roundware.com/api/2';
-//const ROUNDWARE_DEFAULT_PROJECT_ID = 9;
-//const ROUNDWARE_INITIAL_LATITUDE=39.22101;
-//const ROUNDWARE_INITIAL_LONGITUDE=-85.897893;
-
-//const ROUNDWARE_DEFAULT_PROJECT_ID = 10;
-//const ROUNDWARE_INITIAL_LATITUDE = 42.337060559285234;
-//const ROUNDWARE_INITIAL_LONGITUDE = -71.09792028045655;
-
-//const ROUNDWARE_DEFAULT_PROJECT_ID = 1;
-//const ROUNDWARE_INITIAL_LATITUDE = 41.0408653367726; 
-//const ROUNDWARE_INITIAL_LONGITUDE = -73.22926793670655;
-
 const ROUNDWARE_DEFAULT_PROJECT_ID = 27;
-//const ROUNDWARE_INITIAL_LATITUDE = 33.86878099505993;
-//const ROUNDWARE_INITIAL_LONGITUDE = -118.71928792609322;
 const ROUNDWARE_INITIAL_LATITUDE = 34.02233;
 const ROUNDWARE_INITIAL_LONGITUDE = -118.286364;
 
 function mapSpeakers(map,roundware) {
   const speakers = roundware.speakers();
 
-  speakers.forEach((i,item) => {
+  speakers.forEach(item => {
     map.data.addGeoJson({
       "type": "Feature",
       "geometry": item.shape,
@@ -71,12 +56,12 @@ function mapAssets(map,listener,roundware) {
   const assetMarkers = [];
   const markerImg = new google.maps.MarkerImage(MARKER_IMG_SRC);
 
-  assets.forEach((i,item) => {
+  assets.forEach(item => {
     const point = new google.maps.LatLng(item.latitude,item.longitude);
 
     const marker = new google.maps.Marker({
+      map,
       position: point,
-      map: map,
       icon: markerImg
     });
 
@@ -169,38 +154,40 @@ function mapAssets(map,listener,roundware) {
   return assetMarkers;
 }
 
-function showHideMarkers() { // map,assetMarkers) {
-  //assetMarkers.forEach((i,item) => {
-  //// if any item tags are not included in selected tags, hide marker, otherwise show it
-  //const selectedListenTagIds = $("#uiListenDisplay input:checked").map(function() {
-  //return Number(this.value);
-  //}).get();
+function showHideMarkers(map,assetMarkers) {
+  assetMarkers.forEach(item => {
+    // if any item tags are not included in selected tags, hide marker, otherwise show it
+    //const selectedListenTagIds = $("#uiListenDisplay input:checked").map(function() {
+      //return Number(this.value);
+    //}).get();
 
-  ////let is_visible = true;
+    //let is_visible = true;
 
-  ////const { rw_tags = [] } = item;
+    //const { rw_tags = [] } = item;
 
-  ////rw_tags.forEach((j,tag_id) =>{
-  ////// if tag_id isn't selected, set to false and return
-  ////if (!(selectedListenTagIds.includes(tag_id))) {
-  ////is_visible = false;
-  ////return;
-  ////}
-  ////});
+    //rw_tags.forEach((j,tag_id) =>{
+    //// if tag_id isn't selected, set to false and return
+    //if (!(selectedListenTagIds.includes(tag_id))) {
+    //is_visible = false;
+    //return;
+    //}
+    //});
 
-  //item.setVisible(is_visible);
+    const is_visible = true;
 
-  //if (item.circle) {
-  //item.circle.setVisible(is_visible);
-  //}
-  //if (item.shape) {
-  //if (is_visible) {
-  //item.shape.setMap(map);
-  //} else if (!is_visible) {
-  //item.shape.setMap(null);
-  //}
-  //}
-  //});
+    item.setVisible(is_visible);
+
+    if (item.circle) {
+      item.circle.setVisible(is_visible);
+    }
+    if (item.shape) {
+      if (is_visible) {
+        item.shape.setMap(map);
+      } else if (!is_visible) {
+        item.shape.setMap(null);
+      }
+    }
+  });
 }
 
 const drawListeningCircle = (map,center,radius) => (
