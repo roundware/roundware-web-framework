@@ -136,13 +136,13 @@ export class PlaylistAudiotrack {
   }
 
   setZeroGain() {
-    const { gainNode: { gain } } = this;
-    gain.value = NEARLY_ZERO;
+    const { gainNode: { gain }, audioContext: { currentTime } } = this;
+    gain.setValueAtTime(NEARLY_ZERO,currentTime); // http://alemangui.github.io/blog//2015/12/26/ramp-to-value.html
   }
 
   // exponentialRampToValueAtTime sounds more gradual for fading in
   fadeIn(fadeInDurationSeconds) {
-    const { currentAsset, trackOptions: { randomVolume }} = this;
+    const { currentAsset, trackOptions: { randomVolume } } = this;
     const finalVolume = randomVolume * currentAsset.volume;
 
     try {
@@ -163,6 +163,7 @@ export class PlaylistAudiotrack {
     console.log(`\t[ramping ${this} gain to ${finalVolume.toFixed(2)} (${durationSeconds.toFixed(1)}s - ${rampMethod})]`);
 
     try {
+      gain.setValueAtTime(gain.value,currentTime); // http://alemangui.github.io/blog//2015/12/26/ramp-to-value.html
       gain[rampMethod](finalVolume,currentTime + durationSeconds);
       return true;
     } catch(err) {
@@ -173,7 +174,7 @@ export class PlaylistAudiotrack {
 
   // linearRampToValueAtTime sounds more gradual for fading out
   fadeOut(fadeOutDurationSeconds) {
-    return this.rampGain(NEARLY_ZERO,fadeOutDurationSeconds,'linearRampToValueAtTime');
+    return this.rampGain(NEARLY_ZERO,fadeOutDurationSeconds,'linearRampToValueAtTime'); // 'exponentialRampToValueAtTime');
   }
 
   loadNextAsset() {
