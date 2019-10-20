@@ -2,6 +2,8 @@ import { AssetSorter } from './assetSorter';
 import { roundwareDefaultFilterChain } from './assetFilters';
 import { coordsToPoints } from './utils';
 
+const MATCHES_URI_SCHEME = new RegExp(/^https?:\/\//i);
+
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
 // also rewrite .wav as .mp3
 const assetDecorationMapper = timedAssets => {
@@ -11,10 +13,15 @@ const assetDecorationMapper = timedAssets => {
   }),{});
 
   return asset => {
-    const activeRegionLowerBound = asset.start_time || 0;
-    const activeRegionUpperBound = asset.end_time   || 0;
+    const { start_time, end_time, file: assetUrl } = asset;
+    const activeRegionLowerBound = start_time || 0;
+    const activeRegionUpperBound = end_time   || 0;
     const activeRegionLength = activeRegionUpperBound - activeRegionLowerBound;
-    const mp3Url = asset.file.replace(/\.wav$/i,'.mp3');
+
+    // per Halsey we should always use mp3s; also we avoid specifying http/https to avoid mixed-content warnings
+    const mp3Url = assetUrl.
+      replace(/\.wav$/i,'.mp3').
+      replace(MATCHES_URI_SCHEME,'//');
 
     const decoratedAsset = {
       locationPoint: coordsToPoints(asset),
