@@ -1,10 +1,38 @@
-/* global google, Roundware, turf */
+/* global google, Roundware */
 
 // TODO: eventually should get this stuff from dotenv file
 const ROUNDWARE_SERVER_URL = 'https://prod.roundware.com/api/2';
 const ROUNDWARE_DEFAULT_PROJECT_ID = 27;
 const ROUNDWARE_INITIAL_LATITUDE = 34.02233;
 const ROUNDWARE_INITIAL_LONGITUDE = -118.286364;
+
+//http://en.wikipedia.org/wiki/Haversine_formula
+//http://www.movable-type.co.uk/scripts/latlong.html
+
+/**
+ * Calculates the distance between two {@link Point|points} in degress, radians,
+ * miles, or kilometers. This uses the [Haversine formula](http://en.wikipedia.org/wiki/Haversine_formula)
+ * to account for global curvature. 
+ *
+ * Modified from https://github.com/Turfjs/turf-distance/blob/a79f9dcc4402e0244fbcd3b7f36d9b361d9032bf/index.js */
+function distance(coordinates1,coordinates2) {
+  const dLat = toRad(coordinates2[1] - coordinates1[1]);
+  const dLon = toRad(coordinates2[0] - coordinates1[0]);
+  const lat1 = toRad(coordinates1[1]);
+  const lat2 = toRad(coordinates2[1]);
+
+  const a = Math.pow(Math.sin(dLat/2), 2) +
+            Math.pow(Math.sin(dLon/2), 2) * Math.cos(lat1) * Math.cos(lat2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  const distanceInKm = 6373 * c;
+  return distanceInKm;
+}
+
+function toRad(degree) {
+  return degree * Math.PI / 180;
+}
 
 function mapSpeakers(map,roundware) {
   const speakers = roundware.speakers();
@@ -89,22 +117,19 @@ function mapAssets(map,listener,roundware) {
     marker.addListener('click', function() {
       infoWindow.open(map,marker);
 
-      let longitude = marker.position.lng();
-      let latitude = marker.position.lat();
+      const assetLocationPoint = [
+        marker.position.lng(),
+        marker.position.lat()
+      ];
 
-      const assetLocationPoint = turf.point([longitude,latitude]);
+      const listenerLocationPoint = [
+        listener.position.lng(),
+        listener.position.lat()
+      ];
 
-      longitude = listener.position.lng();
-      latitude = listener.position.lat();
+      const dist = distance(listenerLocationPoint,assetLocationPoint);
 
-      const listenerLocationPoint = turf.point([longitude,latitude]);
-
-      const dist = turf.distance(listenerLocationPoint,assetLocationPoint,{ units: 'meters' });
-
-      console.info(`Asset ${marker.id}: ${dist} meters from listener`,{ 
-        assetLocationPoint: assetLocationPoint.geometry.coordinates, 
-        listenerLocationPoint: listenerLocationPoint.geometry.coordinates 
-      });
+      console.info(`Asset #${marker.id}: ${dist.toFixed(1)}m from listener`);
     });
 
     // display asset shape if exists
