@@ -327,11 +327,12 @@ function initDemo() {
         tagDiv.insertAdjacentHTML('afterbegin',`<h2>${header_display_text}</h2>`);
 
         const checkboxEls = display_items.map(item => {
-          const { tag_id,  tag_display_text } = item;
+          const { tag_id,  tag_display_text, default_state } = item;
+          const checkedAttrib = default_state ? 'checked' : '';
 
           return `
           <label>
-            <input id='tag_checkbox_${tag_id}' type='checkbox' name='tags' value='${tag_id}' />
+            <input id='tag_checkbox_${tag_id}' type='checkbox' name='tags' value='${tag_id}' ${checkedAttrib} />
             ${tag_display_text} (#${tag_id})
           </label>
           <br/>
