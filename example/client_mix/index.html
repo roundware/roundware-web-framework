@@ -51,6 +51,53 @@
         font-size: x-large;
         display: none;
       }
+
+      #tagSelection {
+        position: absolute;
+        background-color: white;
+        opacity : 0.8;
+        bottom: 10%;
+        left: 5%;
+        width: 25%%;
+        z-index: 5000;
+        padding: 1%;
+      }
+
+      #tagSelection h2 {
+        margin-top: 0.25em;;
+      }
+
+      #tagSelection label {
+        display: block;
+        margin-bottom: 0.5em;
+      }
+
+      .btnGroup {
+        margin-bottom: 1em;
+      }
+
+      .btnGroup button {
+        color: white;
+        background-color: #4CAF50;
+        border: 1px solid green;
+        padding: 10px 24px;
+        float: left;
+        width: 50%;
+      }
+
+      .btnGroup button:not(:last-child) {
+        border-right: none;
+      }
+
+      .btnGroup:after {
+        content: "";
+        clear: both;
+        display: table;
+      }
+
+      .btnGroup button:hover {
+        background-color: #3e8e41;
+      }
     </style>
   </head>
   <body>
@@ -60,14 +107,19 @@
         <img id="loadingSpinner" src="./loader.gif" alt="Animated rogress indicator made of rotating line segments" style="float: left;" />
         <em>Connecting and downloading...</em>
       </span>
-      <button id="playPauseBtn" style="width: 80%; margin: 0 10% 1% 10%; display: none;">Start</button>
-      <button id="transportBtn" style="width: 80%; margin: 0 10% 1% 10%; display: none;">Transport to Manzanar</button>
+
+      <div class="btnGroup">
+        <button id="playPauseBtn" style="display: none;">Start</button>
+        <button id="transportBtn" style="display: none;">Transport to Manzanar</button>
+      </div>
     </div>
 
     <div id="errorDisplay"></div>
-    <div id="tagSelection" style="border: 1px solid black; padding: 0.5em; margin-top: 0.5em"></div>
 
-    <div id="mixMap"></div>
+    <div id="tagSelection" style="width: 25%"></div>
+
+    <div id="mixMap">
+    </div>
 
     <script type="text/javascript" src="../roundware.js"></script> 
     <script src="https://npmcdn.com/@turf/turf/turf.min.js"></script>

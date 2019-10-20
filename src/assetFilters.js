@@ -115,13 +115,13 @@ function anyTagsFilter() {
   return (asset,{ listenTagIds }) => {
     if (isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
 
-    const { tag_ids: assetTagIds = [] } = asset;
-
-    console.info({ assetTagIds, listenTagIds });
+    const { id: assetId, tag_ids: assetTagIds = [] } = asset;
 
     for (let tagId of assetTagIds) {
       if (listenTagIds.includes(tagId)) return ASSET_PRIORITIES.LOWEST; // matching only by tag should be the least-important filter
     }
+
+    console.log(`anyTagsFilter discard asset #${assetId}`,assetTagIds);
 
     return ASSET_PRIORITIES.DISCARD;
   };

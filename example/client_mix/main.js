@@ -297,29 +297,30 @@ function initDemo() {
       const { listen: listenTags } = uiConfig;
 
       listenTags.forEach(tag => {
-        console.info({ tag });
-        //const newCheckbox = document.createElement("input"); 
+        const { header_display_text, display_items } = tag;
 
-        //const checkboxId = `tag_checkbox_${tag.id}`;
+        tagDiv.insertAdjacentHTML('afterbegin',`<h2>${header_display_text}</h2>`);
 
-        //newCheckbox.id = checkboxId;
-        //newCheckbox.type = 'checkbox';
-        //newCheckbox.name = 'tags';
-        //newCheckbox.value = tag.id;
+        const checkboxEls = display_items.map(item => {
+          const { tag_id,  tag_display_text } = item;
 
-        //const newLabel = document.createElement('label');
-        //newLabel.appendChild(newCheckbox);
-        //const labelContent = document.createTextNode(tag.value);
-        //newLabel.appendChild(labelContent);  
+          return `
+          <label>
+            <input id='tag_checkbox_${tag_id}' type='checkbox' name='tags' value='${tag_id}' />
+            ${tag_display_text} (#${tag_id})
+          </label>
+          <br/>
+          `;
+        });
 
-        //tagDiv.appendChild(newLabel);
+        tagDiv.insertAdjacentHTML('beforeend',checkboxEls.join('\n'));
       });
 
       playPauseBtn.style.display = 'block';
       transportBtn.style.display = 'block';
 
       tagDiv.addEventListener('input',() => {
-        const listenTagIds = [...document.querySelectorAll('[name=tags]:checked')].map(tag => tag.value);
+        const listenTagIds = [...tagDiv.querySelectorAll('[name=tags]:checked')].map(tag => tag.value);
         mixer.updateParams({ listenTagIds });
       });
     }).
