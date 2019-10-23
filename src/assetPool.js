@@ -13,9 +13,12 @@ const assetDecorationMapper = timedAssets => {
   }),{});
 
   return asset => {
-    const { start_time, end_time, file: assetUrl } = asset;
-    const activeRegionLowerBound = start_time || 0;
-    const activeRegionUpperBound = end_time   || 0;
+    const { 
+      start_time: activeRegionLowerBound = 0, 
+      end_time: activeRegionUpperBound = 0,
+      file: assetUrl 
+    } = asset;
+
     const activeRegionLength = activeRegionUpperBound - activeRegionLowerBound;
 
     // per Halsey we should always use mp3s; also we avoid specifying http/https to avoid mixed-content warnings
