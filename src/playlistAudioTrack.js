@@ -189,8 +189,12 @@ export class PlaylistAudiotrack {
     this.currentAsset = asset;
 
     if (asset) {
-      console.log(`\t[loading next asset for ${this}: ${asset.file}`);
-      audioElement.src = asset.file;
+      const { file, start } = asset;
+      console.log(`\t[loading next asset ${this}: ${file}]`);
+
+      audioElement.src = file;
+      audioElement.currentTime = start >= NEARLY_ZERO ? start : NEARLY_ZERO; // value but must fininite
+      
       return asset;
     } else {
       return null;
