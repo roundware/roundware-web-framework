@@ -20,7 +20,7 @@
     "build:umd.min": "webpack -p --output-filename roundware.umd.min.js",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
     "devstart": "webpack-dev-server --mode=development",
-    "deploy": "npm test && npm run build && npm run push",
+    "deploy": "npm test && npm run build && npm publish",
     "lint": "eslint src/"
   },
   "watch": {
