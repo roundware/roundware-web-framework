@@ -39,9 +39,18 @@ export class GeoPosition {
     this._initialGeolocationPromise = Promise.resolve(initialCoords);
     this.defaultCoords = initialCoords;
     this._lastCoords = initialCoords;
+    this.geolocation = navigator.geolocation;
     this.geoListenEnabled = navigator.geolocation && geoListenEnabled;
 
     //console.info({ defaultCoords: this.defaultCoords });
+  }
+
+  cancel() {
+    if (this._geoWatchID) {
+      console.log('Canceling geoposition watch',this._geoWatchID);
+      this.geolocation.clearWatch(this._geoWatchID);
+      delete this._geoWatchID;
+    }
   }
 
   /** @return {String} Human-readable representation of this GeoPosition **/
@@ -75,13 +84,13 @@ export class GeoPosition {
         logger.info("Received initial geolocation:",coords);
         geoUpdateCallback(coords);
         resolve(coords);
-      },function initialGeoError(error) {
+      },error => {
         logger.warn(`Unable to get initial geolocation: ${error.message} (code #${error.code}), falling back to default coordinates for initial listener location`);
         resolve(defaultCoords);
       },fastGeolocationPositionOptions);
     });
 
-    geolocation.watchPosition(updatedPosition => {
+    this._geoWatchID = geolocation.watchPosition(updatedPosition => {
       const { coords } = updatedPosition;
       this._lastCoords = coords;
       logger.info("Received updated geolocation:",coords);

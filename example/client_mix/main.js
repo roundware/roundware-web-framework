@@ -295,6 +295,7 @@ function initDemo() {
         const latitude = position.lat();
         const longitude = position.lng();
 
+        roundware.disableGeolocation();
         roundware.updateLocation({ latitude, longitude });
       });
 
@@ -315,6 +316,7 @@ function initDemo() {
         });
 
         transportBtn.remove();
+        roundware.disableGeolocation();
       },{ once: true });
 
       const tagDiv = document.getElementById("tagSelection");

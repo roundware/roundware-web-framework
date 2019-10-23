@@ -104,6 +104,11 @@ export default class Roundware {
     }
   }
 
+  disableGeolocation() {
+    delete this._onUpdateLocation;
+    if (this._geoPosition) this._geoPosition.cancel();
+  }
+
   /** Initiate a connection to Roundware
    *  @return {Promise} - Can be resolved in order to get the audio stream URL, or rejected to get an error message; see example above **/
   async connect() {
