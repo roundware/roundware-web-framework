@@ -265,16 +265,6 @@ function initDemo() {
     listenerLocation
   });
 
-  function updateMap(listenerLocation,recordingRadius) {
-    const position = {
-      lat: listenerLocation.latitude,
-      lng: listenerLocation.longitude
-    };
-
-    map.setCenter(position);
-
-    return drawListeningCircle(map,position,recordingRadius);
-  }
 
   roundware.
     connect().
@@ -290,6 +280,18 @@ function initDemo() {
 
       const mixer = roundware.activateMixer();
 
+      const updateMapFromPosition = position => {
+        listeningCircle.setMap(null);
+        map.setCenter(position);
+        listeningCircle = drawListeningCircle(map,position,recordingRadius);
+      };
+    
+      const updateMapFromGeolocation = location => {
+        const { latitude: lat, longitude: lng } = location;
+        const position = { lat, lng };
+        updateMapFromPosition(position,recordingRadius);
+      };
+
       google.maps.event.addListener(listener,"dragend",() => {
         const position = listener.getPosition();
         const latitude = position.lat();
@@ -297,11 +299,11 @@ function initDemo() {
 
         roundware.disableGeolocation();
         roundware.updateLocation({ latitude, longitude });
+        updateMapFromPosition(position)
       });
 
       roundware.onUpdateLocation = listenerLocation => {
-        listeningCircle.setMap(null);
-        listeningCircle = updateMap(listenerLocation,recordingRadius);
+        updateMapFromGeolocation(listenerLocation);
       };
 
       playPauseBtn.addEventListener('click',() => {
