@@ -1,6 +1,9 @@
-import * as turf from '@turf/turf'; // TODO try to use smaller packages since turf is so modular
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
+// import pointToLineDistance from './vendor/turf/point-to-line-distance';
+ import pointToLineDistance from '@turf/point-to-line-distance';
+import lineToPolygon from '@turf/line-to-polygon';
 
-const convertLinesToPolygon = shape => turf.lineToPolygon(shape);
+const convertLinesToPolygon = shape => lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
 
 /** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners. 
@@ -36,15 +39,15 @@ export class SpeakerTrack {
   }
 
   outerBoundaryContains(point) {
-    return turf.booleanPointInPolygon(point,this.outerBoundary);
+    return booleanPointInPolygon(point,this.outerBoundary);
   }
 
   attenuationShapeContains(point) {
-    return turf.booleanPointInPolygon(point,this.attenuationBorderPolygon);
+    return booleanPointInPolygon(point,this.attenuationBorderPolygon);
   }
 
   attenuationRatio(atPoint) {
-    const distToInnerShapeKm = turf.pointToLineDistance(atPoint,this.attenuationBorderLineString,{ units: 'kilometers' });
+    const distToInnerShapeKm = pointToLineDistance(atPoint,this.attenuationBorderLineString,{ units: 'kilometers' });
     const ratio = 1 - (distToInnerShapeKm / this.attenuationDistanceKm);
     return ratio;
   }

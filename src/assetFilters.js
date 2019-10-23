@@ -1,4 +1,5 @@
-import * as turf from '@turf/turf'; // TODO try to use smaller packages since turf is so modular
+import distance from '@turf/distance';
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import { isEmpty } from './utils';
 
 const ASSET_PRIORITIES = Object.freeze({
@@ -53,7 +54,7 @@ function rankForGeofilteringEligibility(asset,{ listenerPoint, geoListenEnabled 
   return geoListenEnabled && listenerPoint && asset;
 }
 
-const calculateDistanceInMeters = (loc1,loc2) => turf.distance(loc1,loc2,{ units: 'meters' });
+const calculateDistanceInMeters = (loc1,loc2) => distance(loc1,loc2,{ units: 'meters' });
 
 /** Only accepts an asset if the user is within the project-configured recording radius  */
 const distanceFixedFilter = () => (asset,options = {}) => {
@@ -150,7 +151,7 @@ function assetShapeFilter() {
 
     const { listenerPoint } = options;
 
-    if (turf.booleanPointInPolygon(listenerPoint,shape)) {
+    if (booleanPointInPolygon(listenerPoint,shape)) {
       return ASSET_PRIORITIES.NORMAL;
     } else {
       return ASSET_PRIORITIES.DISCARD;
