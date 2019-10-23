@@ -354,6 +354,7 @@ function initDemo() {
       const errBox = document.getElementById('errorDisplay');
       errBox.style.display = 'block';
       errBox.appendChild(document.createTextNode(err));
+      console.error(err);
     }).
     then(() => document.getElementById('loadingIndicator').remove());
 }
