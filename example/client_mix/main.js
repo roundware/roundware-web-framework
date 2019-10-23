@@ -299,7 +299,7 @@ function initDemo() {
 
         roundware.disableGeolocation();
         roundware.updateLocation({ latitude, longitude });
-        updateMapFromPosition(position)
+        updateMapFromPosition(position);
       });
 
       roundware.onUpdateLocation = listenerLocation => {
