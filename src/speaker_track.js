@@ -1,10 +1,12 @@
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
- import pointToLineDistance from '@turf/point-to-line-distance';
+import pointToLineDistance from '@turf/point-to-line-distance';
 import lineToPolygon from '@turf/line-to-polygon';
+import { cleanAudioURL } from './utils';
 
 const convertLinesToPolygon = shape => lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
+const NEARLY_ZERO = 0.001;
 
 /** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners. 
  * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker’s defined zone.'
@@ -35,7 +37,7 @@ export class SpeakerTrack {
     this.attenuationBorderLineString = attenuation_border;
 
     this.outerBoundary = convertLinesToPolygon(boundary);
-    this.currentVolume = 0;
+    this.currentVolume = NEARLY_ZERO;
   }
 
   outerBoundaryContains(point) {
@@ -71,8 +73,9 @@ export class SpeakerTrack {
     if (this.audio) return this.audio;
 
     const { audioContext, uri } = this;
+    const cleanURL = cleanAudioURL(uri);
 
-    const audio = new Audio(uri);
+    const audio = new Audio(cleanURL);
     audio.crossOrigin = 'anonymous';
     audio.loop = true;
 

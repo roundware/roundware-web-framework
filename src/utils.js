@@ -2,6 +2,13 @@
 
 const { point } = require('@turf/helpers');
 
+const MATCHES_URI_SCHEME = new RegExp(/^https?:\/\//i);
+const MATCHES_WAV_FILE = new RegExp(/\.wav$/i);
+
+export const cleanAudioURL = url => url.
+  replace(MATCHES_URI_SCHEME,'//').
+  replace(MATCHES_WAV_FILE,'.mp3');
+
 export function coordsToPoints({ latitude, longitude }) {
   // NOTE we need to reverse the order here to make geolocations compatible with Roundware geometries, which have points listed w/ longitude first
   return point([+longitude,+latitude]); // NOTE we need to reverse the order here to make geolocations compatible with Roundware geometries, which have points listed w/ longitude first
