@@ -44,7 +44,7 @@ import { Audiotrack } from "./audiotrack";
 
   roundware.play(startListening).catch(handleError);
 **/
-export default class Roundware {
+export class Roundware {
   /** Initialize a new Roundware instance
    * @param {Object} windowScope - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
    * @param {Object} options - Collection of parameters for configuring this Roundware instance

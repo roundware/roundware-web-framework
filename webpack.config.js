@@ -10,9 +10,10 @@ module.exports = {
   output: {
     filename: "roundware.js",
 
+    library: "RoundwareWebFramework",
     libraryTarget: "umd",
-    libraryExport: "default",
-    library: "Roundware",
+
+    globalObject: 'this'
   },
 
   devtool: 'cheap-module-eval-source-map',
