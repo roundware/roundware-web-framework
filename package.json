@@ -5,7 +5,7 @@
     "type": "git",
     "url": "git+https://github.com/roundware/roundware-web.git"
   },
-  "version": "0.9.0-alpha",
+  "version": "0.9.1-alpha",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "main": "roundware.js",
   "files": [
@@ -57,9 +57,6 @@
     "webpack": "~4.39.1",
     "webpack-cli": "~3.3.6",
     "webpack-dev-server": "~3.7.2"
-  },
-  "jshintConfig": {
-    "esversion": 6
   },
   "dependencies": {}
 }
