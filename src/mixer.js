@@ -57,12 +57,10 @@ export class Mixer {
   }
 
   skipTrack(trackId) {
-    console.log('mixer skipTrack',this.playlist);
     if (this.playlist) this.playlist.skip(trackId);
   }
 
   replayTrack(trackId) {
-    console.log('mixer replaytrack',this.playlist);
     if (this.playlist) this.playlist.replay(trackId);
   }
 
