@@ -1,4 +1,4 @@
-/* global google, Roundware */
+/* global google, RoundwareWebFramework */
 
 // TODO: eventually should get this stuff from dotenv file
 const ROUNDWARE_SERVER_URL = 'https://prod.roundware.com/api/2';
@@ -228,6 +228,33 @@ const drawListeningCircle = (map,center,radius) => (
   })
 );
 
+const listenerLocation = { 
+  latitude: ROUNDWARE_INITIAL_LATITUDE,
+  longitude: ROUNDWARE_INITIAL_LONGITUDE
+};
+
+const roundware = new RoundwareWebFramework.Roundware(window,{
+  serverUrl: ROUNDWARE_SERVER_URL,
+  projectId: ROUNDWARE_DEFAULT_PROJECT_ID,
+  geoListenEnabled: true,
+  speakerFilters: { activeyn: true },
+  assetFilters:   { submitted: true, media_type: "audio" },
+  listenerLocation
+});
+
+const connectionPromise = new Promise((resolve,reject) => {
+  roundware.
+    connect().
+    then(connectData => resolve(connectData)).
+    catch(err => reject(err));
+});
+
+const listenMapEl = document.getElementById('mixMap');
+const tagDiv = document.getElementById("tagSelection");
+
+const playPauseBtn = document.getElementById('playPauseBtn');
+const transportBtn = document.getElementById('transportBtn');
+
 // This function is intended to be invoked by the google API callback; see index.html
 /* eslint-disable-next-line no-unused-vars */
 function initDemo() { 
@@ -235,15 +262,6 @@ function initDemo() {
     lat: ROUNDWARE_INITIAL_LATITUDE,
     lng: ROUNDWARE_INITIAL_LONGITUDE
   };
-
-  const listenerLocation = { 
-    latitude: ROUNDWARE_INITIAL_LATITUDE,
-    longitude: ROUNDWARE_INITIAL_LONGITUDE
-  };
-
-  const listenMapEl = document.getElementById('mixMap');
-  const playPauseBtn = document.getElementById('playPauseBtn');
-  const transportBtn = document.getElementById('transportBtn');
 
   const map = new google.maps.Map(listenMapEl,{
     zoom: 18,
@@ -256,18 +274,7 @@ function initDemo() {
     draggable: true
   });
 
-  const roundware = new Roundware(window,{
-    serverUrl: ROUNDWARE_SERVER_URL,
-    projectId: ROUNDWARE_DEFAULT_PROJECT_ID,
-    geoListenEnabled: true,
-    speakerFilters: { activeyn: true },
-    assetFilters:   { submitted: true, media_type: "audio" },
-    listenerLocation
-  });
-
-
-  roundware.
-    connect().
+  connectionPromise.
     then(({ uiConfig }) => {
       mapSpeakers(map,roundware);
 
@@ -321,8 +328,6 @@ function initDemo() {
         roundware.disableGeolocation();
       },{ once: true });
 
-      const tagDiv = document.getElementById("tagSelection");
-
       const { listen: listenTags } = uiConfig;
 
       listenTags.forEach(tag => {
@@ -346,8 +351,23 @@ function initDemo() {
         tagDiv.insertAdjacentHTML('beforeend',checkboxEls.join('\n'));
       });
 
-      playPauseBtn.style.display = 'block';
-      transportBtn.style.display = 'block';
+      document.querySelectorAll('.btnGroup').forEach(g => g.style.display = 'block');
+
+      document.querySelectorAll('[data-skip-track-id]').forEach(el => {
+        el.addEventListener('click',evt => {
+          const { skipTrackId } = evt.srcElement.dataset;
+          console.log('UI Next Track #',skipTrackId,mixer);
+          mixer.skipTrack(Number(skipTrackId));
+        });
+      });
+
+      document.querySelectorAll('[data-replay-track-id]').forEach(el => {
+        el.addEventListener('click',evt => {
+          const { replayTrackId } = evt.srcElement.dataset;
+          console.log('UI: Replay Track #',replayTrackId);
+          mixer.replayTrack(Number(replayTrackId));
+        });
+      });
 
       tagDiv.addEventListener('input',() => {
         const listenTagIds = [...tagDiv.querySelectorAll('[name=tags]:checked')].map(tag => tag.value);

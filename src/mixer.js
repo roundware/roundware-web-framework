@@ -56,6 +56,16 @@ export class Mixer {
     this.speakerTracks.forEach(t => t.updateParams(params));
   }
 
+  skipTrack(trackId) {
+    console.log('mixer skipTrack',this.playlist);
+    if (this.playlist) this.playlist.skip(trackId);
+  }
+
+  replayTrack(trackId) {
+    console.log('mixer replaytrack',this.playlist);
+    if (this.playlist) this.playlist.replay(trackId);
+  }
+
   toString() {
     return 'Roundware Mixer';
   }

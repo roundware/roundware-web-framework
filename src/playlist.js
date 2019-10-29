@@ -19,6 +19,7 @@ export class Playlist {
     }
 
     this._elapsedTimeMs = elapsedTimeMs;
+    const trackIdMap = {};
     const trackMap = new Map();
 
     audioTracks.forEach(audioData => {
@@ -29,10 +30,12 @@ export class Playlist {
         playlist: this,
       });
 
+      trackIdMap[track.trackId] = track;
       trackMap.set(track,true);
     },{});
 
     this.trackMap = trackMap;
+    this.trackIdMap = trackIdMap;
   }
 
   get tracks() {
@@ -56,6 +59,16 @@ export class Playlist {
     this.playing = true;
   }
 
+  skip(trackId) {
+    const track = this.trackIdMap[Number(trackId)];
+    if (track) track.skip();
+  }
+
+  replay(trackId) {
+    const track = this.trackIdMap[Number(trackId)];
+    if (track) track.replay();
+  }
+
   pause() {
     this.tracks.forEach(t => t.pause());
 
@@ -76,10 +89,10 @@ export class Playlist {
   }
 
   next(forTrack) {
-    const { currentlyPlayingAssets: filterOutAssets, elapsedTimeMs, listenTagIds } = this;
+    const { assetPool, currentlyPlayingAssets: filterOutAssets, elapsedTimeMs, listenTagIds } = this;
     const elapsedSeconds = elapsedTimeMs / 1000;
 
-    const nextAsset = this.assetPool.nextForTrack(forTrack,{
+    const nextAsset = assetPool.nextForTrack(forTrack,{
       filterOutAssets,
       elapsedSeconds,
       listenerPoint: this.listenerPoint,

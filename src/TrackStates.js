@@ -30,6 +30,8 @@ export class LoadingState {
 
   pause() {}
   finish() {}
+  skip() {}
+  replay() {}
   updateParams() {}
 
   toString() {
@@ -100,6 +102,15 @@ class TimedTrackState {
 
   setNextState() {
     console.warn(`Track state '${this}' does not implement a next state`);
+  }
+
+  skip() {
+    this.finish();
+    this.setNextState();
+  }
+
+  replay() {
+    console.log('replay() not implemented yet');
   }
 
   setLoadingState() {

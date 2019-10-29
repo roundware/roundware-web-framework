@@ -82,7 +82,7 @@
         border: 1px solid green;
         padding: 10px 24px;
         float: left;
-        width: 50%;
+        width: 25%;
       }
 
       .btnGroup button:not(:last-child) {
@@ -108,9 +108,16 @@
         <em>Connecting and downloading...</em>
       </span>
 
-      <div class="btnGroup">
-        <button id="playPauseBtn" style="display: none;">Start</button>
-        <button id="transportBtn" style="display: none;">Transport to Manzanar</button>
+      <div class="btnGroup" style="display: none;">
+        <button id="playPauseBtn" style='width: 50%'>Start</button>
+        <button id="transportBtn" style='width: 50%'>Transport to Manzanar</button>
+      </div>
+
+      <div class="btnGroup" style="display: none;">
+        <button data-skip-track-id=39>Skip #39</button>
+        <button data-replay-track-id=39>Replay #39</button>
+        <button data-skip-track-id=40>Skip #40</button>
+        <button data-replay-track-id=40>Replay #40</button>
       </div>
     </div>
 

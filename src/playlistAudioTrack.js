@@ -178,6 +178,7 @@ export class PlaylistAudiotrack {
   }
 
   loadNextAsset() {
+    const newAsset = this.playlist.next(this);
     const { audioElement, currentAsset } = this;
 
     if (currentAsset) {
@@ -185,20 +186,21 @@ export class PlaylistAudiotrack {
       currentAsset.lastListenTime = new Date();
     }
 
-    const asset = this.playlist.next(this);
-    this.currentAsset = asset;
+    this.currentAsset = newAsset;
 
-    if (asset) {
-      const { file, start } = asset;
+    if (newAsset) {
+      const { file, start } = newAsset;
       console.log(`\t[loading next asset ${this}: ${file}]`);
 
       audioElement.src = file;
       audioElement.currentTime = start >= NEARLY_ZERO ? start : NEARLY_ZERO; // value but must fininite
       
-      return asset;
-    } else {
-      return null;
+      this.audioElement = audioElement;
+
+      return newAsset;
     }
+
+    return null;
   }
 
   pause() {
@@ -214,6 +216,18 @@ export class PlaylistAudiotrack {
   pauseAudio() {
     this.holdGain();
     if (this.audioElement) this.audioElement.pause();
+  }
+
+  skip() {
+    const { state } = this;
+    console.log(`Skipping ${this}`);
+    if (state) state.skip();
+  }
+
+  replay() {
+    const { state } = this;
+    console.log(`Replaying ${this}`);
+    if (state) state.replay();
   }
 
   transition(newState) {
