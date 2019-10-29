@@ -179,26 +179,15 @@ function mapAssets(map,listener,roundware) {
   return assetMarkers;
 }
 
-function showHideMarkers(map,assetMarkers) {
+function showHideMarkers(map,assetMarkers,{ listenTagIds = [] }) {
+  const listenTagIdMap = listenTagIds.reduce((map,tagId) => {
+    map[Number(tagId)] = true;
+    return map;
+  },{});
+
   assetMarkers.forEach(item => {
-    // if any item tags are not included in selected tags, hide marker, otherwise show it
-    //const selectedListenTagIds = $("#uiListenDisplay input:checked").map(function() {
-      //return Number(this.value);
-    //}).get();
-
-    //let is_visible = true;
-
-    //const { rw_tags = [] } = item;
-
-    //rw_tags.forEach((j,tag_id) =>{
-    //// if tag_id isn't selected, set to false and return
-    //if (!(selectedListenTagIds.includes(tag_id))) {
-    //is_visible = false;
-    //return;
-    //}
-    //});
-
-    const is_visible = true;
+    const { rw_tags } = item;
+    const is_visible = !!(rw_tags.find(tagId => listenTagIdMap[tagId]));
 
     item.setVisible(is_visible);
 
@@ -278,9 +267,7 @@ function initDemo() {
     then(({ uiConfig }) => {
       mapSpeakers(map,roundware);
 
-      const assetMarkers = mapAssets(map,listener,roundware);
-      showHideMarkers(map,assetMarkers);
-
+      const assetMarkers = mapAssets(map, listener, roundware);
       const { recordingRadius = 25 } = roundware.mixParams;
 
       let listeningCircle = drawListeningCircle(map,googleMapsCenter,recordingRadius);
@@ -329,6 +316,7 @@ function initDemo() {
       },{ once: true });
 
       const { listen: listenTags } = uiConfig;
+      const listenTagIds = [];
 
       listenTags.forEach(tag => {
         const { header_display_text, display_items } = tag;
@@ -337,7 +325,12 @@ function initDemo() {
 
         const checkboxEls = display_items.map(item => {
           const { tag_id,  tag_display_text, default_state } = item;
-          const checkedAttrib = default_state ? 'checked' : '';
+          let checkedAttrib = '';
+
+          if (default_state) {
+            checkedAttrib =  'checked';
+            listenTagIds.push(tag_id);
+          }
 
           return `
           <label>
@@ -350,6 +343,8 @@ function initDemo() {
 
         tagDiv.insertAdjacentHTML('beforeend',checkboxEls.join('\n'));
       });
+
+      showHideMarkers(map,assetMarkers,{ listenTagIds });
 
       document.querySelectorAll('.btnGroup').forEach(g => g.style.display = 'block');
 
@@ -372,6 +367,7 @@ function initDemo() {
       tagDiv.addEventListener('input',() => {
         const listenTagIds = [...tagDiv.querySelectorAll('[name=tags]:checked')].map(tag => tag.value);
         mixer.updateParams({ listenTagIds });
+        showHideMarkers(map,assetMarkers,{ listenTagIds });
       });
     }).
     catch(err => {
