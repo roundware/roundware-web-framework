@@ -63,6 +63,7 @@ export class Envelope {
     return this._apiClient.patch(path,formData,options).
       then((data) => {
         console.info("UPLOADDATA",data);
+        return data;
       });
   }
 }

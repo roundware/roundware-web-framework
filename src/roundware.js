@@ -150,7 +150,7 @@ export class Roundware {
       ...activationParams
     };
 
-    this._mixer = new Mixer({ 
+    this._mixer = new Mixer({
       client: this,
       windowScope: this.windowScope,
       listenerLocation: this._listenerLocation,
@@ -160,7 +160,7 @@ export class Roundware {
     return this._mixer;
   }
 
-  
+
   /** Create or resume the audio stream
    * @see Stream.play **/
   play(firstPlayCallback = () => {}) {
@@ -236,7 +236,7 @@ export class Roundware {
 
     return envelope.connect().
       then(function() {
-        envelope.upload(audioData,fileName,data);
+        return envelope.upload(audioData,fileName,data);
       });
   }
 }
