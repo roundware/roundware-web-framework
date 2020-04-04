@@ -7,7 +7,7 @@
   },
   "version": "0.9.4-alpha",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
-  "main": "roundware.js",
+  "main": "dist/roundware.js",
   "files": [
     "dist"
   ],
