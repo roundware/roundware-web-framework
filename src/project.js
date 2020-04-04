@@ -23,13 +23,18 @@ export class Project {
       const data = await this.apiClient.get(path,requestData);
       //console.info({ PROJECTDATA: data });
 
-      this.projectName = data.name;
+      this.projectName         = data.name;
+      this.legalAgreement      = data.legal_agreement;
+      this.recordingRadius     = data.recording_radius;
+      this.maxRecordingLength  = data.max_recording_length;
+      this.location            = { latitude: data.latitude,
+                                   longitude: data.longitude };
 
-      this.mixParams = { 
+      this.mixParams = {
         geoListenEnabled: data.geo_listen_enabled,
         recordingRadius: data.recording_radius,
         ordering: data.ordering,
-        ...this.mixParams, 
+        ...this.mixParams,
       };
 
       return sessionId;
