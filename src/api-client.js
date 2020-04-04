@@ -80,7 +80,9 @@ export class ApiClient {
           data = JSON.stringify(data);
         }
 
+      if (contentType != "multipart/form-data") {
         headers['Content-Type'] = contentType;
+      }
         requestInit.body = data;
 
         break;
@@ -91,7 +93,7 @@ export class ApiClient {
     if (this._authToken) {
       headers['Authorization'] = this._authToken;
     }
-    
+
     requestInit.headers = headers;
 
     let response;
