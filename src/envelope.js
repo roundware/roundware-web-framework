@@ -39,11 +39,18 @@ export class Envelope {
         }
 
         let formData = new FormData();
-        let coordinates = this._geoPosition.getLastCoords();
+        let coordinates = {};
+        if (!data.latitude && !data.longitude) {
+            coordinates = this._geoPosition.getLastCoords();
+        }
+        else {
+            coordinates = { latitude: data.latitude,
+                            longitude: data.longitude };
+        }
         console.log(coordinates);
 
         formData.append('session_id', this._sessionId);
-        formData.append('file', audioData, fileName);
+        formData.append('file', audioData);
         formData.append('latitude', coordinates.latitude);
         formData.append('longitude', coordinates.longitude);
 
