@@ -3,12 +3,13 @@ import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import pointToLineDistance from '@turf/point-to-line-distance';
 import lineToPolygon from '@turf/line-to-polygon';
 import { cleanAudioURL } from './utils';
+import { Audio } from "standardized-audio-context";
 
 const convertLinesToPolygon = shape => lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
 const NEARLY_ZERO = 0.001;
 
-/** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners. 
+/** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners.
  * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker’s defined zone.'
  * (quoted from https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/Speaker.swift)
  * */
@@ -41,15 +42,15 @@ export class SpeakerTrack {
   }
 
   outerBoundaryContains(point) {
-    return booleanPointInPolygon(point,this.outerBoundary);
+    return booleanPointInPolygon(point, this.outerBoundary);
   }
 
   attenuationShapeContains(point) {
-    return booleanPointInPolygon(point,this.attenuationBorderPolygon);
+    return booleanPointInPolygon(point, this.attenuationBorderPolygon);
   }
 
   attenuationRatio(atPoint) {
-    const distToInnerShapeKm = pointToLineDistance(atPoint,this.attenuationBorderLineString,{ units: 'kilometers' });
+    const distToInnerShapeKm = pointToLineDistance(atPoint, this.attenuationBorderLineString, { units: 'kilometers' });
     const ratio = 1 - (distToInnerShapeKm / this.attenuationDistanceKm);
     return ratio;
   }
@@ -105,7 +106,7 @@ export class SpeakerTrack {
     const secondsFromNow = this.audioContext.currentTime + FADE_DURATION_SECONDS;
 
     this.buildAudio();
-    this.gainNode.gain.linearRampToValueAtTime(newVolume,secondsFromNow);
+    this.gainNode.gain.linearRampToValueAtTime(newVolume, secondsFromNow);
 
     //console.info(`Setting '${this}' volume: ${newVolume.toFixed(2)} over ${FADE_DURATION_SECONDS} seconds`);
 
@@ -125,20 +126,20 @@ export class SpeakerTrack {
       //console.log('Playing',this.logline);
       await this.audio.play();
       this.playing = true;
-    } catch(err) {
-      console.error('Unable to play',this.logline,err);
+    } catch (err) {
+      console.error('Unable to play', this.logline, err);
     }
   }
 
   async pause() {
     if (!this.playing) return;
-    
+
     try {
       //console.log('Pausing',this.logline);
       await this.audio.pause();
       this.playing = false;
-    } catch(err) {
-      console.error('Unable to pause',this.logline,err);
+    } catch (err) {
+      console.error('Unable to pause', this.logline, err);
     }
   }
 
