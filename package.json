@@ -61,5 +61,7 @@
     "webpack-cli": "^3.3.11",
     "webpack-dev-server": "~3.7.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "standardized-audio-context": "^24.1.2"
+  }
 }

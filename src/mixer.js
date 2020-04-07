@@ -1,17 +1,18 @@
 import { SpeakerTrack } from './speaker_track';
 import { Playlist } from './playlist';
-import { buildAudioContext, coordsToPoints, getUrlParam  } from './utils';
+import { buildAudioContext, coordsToPoints, getUrlParam } from './utils';
 import { AssetPool } from './assetPool';
 
 export class Mixer {
   constructor({ client, windowScope, listenerLocation, filters = [], sortMethods = [], mixParams = {} }) {
     const audioContext = buildAudioContext(windowScope);
-    let selectTrackId = getUrlParam(windowScope.location,'rwfSelectTrackId');
+    let selectTrackId = getUrlParam(windowScope.location, 'rwfSelectTrackId');
     let audioTracks = client.audiotracks();
 
-    if (selectTrackId) { 
+    if (selectTrackId) {
       selectTrackId = Number(selectTrackId);
       audioTracks = audioTracks.filter(t => t.id === selectTrackId);
+
       console.info(`isolating track #${selectTrackId}`);
     }
 
@@ -30,7 +31,7 @@ export class Mixer {
 
     this.audioContext = audioContext;
 
-    this.playlist = new Playlist({ 
+    this.playlist = new Playlist({
       audioTracks,
       listenerPoint,
       assetPool,
@@ -47,7 +48,7 @@ export class Mixer {
     this.playing = false;
   }
 
-  updateParams({ listenerLocation, ...params}) {
+  updateParams({ listenerLocation, ...params }) {
     if (listenerLocation) {
       params.listenerPoint = coordsToPoints(listenerLocation);
     }
@@ -71,6 +72,7 @@ export class Mixer {
   toggle() {
     if (this.playing) {
       this.playing = false;
+
       this.playlist.pause();
       this.speakerTracks.forEach(s => s.pause());
     } else {
