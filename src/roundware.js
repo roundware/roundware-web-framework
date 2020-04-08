@@ -127,8 +127,6 @@ export class Roundware {
         this._project.connect(sessionId),
         this._project.uiconfig(sessionId).then(uiConfig => this.uiConfig = uiConfig),
         this._speaker.connect(this._speakerFilters).then(speakerData => this._speakerData = speakerData),
-        this._asset.connect(this._assetFilters).then(assetData => this._assetData = assetData),
-        this._timed_asset.connect().then(data => this._timedAssetData = data),
         this._audiotrack.connect().then(audioTracksData => this._audioTracksData = audioTracksData)
       ];
 
@@ -144,7 +142,20 @@ export class Roundware {
     return (this._project || {}).mixParams;
   }
 
-  activateMixer(activationParams = {}) {
+  async loadAssets() {
+    if (!this._assetData) {
+      this._assetData = await this._asset.connect(this._assetFilters);
+    }
+    if (!this._timedAssetData) {
+      this._timedAssetData = await this._timed_asset.connect();
+    }
+    return this._assetData;
+  }
+
+  async activateMixer(activationParams = {}) {
+    // Make sure the asset pool is loaded.
+    await this.loadAssets();
+
     const mixParams = {
       ...this.mixParams,
       geoListenEnabled: this._geoPosition.geoListenEnabled,
