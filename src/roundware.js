@@ -251,4 +251,16 @@ export class Roundware {
         return envelope.upload(audioData, fileName, data);
       });
   }
+
+  findTagDescription(tagId, tagType = "listen") {
+    const tagGroups = this.uiConfig[tagType];
+    for (const group of tagGroups) {
+      for (const item of group.display_items) {
+        if (item.tag_id == tagId) {
+          return item.tag_display_text;
+        }
+      }
+    }
+    return undefined;
+  }
 }
