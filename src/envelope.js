@@ -18,7 +18,7 @@ export class Envelope {
 
   /** Create a new Envelope in the server to which we can attach audio recordings as assets
    * @returns {Promise} represents the pending API call **/
-  connect() {
+  async connect() {
     let data = {
       session_id: this._sessionId
     };
@@ -68,12 +68,12 @@ export class Envelope {
       contentType: 'multipart/form-data'
     };
 
-    const data = await this._apiClient.patch(path, formData, options);
-    console.info("UPLOADDATA", data);
-    if (data.detail) {
-      throw new Error(data.detail);
+    const res = await this._apiClient.patch(path, formData, options);
+    console.info("UPLOADDATA", res);
+    if (res.detail) {
+      throw new Error(res.detail);
     } else {
-      return data;
+      return res;
     }
   }
 }
