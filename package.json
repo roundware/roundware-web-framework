@@ -5,7 +5,7 @@
     "type": "git",
     "url": "git+https://github.com/roundware/roundware-web.git"
   },
-  "version": "0.9.5-alpha",
+  "version": "0.9.6-alpha",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "main": "dist/roundware.js",
   "files": [
