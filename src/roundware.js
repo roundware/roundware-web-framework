@@ -3,7 +3,7 @@ import { Session } from "./session";
 import { Speaker } from "./speaker";
 import { GeoPosition } from "./geo-position";
 import { Stream } from "./stream";
-import { Asset, PATH as ASSET_PATH } from "./asset";
+import { Asset } from "./asset";
 import { TimedAsset } from "./timed_asset";
 import { logger } from "./shims";
 import { ApiClient } from "./api-client";
