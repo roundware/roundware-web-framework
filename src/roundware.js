@@ -3,7 +3,7 @@ import { Session } from "./session";
 import { Speaker } from "./speaker";
 import { GeoPosition } from "./geo-position";
 import { Stream } from "./stream";
-import { Asset } from "./asset";
+import { Asset, PATH as ASSET_PATH } from "./asset";
 import { TimedAsset } from "./timed_asset";
 import { logger } from "./shims";
 import { ApiClient } from "./api-client";
@@ -260,5 +260,13 @@ export class Roundware {
       }
     }
     return undefined;
+  }
+
+  async vote(assetId, voteType, value) {
+    return this._apiClient.post(`/assets/${assetId}/votes/`, {
+      session_id: this._sessionId,
+      vote_type: voteType,
+      value,
+    });
   }
 }
