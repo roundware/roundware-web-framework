@@ -239,17 +239,15 @@ export class Roundware {
    * @param {string} fileName - name of the file
    * @return {promise} - represents the API calls to save an asset; can be tested to find out whether upload was successful
    * @see Envelope.upload */
-  saveAsset(audioData, fileName, data) {
+  async saveAsset(audioData, fileName, data) {
     if (!this._sessionId) {
-      return Promise.reject("can't save assets without first connecting to the server");
+      throw new Error("can't save assets without first connecting to the server");
     }
 
     let envelope = new Envelope(this._sessionId, this._apiClient, this._geoPosition);
 
-    return envelope.connect().
-      then(function() {
-        return envelope.upload(audioData, fileName, data);
-      });
+    await envelope.connect();
+    return envelope.upload(audioData, fileName, data);
   }
 
   findTagDescription(tagId, tagType = "listen") {

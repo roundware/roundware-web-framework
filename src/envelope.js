@@ -18,7 +18,7 @@ export class Envelope {
 
   /** Create a new Envelope in the server to which we can attach audio recordings as assets
    * @returns {Promise} represents the pending API call **/
-  connect() {
+  async connect() {
     let data = {
       session_id: this._sessionId
     };
@@ -33,7 +33,7 @@ export class Envelope {
    * @param {blob} audioData
    * @param {string} fileName - name of the file
    * @return {Promise} - represents the API call */
-  upload(audioData, fileName, data = {}) {
+  async upload(audioData, fileName, data = {}) {
     if (!this._envelopeId) {
       return Promise.reject("cannot upload audio without first connecting this envelope to the server");
     }
@@ -68,10 +68,12 @@ export class Envelope {
       contentType: 'multipart/form-data'
     };
 
-    return this._apiClient.patch(path, formData, options).
-      then((data) => {
-        console.info("UPLOADDATA", data);
-        return data;
-      });
+    const res = await this._apiClient.patch(path, formData, options);
+    console.info("UPLOADDATA", res);
+    if (res.detail) {
+      throw new Error(res.detail);
+    } else {
+      return res;
+    }
   }
 }
