@@ -263,7 +263,7 @@ export class Roundware {
   }
 
   async vote(assetId, voteType, value) {
-    return this._apiClient.post(`${ASSET_PATH}/${assetId}/votes/`, {
+    return this._apiClient.post(`/assets/${assetId}/votes/`, {
       session_id: this._sessionId,
       vote_type: voteType,
       value,
