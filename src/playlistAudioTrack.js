@@ -30,7 +30,7 @@ import 'cancelandholdattime-polyfill';
    "banned_duration": 600,
    "tag_filters": [],
    "project_id": 9
- }] 
+ }]
 
 
  asset looks like:
@@ -59,13 +59,13 @@ import 'cancelandholdattime-polyfill';
   updated: "2019-03-13T20:09:34.237155"
   user: null
   volume: 1
-  weight: 50 
+  weight: 50
   }
 
 */
 
 //const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['loadstart','playing','stalled','waiting']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
-const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['pause','play','playing','waiting','stalled']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
+const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['pause', 'play', 'playing', 'waiting', 'stalled']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
 const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due to floating point math concerns
 
 export class PlaylistAudiotrack {
@@ -75,7 +75,7 @@ export class PlaylistAudiotrack {
     this.playlist = playlist;
     this.playing = false;
     this.windowScope = windowScope;
-    
+
     const audioElement = new Audio();
 
     audioElement.crossOrigin = 'anonymous';
@@ -86,13 +86,13 @@ export class PlaylistAudiotrack {
 
     audioSrc.connect(gainNode);
     gainNode.connect(audioContext.destination);
-    
-    LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach(name => audioElement.addEventListener(name,() => console.log(`\t[${this} audio ${name} event]`)));
 
-    audioElement.addEventListener('error',() => this.onAudioError());
-    audioElement.addEventListener('ended',() => this.onAudioEnded());
+    LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach(name => audioElement.addEventListener(name, () => console.log(`\t[${this} audio ${name} event]`)));
 
-    const trackOptions = new TrackOptions(param => getUrlParam(windowScope.location,param),audioData);
+    audioElement.addEventListener('error', () => this.onAudioError());
+    audioElement.addEventListener('ended', () => this.onAudioEnded());
+
+    const trackOptions = new TrackOptions(param => getUrlParam(windowScope.location, param), audioData);
 
     this.audioContext = audioContext;
     this.audioElement = audioElement;
@@ -107,18 +107,18 @@ export class PlaylistAudiotrack {
   }
 
   setInitialTrackState() {
-    this.state = makeInitialTrackState(this,this.trackOptions);
+    this.state = makeInitialTrackState(this, this.trackOptions);
   }
 
   onAudioError(evt) {
-    console.warn(`\t[${this} audio error, skipping to next track]`,evt);
+    console.warn(`\t[${this} audio error, skipping to next track]`, evt);
     this.setInitialTrackState();
   }
 
   onAudioEnded() {
     console.log(`\t[${this} audio ended event]`);
-  } 
-  
+  }
+
   play() {
     console.log(`${timestamp} ${this}: ${this.state}`);
     this.state.play();
@@ -137,7 +137,7 @@ export class PlaylistAudiotrack {
 
   setZeroGain() {
     const { gainNode: { gain }, audioContext: { currentTime } } = this;
-    gain.setValueAtTime(NEARLY_ZERO,currentTime); // http://alemangui.github.io/blog//2015/12/26/ramp-to-value.html
+    gain.setValueAtTime(NEARLY_ZERO, currentTime); // http://alemangui.github.io/blog//2015/12/26/ramp-to-value.html
   }
 
   // exponentialRampToValueAtTime sounds more gradual for fading in
@@ -148,33 +148,33 @@ export class PlaylistAudiotrack {
     try {
       this.setZeroGain();
       this.playAudio();
-      this.rampGain(finalVolume,fadeInDurationSeconds);
+      this.rampGain(finalVolume, fadeInDurationSeconds);
       return true;
-    } catch(err) {
+    } catch (err) {
       delete this.currentAsset;
-      console.warn(`${this} unable to play`,currentAsset,err);
+      console.warn(`${this} unable to play`, currentAsset, err);
       return false;
     }
   }
 
-  rampGain(finalVolume,durationSeconds,rampMethod = 'exponentialRampToValueAtTime') {
+  rampGain(finalVolume, durationSeconds, rampMethod = 'exponentialRampToValueAtTime') {
     const { gainNode: { gain }, audioContext: { currentTime } } = this;
-    
+
     console.log(`\t[ramping ${this} gain to ${finalVolume.toFixed(2)} (${durationSeconds.toFixed(1)}s - ${rampMethod})]`);
 
     try {
-      gain.setValueAtTime(gain.value,currentTime); // http://alemangui.github.io/blog//2015/12/26/ramp-to-value.html
-      gain[rampMethod](finalVolume,currentTime + durationSeconds);
+      gain.setValueAtTime(gain.value, currentTime); // http://alemangui.github.io/blog//2015/12/26/ramp-to-value.html
+      gain[rampMethod](finalVolume, currentTime + durationSeconds);
       return true;
-    } catch(err) {
-      console.warn(`Unable to ramp gain ${this}`,err);
+    } catch (err) {
+      console.warn(`Unable to ramp gain ${this}`, err);
       return false;
     }
   }
 
   // linearRampToValueAtTime sounds more gradual for fading out
   fadeOut(fadeOutDurationSeconds) {
-    return this.rampGain(NEARLY_ZERO,fadeOutDurationSeconds,'linearRampToValueAtTime'); // 'exponentialRampToValueAtTime');
+    return this.rampGain(NEARLY_ZERO, fadeOutDurationSeconds, 'linearRampToValueAtTime'); // 'exponentialRampToValueAtTime');
   }
 
   loadNextAsset() {
@@ -194,7 +194,7 @@ export class PlaylistAudiotrack {
 
       audioElement.src = file;
       audioElement.currentTime = start >= NEARLY_ZERO ? start : NEARLY_ZERO; // value but must fininite
-      
+
       this.audioElement = audioElement;
 
       return newAsset;
@@ -212,7 +212,7 @@ export class PlaylistAudiotrack {
   playAudio() {
     if (this.audioElement) this.audioElement.play();
   }
-  
+
   pauseAudio() {
     this.holdGain();
     if (this.audioElement) this.audioElement.pause();
