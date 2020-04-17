@@ -1,6 +1,31 @@
 <html>
   <head>
-    <title>RoundwareWebListen Test</title>
+    <title>Roundware Test</title>
+
+    <style>
+      #listenMap {
+        height: 400px;
+        width: 100%;
+      }
+      #speakMap {
+        height: 400px;
+        width: 100%;
+      }
+      #waveform {
+        border: 1px black solid;
+        height: 128px;
+        width: 100%;
+      }
+      #inputmeter {
+        border: 1px black solid;
+        background-color: #ffffff;
+        height: 200px;
+        width: 300px;
+      }
+      ul { list-style: none; }
+      li { margin: 1em; }
+      audio { display: block; }
+    </style>
   </head>
   <body>
     <h1>Playback</h1>
@@ -9,24 +34,114 @@
       Your browser does not support the audio format.
     </audio>
 
-    <button id="pause" disabled="disabled">Pause</button>
-    <button id="play" disabled="disabled">Play</button>
-
     <div>
-      <label>Tag IDs</label>
-      <input id='tag_ids' disabled="disabled"/>
+        <button id="pause" disabled="disabled">Pause</button>
+        <button id="play" disabled="disabled">Play</button>
+        <button id="kill" disabled="disabled">Kill</button>
     </div>
+    <div>
+        <button id="replay" disabled="disabled">Replay</button>
+        <button id="skip" disabled="disabled">Skip</button>
+    </div>
+    <div id="isrange">
+        <form><input type="checkbox">Use Range Listening?</form>
+    </div>
+    <div>
+        <button id="update" disabled="disabled">Update Stream</button>
+    </div>
+    <div id="uiListenDisplay"></div>
+    <div>
+      <label>Latitude</label>
+      <input id='listenLatitude' value="1"/>
+    </div>
+    <div>
+      <label>Longitude</label>
+      <input id='listenLongitude' value="1"/>
+    </div>
+    <br>
+
+    <br>
+    <div>Move pin on map to update audio based on location.</div>
+    <div id="listenMap"></div>
 
     <h1>Recording</h1>
-    <button id="record" style="display: none;">Record</button>
+    <h2>1. Select Metadata</h2>
+    <div id="uiSpeakDisplay"></div>
+    <!-- <button id="record" style="display: none;">Record</button> -->
+    <h3>Select a location for your contribution</h3>
+    <div>
+      <button id="setBrowserLocation" style="">Set to Browser Location</button>
+    </div>
+    <br>
+    <div>
+      <label>Contribution Latitude</label>
+      <input id='speakLatitude' value="1"/>
+    </div>
+    <div>
+      <label>Contribution Longitude</label>
+      <input id='speakLongitude' value="1"/>
+    </div>
+    <div id="speakMap"></div>
+
+    <h2>2. Make Recording</h2>
+    <button id="initRecorder">Inititialize Recorder</button>
+    <div id="inputmeter"></div>
+    <div id="countdown">0:00</div>
+    <button id="startRecordButton" disabled>Start Recording</button>
+    <button id="stopRecordButton" disabled>Stop Recording</button>
+
+    <div id="waveform"></div>
+    <div id="waveform-timeline"></div>
+    <button id="playbackButton" disabled>Play | Pause</button>
+
+    <h2>3. Upload to Roundware</h2>
+    <button id="uploadButton" disabled>Upload to RW</button>
+
     <hr>
+
     <ul>
       <li>To run this example, execute <code>npm run devserver &amp;&amp; open localhost:8080</code> from the project root directory You also need to have the Roundware Server running locally, see <a href="https://github.com/roundware/roundware-server#vagrant">Roundware Vagrant setup instructions</a>.</li>
       <li>Also check out our <a href="https://subelsky.github.io/roundware_web_demo/">live demo</a> using a recent build</li>
     </ul>
 
-    <script type="text/javascript" src="roundware.umd.js"></script>
+    <!-- Google Maps -->
+    <script
+    src="https://maps.googleapis.com/maps/api/js?key=<<insert yours here>>">
+    </script>
+
+    <script type="text/javascript" src="modernizr-custom.js"></script>
+    <!-- local development -->
+    <!-- <script type="text/javascript" src="roundware.umd.js"></script> -->
+    <!-- online deployment -->
+    <script type="text/javascript" src="https://unpkg.com/roundware-web-framework@0.0.1-alpha.11/dist/roundware.umd.min.js"></script>
     <script type="text/javascript" src="jquery-3.2.1.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bowser/1.9.4/bowser.js"></script>
+    <script type="text/javascript" src="WavAudioEncoder.js"></script>
+    <script type="text/javascript" src="recording.js"></script>
+    <script type="text/javascript" src="recorder.min.js"></script>
+    <!-- <script type="text/javascript" src="wavesurfer/wavesurfer-2.1.0/src/wavesurfer.js"></script> -->
+    <!-- <script type="text/javascript" src="wavesurfer/wavesurfer.umd.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/1.4.0/wavesurfer.min.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/1.4.0/plugin/wavesurfer.timeline.min.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/1.4.0/plugin/wavesurfer.microphone.min.js"></script> -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/2.1.0/wavesurfer.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/2.1.0/plugin/wavesurfer.timeline.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/2.1.0/plugin/wavesurfer.microphone.min.js"></script>
     <script type="text/javascript" src="main.js"></script>
+
+    <script>
+      const bowser = window.bowser.detect(window.navigator.userAgent);
+      if (bowser.ios && bowser.safari) {
+        console.log("you are using mobile safari");
+      }
+      else if (bowser.ios && bowser.chrome) {
+        alert("you are using chrome on an iOS device");
+      } else {
+        console.log("you are NOT using an iOS device");
+      }
+      console.log(bowser);
+
+    </script>
+
   </body>
 </html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Roundware Web Framework Mixer Acceptance Test</title>
+
+    <style>
+      #mixMap {
+        height: 800px;
+        width: 100%;
+      }
+
+      /** button styles from https://codepen.io/andybelldesign/pen/Vxpjvo */
+      button {
+        display: inline-block;
+        border: none;
+        padding: 1rem 2rem;
+        margin: 0;
+        text-decoration: none;
+        background: #0069ed;
+        color: #ffffff;
+        font-family: sans-serif;
+        font-size: 1rem;
+        cursor: pointer;
+        text-align: center;
+        transition: background 250ms ease-in-out, 
+        transform 150ms ease;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+      }
+
+      button:hover,
+      button:focus {
+        background: #0053ba;
+      }
+
+      button:focus {
+        outline: 1px solid #fff;
+        outline-offset: -4px;
+      }
+
+      button:active {
+        transform: scale(0.99);
+      }
+      
+      #errorDisplay {
+        background-color: #F00;
+        color: black;
+        margin: 1em 5%;
+        padding: 1em;
+        font-weight: bold;
+        font-size: x-large;
+        display: none;
+      }
+
+      #tagSelection {
+        position: absolute;
+        background-color: white;
+        opacity : 0.8;
+        bottom: 10%;
+        left: 5%;
+        width: 25%%;
+        z-index: 5000;
+        padding: 1%;
+      }
+
+      #tagSelection h2 {
+        margin-top: 0.25em;;
+      }
+
+      #tagSelection label {
+        display: block;
+        margin-bottom: 0.5em;
+      }
+
+      .btnGroup {
+        margin-bottom: 1em;
+      }
+
+      .btnGroup button {
+        color: white;
+        background-color: #4CAF50;
+        border: 1px solid green;
+        padding: 10px 24px;
+        float: left;
+        width: 25%;
+      }
+
+      .btnGroup button:not(:last-child) {
+        border-right: none;
+      }
+
+      .btnGroup:after {
+        content: "";
+        clear: both;
+        display: table;
+      }
+
+      .btnGroup button:hover {
+        background-color: #3e8e41;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Client-Side Mixer Acceptance Test</h1>
+    <div>
+      <span id="loadingIndicator">
+        <img id="loadingSpinner" src="./loader.gif" alt="Animated rogress indicator made of rotating line segments" style="float: left;" />
+        <em>Connecting and downloading...</em>
+      </span>
+
+      <div class="btnGroup" style="display: none;">
+        <button id="playPauseBtn" style='width: 50%'>Start</button>
+        <button id="transportBtn" style='width: 50%'>Transport to Manzanar</button>
+      </div>
+
+      <div class="btnGroup" style="display: none;">
+        <button data-skip-track-id=39>Skip #39</button>
+        <button data-replay-track-id=39>Replay #39</button>
+        <button data-skip-track-id=40>Skip #40</button>
+        <button data-replay-track-id=40>Replay #40</button>
+      </div>
+    </div>
+
+    <div id="errorDisplay"></div>
+
+    <div id="tagSelection" style="width: 25%"></div>
+
+    <div id="mixMap">
+    </div>
+
+    <script type="text/javascript" src="../roundware.js"></script> 
+    <script type="text/javascript" src="./main.js"></script>
+  </body>
+</html>

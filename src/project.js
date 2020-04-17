@@ -1,32 +1,52 @@
-import { logger } from "./shims";
-
-var projectId, apiClient;
-var projectName = "(unknown)";
-var pubDate, audioFormat;
+//var projectId, apiClient;
+//var projectName = "(unknown)";
+//var pubDate, audioFormat, recordingRadius, location, geoListenEnabled;
 
 export class Project {
-  constructor(newProjectId,options) {
-    projectId = newProjectId;
-    apiClient = options.apiClient;
+  constructor(newProjectId,{ apiClient }) {
+    this.projectId = newProjectId;
+    this.projectName = "(unknown)";
+    this.apiClient = apiClient;
+    this.mixParams = {};
   }
 
   toString() {
-    return `Roundware Project '${projectName}' (#${projectId})`;
+    return `Roundware Project '${this.projectName}' (#${this.projectId})`;
   }
 
-  connect(sessionId) {
-    var path = "/projects/" + projectId;
+  async connect(sessionId) {
+    const path = "/projects/" + this.projectId + "/";
 
-    var data = {
-      session_id: sessionId
-    };
+    const requestData = { session_id: sessionId };
 
-    return apiClient.get(path,data).
-      then(function connectionSuccess(data) {
-        projectName = data.name;
-        pubDate = data.pub_date;
-        audioFormat = data.audio_format;
-        return sessionId;
-      });
+    try {
+      const data = await this.apiClient.get(path,requestData);
+      //console.info({ PROJECTDATA: data });
+
+      this.projectName         = data.name;
+      this.legalAgreement      = data.legal_agreement;
+      this.recordingRadius     = data.recording_radius;
+      this.maxRecordingLength  = data.max_recording_length;
+      this.location            = { latitude: data.latitude,
+                                   longitude: data.longitude };
+
+      this.mixParams = {
+        geoListenEnabled: data.geo_listen_enabled,
+        recordingRadius: data.recording_radius,
+        ordering: data.ordering,
+        ...this.mixParams,
+      };
+
+      return sessionId;
+    } catch(err) {
+      console.error("Unable to get Project details",err);
+    }
+  }
+
+  uiconfig(sessionId) {
+    const path = "/projects/" + this.projectId + "/uiconfig/";
+    const data = { session_id: sessionId };
+
+    return this.apiClient.get(path,data);
   }
 }

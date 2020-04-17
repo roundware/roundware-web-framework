@@ -1,5 +1,3 @@
-import { logger } from "./shims";
-
 var clientSystem = "Unknown";
 var projectId, sessionId, geoListenEnabled;
 var apiClient = {};
@@ -35,17 +33,16 @@ export class Session {
   /** Make an asynchronous API call to establish a session with the Roundware server
    * @return {Promise} represents the pending API call
    **/
-  connect() {
-    let requestData = {
+  async connect() {
+    const requestData = {
       project_id: projectId,
       geo_listen_enabled: geoListenEnabled,
       client_system: clientSystem
     };
 
-    return apiClient.post("/sessions/",requestData).
-      then((data) => {
-        sessionId = data.session_id;
-        return sessionId;
-      });
+    const data = await apiClient.post("/sessions/",requestData);
+    this.sessionId = data.id;
+
+    return this.sessionId;
   }
 }
