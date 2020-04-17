@@ -142,7 +142,22 @@ export class Roundware {
     return (this._project || {}).mixParams;
   }
 
+  async getAssets(options) {
+    // If the caller just wants all assets, pass back the preloaded list.
+    if (!options && this._assetData) {
+      return this._assetData;
+    } else {
+      return this._apiClient.get(`/assets/`, {
+        project_id: this._projectId,
+        // Override default filters with any passed in options.
+        ...this._assetFilters,
+        ...(options || {}),
+      });
+    }
+  }
+
   async loadAssets() {
+    // Options passed here should only need to go into the assets/ call.
     if (!this._assetData) {
       this._assetData = await this._asset.connect(this._assetFilters);
     }
@@ -268,5 +283,24 @@ export class Roundware {
       vote_type: voteType,
       value,
     });
+  }
+
+  /// @return Detailed information about a particular asset.
+  async getAsset(id) {
+    // Check for this asset in any already loaded asset pool.
+    if (this._assetData) {
+      for (const asset of this._assetData) {
+        if (asset.id === id) {
+          return asset;
+        }
+      }
+    }
+    // Otherwise, ask the server for the asset details.
+    return this._apiClient.get(`/assets/${id}/`, { session_id: this._sessionId });
+  }
+
+  /// @return Details about a particular envelope (which may contain multiple assets).
+  async getEnvelope(id) {
+    return this._apiClient.get(`/envelopes/${id}`, { session_id: this._sessionId });
   }
 }
