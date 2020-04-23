@@ -11,6 +11,9 @@ import { User } from "./user";
 import { Envelope } from "./envelope";
 import { Mixer } from "./mixer";
 import { Audiotrack } from "./audiotrack";
+import { ASSET_PRIORITIES } from "./assetFilters";
+
+export * from "./assetFilters";
 
 /** This class is the primary integration point between Roundware's server and your application
 
@@ -142,7 +145,31 @@ export class Roundware {
     return (this._project || {}).mixParams;
   }
 
-  async loadAssets() {
+  /// Requests list of assets from the server given some filters.
+  async getAssets(options) {
+    // If the caller just wants all assets, pass back the preloaded list.
+    if (!options && this._assetData) {
+      return this._assetData;
+    } else {
+      return this._apiClient.get(`/assets/`, {
+        project_id: this._projectId,
+        // Override default filters with any passed in options.
+        ...this._assetFilters,
+        ...(options || {}),
+      });
+    }
+  }
+
+  /// Returns a reduced asset list by filtering the overall pool.
+  /// Example: `getAssetsFromPool(allAssetFilter([distanceRangesFilter(), anyTagsFilter()]))`
+  async getAssetsFromPool(assetFilter, extraParams = {}) {
+    const pool = await this.loadAssetPool();
+    const mixParams = { ...this.mixParams, ...extraParams };
+    return pool.filter(a => assetFilter(a, mixParams) != ASSET_PRIORITIES.DISCARD);
+  }
+
+  async loadAssetPool() {
+    // Options passed here should only need to go into the assets/ call.
     if (!this._assetData) {
       this._assetData = await this._asset.connect(this._assetFilters);
     }
@@ -268,5 +295,24 @@ export class Roundware {
       vote_type: voteType,
       value,
     });
+  }
+
+  /// @return Detailed information about a particular asset.
+  async getAsset(id) {
+    // Check for this asset in any already loaded asset pool.
+    if (this._assetData) {
+      for (const asset of this._assetData) {
+        if (asset.id === id) {
+          return asset;
+        }
+      }
+    }
+    // Otherwise, ask the server for the asset details.
+    return this._apiClient.get(`/assets/${id}/`, { session_id: this._sessionId });
+  }
+
+  /// @return Details about a particular envelope (which may contain multiple assets).
+  async getEnvelope(id) {
+    return this._apiClient.get(`/envelopes/${id}`, { session_id: this._sessionId });
   }
 }

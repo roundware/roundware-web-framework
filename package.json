@@ -55,15 +55,15 @@
     "webpack-dev-server": "~3.7.2"
   },
   "dependencies": {
-    "loglevel": "^1.6.7",
     "@turf/boolean-point-in-polygon": "^6.0.1",
     "@turf/distance": "^6.0.1",
     "@turf/line-to-polygon": "^6.0.1",
     "@turf/point-to-line-distance": "^6.0.0",
-    "standardized-audio-context": "^24.1.5",
-    "deep-extend": ">=0.5.1",
     "cancelandholdattime-polyfill": "1.15.1",
-    "core-js": "3.2.0"
+    "core-js": "3.2.0",
+    "deep-extend": ">=0.5.1",
+    "loglevel": "^1.6.7",
+    "standardized-audio-context": "^24.1.5"
   },
   "np": {
     "anyBranch": true,
