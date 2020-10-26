@@ -3,7 +3,6 @@ import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import pointToLineDistance from '@turf/point-to-line-distance';
 import lineToPolygon from '@turf/line-to-polygon';
 import { cleanAudioURL } from './utils';
-import { Audio } from "standardized-audio-context";
 
 const convertLinesToPolygon = shape => lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;

@@ -181,7 +181,7 @@ export class Roundware {
 
   async activateMixer(activationParams = {}) {
     // Make sure the asset pool is loaded.
-    await this.loadAssets();
+    await this.loadAssetPool();
 
     const mixParams = {
       ...this.mixParams,
