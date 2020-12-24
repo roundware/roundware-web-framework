@@ -90,4 +90,9 @@ export class AssetPool {
   sortAssets() {
     this.assetSorter.sort(this.assets);
   }
+
+  add(asset) {
+    this.assets.push(asset);
+    this.sortAssets();
+  }
 }
