@@ -40,7 +40,7 @@ export class Session {
       client_system: clientSystem
     };
 
-    const data = await apiClient.post("/sessions/",requestData);
+    const data = await apiClient.post("/sessions/", requestData);
     this.sessionId = data.id;
 
     return this.sessionId;
