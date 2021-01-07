@@ -1,9 +1,7 @@
-//var projectId, apiClient;
-//var projectName = "(unknown)";
-//var pubDate, audioFormat, recordingRadius, location, geoListenEnabled;
+import { GeoListenMode } from "./mixer";
 
 export class Project {
-  constructor(newProjectId,{ apiClient }) {
+  constructor(newProjectId, { apiClient }) {
     this.projectId = newProjectId;
     this.projectName = "(unknown)";
     this.apiClient = apiClient;
@@ -20,26 +18,27 @@ export class Project {
     const requestData = { session_id: sessionId };
 
     try {
-      const data = await this.apiClient.get(path,requestData);
+      const data = await this.apiClient.get(path, requestData);
       //console.info({ PROJECTDATA: data });
 
-      this.projectName         = data.name;
-      this.legalAgreement      = data.legal_agreement;
-      this.recordingRadius     = data.recording_radius;
-      this.maxRecordingLength  = data.max_recording_length;
-      this.location            = { latitude: data.latitude,
-                                   longitude: data.longitude };
+      this.projectName = data.name;
+      this.legalAgreement = data.legal_agreement;
+      this.recordingRadius = data.recording_radius;
+      this.maxRecordingLength = data.max_recording_length;
+      this.location = { latitude: data.latitude, longitude: data.longitude };
 
       this.mixParams = {
-        geoListenEnabled: data.geo_listen_enabled,
+        geoListenMode: data.geo_listen_enabled
+          ? GeoListenMode.MANUAL
+          : GeoListenMode.DISABLED,
         recordingRadius: data.recording_radius,
         ordering: data.ordering,
         ...this.mixParams,
       };
 
       return sessionId;
-    } catch(err) {
-      console.error("Unable to get Project details",err);
+    } catch (err) {
+      console.error("Unable to get Project details", err);
     }
   }
 
@@ -47,6 +46,6 @@ export class Project {
     const path = "/projects/" + this.projectId + "/uiconfig/";
     const data = { session_id: sessionId };
 
-    return this.apiClient.get(path,data);
+    return this.apiClient.get(path, data);
   }
 }

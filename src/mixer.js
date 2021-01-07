@@ -1,17 +1,30 @@
-import { SpeakerTrack } from './speaker_track';
-import { Playlist } from './playlist';
-import { buildAudioContext, coordsToPoints, getUrlParam } from './utils';
-import { AssetPool } from './assetPool';
+import { SpeakerTrack } from "./speaker_track";
+import { Playlist } from "./playlist";
+import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
+import { AssetPool } from "./assetPool";
+
+export const GeoListenMode = Object.freeze({
+  DISABLED: 0,
+  MANUAL: 1,
+  AUTOMATIC: 2,
+});
 
 export class Mixer {
-  constructor({ client, windowScope, listenerLocation, filters = [], sortMethods = [], mixParams = {} }) {
+  constructor({
+    client,
+    windowScope,
+    listenerLocation,
+    filters = [],
+    sortMethods = [],
+    mixParams = {},
+  }) {
     const audioContext = buildAudioContext(windowScope);
-    let selectTrackId = getUrlParam(windowScope.location, 'rwfSelectTrackId');
+    let selectTrackId = getUrlParam(windowScope.location, "rwfSelectTrackId");
     let audioTracks = client.audiotracks();
 
     if (selectTrackId) {
       selectTrackId = Number(selectTrackId);
-      audioTracks = audioTracks.filter(t => t.id === selectTrackId);
+      audioTracks = audioTracks.filter((t) => t.id === selectTrackId);
 
       console.info(`isolating track #${selectTrackId}`);
     }
@@ -26,7 +39,7 @@ export class Mixer {
       timedAssets,
       filters,
       sortMethods,
-      mixParams
+      mixParams,
     });
 
     this.audioContext = audioContext;
@@ -36,14 +49,17 @@ export class Mixer {
       listenerPoint,
       assetPool,
       audioContext,
-      windowScope
+      windowScope,
     });
 
-    this.speakerTracks = speakers.map(speakerData => new SpeakerTrack({
-      audioContext,
-      listenerPoint,
-      data: speakerData
-    }));
+    this.speakerTracks = speakers.map(
+      (speakerData) =>
+        new SpeakerTrack({
+          audioContext,
+          listenerPoint,
+          data: speakerData,
+        })
+    );
 
     this.playing = false;
   }
@@ -54,7 +70,7 @@ export class Mixer {
     }
 
     this.playlist.updateParams(params);
-    this.speakerTracks.forEach(t => t.updateParams(params));
+    this.speakerTracks.forEach((t) => t.updateParams(params));
   }
 
   skipTrack(trackId) {
@@ -66,7 +82,7 @@ export class Mixer {
   }
 
   toString() {
-    return 'Roundware Mixer';
+    return "Roundware Mixer";
   }
 
   toggle() {
@@ -74,11 +90,11 @@ export class Mixer {
       this.playing = false;
 
       this.playlist.pause();
-      this.speakerTracks.forEach(s => s.pause());
+      this.speakerTracks.forEach((s) => s.pause());
     } else {
       this.playing = true;
       this.playlist.play();
-      this.speakerTracks.forEach(s => s.play());
+      this.speakerTracks.forEach((s) => s.play());
     }
 
     return this.playing;

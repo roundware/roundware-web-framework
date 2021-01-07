@@ -2,14 +2,13 @@ import { Project } from "./project";
 import { Session } from "./session";
 import { Speaker } from "./speaker";
 import { GeoPosition } from "./geo-position";
-import { Stream } from "./stream";
 import { Asset } from "./asset";
 import { TimedAsset } from "./timed_asset";
 import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { User } from "./user";
 import { Envelope } from "./envelope";
-import { Mixer } from "./mixer";
+import { Mixer, GeoListenMode } from "./mixer";
 import { Audiotrack } from "./audiotrack";
 import { ASSET_PRIORITIES } from "./assetFilters";
 
@@ -53,10 +52,28 @@ export class Roundware {
    * @param {Object} options - Collection of parameters for configuring this Roundware instance
    * @param {String} options.serverUrl - identifies the Roundware server
    * @param {Number} options.projectId - identifies the Roundware project to connect
-   * @param {Boolean} options.geoListenEnabled - whether or not to attempt to initialize geolocation-based listening
+   * @param {Boolean} options.geoListenMode - whether or not to attempt to initialize geolocation-based listening
    * @throws Will throw an error if serveUrl or projectId are missing
     TODO need to provide a more modern/ES6-aware architecture here vs burdening the constructor with all of these details **/
-  constructor(windowScope, { serverUrl, projectId, speakerFilters, assetFilters, listenerLocation, user, geoPosition, session, project, stream, speaker, asset, timedAsset, audiotrack, ...options }) {
+  constructor(
+    windowScope,
+    {
+      serverUrl,
+      projectId,
+      speakerFilters,
+      assetFilters,
+      listenerLocation,
+      user,
+      geoPosition,
+      session,
+      project,
+      speaker,
+      asset,
+      timedAsset,
+      audiotrack,
+      ...options
+    }
+  ) {
     this.windowScope = windowScope;
     this._serverUrl = serverUrl;
     this._projectId = projectId;
@@ -79,10 +96,21 @@ export class Roundware {
 
     // TODO need to reorganize/refactor these classes
     this._user = user || new User(options);
-    this._geoPosition = geoPosition || new GeoPosition(navigator, { ...options, defaultCoords: listenerLocation });
-    this._session = session || new Session(navigator, this._projectId, this._geoPosition.geoListenEnabled, options);
+    this._geoPosition =
+      geoPosition ||
+      new GeoPosition(navigator, {
+        ...options,
+        defaultCoords: listenerLocation,
+      });
+    this._session =
+      session ||
+      new Session(
+        navigator,
+        this._projectId,
+        this._geoPosition.isEnabled,
+        options
+      );
     this._project = project || new Project(this._projectId, options);
-    this._stream = stream || new Stream(options);
     this._speaker = speaker || new Speaker(this._projectId, options);
     this._asset = asset || new Asset(this._projectId, options);
     this._timed_asset = timedAsset || new TimedAsset(this._projectId, options);
@@ -93,7 +121,6 @@ export class Roundware {
   updateLocation(listenerLocation) {
     this._listenerLocation = listenerLocation;
 
-    if (this._stream) this._stream.update(listenerLocation);
     if (this._mixer) this._mixer.updateParams({ listenerLocation });
     if (this._onUpdateLocation) this._onUpdateLocation(listenerLocation);
   }
@@ -107,17 +134,28 @@ export class Roundware {
     }
   }
 
+  enableGeolocation(mode) {
+    if (mode === GeoListenMode.AUTOMATIC) {
+      if (this._geoPosition) this._geoPosition.enable();
+    } else {
+      if (this._geoPosition) this._geoPosition.disable();
+    }
+    if (this._mixer) this._mixer.updateParams({ geoListenMode: mode });
+  }
+
   disableGeolocation() {
-    delete this._onUpdateLocation;
-    if (this._geoPosition) this._geoPosition.cancel();
+    if (this._geoPosition) this._geoPosition.disable();
+    if (this._mixer)
+      this._mixer.updateParams({ geoListenMode: GeoListenMode.DISABLED });
   }
 
   /** Initiate a connection to Roundware
    *  @return {Promise} - Can be resolved in order to get the audio stream URL, or rejected to get an error message; see example above **/
   async connect() {
     // want to start this process as soon as possible, as it can take a few seconds
-    this._geoPosition.connect(newLocation => this.updateLocation(newLocation));
-
+    this._geoPosition.connect((newLocation) =>
+      this.updateLocation(newLocation)
+    );
 
     logger.info(`Initializing Roundware for project ID ${this._projectId}`);
 
@@ -128,13 +166,19 @@ export class Roundware {
 
       const promises = [
         this._project.connect(sessionId),
-        this._project.uiconfig(sessionId).then(uiConfig => this.uiConfig = uiConfig),
-        this._speaker.connect(this._speakerFilters).then(speakerData => this._speakerData = speakerData),
-        this._audiotrack.connect().then(audioTracksData => this._audioTracksData = audioTracksData)
+        this._project
+          .uiconfig(sessionId)
+          .then((uiConfig) => (this.uiConfig = uiConfig)),
+        this._speaker
+          .connect(this._speakerFilters)
+          .then((speakerData) => (this._speakerData = speakerData)),
+        this._audiotrack
+          .connect()
+          .then((audioTracksData) => (this._audioTracksData = audioTracksData)),
       ];
 
       await Promise.all(promises);
-      console.info('Roundware connected');
+      console.info("Roundware connected");
       return { uiConfig: this.uiConfig };
     } catch {
       throw "Sorry, we were unable to connect to Roundware. Please try again.";
@@ -165,7 +209,9 @@ export class Roundware {
   async getAssetsFromPool(assetFilter, extraParams = {}) {
     const pool = await this.loadAssetPool();
     const mixParams = { ...this.mixParams, ...extraParams };
-    return pool.filter(a => assetFilter(a, mixParams) != ASSET_PRIORITIES.DISCARD);
+    return pool.filter(
+      (a) => assetFilter(a, mixParams) != ASSET_PRIORITIES.DISCARD
+    );
   }
 
   async loadAssetPool() {
@@ -185,64 +231,57 @@ export class Roundware {
 
     const mixParams = {
       ...this.mixParams,
-      geoListenEnabled: this._geoPosition.geoListenEnabled,
-      ...activationParams
+      geoListenEnabled: this._geoPosition.isEnabled,
+      ...activationParams,
     };
 
     this._mixer = new Mixer({
       client: this,
       windowScope: this.windowScope,
       listenerLocation: this._listenerLocation,
-      mixParams
+      mixParams,
     });
 
     return this._mixer;
   }
 
-
   /** Create or resume the audio stream
    * @see Stream.play **/
-  play(firstPlayCallback = () => { }) {
-    return this._geoPosition.waitForInitialGeolocation().then((initialCoordinates) => {
-      return this._stream.play(this._sessionId, initialCoordinates, firstPlayCallback);
-    });
+  play(firstPlayCallback = () => {}) {
+    return this._geoPosition
+      .waitForInitialGeolocation()
+      .then(firstPlayCallback);
   }
 
   /** Tell Roundware server to pause the audio stream. You should always call this when the local audio player has been paused.
    * @see Stream.pause **/
   pause() {
-    this._stream.pause();
+    this._mixer.playlist.pause();
   }
 
   /** Tell Roundware server to kill the audio stream.
    * @see Stream.kill **/
-  kill() {
-    this._stream.kill();
-  }
+  kill() {}
 
   /** Tell Roundware server to replay the current asset.
    * @see Stream.replay **/
-  replay() {
-    this._stream.replay();
-  }
+  replay() {}
 
   /** Tell Roundware server to skip the current asset.
    * @see Stream.skip **/
   skip() {
-    this._stream.skip();
+    this._mixer.playlist.skip();
   }
 
   /** Update the Roundware stream with new tag IDs
    * @param {string} tagIdStr - comma-separated list of tag IDs to send to the streams API **/
-  tags(tagIdStr) {
-    this._stream.update({ tag_ids: tagIdStr });
-  }
+  tags() {}
 
   /** Update the Roundware stream with new tag IDs and or geo-position
    * @param {object} data - containing keys latitude, longitude and tagIds **/
-  update(data = {}) {
+  update(data) {
+    this._mixer.playlist.updateParams(data);
     // Object.keys(data).map(e => console.log(`key=${e}  value=${data[e]}`));
-    this._stream.update(data);
   }
 
   speakers() {
@@ -268,10 +307,16 @@ export class Roundware {
    * @see Envelope.upload */
   async saveAsset(audioData, fileName, data) {
     if (!this._sessionId) {
-      throw new Error("can't save assets without first connecting to the server");
+      throw new Error(
+        "can't save assets without first connecting to the server"
+      );
     }
 
-    let envelope = new Envelope(this._sessionId, this._apiClient, this._geoPosition);
+    let envelope = new Envelope(
+      this._sessionId,
+      this._apiClient,
+      this._geoPosition
+    );
 
     await envelope.connect();
     return envelope.upload(audioData, fileName, data);
@@ -308,11 +353,15 @@ export class Roundware {
       }
     }
     // Otherwise, ask the server for the asset details.
-    return this._apiClient.get(`/assets/${id}/`, { session_id: this._sessionId });
+    return this._apiClient.get(`/assets/${id}/`, {
+      session_id: this._sessionId,
+    });
   }
 
   /// @return Details about a particular envelope (which may contain multiple assets).
   async getEnvelope(id) {
-    return this._apiClient.get(`/envelopes/${id}`, { session_id: this._sessionId });
+    return this._apiClient.get(`/envelopes/${id}`, {
+      session_id: this._sessionId,
+    });
   }
 }
