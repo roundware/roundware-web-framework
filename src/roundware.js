@@ -13,6 +13,7 @@ import { Audiotrack } from "./audiotrack";
 import { ASSET_PRIORITIES } from "./assetFilters";
 
 export * from "./assetFilters";
+export { GeoListenMode } from "./mixer";
 
 /** This class is the primary integration point between Roundware's server and your application
 
@@ -80,6 +81,7 @@ export class Roundware {
     this._speakerFilters = speakerFilters;
     this._assetFilters = assetFilters;
     this._listenerLocation = listenerLocation;
+    this._initialOptions = options;
 
     if (this._serverUrl === undefined) {
       throw "Roundware objects must be initialized with a serverUrl";
@@ -231,7 +233,7 @@ export class Roundware {
 
     const mixParams = {
       ...this.mixParams,
-      geoListenEnabled: this._geoPosition.isEnabled,
+      ...this._initialParams,
       ...activationParams,
     };
 

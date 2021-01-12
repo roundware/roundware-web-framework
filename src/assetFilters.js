@@ -14,18 +14,20 @@ export const ASSET_PRIORITIES = Object.freeze({
 const alwaysLowest = () => ASSET_PRIORITIES.LOWEST;
 const alwaysNeutral = () => ASSET_PRIORITIES.NEUTRAL; // eslint-disable-line no-unused-vars
 
-// Accept an asset if any one of the provided filters passes, returns the first non-discarded/non-neutral rank
+// Accept an asset if any one of the provided filters passes, returns the first
+// non-discarded and non-neutral rank
 function anyAssetFilter(filters = [], { ...mixParams }) {
   if (isEmpty(filters)) return alwaysLowest;
 
   return (asset, { ...stateParams }) => {
-    for (let filter of filters) {
+    for (const filter of filters) {
       let rank = filter(asset, { ...mixParams, ...stateParams });
       if (
         rank !== ASSET_PRIORITIES.DISCARD &&
         rank !== ASSET_PRIORITIES.NEUTRAL
-      )
+      ) {
         return rank;
+      }
     }
 
     return ASSET_PRIORITIES.DISCARD;
@@ -68,6 +70,9 @@ const calculateDistanceInMeters = (loc1, loc2) =>
 
 /** Only accepts an asset if the user is within the project-configured recording radius  */
 export const distanceFixedFilter = () => (asset, options = {}) => {
+  if (options.geoListenMode === GeoListenMode.DISABLED) {
+    return ASSET_PRIORITIES.LOWEST;
+  }
   if (!rankForGeofilteringEligibility(asset, options))
     return ASSET_PRIORITIES.NEUTRAL;
 
@@ -87,6 +92,9 @@ export const distanceFixedFilter = () => (asset, options = {}) => {
  Accepts an asset if the user is within range of it based on the current dynamic distance range.
  */
 export const distanceRangesFilter = () => (asset, options = {}) => {
+  if (options.geoListenMode === GeoListenMode.DISABLED) {
+    return ASSET_PRIORITIES.LOWEST;
+  }
   if (!rankForGeofilteringEligibility(asset, options))
     return ASSET_PRIORITIES.NEUTRAL;
 
