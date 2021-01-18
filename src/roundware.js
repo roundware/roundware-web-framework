@@ -321,7 +321,10 @@ export class Roundware {
     );
 
     await envelope.connect();
-    return envelope.upload(audioData, fileName, data);
+    return envelope.upload(audioData, fileName, data).then(asset => {
+      // add the newly saved asset to the pool
+      this._assetData.push(asset);
+    });
   }
 
   findTagDescription(tagId, tagType = "listen") {
