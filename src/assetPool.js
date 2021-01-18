@@ -1,20 +1,23 @@
-import { AssetSorter } from './assetSorter';
-import { roundwareDefaultFilterChain } from './assetFilters';
-import { coordsToPoints, cleanAudioURL } from './utils';
+import { AssetSorter } from "./assetSorter";
+import { roundwareDefaultFilterChain } from "./assetFilters";
+import { coordsToPoints, cleanAudioURL } from "./utils";
 
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
 // also rewrite .wav as .mp3
-const assetDecorationMapper = timedAssets => {
-  const timedAssetLookup = timedAssets.reduce((lookupTable,timedAsset) => ({
-    ...lookupTable,
-    [timedAsset.asset_id]: timedAsset
-  }),{});
+const assetDecorationMapper = (timedAssets) => {
+  const timedAssetLookup = timedAssets.reduce(
+    (lookupTable, timedAsset) => ({
+      ...lookupTable,
+      [timedAsset.asset_id]: timedAsset,
+    }),
+    {}
+  );
 
-  return asset => {
-    const { 
-      start_time: activeRegionLowerBound = 0, 
+  return (asset) => {
+    const {
+      start_time: activeRegionLowerBound = 0,
       end_time: activeRegionUpperBound = 0,
-      file: assetUrl 
+      file: assetUrl,
     } = asset;
 
     const activeRegionLength = activeRegionUpperBound - activeRegionLowerBound;
@@ -24,12 +27,12 @@ const assetDecorationMapper = timedAssets => {
 
     const decoratedAsset = {
       locationPoint: coordsToPoints(asset),
-      playCount: 0, 
+      playCount: 0,
       activeRegionLength,
       activeRegionUpperBound,
       activeRegionLowerBound,
       ...asset,
-      file: mp3Url
+      file: mp3Url,
     };
 
     const timedAsset = timedAssetLookup[asset.id];
@@ -44,7 +47,13 @@ const assetDecorationMapper = timedAssets => {
 };
 
 export class AssetPool {
-  constructor({ assets = [], timedAssets = [], filterChain = roundwareDefaultFilterChain, sortMethods = [], mixParams = {} }) {
+  constructor({
+    assets = [],
+    timedAssets = [],
+    filterChain = roundwareDefaultFilterChain,
+    sortMethods = [],
+    mixParams = {},
+  }) {
     this.assets = assets.map(assetDecorationMapper(timedAssets));
     this.assetSorter = new AssetSorter({ sortMethods, ...mixParams });
     this.playingTracks = {};
@@ -53,12 +62,20 @@ export class AssetPool {
     this.sortAssets();
   }
 
-  nextForTrack(track,{ filterOutAssets = [], ...stateParams }) {
-    const rankedAssets = this.assets.reduce((rankings,asset) => {
+  nextForTrack(track, { filterOutAssets = [], ...stateParams }) {
+    const mixParams = {
+      ...track.mixParams,
+      ...stateParams,
+      ...this.mixParams,
+    };
+    console.log(
+      `picking asset for ${track} from ${
+        this.assets.length
+      }, params = ${JSON.stringify(mixParams)}`
+    );
+    const rankedAssets = this.assets.reduce((rankings, asset) => {
       if (filterOutAssets.includes(asset)) return rankings;
-
-      const mixParams = { ...track.mixParams, ...stateParams, ...this.mixParams };
-      const rank = this.filterChain(asset,mixParams);
+      const rank = this.filterChain(asset, mixParams);
 
       if (rank) {
         rankings[rank] = rankings[rank] || [];
@@ -66,12 +83,14 @@ export class AssetPool {
       }
 
       return rankings;
-    },{});
+    }, {});
 
-    const rankingGroups = Object.keys(rankedAssets).map(a => Number.parseInt(a));
+    const rankingGroups = Object.keys(rankedAssets).map((a) =>
+      Number.parseInt(a)
+    );
 
     if (rankingGroups === []) {
-      console.warn('All assets filtered out');
+      console.warn("All assets filtered out");
       return;
     }
 
@@ -79,7 +98,7 @@ export class AssetPool {
 
     // play least-recently played assets first
     const priorityAssets = rankedAssets[topPriorityRanking] || [];
-    priorityAssets.sort((a,b) => b.playCount - a.playCount);
+    priorityAssets.sort((a, b) => b.playCount - a.playCount);
 
     const nextAsset = priorityAssets.pop();
     if (nextAsset) nextAsset.playCount++;

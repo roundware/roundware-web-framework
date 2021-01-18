@@ -1,8 +1,14 @@
-import { PlaylistAudiotrack } from './playlistAudioTrack';
-import { getUrlParam } from './utils';
+import { PlaylistAudiotrack } from "./playlistAudioTrack";
+import { getUrlParam } from "./utils";
 
 export class Playlist {
-  constructor({ audioTracks = [], listenerPoint = {}, windowScope, assetPool, ...playlistTrackOptions }) {
+  constructor({
+    audioTracks = [],
+    listenerPoint = {},
+    windowScope,
+    assetPool,
+    ...playlistTrackOptions
+  }) {
     this.listenerPoint = listenerPoint;
     this.playingTracks = {};
     this.assetPool = assetPool;
@@ -10,7 +16,7 @@ export class Playlist {
     this.listenTagIds = [];
 
     let elapsedTimeMs = 0;
-    const timerSecs = getUrlParam(windowScope.location,'rwfTimerSeconds');
+    const timerSecs = getUrlParam(windowScope.location, "rwfTimerSeconds");
 
     if (timerSecs) {
       const elapsedSecs = Number(timerSecs);
@@ -22,8 +28,8 @@ export class Playlist {
     const trackIdMap = {};
     const trackMap = new Map();
 
-    audioTracks.forEach(audioData => {
-      const track = new PlaylistAudiotrack({ 
+    audioTracks.forEach((audioData) => {
+      const track = new PlaylistAudiotrack({
         audioData,
         ...playlistTrackOptions,
         windowScope,
@@ -31,8 +37,8 @@ export class Playlist {
       });
 
       trackIdMap[track.trackId] = track;
-      trackMap.set(track,true);
-    },{});
+      trackMap.set(track, true);
+    }, {});
 
     this.trackMap = trackMap;
     this.trackIdMap = trackIdMap;
@@ -47,15 +53,15 @@ export class Playlist {
     return trackMapAssets.filter(Boolean); // remove null values
   }
 
-  updateParams({ listenerPoint, listenTagIds = [], ...params}) {
+  updateParams({ listenerPoint, listenTagIds = [], ...params }) {
     if (listenerPoint) this.listenerPoint = listenerPoint;
-    this.listenTagIds = listenTagIds.map(t => Number(t));
-    this.tracks.forEach(t => t.updateParams(params));
+    this.listenTagIds = listenTagIds.map((t) => Number(t));
+    this.tracks.forEach((t) => t.updateParams(params));
   }
 
   play() {
-    this.tracks.forEach(t => t.play());
-    this.playlistLastStartedAt = new Date;
+    this.tracks.forEach((t) => t.play());
+    this.playlistLastStartedAt = new Date();
     this.playing = true;
   }
 
@@ -70,10 +76,11 @@ export class Playlist {
   }
 
   pause() {
-    this.tracks.forEach(t => t.pause());
+    this.tracks.forEach((t) => t.pause());
 
     if (this.playlistLastStartedAt) {
-      this._elapsedTimeMs = this._elapsedTimeMs + (new Date - this.playlistLastStartedAt);
+      this._elapsedTimeMs =
+        this._elapsedTimeMs + (new Date() - this.playlistLastStartedAt);
       delete this.playlistLastStartedAt;
     }
 
@@ -81,22 +88,29 @@ export class Playlist {
   }
 
   get elapsedTimeMs() {
-    const now = new Date;
-    const lastStartedAt = this.playlistLastStartedAt ? this.playlistLastStartedAt : now;
+    const now = new Date();
+    const lastStartedAt = this.playlistLastStartedAt
+      ? this.playlistLastStartedAt
+      : now;
     const elapsedSinceLastStartMs = now - lastStartedAt;
 
     return this._elapsedTimeMs + elapsedSinceLastStartMs;
   }
 
   next(forTrack) {
-    const { assetPool, currentlyPlayingAssets: filterOutAssets, elapsedTimeMs, listenTagIds } = this;
+    const {
+      assetPool,
+      currentlyPlayingAssets: filterOutAssets,
+      elapsedTimeMs,
+      listenTagIds,
+    } = this;
     const elapsedSeconds = elapsedTimeMs / 1000;
 
-    const nextAsset = assetPool.nextForTrack(forTrack,{
+    const nextAsset = assetPool.nextForTrack(forTrack, {
       filterOutAssets,
       elapsedSeconds,
       listenerPoint: this.listenerPoint,
-      listenTagIds
+      listenTagIds,
     });
 
     this.trackMap[forTrack] = nextAsset;
