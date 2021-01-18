@@ -111,12 +111,9 @@ export class PlaylistAudiotrack {
     this.audioElement = audioElement;
     this.gainNode = gainNode;
     this.trackOptions = trackOptions;
+    this.mixParams = { timedAssetPriority: audioData.timed_asset_priority };
 
     this.setInitialTrackState();
-  }
-
-  get mixParams() {
-    return { timedAssetPriority: this.timedAssetPriority };
   }
 
   setInitialTrackState() {
@@ -138,7 +135,8 @@ export class PlaylistAudiotrack {
   }
 
   updateParams(params = {}) {
-    this.state.updateParams(params);
+    this.mixParams = { ...this.mixParams, ...params };
+    this.state.updateParams(this.mixParams);
   }
 
   // Halts any scheduled gain changes and holds at current level
