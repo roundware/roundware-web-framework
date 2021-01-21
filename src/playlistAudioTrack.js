@@ -1,7 +1,6 @@
 import { getUrlParam, timestamp } from "./utils";
 import { makeInitialTrackState } from "./TrackStates";
 import { TrackOptions } from "./mixer/TrackOptions";
-import "cancelandholdattime-polyfill";
 
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
@@ -146,7 +145,7 @@ export class PlaylistAudiotrack {
       gainNode: { gain },
       audioContext: { currentTime },
     } = this;
-    gain.cancelAndHoldAtTime(currentTime);
+    gain.cancelScheduledValues(currentTime);
   }
 
   setZeroGain() {
