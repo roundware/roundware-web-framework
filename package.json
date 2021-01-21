@@ -3,7 +3,7 @@
   "homepage": "https://roundware.github.io/roundware-web-framework/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/roundware/roundware-web.git"
+    "url": "git+https://github.com/roundware/roundware-web-framework.git"
   },
   "version": "0.11.0-alpha.6",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
@@ -33,7 +33,7 @@
   "author": "Mike Subelsky <mike@subelsky.com> (http://www.subelsky.com/)",
   "license": "AGPL-3.0-only",
   "bugs": {
-    "url": "https://github.com/roundware/roundware-web/issues"
+    "url": "https://github.com/roundware/roundware-web-framework/issues"
   },
   "devDependencies": {
     "@babel/cli": "^7.12.10",
