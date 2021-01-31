@@ -88,7 +88,6 @@ export class Mixer {
   toggle() {
     if (this.playing) {
       this.playing = false;
-
       this.playlist.pause();
       this.speakerTracks.forEach((s) => s.pause());
     } else {

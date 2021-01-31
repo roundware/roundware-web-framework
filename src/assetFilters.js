@@ -95,14 +95,14 @@ export const distanceRangesFilter = () => (asset, options = {}) => {
   if (options.geoListenMode === GeoListenMode.DISABLED) {
     return ASSET_PRIORITIES.LOWEST;
   }
-  if (!rankForGeofilteringEligibility(asset, options))
+  if (!rankForGeofilteringEligibility(asset, options)) {
     return ASSET_PRIORITIES.NEUTRAL;
-
+  }
   const { listenerPoint, minDist, maxDist } = options;
 
-  if (minDist === undefined || maxDist === undefined)
+  if (minDist === undefined || maxDist === undefined) {
     return ASSET_PRIORITIES.NEUTRAL;
-
+  }
   const { locationPoint } = asset;
 
   const distance = calculateDistanceInMeters(listenerPoint, locationPoint);
@@ -340,8 +340,9 @@ export const roundwareDefaultFilterChain = allAssetFilter([
   anyAssetFilter([
     timedAssetFilter(), // if an asset is scheduled to play right now, or
     assetShapeFilter(), // if an asset has a shape and we AREN'T in it, reject entirely, or
-    distanceFixedFilter(), // if it has no shape, consider a fixed distance from it, or
+
     allAssetFilter([
+      distanceFixedFilter(), // if it has no shape, consider a fixed distance from it, or
       distanceRangesFilter(),
       //angleFilter() // if the listener is within a user-configured distance or angle range
     ]),

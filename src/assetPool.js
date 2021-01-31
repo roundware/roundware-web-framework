@@ -64,9 +64,9 @@ export class AssetPool {
 
   nextForTrack(track, { filterOutAssets = [], ...stateParams }) {
     const mixParams = {
+      ...this.mixParams,
       ...track.mixParams,
       ...stateParams,
-      ...this.mixParams,
     };
     console.log(
       `picking asset for ${track} from ${
