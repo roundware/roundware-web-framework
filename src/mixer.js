@@ -43,7 +43,7 @@ export class Mixer {
     });
 
     this.audioContext = audioContext;
-
+    this.mixParams = mixParams;
     this.playlist = new Playlist({
       audioTracks,
       listenerPoint,
@@ -68,7 +68,7 @@ export class Mixer {
     if (listenerLocation) {
       params.listenerPoint = coordsToPoints(listenerLocation);
     }
-
+    this.mixParams = {...this.mixParams, ...params};
     this.playlist.updateParams(params);
     this.speakerTracks.forEach((t) => t.updateParams(params));
   }
