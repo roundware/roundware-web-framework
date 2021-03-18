@@ -321,11 +321,31 @@ export class Roundware {
     );
 
     await envelope.connect();
-    return envelope.upload(audioData, fileName, data).then(asset => {
+    return envelope.upload(audioData, fileName, data).then((asset) => {
       // add the newly saved asset to the pool
       this._assetData.push(asset);
       return asset;
     });
+  }
+
+  /** Explicitly make a new envelope that you can attach multiple assets to by
+   calling the `Envelope.upload` method. This is the main way to add text,
+   photo, and video assets to an envelope. */
+  async makeEnvelope() {
+    if (!this._sessionId) {
+      throw new Error(
+        "can't save assets without first connecting to the server"
+      );
+    }
+
+    let envelope = new Envelope(
+      this._sessionId,
+      this._apiClient,
+      this._geoPosition
+    );
+
+    await envelope.connect();
+    return envelope;
   }
 
   findTagDescription(tagId, tagType = "listen") {

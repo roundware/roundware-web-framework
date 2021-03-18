@@ -20,13 +20,12 @@ export class Envelope {
    * @returns {Promise} represents the pending API call **/
   async connect() {
     let data = {
-      session_id: this._sessionId
+      session_id: this._sessionId,
     };
 
-    return this._apiClient.post("/envelopes/", data).
-      then((data) => {
-        this._envelopeId = data.id;
-      });
+    return this._apiClient.post("/envelopes/", data).then((data) => {
+      this._envelopeId = data.id;
+    });
   }
 
   /** Sends an audio file to the server
@@ -35,29 +34,33 @@ export class Envelope {
    * @return {Promise} - represents the API call */
   async upload(audioData, fileName, data = {}) {
     if (!this._envelopeId) {
-      return Promise.reject("cannot upload audio without first connecting this envelope to the server");
+      return Promise.reject(
+        "cannot upload audio without first connecting this envelope to the server"
+      );
     }
 
     let formData = new FormData();
     let coordinates = {};
     if (!data.latitude && !data.longitude) {
       coordinates = this._geoPosition.getLastCoords();
-    }
-    else {
+    } else {
       coordinates = {
         latitude: data.latitude,
-        longitude: data.longitude
+        longitude: data.longitude,
       };
     }
     console.log(coordinates);
 
-    formData.append('session_id', this._sessionId);
-    formData.append('file', audioData);
-    formData.append('latitude', coordinates.latitude);
-    formData.append('longitude', coordinates.longitude);
+    formData.append("session_id", this._sessionId);
+    formData.append("file", audioData);
+    formData.append("latitude", coordinates.latitude);
+    formData.append("longitude", coordinates.longitude);
 
-    if ('tag_ids' in data) {
-      formData.append('tag_ids', data.tag_ids);
+    if ("tag_ids" in data) {
+      formData.append("tag_ids", data.tag_ids);
+    }
+    if ("media_type" in data) {
+      formData.append("media_type", data.media_type);
     }
 
     let path = `/envelopes/${this._envelopeId}/`;
@@ -65,7 +68,7 @@ export class Envelope {
     console.info(`Uploading ${fileName} to envelope ${path}`);
 
     let options = {
-      contentType: 'multipart/form-data'
+      contentType: "multipart/form-data",
     };
 
     const res = await this._apiClient.patch(path, formData, options);
