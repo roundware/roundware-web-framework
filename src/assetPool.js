@@ -32,6 +32,7 @@ const assetDecorationMapper = (timedAssets) => {
       activeRegionUpperBound,
       activeRegionLowerBound,
       ...asset,
+      created: asset.created ? new Date(asset.created) : null,
       file: mp3Url,
     };
 

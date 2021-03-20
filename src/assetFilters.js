@@ -114,24 +114,6 @@ export const distanceRangesFilter = () => (asset, options = {}) => {
   }
 };
 
-// TODO: implement allTagsFilter per below Swift code
-//function allTagsFilter() {
-//console.warn('Have not implemented allTagsFilter yet');
-//return alwaysNeutral;
-//}
-
-/** Swift code for this filter below :
-  // List of tag_ids to listen for.
-  guard let listenTagIDs = RWFramework.sharedInstance.getSubmittableListenTagIDsSet()
-      else { return .lowest }
-
-  let matches = asset.tags.allSatisfy { assetTag in
-      listenTagIDs.contains(assetTag)
-  }
-
-  return matches ? .lowest : .discard
-} **/
-
 // Rank the asset if it is tagged with one of the currently-enabled tag IDs
 export function anyTagsFilter() {
   return (asset, { listenTagIds }) => {
@@ -201,140 +183,16 @@ export const timedRepeatFilter = () => (asset, { bannedDuration = 600 }) => {
   }
 };
 
-//function trackTagsFilter() {
-//console.warn('Have not implemented trackTagsFilter yet');
-//return alwaysNeutral;
-//}
-
-/** func keep(_ asset: Asset, playlist: Playlist, track: AudioTrack) -> AssetPriority {
-  guard let trackTags = track.tags,
-        trackTags.count != 0
-      else { return .lowest }
-
-  let matches = asset.tags.contains { assetTag in
-      trackTags.contains(assetTag)
+export const dateRangeFilter = () => (asset, { startDate, endDate }) => {
+  if (startDate || endDate) {
+    return (!startDate || asset.created >= startDate) &&
+      (!endDate || asset.created <= endDate)
+      ? ASSET_PRIORITIES.NORMAL
+      : ASSET_PRIORITIES.DISCARD;
+  } else {
+    return ASSET_PRIORITIES.NEUTRAL;
   }
-
-  return matches ? .lowest : .discard
-} **/
-
-// Skips assets that the user has blocked, or assets published by someone that the user has blocked
-//function blockedAssetsFilter() {
-//console.warn('Have not implemented blockedAssetsFilter yet');
-//return alwaysNeutral;
-//}
-
-/**
-guard let blocked = self.blockedAssets
-else { return .neutral }
-
-if blocked.contains(asset.id) {
-  return .discard
-} else {
-  return .normal
-} **/
-
-// Accept an asset if it's within the current angle range.
-//function angleFilter() {
-//console.warn('Have not implemented angleFilter yet');
-//return alwaysNeutral;
-//}
-
-//func keep(_ asset: Asset, playlist: Playlist, track: AudioTrack) -> AssetPriority {
-//guard playlist.project.geo_listen_enabled,
-//let opts = playlist.currentParams,
-//let loc = asset.location,
-//let heading = opts.heading,
-//let angularWidth = opts.angularWidth
-//else { return .neutral }
-
-//// We can keep any asset if our angular width covers all space.
-//if angularWidth > 359.0 {
-//return .normal
-//}
-
-//let angle = opts.location.bearingToLocationDegrees(loc)
-//let lower = heading - angularWidth
-//let upper = heading + angularWidth
-
-//if lower < 0 {
-//// wedge spans from just above zero to below it.
-//// Check between lower...360 and 0...upper
-//if ((360 + lower)...360).contains(angle)
-//|| (0...upper).contains(angle) {
-//return .normal
-//}
-//} else if upper >= 360 {
-//// wedge spans from just below 360 to above it.
-//// Check between lower...360 and 0...upper
-//if (lower...360).contains(angle)
-//|| (0...(upper - 360)).contains(angle) {
-//return .normal
-//}
-//} else if angle >= lower && angle <= upper {
-//return .normal
-//}
-
-//return .discard
-
-// Accept assets that pass an inner filter if the tag with a given filter key is enabled
-//function dynamicTagFilter() {
-//console.warn('Have not implemented dynamicTagFilter yet');
-//return alwaysNeutral;
-//}
-
-/// Mapping of dynamic filter name to tag id
-//private static let tags = try! JSON(
-//data: UserDefaults.standard.data(forKey: "tags")!
-//).array!.reduce(into: [String: [Int]]()) { acc, t in
-//let key = t["filter"].string!
-//acc[key] = (acc[key] ?? []) + [t["id"].int!]
-//}
-
-//private let key: String
-//private let filter: AssetFilter
-
-//init(_ key: String, _ filter: AssetFilter) {
-//self.key = key
-//self.filter = filter
-//}
-
-//func keep(_ asset: Asset, playlist: Playlist, track: AudioTrack) -> AssetPriority {
-//// see if there are any tags using this filter
-//if let tagIds = DynamicTagFilter.tags[self.key],
-//// grab the list of enabled tags
-//let enabledTagIds = RWFramework.sharedInstance.getSubmittableListenTagIDsSet(),
-//// if any filter tags are enabled, apply the filter
-//tagIds.contains(where: { enabledTagIds.contains($0) }) {
-//return self.filter.keep(asset, playlist: playlist, track: track)
-//} else {
-//return .neutral
-//}
-//}
-
-/**
- Only pass assets created within the most recent given time range.  `MostRecentFilter(days: 7)` accepts assets published within the last week.
- */
-//function mostRecentFilter() {
-//console.warn('Have not implemented mostRecentFilter yet');
-//return alwaysNeutral;
-//}
-
-// Oldest age of assets to accept.
-//private let maxAge: TimeInterval
-
-//init(days: Int) {
-//self.maxAge = TimeInterval(days * 24 * 60 * 60)
-//}
-
-//func keep(_ asset: Asset, playlist: Playlist, track: AudioTrack) -> AssetPriority {
-//let timeSinceCreated = Date().timeIntervalSince(asset.createdDate)
-//if timeSinceCreated > maxAge {
-//return .discard
-//} else {
-//return .normal
-//}
-//}
+};
 
 export const roundwareDefaultFilterChain = allAssetFilter([
   anyAssetFilter([
@@ -351,6 +209,7 @@ export const roundwareDefaultFilterChain = allAssetFilter([
   timedRepeatFilter(), // only repeat assets if there's no other choice
   //blockedAssetsFilter(), // skip blocked assets and users
   anyTagsFilter(), // all the tags on an asset must be in our list of tags to listen for
+  dateRangeFilter(),
   //trackTagsFilter(),     // if any track-level tag filters exist, apply them
   //dynamicTagFilter("_ten_most_recent_days",mostRecentFilter({ days: 10 })) // Only pass assets created within the most recent 10 days
 ]);
