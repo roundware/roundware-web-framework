@@ -190,7 +190,7 @@ export const dateRangeFilter = () => (asset, { startDate, endDate }) => {
       ? ASSET_PRIORITIES.NORMAL
       : ASSET_PRIORITIES.DISCARD;
   } else {
-    return ASSET_PRIORITIES.NEUTRAL;
+    return ASSET_PRIORITIES.LOWEST;
   }
 };
 
