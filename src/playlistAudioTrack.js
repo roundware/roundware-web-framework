@@ -212,7 +212,6 @@ export class PlaylistAudiotrack {
   }
 
   loadNextAsset() {
-    const newAsset = this.playlist.next(this);
     const { audioElement, currentAsset } = this;
 
     if (currentAsset) {
@@ -220,6 +219,7 @@ export class PlaylistAudiotrack {
       currentAsset.lastListenTime = new Date();
     }
 
+    const newAsset = this.playlist.next(this);
     this.currentAsset = newAsset;
 
     if (newAsset) {
