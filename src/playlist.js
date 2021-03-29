@@ -53,9 +53,11 @@ export class Playlist {
     return trackMapAssets.filter(Boolean); // remove null values
   }
 
-  updateParams({ listenerPoint, listenTagIds = [], ...params }) {
+  updateParams({ listenerPoint, listenTagIds, ...params }) {
     if (listenerPoint) this.listenerPoint = listenerPoint;
-    this.listenTagIds = listenTagIds.map((t) => Number(t));
+    if (listenTagIds) {
+      this.listenTagIds = listenTagIds.map((t) => Number(t));
+    }
     this.tracks.forEach((t) => t.updateParams(params));
   }
 

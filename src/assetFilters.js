@@ -42,7 +42,6 @@ export function allAssetFilter(filters = [], { ...mixParams }) {
     const ranks = [];
 
     for (let filter of filters) {
-      //console.info("CONSOLEDEBUG",filter);
       let rank = filter(asset, { ...mixParams, ...stateParams });
 
       if (rank === ASSET_PRIORITIES.DISCARD) return rank; // can skip remaining filters
@@ -119,13 +118,11 @@ export function anyTagsFilter() {
   return (asset, { listenTagIds }) => {
     if (isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
 
-    const { id: assetId, tag_ids: assetTagIds = [] } = asset;
+    const { tag_ids: assetTagIds = [] } = asset;
 
     for (const tagId of assetTagIds) {
       if (listenTagIds.includes(tagId)) return ASSET_PRIORITIES.LOWEST; // matching only by tag should be the least-important filter
     }
-
-    console.log(`anyTagsFilter discard asset #${assetId}`, assetTagIds);
 
     return ASSET_PRIORITIES.DISCARD;
   };
