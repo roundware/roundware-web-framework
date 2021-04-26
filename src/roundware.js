@@ -72,6 +72,7 @@ export class Roundware {
       asset,
       timedAsset,
       audiotrack,
+      assetUpdateInterval,
       ...options
     }
   ) {
@@ -82,6 +83,8 @@ export class Roundware {
     this._assetFilters = assetFilters;
     this._listenerLocation = listenerLocation;
     this._initialOptions = options;
+    // By default, update the asset pool every 5 minutes.
+    this._assetUpdateInterval = assetUpdateInterval || 300000;
 
     if (this._serverUrl === undefined) {
       throw "Roundware objects must be initialized with a serverUrl";
@@ -216,10 +219,29 @@ export class Roundware {
     );
   }
 
+  async updateAssetPool() {
+    let filters = this._assetFilters;
+    let existingAssets = [];
+    if (this._lastAssetUpdate) {
+      filters = {
+        ...filters,
+        created__gte: this._lastAssetUpdate.toISOString(),
+      };
+      existingAssets = this.assets();
+    }
+    this._assetData = existingAssets.concat(await this._asset.connect(filters));
+    this._lastAssetUpdate = new Date();
+  }
+
   async loadAssetPool() {
     // Options passed here should only need to go into the assets/ call.
     if (!this._assetData) {
-      this._assetData = await this._asset.connect(this._assetFilters);
+      await this.updateAssetPool();
+      // Setup periodic retrieval of newly uploaded assets.
+      this._assetDataTimer = setInterval(
+        () => this.updateAssetPool(),
+        this._assetUpdateInterval
+      );
     }
     if (!this._timedAssetData) {
       this._timedAssetData = await this._timed_asset.connect();
@@ -263,7 +285,11 @@ export class Roundware {
 
   /** Tell Roundware server to kill the audio stream.
    * @see Stream.kill **/
-  kill() {}
+  kill() {
+    if (this._assetDataTimer) {
+      clearInterval(this._assetDataTimer);
+    }
+  }
 
   /** Tell Roundware server to replay the current asset.
    * @see Stream.replay **/
@@ -308,24 +334,8 @@ export class Roundware {
    * @return {promise} - represents the API calls to save an asset; can be tested to find out whether upload was successful
    * @see Envelope.upload */
   async saveAsset(audioData, fileName, data) {
-    if (!this._sessionId) {
-      throw new Error(
-        "can't save assets without first connecting to the server"
-      );
-    }
-
-    let envelope = new Envelope(
-      this._sessionId,
-      this._apiClient,
-      this._geoPosition
-    );
-
-    await envelope.connect();
-    return envelope.upload(audioData, fileName, data).then((asset) => {
-      // add the newly saved asset to the pool
-      this._assetData.push(asset);
-      return asset;
-    });
+    const envelope = await this.makeEnvelope();
+    return envelope.upload(audioData, fileName, data);
   }
 
   /** Explicitly make a new envelope that you can attach multiple assets to by
@@ -341,7 +351,8 @@ export class Roundware {
     let envelope = new Envelope(
       this._sessionId,
       this._apiClient,
-      this._geoPosition
+      this._geoPosition,
+      this
     );
 
     await envelope.connect();

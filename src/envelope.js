@@ -4,11 +4,12 @@ export class Envelope {
    * @param {ApiClient} apiClient - the API client object to use for server API calls
    * @param {geoPosition} geoPosition -
    **/
-  constructor(sessionId, apiClient, geoPosition) {
+  constructor(sessionId, apiClient, geoPosition, roundware) {
     this._envelopeId = "(unknown)";
     this._sessionId = sessionId;
     this._apiClient = apiClient;
     this._geoPosition = geoPosition;
+    this._roundware = roundware;
   }
 
   /** @returns {String} human-readable representation of this asset **/
@@ -76,6 +77,10 @@ export class Envelope {
     if (res.detail) {
       throw new Error(res.detail);
     } else {
+      // add the newly saved asset to the pool
+      if (!data.media_type || data.media_type === "audio") {
+        this._roundware._assetData.push(res);
+      }
       return res;
     }
   }
