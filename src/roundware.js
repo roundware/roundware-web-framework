@@ -139,6 +139,14 @@ export class Roundware {
     }
   }
 
+  set onUpdateAssets(callback) {
+    this._onUpdateAssets = callback;
+
+    if (this._assetData) {
+      callback(this.assets());
+    }
+  }
+
   enableGeolocation(mode) {
     if (mode === GeoListenMode.AUTOMATIC) {
       if (this._geoPosition) this._geoPosition.enable();
@@ -231,6 +239,10 @@ export class Roundware {
     }
     this._assetData = existingAssets.concat(await this._asset.connect(filters));
     this._lastAssetUpdate = new Date();
+
+    if (this._onUpdateAssets) {
+      this._onUpdateAssets(this._assetData);
+    }
   }
 
   async loadAssetPool() {
