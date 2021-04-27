@@ -77,10 +77,8 @@ export class Envelope {
     if (res.detail) {
       throw new Error(res.detail);
     } else {
-      // add the newly saved asset to the pool
-      if (!data.media_type || data.media_type === "audio") {
-        this._roundware._assetData.push(res);
-      }
+      // Update the asset pool to include the newly uploaded asset
+      await this._roundware.updateAssetPool();
       return res;
     }
   }
