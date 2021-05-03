@@ -92,9 +92,16 @@ export class SpeakerTrack {
     return this.audio;
   }
 
-  updateParams({ listenerPoint }) {
+  async updateParams(isPlaying, { listenerPoint }) {
     if (listenerPoint) this.listenerPoint = listenerPoint.geometry;
-    this.updateVolume();
+    const newVolume = this.updateVolume();
+    if (isPlaying != this.playing) {
+      if (newVolume < 0.05) {
+        this.audio.pause();
+      } else {
+        await this.audio.play();
+      }
+    }
   }
 
   updateVolume() {
@@ -135,7 +142,7 @@ export class SpeakerTrack {
 
     try {
       //console.log('Pausing',this.logline);
-      await this.audio.pause();
+      this.audio.pause();
       this.playing = false;
     } catch (err) {
       console.error('Unable to pause', this.logline, err);
