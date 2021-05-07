@@ -147,6 +147,14 @@ export class Roundware {
     }
   }
 
+  get currentlyPlayingAssets() {
+    if (this._mixer && this._mixer.playlist) {
+      return this._mixer.playlist.currentlyPlayingAssets;
+    } else {
+      return [];
+    }
+  }
+
   enableGeolocation(mode) {
     if (mode === GeoListenMode.AUTOMATIC) {
       if (this._geoPosition) this._geoPosition.enable();

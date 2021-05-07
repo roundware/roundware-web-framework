@@ -49,8 +49,10 @@ export class Playlist {
   }
 
   get currentlyPlayingAssets() {
-    const trackMapAssets = [...this.trackMap.values()];
-    return trackMapAssets.filter(Boolean); // remove null values
+    return this.trackMap
+      .keys()
+      .map((t) => t.currentAsset)
+      .filter((a) => !!a);
   }
 
   updateParams({ listenerPoint, listenTagIds, ...params }) {

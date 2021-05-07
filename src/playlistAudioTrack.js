@@ -80,6 +80,7 @@ export class PlaylistAudiotrack {
     this.playlist = playlist;
     this.playing = false;
     this.windowScope = windowScope;
+    this.currentAsset = null;
 
     const audioElement = new Audio();
 
