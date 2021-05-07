@@ -147,6 +147,17 @@ export class Roundware {
     }
   }
 
+  set onPlayAssets(callback) {
+    this._onPlayAssets = callback;
+    callback(this.currentlyPlayingAssets);
+  }
+
+  _triggerOnPlayAssets() {
+    if (this._onPlayAssets) {
+      this._onPlayAssets(this.currentlyPlayingAssets);
+    }
+  }
+
   get currentlyPlayingAssets() {
     if (this._mixer && this._mixer.playlist) {
       return this._mixer.playlist.currentlyPlayingAssets;

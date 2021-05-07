@@ -3,6 +3,7 @@ import { getUrlParam } from "./utils";
 
 export class Playlist {
   constructor({
+    client,
     audioTracks = [],
     listenerPoint = {},
     windowScope,
@@ -14,6 +15,7 @@ export class Playlist {
     this.assetPool = assetPool;
     this.playing = false;
     this.listenTagIds = [];
+    this._client = client;
 
     let elapsedTimeMs = 0;
     const timerSecs = getUrlParam(windowScope.location, "rwfTimerSeconds");
@@ -118,6 +120,7 @@ export class Playlist {
     });
 
     this.trackMap[forTrack] = nextAsset;
+    this._client._triggerOnPlayAssets();
 
     return nextAsset;
   }
