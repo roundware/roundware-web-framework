@@ -71,7 +71,7 @@ export class Mixer {
     }
     this.mixParams = { ...this.mixParams, ...params };
     this.playlist.updateParams(params);
-    this.speakerTracks.forEach((t) => t.updateParams(params));
+    this.speakerTracks.forEach((t) => t.updateParams(this.playing, params));
   }
 
   skipTrack(trackId) {

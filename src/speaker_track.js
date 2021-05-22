@@ -1,10 +1,10 @@
-import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
-import pointToLineDistance from '@turf/point-to-line-distance';
-import lineToPolygon from '@turf/line-to-polygon';
-import { cleanAudioURL } from './utils';
+import pointToLineDistance from "@turf/point-to-line-distance";
+import lineToPolygon from "@turf/line-to-polygon";
+import { cleanAudioURL } from "./utils";
 
-const convertLinesToPolygon = shape => lineToPolygon(shape);
+const convertLinesToPolygon = (shape) => lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
 const NEARLY_ZERO = 0.001;
 
@@ -49,8 +49,12 @@ export class SpeakerTrack {
   }
 
   attenuationRatio(atPoint) {
-    const distToInnerShapeKm = pointToLineDistance(atPoint, this.attenuationBorderLineString, { units: 'kilometers' });
-    const ratio = 1 - (distToInnerShapeKm / this.attenuationDistanceKm);
+    const distToInnerShapeKm = pointToLineDistance(
+      atPoint,
+      this.attenuationBorderLineString,
+      { units: "kilometers" }
+    );
+    const ratio = 1 - distToInnerShapeKm / this.attenuationDistanceKm;
     return ratio;
   }
 
@@ -61,7 +65,8 @@ export class SpeakerTrack {
       return this.maxVolume;
     } else if (this.outerBoundaryContains(listenerPoint)) {
       const range = this.maxVolume - this.minVolume;
-      const volumeGradient = this.minVolume + (range * this.attenuationRatio(listenerPoint));
+      const volumeGradient =
+        this.minVolume + range * this.attenuationRatio(listenerPoint);
       return volumeGradient;
     } else {
       return this.minVolume;
@@ -76,7 +81,7 @@ export class SpeakerTrack {
     const cleanURL = cleanAudioURL(uri);
 
     const audio = new Audio(cleanURL);
-    audio.crossOrigin = 'anonymous';
+    audio.crossOrigin = "anonymous";
     audio.loop = true;
 
     const audioSrc = audioContext.createMediaElementSource(audio);
@@ -92,8 +97,9 @@ export class SpeakerTrack {
     return this.audio;
   }
 
-  async updateParams(isPlaying, { listenerPoint }) {
-    if (listenerPoint) this.listenerPoint = listenerPoint.geometry;
+  async updateParams(isPlaying, opts) {
+    if (opts && opts.listenerPoint)
+      this.listenerPoint = opts.listenerPoint.geometry;
     const newVolume = this.updateVolume();
     if (isPlaying != this.playing) {
       if (newVolume < 0.05) {
@@ -109,7 +115,8 @@ export class SpeakerTrack {
 
     this.currentVolume = newVolume;
 
-    const secondsFromNow = this.audioContext.currentTime + FADE_DURATION_SECONDS;
+    const secondsFromNow =
+      this.audioContext.currentTime + FADE_DURATION_SECONDS;
 
     this.buildAudio();
     this.gainNode.gain.linearRampToValueAtTime(newVolume, secondsFromNow);
@@ -133,7 +140,7 @@ export class SpeakerTrack {
       await this.audio.play();
       this.playing = true;
     } catch (err) {
-      console.error('Unable to play', this.logline, err);
+      console.error("Unable to play", this.logline, err);
     }
   }
 
@@ -145,7 +152,7 @@ export class SpeakerTrack {
       this.audio.pause();
       this.playing = false;
     } catch (err) {
-      console.error('Unable to pause', this.logline, err);
+      console.error("Unable to pause", this.logline, err);
     }
   }
 
