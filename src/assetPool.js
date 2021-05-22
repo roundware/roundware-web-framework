@@ -55,12 +55,16 @@ export class AssetPool {
     sortMethods = [],
     mixParams = {},
   }) {
-    this.assets = assets.map(assetDecorationMapper(timedAssets));
+    this.updateAssets(assets, timedAssets);
     this.assetSorter = new AssetSorter({ sortMethods, ...mixParams });
     this.playingTracks = {};
     this.mixParams = mixParams;
     this.filterChain = filterChain;
     this.sortAssets();
+  }
+
+  updateAssets(assets, timedAssets) {
+    this.assets = assets.map(assetDecorationMapper(timedAssets));
   }
 
   nextForTrack(track, { filterOutAssets = [], ...stateParams }) {

@@ -236,6 +236,10 @@ export class Roundware {
     }
   }
 
+  get assetPool() {
+    return this._mixer && this._mixer.playlist.assetPool;
+  }
+
   /// Returns a reduced asset list by filtering the overall pool.
   /// Example: `getAssetsFromPool(allAssetFilter([distanceRangesFilter(), anyTagsFilter()]))`
   async getAssetsFromPool(assetFilter, extraParams = {}) {
@@ -258,6 +262,12 @@ export class Roundware {
     }
     this._assetData = existingAssets.concat(await this._asset.connect(filters));
     this._lastAssetUpdate = new Date();
+
+    // Update the mixer's asset pool, if any.
+    const pool = this.assetPool;
+    if (pool) {
+      pool.updateAssets(this._assetData, this._timedAssetData);
+    }
 
     if (this._onUpdateAssets) {
       this._onUpdateAssets(this._assetData);
