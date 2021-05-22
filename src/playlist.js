@@ -51,10 +51,13 @@ export class Playlist {
   }
 
   get currentlyPlayingAssets() {
-    return this.trackMap
-      .keys()
-      .map((t) => t.currentAsset)
-      .filter((a) => !!a);
+    const assets = [];
+    for (const t of this.trackMap.keys()) {
+      if (t.currentAsset) {
+        assets.push(t.currentAsset);
+      }
+    }
+    return assets;
   }
 
   updateParams({ listenerPoint, listenTagIds, ...params }) {
