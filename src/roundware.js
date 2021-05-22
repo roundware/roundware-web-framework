@@ -237,7 +237,9 @@ export class Roundware {
   }
 
   get assetPool() {
-    return this._mixer && this._mixer.playlist.assetPool;
+    return (
+      this._mixer && this._mixer.playlist && this._mixer.playlist.assetPool
+    );
   }
 
   /// Returns a reduced asset list by filtering the overall pool.
@@ -265,7 +267,7 @@ export class Roundware {
 
     // Update the mixer's asset pool, if any.
     const pool = this.assetPool;
-    if (pool) {
+    if (pool && this._timedAssetData) {
       pool.updateAssets(this._assetData, this._timedAssetData);
     }
 

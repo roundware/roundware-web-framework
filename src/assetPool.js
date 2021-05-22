@@ -63,7 +63,7 @@ export class AssetPool {
     this.sortAssets();
   }
 
-  updateAssets(assets, timedAssets) {
+  updateAssets(assets = [], timedAssets = []) {
     this.assets = assets.map(assetDecorationMapper(timedAssets));
   }
 
