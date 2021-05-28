@@ -18,6 +18,7 @@ export class Mixer {
     sortMethods = [],
     mixParams = {},
   }) {
+    this.playing = false;
     const audioContext = buildAudioContext(windowScope);
     let selectTrackId = getUrlParam(windowScope.location, "rwfSelectTrackId");
     let audioTracks = client.audiotracks();
@@ -61,8 +62,6 @@ export class Mixer {
           data: speakerData,
         })
     );
-
-    this.playing = false;
   }
 
   updateParams({ listenerLocation, ...params }) {
