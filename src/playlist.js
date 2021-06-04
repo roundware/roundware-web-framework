@@ -52,9 +52,9 @@ export class Playlist {
 
   get currentlyPlayingAssets() {
     const assets = [];
-    for (const t of this.trackMap.keys()) {
-      if (t.currentAsset) {
-        assets.push(t.currentAsset);
+    for (const a of this.trackMap.values()) {
+      if (a) {
+        assets.push(a);
       }
     }
     return assets;

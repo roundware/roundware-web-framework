@@ -160,12 +160,7 @@ export class Roundware {
 
   get currentlyPlayingAssets() {
     if (this._mixer && this._mixer.playlist) {
-      const assets = [];
-      const tracks = Object.values(this._mixer.playlist.trackIdMap);
-      for (const t of tracks) {
-        assets.push(t.currentAsset);
-      }
-      return assets;
+      return this._mixer.playlist.currentlyPlayingAssets;
     } else {
       return [];
     }
