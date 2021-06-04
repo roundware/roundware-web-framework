@@ -39,7 +39,7 @@ export class Playlist {
       });
 
       trackIdMap[track.trackId] = track;
-      trackMap.set(track, true);
+      trackMap.set(track, null);
     }, {});
 
     this.trackMap = trackMap;
@@ -122,7 +122,7 @@ export class Playlist {
       listenTagIds,
     });
 
-    this.trackMap[forTrack] = nextAsset;
+    this.trackMap.set(forTrack, nextAsset);
     this._client._triggerOnPlayAssets();
 
     return nextAsset;
