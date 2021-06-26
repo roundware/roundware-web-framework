@@ -121,22 +121,32 @@ export class Roundware {
     this._timed_asset = timedAsset || new TimedAsset(this._projectId, options);
     this._audiotrack = audiotrack || new Audiotrack(this._projectId, options);
     this.uiconfig = {};
+
+    const mixParams = {
+      ...this.mixParams,
+      ...this._initialParams,
+    };
+
+    this._mixer = new Mixer({
+      client: this,
+      windowScope: this.windowScope,
+      listenerLocation: this._listenerLocation,
+      mixParams,
+    });
   }
 
   updateLocation(listenerLocation) {
     this._listenerLocation = listenerLocation;
 
-    if (this._mixer) this._mixer.updateParams({ listenerLocation });
+    this._mixer.updateParams({ listenerLocation });
     if (this._onUpdateLocation) this._onUpdateLocation(listenerLocation);
   }
 
   set onUpdateLocation(callback) {
     this._onUpdateLocation = callback;
 
-    if (this._geoPosition) {
-      const lastCoords = this._geoPosition.getLastCoords();
-      callback(lastCoords);
-    }
+    const lastCoords = this._geoPosition.getLastCoords();
+    callback(lastCoords);
   }
 
   set onUpdateAssets(callback) {
@@ -159,26 +169,21 @@ export class Roundware {
   }
 
   get currentlyPlayingAssets() {
-    if (this._mixer && this._mixer.playlist) {
-      return this._mixer.playlist.currentlyPlayingAssets;
-    } else {
-      return [];
-    }
+    return this._mixer.playlist.currentlyPlayingAssets || [];
   }
 
   enableGeolocation(mode) {
     if (mode === GeoListenMode.AUTOMATIC) {
-      if (this._geoPosition) this._geoPosition.enable();
+      this._geoPosition.enable();
     } else {
-      if (this._geoPosition) this._geoPosition.disable();
+      this._geoPosition.disable();
     }
-    if (this._mixer) this._mixer.updateParams({ geoListenMode: mode });
+    this._mixer.updateParams({ geoListenMode: mode });
   }
 
   disableGeolocation() {
-    if (this._geoPosition) this._geoPosition.disable();
-    if (this._mixer)
-      this._mixer.updateParams({ geoListenMode: GeoListenMode.DISABLED });
+    this._geoPosition.disable();
+    this._mixer.updateParams({ geoListenMode: GeoListenMode.DISABLED });
   }
 
   /** Initiate a connection to Roundware
@@ -237,9 +242,7 @@ export class Roundware {
   }
 
   get assetPool() {
-    return (
-      this._mixer && this._mixer.playlist && this._mixer.playlist.assetPool
-    );
+    return this._mixer.playlist && this._mixer.playlist.assetPool;
   }
 
   /// Returns a reduced asset list by filtering the overall pool.
@@ -296,18 +299,7 @@ export class Roundware {
     // Make sure the asset pool is loaded.
     await this.loadAssetPool();
 
-    const mixParams = {
-      ...this.mixParams,
-      ...this._initialParams,
-      ...activationParams,
-    };
-
-    this._mixer = new Mixer({
-      client: this,
-      windowScope: this.windowScope,
-      listenerLocation: this._listenerLocation,
-      mixParams,
-    });
+    this._mixer.updateParams(activationParams);
 
     return this._mixer;
   }
