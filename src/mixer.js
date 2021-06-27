@@ -14,6 +14,7 @@ export class Mixer {
     client,
     windowScope,
     listenerLocation,
+    prefetchSpeakerAudio,
     filters = [],
     sortMethods = [],
     mixParams = {},
@@ -22,6 +23,7 @@ export class Mixer {
 
     this._windowScope = windowScope;
     this._client = client;
+    this._prefetchSpeakerAudio = prefetchSpeakerAudio;
     const assets = client.assets();
     const timedAssets = client.timedAssets();
 
@@ -99,6 +101,7 @@ export class Mixer {
           new SpeakerTrack({
             audioContext,
             listenerPoint,
+            prefetchAudio: this._prefetchSpeakerAudio,
             data: speakerData,
           })
       );

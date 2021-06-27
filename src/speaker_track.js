@@ -13,7 +13,7 @@ const NEARLY_ZERO = 0.001;
  * (quoted from https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/Speaker.swift)
  * */
 export class SpeakerTrack {
-  constructor({ audioContext, listenerPoint, data }) {
+  constructor({ audioContext, listenerPoint, prefetchAudio, data }) {
     const {
       id: speakerId,
       maxvolume: maxVolume,
@@ -24,6 +24,7 @@ export class SpeakerTrack {
       uri,
     } = data;
 
+    this.prefetch = prefetchAudio;
     this.audioContext = audioContext;
     this.speakerId = speakerId;
     this.maxVolume = maxVolume;
@@ -61,7 +62,9 @@ export class SpeakerTrack {
   calculateVolume() {
     const { listenerPoint } = this;
 
-    if (this.attenuationShapeContains(listenerPoint)) {
+    if (!listenerPoint) {
+      return this.currentVolume;
+    } else if (this.attenuationShapeContains(listenerPoint)) {
       return this.maxVolume;
     } else if (this.outerBoundaryContains(listenerPoint)) {
       const range = this.maxVolume - this.minVolume;
@@ -74,13 +77,21 @@ export class SpeakerTrack {
   }
 
   // @see https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/createGain
-  buildAudio() {
+  async buildAudio() {
     if (this.audio) return this.audio;
 
     const { audioContext, uri } = this;
     const cleanURL = cleanAudioURL(uri);
 
-    const audio = new Audio(cleanURL);
+    let audio = null;
+    if (this.prefetch) {
+      // Download the speaker audio fully before playing it.
+      const response = await fetch(cleanURL);
+      const blob = await response.blob();
+      audio = new Audio(URL.createObjectURL(blob));
+    } else {
+      audio = new Audio(cleanURL);
+    }
     audio.crossOrigin = "anonymous";
     audio.loop = true;
 
@@ -98,9 +109,11 @@ export class SpeakerTrack {
   }
 
   async updateParams(isPlaying, opts) {
-    if (opts && opts.listenerPoint)
+    if (opts && opts.listenerPoint) {
       this.listenerPoint = opts.listenerPoint.geometry;
-    const newVolume = this.updateVolume();
+    }
+
+    const newVolume = await this.updateVolume();
     if (isPlaying != this.playing) {
       if (newVolume < 0.05) {
         this.audio.pause();
@@ -110,7 +123,7 @@ export class SpeakerTrack {
     }
   }
 
-  updateVolume() {
+  async updateVolume() {
     const newVolume = this.calculateVolume();
 
     this.currentVolume = newVolume;
@@ -118,7 +131,7 @@ export class SpeakerTrack {
     const secondsFromNow =
       this.audioContext.currentTime + FADE_DURATION_SECONDS;
 
-    this.buildAudio();
+    await this.buildAudio();
     this.gainNode.gain.linearRampToValueAtTime(newVolume, secondsFromNow);
 
     //console.info(`Setting '${this}' volume: ${newVolume.toFixed(2)} over ${FADE_DURATION_SECONDS} seconds`);
@@ -131,7 +144,7 @@ export class SpeakerTrack {
   }
 
   async play() {
-    const newVolume = this.updateVolume();
+    const newVolume = await this.updateVolume();
 
     if (newVolume < 0.05) return;
 
