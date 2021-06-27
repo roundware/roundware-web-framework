@@ -19,49 +19,24 @@ export class Mixer {
     mixParams = {},
   }) {
     this.playing = false;
-    const audioContext = buildAudioContext(windowScope);
-    let selectTrackId = getUrlParam(windowScope.location, "rwfSelectTrackId");
-    let audioTracks = client.audiotracks();
 
-    if (selectTrackId) {
-      selectTrackId = Number(selectTrackId);
-      audioTracks = audioTracks.filter((t) => t.id === selectTrackId);
-
-      console.info(`isolating track #${selectTrackId}`);
-    }
-
+    this._windowScope = windowScope;
+    this._client = client;
     const assets = client.assets();
     const timedAssets = client.timedAssets();
-    const speakers = client.speakers();
-    const listenerPoint = coordsToPoints(listenerLocation);
 
-    const assetPool = new AssetPool({
+    this.mixParams = {
+      listenerPoint: coordsToPoints(listenerLocation),
+      ...mixParams,
+    };
+
+    this.assetPool = new AssetPool({
       assets,
       timedAssets,
       filters,
       sortMethods,
-      mixParams,
+      mixParams: this.mixParams,
     });
-
-    this.audioContext = audioContext;
-    this.mixParams = mixParams;
-    this.playlist = new Playlist({
-      client,
-      audioTracks,
-      listenerPoint,
-      assetPool,
-      audioContext,
-      windowScope,
-    });
-
-    this.speakerTracks = speakers.map(
-      (speakerData) =>
-        new SpeakerTrack({
-          audioContext,
-          listenerPoint,
-          data: speakerData,
-        })
-    );
   }
 
   updateParams({ listenerLocation, ...params }) {
@@ -69,8 +44,14 @@ export class Mixer {
       params.listenerPoint = coordsToPoints(listenerLocation);
     }
     this.mixParams = { ...this.mixParams, ...params };
-    this.playlist.updateParams(params);
-    this.speakerTracks.forEach((t) => t.updateParams(this.playing, params));
+    if (this.playlist) {
+      this.playlist.updateParams(params);
+    }
+    if (this.speakerTracks) {
+      for (const t of this.speakerTracks) {
+        t.updateParams(this.playing, params);
+      }
+    }
   }
 
   skipTrack(trackId) {
@@ -85,7 +66,51 @@ export class Mixer {
     return "Roundware Mixer";
   }
 
+  initContext() {
+    if (!this.playlist) {
+      const audioContext = buildAudioContext(this._windowScope);
+      const listenerPoint = this.mixParams.listenerPoint;
+      const speakers = this._client.speakers();
+
+      let selectTrackId = getUrlParam(
+        this._windowScope.location,
+        "rwfSelectTrackId"
+      );
+      let audioTracks = this._client.audiotracks();
+
+      if (selectTrackId) {
+        selectTrackId = Number(selectTrackId);
+        audioTracks = audioTracks.filter((t) => t.id === selectTrackId);
+
+        console.info(`isolating track #${selectTrackId}`);
+      }
+
+      this.playlist = new Playlist({
+        client: this._client,
+        audioTracks,
+        listenerPoint,
+        assetPool: this.assetPool,
+        audioContext,
+        windowScope: this._windowScope,
+      });
+
+      this.speakerTracks = speakers.map(
+        (speakerData) =>
+          new SpeakerTrack({
+            audioContext,
+            listenerPoint,
+            data: speakerData,
+          })
+      );
+
+      this.updateParams(this.mixParams);
+    }
+  }
+
   toggle() {
+    // Build the audio context and playlist if it doesn't exist yet.
+    this.initContext();
+
     if (this.playing) {
       this.playing = false;
       this.playlist.pause();

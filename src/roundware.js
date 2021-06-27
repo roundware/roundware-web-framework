@@ -169,7 +169,7 @@ export class Roundware {
   }
 
   get currentlyPlayingAssets() {
-    return this._mixer.playlist.currentlyPlayingAssets || [];
+    return this._mixer.playlist && this._mixer.playlist.currentlyPlayingAssets;
   }
 
   enableGeolocation(mode) {
@@ -315,7 +315,9 @@ export class Roundware {
   /** Tell Roundware server to pause the audio stream. You should always call this when the local audio player has been paused.
    * @see Stream.pause **/
   pause() {
-    this._mixer.playlist.pause();
+    if (this._mixer.playlist) {
+      this._mixer.playlist.pause();
+    }
   }
 
   /** Tell Roundware server to kill the audio stream.
@@ -333,7 +335,9 @@ export class Roundware {
   /** Tell Roundware server to skip the current asset.
    * @see Stream.skip **/
   skip() {
-    this._mixer.playlist.skip();
+    if (this._mixer.playlist) {
+      this._mixer.playlist.skip();
+    }
   }
 
   /** Update the Roundware stream with new tag IDs
@@ -343,7 +347,9 @@ export class Roundware {
   /** Update the Roundware stream with new tag IDs and or geo-position
    * @param {object} data - containing keys latitude, longitude and tagIds **/
   update(data) {
-    this._mixer.playlist.updateParams(data);
+    if (this._mixer.playlist) {
+      this._mixer.playlist.updateParams(data);
+    }
     // Object.keys(data).map(e => console.log(`key=${e}  value=${data[e]}`));
   }
 
