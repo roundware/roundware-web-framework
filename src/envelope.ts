@@ -1,10 +1,24 @@
-export class Envelope {
+import { IApiClient } from "./api-client";
+import { IRoundware } from "./roundware";
+
+export interface IEnvelope {
+  toString(): string;
+  connect(): Promise<void>;
+}
+
+export class Envelope implements IEnvelope {
+  _envelopeId: string;
+  _sessionId: number;
+  _apiClient: IApiClient;
+  _geoPosition: Coordinates;
+  _roundware: IRoundware;
+  _assetId: string;
   /** Create an Envelope
    * @param {number} sessionId - identifies the session associated with this asset
    * @param {ApiClient} apiClient - the API client object to use for server API calls
    * @param {geoPosition} geoPosition -
    **/
-  constructor(sessionId, apiClient, geoPosition, roundware) {
+  constructor(sessionId: number, apiClient: IApiClient, geoPosition: Coordinates, roundware: IRoundware) {
     this._envelopeId = "(unknown)";
     this._sessionId = sessionId;
     this._apiClient = apiClient;
@@ -13,7 +27,7 @@ export class Envelope {
   }
 
   /** @returns {String} human-readable representation of this asset **/
-  toString() {
+  toString(): string {
     return `Envelope ${this._assetId}`;
   }
 
@@ -24,7 +38,7 @@ export class Envelope {
       session_id: this._sessionId,
     };
 
-    return this._apiClient.post("/envelopes/", data).then((data) => {
+    return this._apiClient.post<{ id: string }>("/envelopes/", data).then((data) => {
       this._envelopeId = data.id;
     });
   }
@@ -33,7 +47,11 @@ export class Envelope {
    * @param {blob} audioData
    * @param {string} fileName - name of the file
    * @return {Promise} - represents the API call */
-  async upload(audioData, fileName, data = {}) {
+  async upload(audioData: Blob, fileName: string, data: { 
+    latitude: number;
+    longitude: number;
+    tag_ids: unknown;
+  } | {} = {}) {
     if (!this._envelopeId) {
       return Promise.reject(
         "cannot upload audio without first connecting this envelope to the server"
