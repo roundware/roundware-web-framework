@@ -11,6 +11,7 @@ export const GeoListenMode = Object.freeze({
 });
 
 export interface IMixer {
+  
   playlist: unknown;
   playing: boolean;
   mixParams: unknown;
