@@ -1,17 +1,31 @@
+import { IApiClient } from "./api-client";
+
 const PATH = "/timedassets/";
 
-export class TimedAsset {
-  constructor(projectId,{ apiClient }) {
-    this.projectId = projectId;
-    this.apiClient = apiClient;
+export interface TimedAssetData {
+
+}
+
+export interface ITimedAsset {
+  toString(): string;
+  connect(data: object): Promise<TimedAssetData>
+} 
+export class TimedAsset implements ITimedAsset {
+
+  private _projectId: number;
+  private _apiClient: IApiClient;
+
+  constructor(projectId: number,{ apiClient }: {apiClient: IApiClient}) {
+    this._projectId = projectId;
+    this._apiClient = apiClient;
   }
 
   toString() {
-    return `Roundware TimedAssets (#${this.projectId})`;
+    return `Roundware TimedAssets (#${this._projectId})`;
   }
 
-  connect({ ...data }) {
-    const options = { ...data, project_id: this.projectId };
-    return this.apiClient.get(PATH,options);
+  async connect({ ...data }): Promise<TimedAssetData> {
+    const options = { ...data, project_id: this._projectId };
+    return await this._apiClient.get<TimedAssetData>(PATH,options);
   }
 }
