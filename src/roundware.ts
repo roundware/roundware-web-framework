@@ -1,15 +1,15 @@
-import { Project } from "./project";
-import { Session } from "./session";
-import { Speaker } from "./speaker";
-import { GeoPosition } from "./geo-position";
-import { Asset } from "./asset";
-import { TimedAsset } from "./timed_asset";
+import { IProject, Project } from "./project";
+import { ISession, Session } from "./session";
+import { ISpeaker, Speaker } from "./speaker";
+import { GeoPosition, IGeoPosition } from "./geo-position";
+import { Asset, IAsset } from "./asset";
+import { ITimedAsset, TimedAsset } from "./timed_asset";
 import { logger } from "./shims";
-import { ApiClient } from "./api-client.ts";
+import { ApiClient } from "./api-client";
 import { IUser, User } from "./user";
 import { Envelope } from "./envelope";
-import { Mixer, GeoListenMode } from "./mixer";
-import { Audiotrack } from "./audiotrack";
+import { Mixer, GeoListenMode, IMixer } from "./mixer";
+import { Audiotrack, IAudioTrack } from "./audiotrack";
 import { ASSET_PRIORITIES } from "./assetFilters";
 import { IApiClient } from "./api-client";
 
@@ -48,7 +48,7 @@ export { GeoListenMode } from "./mixer";
 
   roundware.play(startListening).catch(handleError);
 **/
-interface IOptions {
+export interface IOptions {
   apiClient: IApiClient;
   deviceId: string;
   clientType: string;
@@ -61,17 +61,24 @@ interface IRoundwareConstructor extends IOptions {
   assetFilters: unknown;
   listenerLocation: Coordinates;
   user: IUser;
-  geoPosition: unknown;
-  session: unknown;
-  project: unknown;
-  speaker: unknown;
-  asset: unknown;
-  timedAsset: unknown;
-  audiotrack: unknown;
+  geoPosition: IGeoPosition;
+  session: ISession;
+  project: IProject;
+  speaker: ISpeaker;
+  asset: IAsset;
+  timedAsset: ITimedAsset;
+  audiotrack: IAudioTrack;
   assetUpdateInterval: unknown;
   prefetchSpeakerAudio: unknown;
 }
-export class Roundware {
+
+export interface IRoundware {
+  updateLocation(listenerLocation: Coordinates): void;
+  set onUpdateLocation(callback: CallableFunction);
+  set onUpdateAssets(callback: CallableFunction);
+  set onPlayAssets(callback: CallableFunction)
+}
+export class Roundware implements IRoundware {
   /** Initialize a new Roundware instance
    * @param {Object} windowScope - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
    * @param {Object} options - Collection of parameters for configuring this Roundware instance
@@ -84,33 +91,33 @@ export class Roundware {
   private _serverUrl: string;
   private _projectId: number;
   private _speakerFilters: unknown;
-  private _assetFilters: any;
+  private _assetFilters: unknown;
   private _listenerLocation: Coordinates;
-  private _initialOptions: { [x: string]: any };
-  private _assetUpdateInterval: any;
+  private _initialOptions: IOptions;
+  private _assetUpdateInterval: unknown;
   private _apiClient: IApiClient;
-  serverUrl: any;
+  
   private _user: IUser;
-  private _geoPosition: any;
-  private _session: any;
-  private _project: any;
-  private _speaker: any;
-  private _asset: any;
-  private _timed_asset: any;
-  private _audiotrack: any;
+  private _geoPosition: IGeoPosition;
+  private _session: ISession;
+  private _project: IProject;
+  private _speaker: ISpeaker;
+  private _asset: IAsset;
+  private _timed_asset: ITimedAsset;
+  private _audiotrack: IAudioTrack;
   uiconfig: {};
-  private _initialParams: any;
-  private _mixer: Mixer;
-  private _onUpdateLocation: any;
-  private _onUpdateAssets: any;
-  private _assetData: any;
-  private _onPlayAssets: any;
-  private _sessionId: any;
-  uiConfig: any;
-  private _speakerData: any;
-  private _audioTracksData: any;
-  private _lastAssetUpdate: any;
-  private _timedAssetData: any;
+  private _initialParams: object = {};
+  private _mixer: IMixer;
+  private _onUpdateLocation: CallableFunction = () => {};
+  private _onUpdateAssets: CallableFunction = () => {};
+  private _assetData: unknown;
+  private _onPlayAssets: CallableFunction = () => {};
+  private _sessionId: unknown;
+  uiConfig: unknown;
+  private _speakerData: unknown;
+  private _audioTracksData: unknown;
+  private _lastAssetUpdate: unknown;
+  private _timedAssetData: unknown;
   //private _assetDataTimer: NodeJS.Timeout;
 
   constructor(
@@ -152,7 +159,7 @@ export class Roundware {
       throw "Roundware objects must be initialized with a projectId";
     }
 
-    this._apiClient = new ApiClient(window, this.serverUrl);
+    this._apiClient = new ApiClient(window, this._serverUrl);
     options.apiClient = this._apiClient;
 
     let navigator = window.navigator;
@@ -180,7 +187,7 @@ export class Roundware {
     this._audiotrack = audiotrack || new Audiotrack(this._projectId, options);
     this.uiconfig = {};
 
-    const mixParams = {
+    const mixParams: object = {
       ...this.mixParams,
       ...this._initialParams,
     };
@@ -192,23 +199,25 @@ export class Roundware {
       prefetchSpeakerAudio: prefetchSpeakerAudio || false,
       mixParams,
     });
+
+    
   }
 
-  updateLocation(listenerLocation) {
+  updateLocation(listenerLocation: Coordinates): void {
     this._listenerLocation = listenerLocation;
 
     this._mixer.updateParams({ listenerLocation });
     if (this._onUpdateLocation) this._onUpdateLocation(listenerLocation);
   }
 
-  set onUpdateLocation(callback) {
+  set onUpdateLocation(callback: CallableFunction) {
     this._onUpdateLocation = callback;
 
     const lastCoords = this._geoPosition.getLastCoords();
     callback(lastCoords);
   }
 
-  set onUpdateAssets(callback) {
+  set onUpdateAssets(callback: CallableFunction) {
     this._onUpdateAssets = callback;
 
     if (this._assetData) {
@@ -216,12 +225,12 @@ export class Roundware {
     }
   }
 
-  set onPlayAssets(callback) {
+  set onPlayAssets(callback: CallableFunction) {
     this._onPlayAssets = callback;
     callback(this.currentlyPlayingAssets);
   }
 
-  _triggerOnPlayAssets() {
+  private _triggerOnPlayAssets() {
     if (this._onPlayAssets) {
       this._onPlayAssets(this.currentlyPlayingAssets);
     }
@@ -293,7 +302,7 @@ export class Roundware {
     } else {
       return this._apiClient.get(`/assets/`, {
         project_id: this._projectId,
-        // Override default filters with any passed in options.
+        // Override default filters with unknown passed in options.
         ...this._assetFilters,
         ...(options || {}),
       });
