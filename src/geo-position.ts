@@ -31,7 +31,7 @@ interface GeoPositionOptions {
   geoListenMode: unknown;
 }
 
-interface IGeoPosition {
+export interface IGeoPosition {
   geolocation: Geolocation;
   isEnabled: boolean;
   updateCallback: CallableFunction;
