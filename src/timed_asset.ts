@@ -24,7 +24,7 @@ export class TimedAsset implements ITimedAsset {
     return `Roundware TimedAssets (#${this._projectId})`;
   }
 
-  async connect({ ...data }): Promise<TimedAssetData> {
+  async connect({ ...data }) {
     const options = { ...data, project_id: this._projectId };
     return await this._apiClient.get<TimedAssetData>(PATH,options);
   }
