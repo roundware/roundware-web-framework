@@ -5,7 +5,7 @@ import { GeoPosition } from "./geo-position";
 import { Asset } from "./asset";
 import { TimedAsset } from "./timed_asset";
 import { logger } from "./shims";
-import { ApiClient } from "./api-client";
+import { ApiClient } from "./api-client.ts";
 import { User } from "./user";
 import { Envelope } from "./envelope";
 import { Mixer, GeoListenMode } from "./mixer";
@@ -47,7 +47,12 @@ export { GeoListenMode } from "./mixer";
 
   roundware.play(startListening).catch(handleError);
 **/
-export class Roundware {
+
+interface IRoundware {
+  windowScope;
+  _serverUrl;
+}
+export class Roundware implements IRoundware {
   /** Initialize a new Roundware instance
    * @param {Object} windowScope - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
    * @param {Object} options - Collection of parameters for configuring this Roundware instance
