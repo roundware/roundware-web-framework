@@ -3,7 +3,7 @@ import { GeoListenMode } from "./mixer";
 
 const initialGeoTimeoutSeconds = 5;
 
-const frameworkDefaultCoords = {
+const frameworkDefaultCoords: Coordinates = {
   latitude: 42.3140089,
   longitude: -71.2504676,
 }; // Boston, MA
@@ -25,13 +25,40 @@ const accurateGeolocationPositionOptions = {
 /** Responsible for tracking the user's position, when geo listening is enabled and the browser is capable
  * @property {Boolean} isEnabled - whether or not the geo positioning system is enabled and available
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/Using_geolocation **/
-export class GeoPosition {
+
+interface GeoPositionOptions {
+  defaultCoords: Coordinates;
+  geoListenMode: unknown;
+}
+
+interface IGeoPosition {
+  geolocation: Geolocation;
+  isEnabled: boolean;
+  updateCallback: CallableFunction;
+  disable(): void;
+  toString(): string;
+  getLastCoords(): Coordinates;
+  connect(geoUpdateCallback: CallableFunction): void;
+  enable(): void;
+  waitForInitialGeolocation(): Promise<Coordinates>;
+}
+export class GeoPosition implements IGeoPosition {
   /** Create a new GeoPosition.
    * @param {Object} navigator - provides access to geolocation system
    * @param {Object} options - parameters for initializing this GeoPosition
    * @param {Boolean} [options.geoListenMode = GeoListenMode.DISABLED] - whether or not to attempt to use geolocation
    * @param {Boolean} [options.defaultCoords] */
-  constructor(navigator, options = {}) {
+
+  private _navigator: Window[`navigator`];
+  private _initialGeolocationPromise: Promise<Coordinates>;
+  private defaultCoords: Coordinates;
+  private _lastCoords: Coordinates;
+  geolocation: Geolocation;
+  isEnabled: boolean;
+  updateCallback: CallableFunction;
+  private _geoWatchID?: number | null;
+
+  constructor(navigator: Window[`navigator`], options: GeoPositionOptions) {
     this._navigator = navigator;
 
     const { defaultCoords, geoListenMode } = options;
@@ -61,16 +88,16 @@ export class GeoPosition {
   }
 
   /** @return {String} Human-readable representation of this GeoPosition **/
-  toString() {
+  toString(): string {
     return `GeoPosition (enabled: ${this.isEnabled})`;
   }
 
   /** @return {Object} coordinates - last known coordinates received from the geolocation system (defaults to latitude 1, longitude 1) **/
-  getLastCoords() {
+  getLastCoords(): Coordinates {
     return this._lastCoords;
   }
 
-  connect(geoUpdateCallback) {
+  connect(geoUpdateCallback: CallableFunction) {
     this.updateCallback = geoUpdateCallback;
     // Ensure that geolocation is started if it was enabled from instantiation.
     if (this.isEnabled) {
@@ -134,7 +161,7 @@ export class GeoPosition {
    * estimate of the user's position. Note that this promise will never fail - if we cannot get an
    * accurate estimate, we fall back to default coordinates (currently latitude 1, longitude 1)
    * @return {Promise} Represents the attempt to get an initial estimate of the user's position **/
-  waitForInitialGeolocation() {
+  waitForInitialGeolocation(): Promise<Coordinates> {
     return this._initialGeolocationPromise;
   }
 }
