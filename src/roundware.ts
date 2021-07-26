@@ -6,11 +6,12 @@ import { Asset } from "./asset";
 import { TimedAsset } from "./timed_asset";
 import { logger } from "./shims";
 import { ApiClient } from "./api-client.ts";
-import { User } from "./user";
+import { IUser, User } from "./user";
 import { Envelope } from "./envelope";
 import { Mixer, GeoListenMode } from "./mixer";
 import { Audiotrack } from "./audiotrack";
 import { ASSET_PRIORITIES } from "./assetFilters";
+import { IApiClient } from "./api-client";
 
 export * from "./assetFilters";
 export { GeoListenMode } from "./mixer";
@@ -47,12 +48,30 @@ export { GeoListenMode } from "./mixer";
 
   roundware.play(startListening).catch(handleError);
 **/
-
-interface IRoundware {
-  windowScope;
-  _serverUrl;
+interface IOptions {
+  apiClient: IApiClient;
+  deviceId: string;
+  clientType: string;
+  geoListenMode: unknown;
 }
-export class Roundware implements IRoundware {
+interface IRoundwareConstructor extends IOptions {
+  serverUrl: string;
+  projectId: number;
+  speakerFilters: unknown;
+  assetFilters: unknown;
+  listenerLocation: Coordinates;
+  user: IUser;
+  geoPosition: unknown;
+  session: unknown;
+  project: unknown;
+  speaker: unknown;
+  asset: unknown;
+  timedAsset: unknown;
+  audiotrack: unknown;
+  assetUpdateInterval: unknown;
+  prefetchSpeakerAudio: unknown;
+}
+export class Roundware {
   /** Initialize a new Roundware instance
    * @param {Object} windowScope - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
    * @param {Object} options - Collection of parameters for configuring this Roundware instance
@@ -61,8 +80,41 @@ export class Roundware implements IRoundware {
    * @param {Boolean} options.geoListenMode - whether or not to attempt to initialize geolocation-based listening
    * @throws Will throw an error if serveUrl or projectId are missing
     TODO need to provide a more modern/ES6-aware architecture here vs burdening the constructor with all of these details **/
+  readonly windowScope: Window;
+  private _serverUrl: string;
+  private _projectId: number;
+  private _speakerFilters: unknown;
+  private _assetFilters: any;
+  private _listenerLocation: Coordinates;
+  private _initialOptions: { [x: string]: any };
+  private _assetUpdateInterval: any;
+  private _apiClient: IApiClient;
+  serverUrl: any;
+  private _user: IUser;
+  private _geoPosition: any;
+  private _session: any;
+  private _project: any;
+  private _speaker: any;
+  private _asset: any;
+  private _timed_asset: any;
+  private _audiotrack: any;
+  uiconfig: {};
+  private _initialParams: any;
+  private _mixer: Mixer;
+  private _onUpdateLocation: any;
+  private _onUpdateAssets: any;
+  private _assetData: any;
+  private _onPlayAssets: any;
+  private _sessionId: any;
+  uiConfig: any;
+  private _speakerData: any;
+  private _audioTracksData: any;
+  private _lastAssetUpdate: any;
+  private _timedAssetData: any;
+  //private _assetDataTimer: NodeJS.Timeout;
+
   constructor(
-    windowScope,
+    windowScope: Window,
     {
       serverUrl,
       projectId,
@@ -80,7 +132,7 @@ export class Roundware implements IRoundware {
       assetUpdateInterval,
       prefetchSpeakerAudio,
       ...options
-    }
+    }: IRoundwareConstructor
   ) {
     this.windowScope = windowScope;
     this._serverUrl = serverUrl;
@@ -100,7 +152,7 @@ export class Roundware implements IRoundware {
       throw "Roundware objects must be initialized with a projectId";
     }
 
-    this._apiClient = new ApiClient(window, this._serverUrl);
+    this._apiClient = new ApiClient(window, this.serverUrl);
     options.apiClient = this._apiClient;
 
     let navigator = window.navigator;
@@ -110,7 +162,7 @@ export class Roundware implements IRoundware {
     this._geoPosition =
       geoPosition ||
       new GeoPosition(navigator, {
-        ...options,
+        geoListenMode: options.geoListenMode,
         defaultCoords: listenerLocation,
       });
     this._session =
