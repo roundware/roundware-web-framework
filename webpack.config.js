@@ -5,10 +5,10 @@ const path = require('path');
 const plugins = [];
 
 module.exports = {
-  entry: ['./src/roundware.js'],
+  entry: ['./src/roundware.ts'],
 
   output: {
-    filename: "roundware.js",
+    filename: "roundware.ts",
 
     library: "RoundwareWebFramework",
     libraryTarget: "umd",
@@ -16,11 +16,15 @@ module.exports = {
     globalObject: 'this'
   },
 
-  devtool: 'cheap-module-eval-source-map',
+  devtool: 'source-map',
+  resolve: {
+    // Add '.ts' and '.tsx' as resolvable extensions.
+    extensions: [".webpack.js", ".web.js", ".ts", ".tsx", ".js"],
+  },
 
   devServer: {
     port: 8080,
-    contentBase: [path.resolve(__dirname,"example")],
+    contentBase: [path.resolve(__dirname, "example")],
     disableHostCheck: true,
 
     watchContentBase: true,
@@ -43,11 +47,15 @@ module.exports = {
         exclude: /node_modules/,
         loader: "eslint-loader"
       },
-      { 
-        test: /\.js$/, 
-        exclude: /node_modules/, 
-        loader: "babel-loader" 
-      }
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        loader: "babel-loader"
+      },
+      // All files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'.
+      { test: /\.tsx?$/, exclude: /node_modules/, loader: "ts-loader" },
+      // All output '.js' files will have any sourcemaps re-processed by 'source-map-loader'.
+      { test: /\.js$/, exclude: /node_modules/, loader: "source-map-loader" },
     ]
   },
 
