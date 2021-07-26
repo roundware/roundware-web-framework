@@ -6,6 +6,8 @@ export interface UiConfig {
 } 
 
 export interface IProject {
+  uiconfig(sessionId: string);
+  mixParams: any;
   toString(): string;
   connect(): Promise<void>;
   uiConfig(): Promise<unknown>;
