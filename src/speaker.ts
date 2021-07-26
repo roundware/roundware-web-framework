@@ -1,16 +1,26 @@
+import { IApiClient } from "./api-client";
+
 const PATH = "/speakers/";
 
+export interface ISpeaker {
+  toString(): string;
+  connect(): Promise<unknown>
+}
 export class Speaker {
-  constructor(projectId,{ apiClient }) {
-    this.projectId = projectId;
-    this.apiClient = apiClient;
+
+  private _projectId: string;
+  private _apiClient: IApiClient;
+
+  constructor(projectId: string, { apiClient }: { apiClient: IApiClient }) {
+    this._projectId = projectId;
+    this._apiClient = apiClient;
   }
 
   toString() {
-    return `Roundware Speaker (#${this.projectId})`;
+    return `Roundware Speaker (#${this._projectId})`;
   }
 
-  connect({ ...data }) {
-    return this.apiClient.get(PATH,{ ...data, project_id: this.projectId });
+  async connect({ ...data }) {
+    return await this._apiClient.get<unknown>(PATH, { ...data, project_id: this._projectId });
   }
 }
