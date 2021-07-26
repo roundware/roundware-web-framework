@@ -5,7 +5,7 @@ let projectId: number | undefined, sessionId: string, geoListenEnabled: boolean;
 let apiClient: IApiClient;
 
 /** Responsible for establishing a session with the Roundware server **/
-interface ISession {
+export interface ISession {
   /**
    * @returns sessionId
    */
