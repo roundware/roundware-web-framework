@@ -2,6 +2,7 @@ import { SpeakerTrack } from "./speaker_track";
 import { Playlist } from "./playlist";
 import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 import { AssetPool } from "./assetPool";
+import { IRoundware } from "./roundware";
 
 export const GeoListenMode = Object.freeze({
   DISABLED: 0,
@@ -9,7 +10,20 @@ export const GeoListenMode = Object.freeze({
   AUTOMATIC: 2,
 });
 
-export class Mixer {
+export interface IMixer {
+  playlist: unknown;
+  playing: boolean;
+  mixParams: unknown;
+}
+export class Mixer implements IMixer {
+  playing: boolean;
+  private _windowScope: Window;
+  private _client: IRoundware;
+  private _prefetchSpeakerAudio: unknown | boolean;
+
+
+  mixParams: unknown;
+  playlist: unknown;
   constructor({
     client,
     windowScope,
@@ -18,6 +32,14 @@ export class Mixer {
     filters = [],
     sortMethods = [],
     mixParams = {},
+  }: {
+    client: IRoundware,
+    windowScope: Window,
+    listenerLocation: Coordinates,
+    prefetchSpeakerAudio: boolean | unknown,
+    filters?: unknown[],
+    sortMethods?: unknown[],
+    mixParams: object,
   }) {
     this.playing = false;
 
