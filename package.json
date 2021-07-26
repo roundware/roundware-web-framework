@@ -17,9 +17,9 @@
     "build": "NODE_ENV=production npm-run-all --parallel build:*",
     "build:main": "babel --copy-files --out-dir dist src",
     "build:umd": "webpack --mode=production --output-filename roundware.umd.js",
-    "build:umd.min": "webpack -p --output-filename roundware.umd.min.js",
+    "build:umd.min": "webpack --mode production --output-filename roundware.umd.min.js",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
-    "devstart": "NODE_ENV=development webpack-dev-server",
+    "devstart": "NODE_ENV=development webpack server",
     "deploy": "np",
     "lint": "eslint src/"
   },
@@ -40,9 +40,9 @@
     "@babel/core": "^7.12.10",
     "@babel/node": "^7.12.10",
     "@babel/preset-env": "^7.12.11",
-    "babel-loader": "~8.0.6",
+    "babel-loader": "^8.2.2",
     "eslint": "6.1.0",
-    "eslint-loader": "2.2.1",
+    "eslint-loader": "^4.0.2",
     "eslint-plugin-compat": "3.3.0",
     "jasmine": "^3.6.4",
     "jsdoc": "^3.6.6",
@@ -50,8 +50,9 @@
     "npm-run-all": "^4.1.5",
     "pryjs": "^1.0.3",
     "rimraf": "~2.6.3",
-    "webpack": "^4.46.0",
-    "webpack-cli": "^3.3.12",
+    "source-map": "^0.5.7",
+    "webpack": "^5.46.0",
+    "webpack-cli": "^4.7.2",
     "webpack-dev-server": "^3.11.2"
   },
   "dependencies": {
@@ -60,9 +61,11 @@
     "@turf/line-to-polygon": "^6.2.0",
     "@turf/point-to-line-distance": "^6.2.0",
     "core-js": "3.2.0",
+    "deasync": "^0.1.21",
     "deep-extend": ">=0.5.1",
     "loglevel": "^1.7.1",
-    "standardized-audio-context": "^25.1.8"
+    "standardized-audio-context": "^25.1.8",
+    "ts-loader": "^9.2.4"
   },
   "np": {
     "anyBranch": true,
