@@ -76,7 +76,43 @@ export interface IRoundware {
   updateLocation(listenerLocation: Coordinates): void;
   set onUpdateLocation(callback: CallableFunction);
   set onUpdateAssets(callback: CallableFunction);
-  set onPlayAssets(callback: CallableFunction)
+  set onPlayAssets(callback: CallableFunction);
+  _triggerOnPlayAssets(): void; 
+  get currentlyPlayingAssets(): unknown;
+  enableGeolocation(mode: number): void;
+  disableGeolocation(): void;
+  connect(): Promise<{uiConfig: unknown}>;
+  get mixParams(): object;
+  getAssets(options: object): Promise<unknown[]>
+  get assetPool(): unknown;
+  getAssetsFromPool(assetFilter, extraParams: object): Promise<unknown[]>;
+  updateAssetPool(): Promise<void>
+  loadAssetPool(): Promise<unknown>;
+  activateMixer(activationParams: object): Promise<IMixer>;
+  play(firstPlayCallback: CallableFunction): Promise<unknown>
+pause(): void;
+kill():void;
+replay(): void;
+skip(): void;
+tags():void;
+update(data: object): void;
+speaker(): unknown[];
+assets(): unknown[];
+timedAssets(): unknown[];
+audiotracks(): unknown[];
+saveAsset(audioData: object, fileName: string, data:object ): Promise<unknown>;
+makeEnvelope(): IEnvelope;
+findTagDecription(tagId: string, tagType: string): undefined | string;
+vote(assetId: string, voteType: unknown, value: unknown): Promise<unknown>;
+getAsset(id: string): Promise<unknown>;
+getEnvelope(id: string): Promise<unknown>
+
+
+
+
+
+
+
 }
 export class Roundware implements IRoundware {
   /** Initialize a new Roundware instance
@@ -91,7 +127,7 @@ export class Roundware implements IRoundware {
   private _serverUrl: string;
   private _projectId: number;
   private _speakerFilters: unknown;
-  private _assetFilters: unknown;
+  private _assetFilters: object;
   private _listenerLocation: Coordinates;
   private _initialOptions: IOptions;
   private _assetUpdateInterval: unknown;
@@ -110,7 +146,7 @@ export class Roundware implements IRoundware {
   private _mixer: IMixer;
   private _onUpdateLocation: CallableFunction = () => {};
   private _onUpdateAssets: CallableFunction = () => {};
-  private _assetData: unknown;
+  private _assetData: unknown[] = [];
   private _onPlayAssets: CallableFunction = () => {};
   private _sessionId: unknown;
   uiConfig: unknown;
@@ -118,6 +154,7 @@ export class Roundware implements IRoundware {
   private _audioTracksData: unknown;
   private _lastAssetUpdate: unknown;
   private _timedAssetData: unknown;
+  _assetDataTimer: number;
   //private _assetDataTimer: NodeJS.Timeout;
 
   constructor(
@@ -230,7 +267,7 @@ export class Roundware implements IRoundware {
     callback(this.currentlyPlayingAssets);
   }
 
-  private _triggerOnPlayAssets() {
+  _triggerOnPlayAssets() {
     if (this._onPlayAssets) {
       this._onPlayAssets(this.currentlyPlayingAssets);
     }
@@ -240,7 +277,7 @@ export class Roundware implements IRoundware {
     return this._mixer.playlist && this._mixer.playlist.currentlyPlayingAssets;
   }
 
-  enableGeolocation(mode) {
+  enableGeolocation(mode: number) {
     if (mode === GeoListenMode.AUTOMATIC) {
       this._geoPosition.enable();
     } else {
@@ -295,12 +332,12 @@ export class Roundware implements IRoundware {
   }
 
   /// Requests list of assets from the server given some filters.
-  async getAssets(options) {
+  async getAssets(options: object) {
     // If the caller just wants all assets, pass back the preloaded list.
     if (!options && this._assetData) {
       return this._assetData;
     } else {
-      return this._apiClient.get(`/assets/`, {
+      return await this._apiClient.get<unknown[]>(`/assets/`, {
         project_id: this._projectId,
         // Override default filters with unknown passed in options.
         ...this._assetFilters,
@@ -480,7 +517,7 @@ export class Roundware implements IRoundware {
     return undefined;
   }
 
-  async vote(assetId, voteType, value) {
+  async vote(assetId: string, voteType:string, value: unknown) {
     return this._apiClient.post(`/assets/${assetId}/votes/`, {
       session_id: this._sessionId,
       vote_type: voteType,
@@ -489,7 +526,7 @@ export class Roundware implements IRoundware {
   }
 
   /// @return Detailed information about a particular asset.
-  async getAsset(id) {
+  async getAsset(id: string) {
     // Check for this asset in any already loaded asset pool.
     if (this._assetData) {
       for (const asset of this._assetData) {
