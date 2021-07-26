@@ -1,22 +1,41 @@
-var clientSystem = "Unknown";
-var projectId, sessionId, geoListenEnabled;
-var apiClient = {};
+import { IApiClient } from "./api-client";
+
+let clientSystem: string = "Unknown";
+let projectId: number | undefined, sessionId: string, geoListenEnabled: boolean;
+let apiClient: IApiClient;
 
 /** Responsible for establishing a session with the Roundware server **/
-export class Session {
+interface ISession {
+  /**
+   * @returns sessionId
+   */
+  connect(): Promise<string>;
+  sessionId: string | undefined;
+}
+
+export class Session implements ISession {
+  sessionId: string | undefined;
+
   /** Create a new Session
    * @param {object} navigator - provides access to the userAgent string
    * @param {Number} newProjectId - identifies the Roundware project to associate with this session
    * @param {Boolean} geoListenEnablement - whether the server should enable geo listening features
    * @param {Object} options - Various configuration parameters for this session
    * @param {apiClient} options.apiClient - the API client object to use for server API calls
-  **/
-  constructor (navigator,newProjectId,geoListenEnablement,options) {
+   **/
+  constructor(
+    navigator: Window[`navigator`],
+    newProjectId: number,
+    geoListenEnablement: boolean,
+    options: {
+      apiClient: IApiClient;
+    }
+  ) {
     clientSystem = navigator.userAgent;
 
     if (clientSystem.length > 127) {
       // on mobile browsers, this string is longer than the server wants
-      clientSystem = clientSystem.slice(0,127);
+      clientSystem = clientSystem.slice(0, 127);
     }
 
     projectId = newProjectId;
@@ -26,7 +45,7 @@ export class Session {
   }
 
   /** @returns {String} human-readable representation of this session **/
-  toString() {
+  toString(): string {
     return "Roundware Session #" + sessionId;
   }
 
@@ -37,10 +56,13 @@ export class Session {
     const requestData = {
       project_id: projectId,
       geo_listen_enabled: geoListenEnabled,
-      client_system: clientSystem
+      client_system: clientSystem,
     };
 
-    const data = await apiClient.post("/sessions/",requestData);
+    const data = await apiClient.post<{ id: string }>(
+      "/sessions/",
+      requestData
+    );
     this.sessionId = data.id;
 
     return this.sessionId;
