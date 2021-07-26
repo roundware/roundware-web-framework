@@ -1,16 +1,28 @@
+import { IApiClient } from "./api-client";
 import { GeoListenMode } from "./mixer";
 
+export interface UiConfig {
+
+} 
+
+export interface IProject {
+  toString(): string;
+  connect(): Promise<void>;
+  uiConfig(): Promise<unknown>;
+  projectId: number;
+  
+}
 export class Project {
   projectId: number;
   projectName: string;
-  apiClient: Options[`apiClient`];
+  apiClient: IApiClient;
   legalAgreement: unknown;
   recordingRadius: unknown;
   maxRecordingLength: unknown;
   location: Coordinates = { latitude: 1, longitude: 1 };
   mixParams: {};
 
-  constructor(newProjectId: number, { apiClient }: Pick<Options, `apiClient`>) {
+  constructor(newProjectId: number, { apiClient }: { apiClient: IApiClient }) {
     this.projectId = newProjectId;
     this.projectName = "(unknown)";
     this.apiClient = apiClient;
@@ -21,13 +33,23 @@ export class Project {
     return `Roundware Project '${this.projectName}' (#${this.projectId})`;
   }
 
-  async connect(sessionId: string): Promise<string> {
+  async connect(sessionId: string) {
     const path = "/projects/" + this.projectId + "/";
 
     const requestData = { session_id: sessionId };
 
+
     try {
-      const data:  = await this.apiClient.get(path, requestData);
+      const data = await this.apiClient.get<{
+        name: string;
+        legal_agreement: unknown;
+        recording_radius: unknown;
+        max_recording_length: unknown;
+        latitude: number;
+        longitude: number;
+        geo_listen_enabled: boolean;
+        ordering: unknown;
+      }>(path, requestData);
       //console.info({ PROJECTDATA: data });
 
       this.projectName = data.name;
@@ -51,10 +73,10 @@ export class Project {
     }
   }
 
-  async uiconfig(sessionId: string): Promise<ApiClientGet> {
+  async uiconfig(sessionId: string) {
     const path = "/projects/" + this.projectId + "/uiconfig/";
     const data = { session_id: sessionId };
 
-    return this.apiClient.get(path, data);
+    return await this.apiClient.get<UiConfig>(path, data);
   }
 }
