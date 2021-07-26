@@ -12,10 +12,11 @@ interface ApiClientOptions extends RequestInit {
 }
 
 export interface IApiClient {
-  get(path: string, data: object, options: ApiClientOptions): Promise<object>;
-  post(path: string, data: object, options: ApiClientOptions): Promise<object>;
-  patch(path: string, data: object, options: ApiClientOptions): Promise<object>;
-  send(path: string, data: object, options: ApiClientOptions): Promise<object>;
+  get<T>(path: string, data: object, options?: ApiClientOptions): Promise<T>;
+  post<T>(path: string, data: object, options?: ApiClientOptions): Promise<T>;
+  patch<T>(path: string, data: object, options?: ApiClientOptions): Promise<T>;
+  send<T>(path: string, data: object, options?: ApiClientOptions): Promise<T>;
+  set authToken(token: string);
 }
 export class ApiClient implements IApiClient {
   /** Create a new ApiClient
@@ -23,8 +24,8 @@ export class ApiClient implements IApiClient {
    * @param {Boolean} [options.fetch = fetch] - for testing purposes, you can inject the fetch mechanism to use for making network requests **/
 
   private _jQuery: any;
-  _serverUrl: string;
-  _authToken: string;
+  private _serverUrl: string;
+  private _authToken: string;
 
   constructor(window: Window, baseServerUrl: string) {
     this._jQuery = window.jQuery;
@@ -36,28 +37,28 @@ export class ApiClient implements IApiClient {
    * @param {String} path - the path for your API request, such as "/streams/"
    * @param {Object} options - see the "send" method
    * @see {send} **/
-  async get(path: string, data: object, options: ApiClientOptions = {}) {
+  async get<T>(path: string, data: object, options: ApiClientOptions = {}) {
     options.method = "GET";
     options.contentType = "x-www-form-urlencoded";
-    return await this.send(path, data, options);
+    return await this.send<T>(path, data, options);
   }
 
   /** Make a POST request to the Roundware server
    * @param {String} path - the path for your API request, such as "/streams/"
    * @param {Object} options - see the "send" method
    * @see {send} **/
-  async post(path: string, data: object, options: ApiClientOptions = {}) {
+  async post<T>(path: string, data: object, options: ApiClientOptions = {}) {
     options.method = "POST";
-    return await this.send(path, data, options);
+    return await this.send<T>(path, data, options);
   }
 
   /** Make a PATCH request to the Roundware server
    * @param {String} path - the path for your API request, such as "/streams/"
    * @param {Object} options - see the "send" method
    * @see {send} **/
-  async patch(path: string, data: object, options: ApiClientOptions = {}) {
+  async patch<T>(path: string, data: object, options: ApiClientOptions = {}) {
     options.method = "PATCH";
-    return await this.send(path, data, options);
+    return await this.send<T>(path, data, options);
   }
 
   /** Transmit an Ajax request to the Roundware API. Note that the Roundware Server expects paths to end with a trailing slash: /sessions/ instead of /sessions
@@ -68,11 +69,11 @@ export class ApiClient implements IApiClient {
    * @todo might be a good place to implement exponential retry of certain types of errors
    * @todo as of 2019, the fetch() polyfills are good enough that we should be able to get rid of JQuery dependency
    * **/
-  async send(
+  async send<T>(
     path: string,
     data: { [key: string]: any } = {},
     urlOptions: ApiClientOptions
-  ): Promise<object> {
+  ): Promise<T> {
     const url = new URL(this._serverUrl + path);
 
     let { contentType, method } = urlOptions;
