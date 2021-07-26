@@ -1,18 +1,27 @@
+import { IApiClient } from "./api-client";
+
 /* global process */
 export const PATH = process.env.NODE_ENV === 'development' ? '/assets/?created__lte=2019-08-15T18:06:39' : '/assets/';
 
+export interface IAsset {
+  toString(): string;
+  connect(): Promise<unknown>
+}
 export class Asset {
-  constructor(projectId, { apiClient }) {
-    this.projectId = projectId;
-    this.apiClient = apiClient;
+
+  private _projectId: number;
+  private _apiClient: IApiClient;
+  constructor(projectId: number, { apiClient }: { apiClient: IApiClient }) {
+    this._projectId = projectId;
+    this._apiClient = apiClient;
   }
 
   toString() {
-    return `Roundware Assets (#${this.projectId})`;
+    return `Roundware Assets (#${this._projectId})`;
   }
 
-  connect(data = {}) {
-    const options = { ...data, project_id: this.projectId };
-    return this.apiClient.get(PATH, options);
+  async connect(data = {}) {
+    const options = { ...data, project_id: this._projectId };
+    return await this._apiClient.get<unknown>(PATH, options);
   }
 }

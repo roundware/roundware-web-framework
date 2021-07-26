@@ -47,7 +47,10 @@ const assetDecorationMapper = (timedAssets) => {
   };
 };
 
-export class AssetPool {
+export interface IAssetPool {
+  updateAssets(): void;
+}
+export class AssetPool implements IAssetPool {
   constructor({
     assets = [],
     timedAssets = [],
@@ -74,8 +77,7 @@ export class AssetPool {
       ...stateParams,
     };
     console.log(
-      `picking asset for ${track} from ${
-        this.assets.length
+      `picking asset for ${track} from ${this.assets.length
       }, params = ${JSON.stringify(mixParams)}`
     );
     const rankedAssets = this.assets.reduce((rankings, asset) => {
