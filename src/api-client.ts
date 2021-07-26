@@ -6,10 +6,10 @@ const GENERIC_ERROR_MSG =
 // to verify CORS will allow the response to load in the browser. Sometimes this OPTIONS call can get obscured in debugging tools.
 // @see http://roundware.org/docs/terminology/index.html
 
-type ApiClientOptions = {
-  method?: string;
+interface ApiClientOptions extends RequestInit {
   contentType?: string;
-};
+  [index: string]: any;
+}
 
 export interface IApiClient {
   get(path: string, data: object, options: ApiClientOptions): Promise<object>;
@@ -29,7 +29,7 @@ export class ApiClient implements IApiClient {
   constructor(window: Window, baseServerUrl: string) {
     this._jQuery = window.jQuery;
     this._serverUrl = baseServerUrl;
-    this._authToken = null;
+    this._authToken = "";
   }
 
   /** Make a GET request to the Roundware server
@@ -70,11 +70,12 @@ export class ApiClient implements IApiClient {
    * **/
   async send(
     path: string,
-    data: object = {},
-    { contentType, method, ...urlOptions }: ApiClientOptions
+    data: { [key: string]: any } = {},
+    urlOptions: ApiClientOptions
   ): Promise<object> {
     const url = new URL(this._serverUrl + path);
 
+    let { contentType, method } = urlOptions;
     const requestInit: RequestInit = {
       method,
       mode: "cors",
@@ -88,7 +89,7 @@ export class ApiClient implements IApiClient {
       queryParams.append(key, urlOptions[key]);
     }
 
-    const headers = {};
+    const headers: { [key: string]: any } = {};
 
     switch (method) {
       // for these cases, anything in 'data' has to be appended to query string
@@ -98,7 +99,7 @@ export class ApiClient implements IApiClient {
         break;
       // for other HTTP methods, 'data' has to be turned into a request body, with a properly-set Content-Type required by the Roundware server API.
       default:
-        let stringData: string;
+        let stringData: string = "";
         if (!contentType) {
           // If you don't specify a contentType, we assume you want us to convert your payload to JSON
           contentType = "application/json";
