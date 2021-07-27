@@ -51,15 +51,31 @@ export interface IAssetPool {
   updateAssets(): void;
 }
 export class AssetPool implements IAssetPool {
+  assetSorter: AssetSorter;
+  playingTracks: {};
+  mixParams: {};
+  filterChain: (asset: any, { ...stateParams }: { [x: string]: any }) => any;
+  assets: Asset[] | undefined;
+
   constructor({
     assets = [],
     timedAssets = [],
     filterChain = roundwareDefaultFilterChain,
     sortMethods = [],
     mixParams = {},
+  }: {
+    assets: Asset[];
+    timedAsset: unknonw[];
+    filterChain;
   }) {
     this.updateAssets(assets, timedAssets);
-    this.assetSorter = new AssetSorter({ sortMethods, ...mixParams });
+
+    if (typeof !mixParams.ordering == "string")
+      throw new Error(`Please pass ordering in mixParams`);
+    this.assetSorter = new AssetSorter({
+      sortMethods,
+      ordering: mixParams.ordering,
+    });
     this.playingTracks = {};
     this.mixParams = mixParams;
     this.filterChain = filterChain;
@@ -77,7 +93,8 @@ export class AssetPool implements IAssetPool {
       ...stateParams,
     };
     console.log(
-      `picking asset for ${track} from ${this.assets.length
+      `picking asset for ${track} from ${
+        this.assets.length
       }, params = ${JSON.stringify(mixParams)}`
     );
     const rankedAssets = this.assets.reduce((rankings, asset) => {
