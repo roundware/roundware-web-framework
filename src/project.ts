@@ -1,20 +1,16 @@
 import { IApiClient } from "./api-client";
 import { GeoListenMode } from "./mixer";
 
-export interface UiConfig {
-
-} 
+export interface UiConfig {}
 
 export interface IProject {
-  uiconfig(sessionId: string);
+  uiconfig(sessionId: string): Promise<UiConfig>;
   mixParams: any;
   toString(): string;
-  connect(): Promise<void>;
-  uiConfig(): Promise<unknown>;
+  connect(sessionId: string): Promise<string | undefined>;
   projectId: number;
-  
 }
-export class Project {
+export class Project implements IProject {
   projectId: number;
   projectName: string;
   apiClient: IApiClient;
@@ -35,11 +31,10 @@ export class Project {
     return `Roundware Project '${this.projectName}' (#${this.projectId})`;
   }
 
-  async connect(sessionId: string) {
+  async connect(sessionId: string): Promise<string | undefined> {
     const path = "/projects/" + this.projectId + "/";
 
     const requestData = { session_id: sessionId };
-
 
     try {
       const data = await this.apiClient.get<{
@@ -75,7 +70,7 @@ export class Project {
     }
   }
 
-  async uiconfig(sessionId: string) {
+  async uiconfig(sessionId: string): Promise<UiConfig> {
     const path = "/projects/" + this.projectId + "/uiconfig/";
     const data = { session_id: sessionId };
 
