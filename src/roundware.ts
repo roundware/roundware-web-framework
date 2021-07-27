@@ -7,7 +7,7 @@ import { ITimedAsset, TimedAsset } from "./timed_asset";
 import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { IUser, User } from "./user";
-import { Envelope } from "./envelope";
+import { Envelope, IEnvelope } from "./envelope";
 import { Mixer, GeoListenMode, IMixer } from "./mixer";
 import { Audiotrack, IAudioTrack } from "./audiotrack";
 import { ASSET_PRIORITIES } from "./assetFilters";
@@ -52,24 +52,24 @@ export interface IOptions {
   apiClient: IApiClient;
   deviceId: string;
   clientType: string;
-  geoListenMode: unknown;
+  geoListenMode?: boolean;
 }
-interface IRoundwareConstructor extends IOptions {
+interface IRoundwareConstructorOptions extends IOptions {
   serverUrl: string;
   projectId: number;
-  speakerFilters: unknown;
-  assetFilters: unknown;
+  speakerFilters?: unknown;
+  assetFilters: object;
   listenerLocation: Coordinates;
-  user: IUser;
-  geoPosition: IGeoPosition;
-  session: ISession;
-  project: IProject;
-  speaker: ISpeaker;
-  asset: IAsset;
-  timedAsset: ITimedAsset;
-  audiotrack: IAudioTrack;
-  assetUpdateInterval: unknown;
-  prefetchSpeakerAudio: unknown;
+  user?: IUser;
+  geoPosition?: IGeoPosition;
+  session?: ISession;
+  project?: IProject;
+  speaker?: ISpeaker;
+  asset?: IAsset;
+  timedAsset?: ITimedAsset;
+  audiotrack?: IAudioTrack;
+  assetUpdateInterval?: number;
+  prefetchSpeakerAudio?: unknown;
 }
 
 export interface IRoundware {
@@ -77,52 +77,44 @@ export interface IRoundware {
   set onUpdateLocation(callback: CallableFunction);
   set onUpdateAssets(callback: CallableFunction);
   set onPlayAssets(callback: CallableFunction);
-  _triggerOnPlayAssets(): void; 
+  _triggerOnPlayAssets(): void;
   get currentlyPlayingAssets(): unknown;
   enableGeolocation(mode: number): void;
   disableGeolocation(): void;
-  connect(): Promise<{uiConfig: unknown}>;
+  connect(): Promise<{ uiConfig: unknown }>;
   get mixParams(): object;
-  getAssets(options: object): Promise<unknown[]>
+  getAssets(options: object): Promise<unknown[]>;
   get assetPool(): unknown;
-  getAssetsFromPool(assetFilter, extraParams: object): Promise<unknown[]>;
-  updateAssetPool(): Promise<void>
+  getAssetsFromPool(
+    assetFilter: object,
+    extraParams: object
+  ): Promise<unknown[]>;
+  updateAssetPool(): Promise<void>;
   loadAssetPool(): Promise<unknown>;
   activateMixer(activationParams: object): Promise<IMixer>;
-  play(firstPlayCallback: CallableFunction): Promise<unknown>
-pause(): void;
-kill():void;
-replay(): void;
-skip(): void;
-tags():void;
-update(data: object): void;
-speaker(): unknown[];
-assets(): unknown[];
-timedAssets(): unknown[];
-audiotracks(): unknown[];
-saveAsset(audioData: object, fileName: string, data:object ): Promise<unknown>;
-makeEnvelope(): IEnvelope;
-findTagDecription(tagId: string, tagType: string): undefined | string;
-vote(assetId: string, voteType: unknown, value: unknown): Promise<unknown>;
-getAsset(id: string): Promise<unknown>;
-getEnvelope(id: string): Promise<unknown>
+  play(firstPlayCallback: (value: Coordinates) => any): Promise<unknown>;
+  pause(): void;
+  kill(): void;
+  replay(): void;
+  skip(): void;
+  tags(): void;
+  update(data: object): void;
 
-
-
-
-
-
-
+  assets(): unknown[];
+  timedAssets(): unknown | [];
+  audiotracks(): unknown | [];
+  saveAsset(
+    audioData: object,
+    fileName: string,
+    data: object
+  ): Promise<unknown>;
+  makeEnvelope(): Promise<IEnvelope>;
+  //  findTagDecription(tagId: string, tagType: string): undefined | string;
+  vote(assetId: string, voteType: unknown, value: unknown): Promise<unknown>;
+  getAsset(id: string): Promise<unknown>;
+  getEnvelope(id: string): Promise<unknown>;
 }
 export class Roundware implements IRoundware {
-  /** Initialize a new Roundware instance
-   * @param {Object} windowScope - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
-   * @param {Object} options - Collection of parameters for configuring this Roundware instance
-   * @param {String} options.serverUrl - identifies the Roundware server
-   * @param {Number} options.projectId - identifies the Roundware project to connect
-   * @param {Boolean} options.geoListenMode - whether or not to attempt to initialize geolocation-based listening
-   * @throws Will throw an error if serveUrl or projectId are missing
-    TODO need to provide a more modern/ES6-aware architecture here vs burdening the constructor with all of these details **/
   readonly windowScope: Window;
   private _serverUrl: string;
   private _projectId: number;
@@ -130,9 +122,9 @@ export class Roundware implements IRoundware {
   private _assetFilters: object;
   private _listenerLocation: Coordinates;
   private _initialOptions: IOptions;
-  private _assetUpdateInterval: unknown;
+  private _assetUpdateInterval: number;
   private _apiClient: IApiClient;
-  
+
   private _user: IUser;
   private _geoPosition: IGeoPosition;
   private _session: ISession;
@@ -154,8 +146,16 @@ export class Roundware implements IRoundware {
   private _audioTracksData: unknown;
   private _lastAssetUpdate: unknown;
   private _timedAssetData: unknown;
-  _assetDataTimer: number;
-  //private _assetDataTimer: NodeJS.Timeout;
+  private _assetDataTimer: NodeJS.Timeout | undefined;
+
+  /** Initialize a new Roundware instance
+   * @param {Object} windowScope - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
+   * @param {Object} options - Collection of parameters for configuring this Roundware instance
+   * @param {String} options.serverUrl - identifies the Roundware server
+   * @param {Number} options.projectId - identifies the Roundware project to connect
+   * @param {Boolean} options.geoListenMode - whether or not to attempt to initialize geolocation-based listening
+   * @throws Will throw an error if serveUrl or projectId are missing
+    TODO need to provide a more modern/ES6-aware architecture here vs burdening the constructor with all of these details **/
 
   constructor(
     windowScope: Window,
@@ -176,7 +176,7 @@ export class Roundware implements IRoundware {
       assetUpdateInterval,
       prefetchSpeakerAudio,
       ...options
-    }: IRoundwareConstructor
+    }: IRoundwareConstructorOptions
   ) {
     this.windowScope = windowScope;
     this._serverUrl = serverUrl;
@@ -236,8 +236,6 @@ export class Roundware implements IRoundware {
       prefetchSpeakerAudio: prefetchSpeakerAudio || false,
       mixParams,
     });
-
-    
   }
 
   updateLocation(listenerLocation: Coordinates): void {
@@ -411,7 +409,7 @@ export class Roundware implements IRoundware {
 
   /** Create or resume the audio stream
    * @see Stream.play **/
-  play(firstPlayCallback = () => {}) {
+  play(firstPlayCallback: (value: Coordinates) => any = () => {}) {
     return this._geoPosition
       .waitForInitialGeolocation()
       .then(firstPlayCallback);
@@ -466,11 +464,11 @@ export class Roundware implements IRoundware {
     return this._assetData || [];
   }
 
-  timedAssets() {
+  timedAssets(): unknown | [] {
     return this._timedAssetData || [];
   }
 
-  audiotracks() {
+  audiotracks(): unknown | [] {
     return this._audioTracksData || [];
   }
 
@@ -487,7 +485,7 @@ export class Roundware implements IRoundware {
   /** Explicitly make a new envelope that you can attach multiple assets to by
    calling the `Envelope.upload` method. This is the main way to add text,
    photo, and video assets to an envelope. */
-  async makeEnvelope() {
+  async makeEnvelope(): Promise<IEnvelope> {
     if (!this._sessionId) {
       throw new Error(
         "can't save assets without first connecting to the server"
@@ -517,7 +515,7 @@ export class Roundware implements IRoundware {
     return undefined;
   }
 
-  async vote(assetId: string, voteType:string, value: unknown) {
+  async vote(assetId: string, voteType: string, value: unknown) {
     return this._apiClient.post(`/assets/${assetId}/votes/`, {
       session_id: this._sessionId,
       vote_type: voteType,
