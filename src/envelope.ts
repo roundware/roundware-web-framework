@@ -12,13 +12,18 @@ export class Envelope implements IEnvelope {
   _apiClient: IApiClient;
   _geoPosition: Coordinates;
   _roundware: IRoundware;
-  _assetId: string;
+  _assetId: string | undefined;
   /** Create an Envelope
    * @param {number} sessionId - identifies the session associated with this asset
    * @param {ApiClient} apiClient - the API client object to use for server API calls
    * @param {geoPosition} geoPosition -
    **/
-  constructor(sessionId: number, apiClient: IApiClient, geoPosition: Coordinates, roundware: IRoundware) {
+  constructor(
+    sessionId: number,
+    apiClient: IApiClient,
+    geoPosition: Coordinates,
+    roundware: IRoundware
+  ) {
     this._envelopeId = "(unknown)";
     this._sessionId = sessionId;
     this._apiClient = apiClient;
@@ -38,20 +43,28 @@ export class Envelope implements IEnvelope {
       session_id: this._sessionId,
     };
 
-    return this._apiClient.post<{ id: string }>("/envelopes/", data).then((data) => {
-      this._envelopeId = data.id;
-    });
+    return this._apiClient
+      .post<{ id: string }>("/envelopes/", data)
+      .then((data) => {
+        this._envelopeId = data.id;
+      });
   }
 
   /** Sends an audio file to the server
    * @param {blob} audioData
    * @param {string} fileName - name of the file
    * @return {Promise} - represents the API call */
-  async upload(audioData: Blob, fileName: string, data: { 
-    latitude: number;
-    longitude: number;
-    tag_ids: unknown;
-  } | {} = {}) {
+  async upload(
+    audioData: Blob,
+    fileName: string,
+    data:
+      | {
+          latitude: number;
+          longitude: number;
+          tag_ids: unknown;
+        }
+      | {} = {}
+  ) {
     if (!this._envelopeId) {
       return Promise.reject(
         "cannot upload audio without first connecting this envelope to the server"
