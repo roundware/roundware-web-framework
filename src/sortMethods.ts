@@ -6,7 +6,7 @@
  @see https://stackoverflow.com/a/2450976/308448
  @see http://sedition.com/perl/javascript-fy.html
  */
-export function sortRandomly(assetsArray) {
+export function sortRandomly(assetsArray: Asset[]) {
   for (let i = assetsArray.length - 1; i > 0; i--) {
     const rand = Math.floor(Math.random() * (i + 1));
     [assetsArray[i], assetsArray[rand]] = [assetsArray[rand], assetsArray[i]];
@@ -16,19 +16,22 @@ export function sortRandomly(assetsArray) {
 /**
  Sort assets destructively, in descending order of assigned weight.
  */
-export function sortByWeight(assetsArray) {
-  assetsArray.sort((assetA,assetB) => assetA.weight - assetB.weight);
+export function sortByWeight(assetsArray: Asset[]) {
+  assetsArray.sort((assetA, assetB) => assetA.weight - assetB.weight);
 }
 
 /**
 Sort assets destructively, in descending order of current number of likes.
 @TODO Not implemented yet
 */
-export function sortByLikes(assetsArray) { // eslint-disable-line no-unused-vars
+export function sortByLikes(assetsArray: Asset[]) {
+  // eslint-disable-line no-unused-vars
   console.warn("sortByLikes not implemented yet"); // TODO: implement sortByLikes
 }
 
-export function sortByProjectDefault(ordering) {
+export function sortByProjectDefault(
+  ordering: string
+): (assetArray: Asset[]) => void {
   switch (ordering) {
     case "by_weight":
       return sortByWeight;
@@ -51,18 +54,18 @@ export function sortByProjectDefault(ordering) {
 //}
 //}
 
-  //func onRefreshAssets(in playlist: Playlist) -> Promise<Void> {
-      //let projectId = playlist.project.id
-      //return RWFramework.sharedInstance.apiGetVotesSummary(
-          //type: "like",
-          //projectId: projectId.description
-      //).then { data -> Void in
-          //let voteData = try JSON(data: data).array
-          //self.assetVotes = voteData?.reduce(into: [Int: Int]()) { acc, data in
-              //let assetId = data["asset_id"].int!
-              //let votes = data["asset_votes"].int!
-              //acc[assetId] = votes
-          //}
-      //}
-  //}
+//func onRefreshAssets(in playlist: Playlist) -> Promise<Void> {
+//let projectId = playlist.project.id
+//return RWFramework.sharedInstance.apiGetVotesSummary(
+//type: "like",
+//projectId: projectId.description
+//).then { data -> Void in
+//let voteData = try JSON(data: data).array
+//self.assetVotes = voteData?.reduce(into: [Int: Int]()) { acc, data in
+//let assetId = data["asset_id"].int!
+//let votes = data["asset_votes"].int!
+//acc[assetId] = votes
+//}
+//}
+//}
 //}
