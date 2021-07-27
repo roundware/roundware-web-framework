@@ -3,6 +3,7 @@ import { Playlist } from "./playlist";
 import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 import { AssetPool } from "./assetPool";
 import { IRoundware } from "./roundware";
+import { Point } from "@turf/helpers";
 
 export const GeoListenMode = Object.freeze({
   DISABLED: 0,
@@ -11,17 +12,22 @@ export const GeoListenMode = Object.freeze({
 });
 
 export interface IMixer {
-  
   playlist: unknown;
   playing: boolean;
   mixParams: unknown;
+  updateParams({
+    listenerLocation,
+    listenerPoint,
+  }: {
+    listenerLocation: Coordinates;
+    listenerPoint: Point;
+  }): void;
 }
 export class Mixer implements IMixer {
   playing: boolean;
   private _windowScope: Window;
   private _client: IRoundware;
   private _prefetchSpeakerAudio: unknown | boolean;
-
 
   mixParams: unknown;
   playlist: unknown;
@@ -34,13 +40,13 @@ export class Mixer implements IMixer {
     sortMethods = [],
     mixParams = {},
   }: {
-    client: IRoundware,
-    windowScope: Window,
-    listenerLocation: Coordinates,
-    prefetchSpeakerAudio: boolean | unknown,
-    filters?: unknown[],
-    sortMethods?: unknown[],
-    mixParams: object,
+    client: IRoundware;
+    windowScope: Window;
+    listenerLocation: Coordinates;
+    prefetchSpeakerAudio: boolean | unknown;
+    filters?: unknown[];
+    sortMethods?: unknown[];
+    mixParams: object;
   }) {
     this.playing = false;
 
@@ -64,7 +70,12 @@ export class Mixer implements IMixer {
     });
   }
 
-  updateParams({ listenerLocation, ...params }) {
+  updateParams({
+    listenerLocation,
+    ...params
+  }: {
+    listenerLocation: Coordinates;
+  }) {
     if (listenerLocation) {
       params.listenerPoint = coordsToPoints(listenerLocation);
     }
