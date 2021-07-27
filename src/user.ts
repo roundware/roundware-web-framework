@@ -7,9 +7,9 @@ type ResponseType = {
 };
 export interface IUser {
   toString(): string;
-  connect(): Promise<ResponseType>;
+  connect(): Promise<ResponseType | {}>;
 }
-export class User {
+export class User implements IUser {
   /** Create a User
    * @param {Object} options - Various configuration parameters for this user
    * @param {apiClient} options.apiClient - the API client object to use for server API calls
@@ -45,7 +45,7 @@ export class User {
   /** Make an API call to associate the (possibly anonymous) application user with a Roundware user account.
    * Upon success, this function receives an auth token, which is passed onto the apiClient object.
    * @returns {Promise} represents the pending API call **/
-  async connect(): Promise<unknown> {
+  async connect(): Promise<ResponseType | {}> {
     const data = {
       device_id: this.deviceId,
       client_type: this.clientType,
