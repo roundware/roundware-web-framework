@@ -24,54 +24,27 @@
 }] 
 */
 
-import { IApiClient } from "./api-client";
+import { IApiClient } from "./types/api-client";
+import { AudioTrackData, IAudioTrack } from "./types/audioTrack";
 
 const REQUEST_PATH = "/audiotracks/";
-export interface AudioTrackData {
 
-	id: number,
-	minvolume: number,
-	maxvolume: number,
-	minduration: number,
-	maxduration: number,
-	mindeadair: number,
-	maxdeadair: number,
-	minfadeintime: number,
-	maxfadeintime: number,
-	minfadeouttime: number,
-	maxfadeouttime: number,
-	minpanpos: number,
-	maxpanpos: number,
-	minpanduration: number,
-	maxpanduration: number,
-	repeatrecordings: boolean,
-	active: boolean,
-	start_with_silence: boolean,
-	banned_duration: number,
-	tag_filters: unknown[],
-	project_id: number
+export class Audiotrack implements IAudioTrack {
+  private _projectId: number;
+  private _apiClient: IApiClient;
+  constructor(projectId: number, options: { apiClient: IApiClient }) {
+    this._projectId = projectId;
+    this._apiClient = options.apiClient;
+  }
 
-}
-export interface IAudioTrack {
-	toString(): string;
-	connect(data: object): Promise<AudioTrackData>
-}
-export class Audiotrack {
-	private _projectId: number;
-	private _apiClient: IApiClient;
-	constructor(projectId: number, options: { apiClient: IApiClient }) {
-		this._projectId = projectId;
-		this._apiClient = options.apiClient;
-	}
+  toString(): string {
+    return `Roundware Audiotracks (#${this._projectId})`;
+  }
 
-	toString(): string {
-		return `Roundware Audiotracks (#${this._projectId})`;
-	}
+  async connect(data: any = {}): Promise<AudioTrackData> {
+    data.project_id = this._projectId;
+    data.active = true;
 
-	async connect(data: any = {}): Promise<AudioTrackData> {
-		data.project_id = this._projectId;
-		data.active = true;
-
-		return await this._apiClient.get<AudioTrackData>(REQUEST_PATH, data);
-	}
+    return await this._apiClient.get<AudioTrackData>(REQUEST_PATH, data);
+  }
 }

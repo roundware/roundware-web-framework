@@ -1,12 +1,14 @@
 // see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/SortMethod.swift
 
+import { AssetT } from "./types";
+
 /**
  Sort assets destructively, in random order.
  @note This is tricky to get right, uses a Fisher-Yates (aka Knuth) Shuffle. I copied this right out of Stack Overflow.
  @see https://stackoverflow.com/a/2450976/308448
  @see http://sedition.com/perl/javascript-fy.html
  */
-export function sortRandomly(assetsArray: Asset[]) {
+export function sortRandomly(assetsArray: AssetT[]) {
   for (let i = assetsArray.length - 1; i > 0; i--) {
     const rand = Math.floor(Math.random() * (i + 1));
     [assetsArray[i], assetsArray[rand]] = [assetsArray[rand], assetsArray[i]];
@@ -16,22 +18,23 @@ export function sortRandomly(assetsArray: Asset[]) {
 /**
  Sort assets destructively, in descending order of assigned weight.
  */
-export function sortByWeight(assetsArray: Asset[]) {
-  assetsArray.sort((assetA, assetB) => assetA.weight - assetB.weight);
+
+export function sortByWeight(assetsArray: AssetT[]) {
+  assetsArray.sort((assetA, assetB) => assetA.weight! - assetB.weight!);
 }
 
 /**
 Sort assets destructively, in descending order of current number of likes.
 @TODO Not implemented yet
 */
-export function sortByLikes(assetsArray: Asset[]) {
+export function sortByLikes(assetsArray: AssetT[]) {
   // eslint-disable-line no-unused-vars
   console.warn("sortByLikes not implemented yet"); // TODO: implement sortByLikes
 }
 
 export function sortByProjectDefault(
   ordering: string
-): (assetArray: Asset[]) => void {
+): (assetArray: AssetT[]) => void {
   switch (ordering) {
     case "by_weight":
       return sortByWeight;

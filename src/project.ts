@@ -1,5 +1,6 @@
-import { IApiClient } from "./api-client";
+import { IApiClient } from "./types/api-client";
 import { GeoListenMode } from "./mixer";
+import { Coordinates } from "./types";
 
 export interface UiConfig {}
 

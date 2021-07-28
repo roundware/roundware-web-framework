@@ -1,14 +1,38 @@
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
+import { AudioTrack } from "./types/mixer";
+import { IPlaylist } from "./types/playlist";
+import { IRoundware } from "./types/roundware";
 import { getUrlParam } from "./utils";
+import { Point } from "@turf/helpers";
+import { IAssetPool } from "./types/assetPool";
+import { IAudioContext } from "standardized-audio-context";
 
-export class Playlist {
+export class Playlist implements IPlaylist {
+  listenerPoint: Point;
+  playingTracks: object;
+  assetPool: IAssetPool;
+  playing: boolean;
+  listenTagIds: never[];
+  _client: IRoundware;
+  _elapsedTimeMs: number;
+  trackMap: Map<any, any>;
+  trackIdMap: {};
+  playlistLastStartedAt: Date | undefined;
+
   constructor({
     client,
     audioTracks = [],
-    listenerPoint = {},
+    listenerPoint,
     windowScope,
     assetPool,
     ...playlistTrackOptions
+  }: {
+    client: IRoundware;
+    audioTracks?: AudioTrack[];
+    listenerPoint: Point;
+    windowScope: Window;
+    assetPool: IAssetPool;
+    audioContext?: IAudioContext;
   }) {
     this.listenerPoint = listenerPoint;
     this.playingTracks = {};
@@ -18,7 +42,10 @@ export class Playlist {
     this._client = client;
 
     let elapsedTimeMs = 0;
-    const timerSecs = getUrlParam(windowScope.location, "rwfTimerSeconds");
+    const timerSecs = getUrlParam(
+      windowScope.location.toString(),
+      "rwfTimerSeconds"
+    );
 
     if (timerSecs) {
       const elapsedSecs = Number(timerSecs);

@@ -1,4 +1,4 @@
-import { IApiClient } from "./api-client";
+import { IApiClient } from "./types/api-client";
 
 let clientSystem: string = "Unknown";
 let projectId: number | undefined, sessionId: string, geoListenEnabled: boolean;

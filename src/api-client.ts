@@ -1,3 +1,5 @@
+import { IApiClient, ApiClientOptions } from "./types/api-client";
+
 const GENERIC_ERROR_MSG =
   "We were unable to contact the audio server, please try again.";
 
@@ -6,18 +8,6 @@ const GENERIC_ERROR_MSG =
 // to verify CORS will allow the response to load in the browser. Sometimes this OPTIONS call can get obscured in debugging tools.
 // @see http://roundware.org/docs/terminology/index.html
 
-interface ApiClientOptions extends RequestInit {
-  contentType?: string;
-  [index: string]: any;
-}
-
-export interface IApiClient {
-  get<T>(path: string, data: object, options?: ApiClientOptions): Promise<T>;
-  post<T>(path: string, data: object, options?: ApiClientOptions): Promise<T>;
-  patch<T>(path: string, data: object, options?: ApiClientOptions): Promise<T>;
-  send<T>(path: string, data: object, options?: ApiClientOptions): Promise<T>;
-  set authToken(token: string);
-}
 export class ApiClient implements IApiClient {
   /** Create a new ApiClient
    * @param {String} baseServerUrl - identifies the Roundware server to receive API requests
@@ -28,6 +18,7 @@ export class ApiClient implements IApiClient {
   private _authToken: string;
 
   constructor(window: Window, baseServerUrl: string) {
+    //@ts-ignore
     this._jQuery = window.jQuery;
     this._serverUrl = baseServerUrl;
     this._authToken = "";

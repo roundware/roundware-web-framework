@@ -1,16 +1,13 @@
-import { IApiClient } from "./api-client";
-import { IRoundware } from "./roundware";
-
-export interface IEnvelope {
-  toString(): string;
-  connect(): Promise<void>;
-}
+import { IApiClient } from "./types/api-client";
+import { IRoundware } from "./types/roundware";
+import { IEnvelope } from "./types/envelope";
+import { Coordinates, GeoPositionType } from "./types";
 
 export class Envelope implements IEnvelope {
   _envelopeId: string;
   _sessionId: number;
   _apiClient: IApiClient;
-  _geoPosition: Coordinates;
+  _geoPosition: GeoPositionType;
   _roundware: IRoundware;
   _assetId: string | undefined;
   /** Create an Envelope
@@ -21,7 +18,7 @@ export class Envelope implements IEnvelope {
   constructor(
     sessionId: number,
     apiClient: IApiClient,
-    geoPosition: Coordinates,
+    geoPosition: GeoPositionType,
     roundware: IRoundware
   ) {
     this._envelopeId = "(unknown)";
@@ -57,13 +54,12 @@ export class Envelope implements IEnvelope {
   async upload(
     audioData: Blob,
     fileName: string,
-    data:
-      | {
-          latitude: number;
-          longitude: number;
-          tag_ids: unknown;
-        }
-      | {} = {}
+    data: {
+      latitude?: number;
+      longitude?: number;
+      tag_ids?: string;
+      media_type?: string;
+    } = {}
   ) {
     if (!this._envelopeId) {
       return Promise.reject(
@@ -72,7 +68,7 @@ export class Envelope implements IEnvelope {
     }
 
     let formData = new FormData();
-    let coordinates = {};
+    let coordinates: Partial<Coordinates> = {};
     if (!data.latitude && !data.longitude) {
       coordinates = this._geoPosition.getLastCoords();
     } else {
@@ -83,15 +79,15 @@ export class Envelope implements IEnvelope {
     }
     console.log(coordinates);
 
-    formData.append("session_id", this._sessionId);
+    formData.append("session_id", this._sessionId.toString());
     formData.append("file", audioData);
-    formData.append("latitude", coordinates.latitude);
-    formData.append("longitude", coordinates.longitude);
+    formData.append("latitude", coordinates.latitude!.toString());
+    formData.append("longitude", coordinates.longitude!.toString());
 
-    if ("tag_ids" in data) {
+    if (data.tag_ids) {
       formData.append("tag_ids", data.tag_ids);
     }
-    if ("media_type" in data) {
+    if (data.media_type) {
       formData.append("media_type", data.media_type);
     }
 
@@ -103,7 +99,11 @@ export class Envelope implements IEnvelope {
       contentType: "multipart/form-data",
     };
 
-    const res = await this._apiClient.patch(path, formData, options);
+    const res = await this._apiClient.patch<{ detail: string }>(
+      path,
+      formData,
+      options
+    );
     console.info("UPLOADDATA", res);
     if (res.detail) {
       throw new Error(res.detail);

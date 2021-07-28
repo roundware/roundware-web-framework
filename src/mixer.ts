@@ -2,8 +2,12 @@ import { SpeakerTrack } from "./speaker_track";
 import { Playlist } from "./playlist";
 import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 import { AssetPool } from "./assetPool";
-import { IRoundware } from "./roundware";
+import { IAssetPool } from "./types/assetPool";
+import { IRoundware } from "./types/roundware";
 import { Point } from "@turf/helpers";
+import { AssetT, Coordinates, MixParams } from "./types";
+import { AudioTrack, IMixer, PlaylistType } from "./types/mixer";
+import { ISpeakerTrack } from "./types/speaker-track";
 
 export const GeoListenMode = Object.freeze({
   DISABLED: 0,
@@ -11,26 +15,17 @@ export const GeoListenMode = Object.freeze({
   AUTOMATIC: 2,
 });
 
-export interface IMixer {
-  playlist: unknown;
-  playing: boolean;
-  mixParams: unknown;
-  updateParams({
-    listenerLocation,
-    listenerPoint,
-  }: {
-    listenerLocation: Coordinates;
-    listenerPoint: Point;
-  }): void;
-}
 export class Mixer implements IMixer {
   playing: boolean;
   private _windowScope: Window;
   private _client: IRoundware;
-  private _prefetchSpeakerAudio: unknown | boolean;
+  private _prefetchSpeakerAudio: any | boolean;
 
-  mixParams: unknown;
-  playlist: unknown;
+  mixParams: MixParams;
+  playlist: PlaylistType | undefined;
+  assetPool: IAssetPool;
+  speakerTracks: ISpeakerTrack[] = [];
+
   constructor({
     client,
     windowScope,
@@ -53,7 +48,7 @@ export class Mixer implements IMixer {
     this._windowScope = windowScope;
     this._client = client;
     this._prefetchSpeakerAudio = prefetchSpeakerAudio;
-    const assets = client.assets();
+    const assets: AssetT[] = client.assets();
     const timedAssets = client.timedAssets();
 
     this.mixParams = {
@@ -64,6 +59,7 @@ export class Mixer implements IMixer {
     this.assetPool = new AssetPool({
       assets,
       timedAssets,
+      // @ts-ignore
       filters,
       sortMethods,
       mixParams: this.mixParams,
@@ -75,6 +71,7 @@ export class Mixer implements IMixer {
     ...params
   }: {
     listenerLocation: Coordinates;
+    listenerPoint?: Point;
   }) {
     if (listenerLocation) {
       params.listenerPoint = coordsToPoints(listenerLocation);
@@ -85,31 +82,35 @@ export class Mixer implements IMixer {
     }
     if (this.speakerTracks) {
       for (const t of this.speakerTracks) {
+        //@ts-ignore
         t.updateParams(this.playing, params);
       }
     }
   }
 
-  skipTrack(trackId) {
+  skipTrack(trackId: number) {
     if (this.playlist) this.playlist.skip(trackId);
   }
 
-  replayTrack(trackId) {
+  replayTrack(trackId: number) {
     if (this.playlist) this.playlist.replay(trackId);
   }
 
-  toString() {
+  toString(): string {
     return "Roundware Mixer";
   }
 
   initContext() {
     if (!this.playlist) {
       const audioContext = buildAudioContext(this._windowScope);
+
+      if (!this.mixParams.listenerPoint)
+        throw new Error(`listenerPoint was missing from mixParams!`);
       const listenerPoint = this.mixParams.listenerPoint;
       const speakers = this._client.speakers();
 
-      let selectTrackId = getUrlParam(
-        this._windowScope.location,
+      let selectTrackId: string | number | null = getUrlParam(
+        this._windowScope.location.toString(),
         "rwfSelectTrackId"
       );
       let audioTracks = this._client.audiotracks();
@@ -150,7 +151,7 @@ export class Mixer implements IMixer {
 
     if (this.playing) {
       this.playing = false;
-      this.playlist.pause();
+      if (this.playlist) this.playlist.pause();
       this.speakerTracks.forEach((s) => s.pause());
     } else {
       this.playing = true;

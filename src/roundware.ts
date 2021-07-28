@@ -8,10 +8,19 @@ import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { IUser, User } from "./user";
 import { Envelope, IEnvelope } from "./envelope";
-import { Mixer, GeoListenMode, IMixer } from "./mixer";
+import { Mixer, GeoListenMode } from "./mixer";
 import { Audiotrack, IAudioTrack } from "./audiotrack";
 import { ASSET_PRIORITIES } from "./assetFilters";
 import { IApiClient } from "./api-client";
+import { AssetT, Coordinates, TimedAssetT } from "./types";
+import {
+  IOptions,
+  IRoundware,
+  IRoundwareConstructorOptions,
+} from "./types/roundware";
+import { IMixer } from "./types/mixer";
+import { ISpeakerData } from "./types/speaker";
+import { IAudioTrackData } from "./types/audioTrack";
 
 export * from "./assetFilters";
 export { GeoListenMode } from "./mixer";
@@ -48,72 +57,7 @@ export { GeoListenMode } from "./mixer";
 
   roundware.play(startListening).catch(handleError);
 **/
-export interface IOptions {
-  apiClient: IApiClient;
-  deviceId: string;
-  clientType: string;
-  geoListenMode?: boolean;
-}
-interface IRoundwareConstructorOptions extends IOptions {
-  serverUrl: string;
-  projectId: number;
-  speakerFilters?: unknown;
-  assetFilters: object;
-  listenerLocation: Coordinates;
-  user?: IUser;
-  geoPosition?: IGeoPosition;
-  session?: ISession;
-  project?: IProject;
-  speaker?: ISpeaker;
-  asset?: IAsset;
-  timedAsset?: ITimedAsset;
-  audiotrack?: IAudioTrack;
-  assetUpdateInterval?: number;
-  prefetchSpeakerAudio?: unknown;
-}
 
-export interface IRoundware {
-  updateLocation(listenerLocation: Coordinates): void;
-  set onUpdateLocation(callback: CallableFunction);
-  set onUpdateAssets(callback: CallableFunction);
-  set onPlayAssets(callback: CallableFunction);
-  _triggerOnPlayAssets(): void;
-  get currentlyPlayingAssets(): unknown;
-  enableGeolocation(mode: number): void;
-  disableGeolocation(): void;
-  connect(): Promise<{ uiConfig: unknown }>;
-  get mixParams(): object;
-  getAssets(options: object): Promise<unknown[]>;
-  get assetPool(): unknown;
-  getAssetsFromPool(
-    assetFilter: object,
-    extraParams: object
-  ): Promise<unknown[]>;
-  updateAssetPool(): Promise<void>;
-  loadAssetPool(): Promise<unknown>;
-  activateMixer(activationParams: object): Promise<IMixer>;
-  play(firstPlayCallback: (value: Coordinates) => any): Promise<unknown>;
-  pause(): void;
-  kill(): void;
-  replay(): void;
-  skip(): void;
-  tags(): void;
-  update(data: object): void;
-
-  assets(): unknown[];
-  timedAssets(): unknown | [];
-  audiotracks(): unknown | [];
-  saveAsset(
-    audioData: object,
-    fileName: string,
-    data: object
-  ): Promise<unknown>;
-  makeEnvelope(): Promise<IEnvelope>;
-  //  findTagDecription(tagId: string, tagType: string): undefined | string;
-  vote(assetId: string, voteType: unknown, value: unknown): Promise<unknown>;
-  getAsset(id: string): Promise<unknown>;
-  getEnvelope(id: string): Promise<unknown>;
-}
 export class Roundware implements IRoundware {
   readonly windowScope: Window;
   private _serverUrl: string;
@@ -138,14 +82,14 @@ export class Roundware implements IRoundware {
   private _mixer: IMixer;
   private _onUpdateLocation: CallableFunction = () => {};
   private _onUpdateAssets: CallableFunction = () => {};
-  private _assetData: unknown[] = [];
+  private _assetData: AssetT[] = [];
   private _onPlayAssets: CallableFunction = () => {};
-  private _sessionId: unknown;
+  private _sessionId: string | number | undefined;
   uiConfig: unknown;
-  private _speakerData: unknown;
-  private _audioTracksData: unknown;
+  private _speakerData: ISpeakerData[] = [];
+  private _audioTracksData: IAudioTrackData[] = [];
   private _lastAssetUpdate: unknown;
-  private _timedAssetData: unknown;
+  private _timedAssetData: TimedAssetT[] = [];
   private _assetDataTimer: NodeJS.Timeout | undefined;
 
   /** Initialize a new Roundware instance
@@ -456,15 +400,15 @@ export class Roundware implements IRoundware {
     // Object.keys(data).map(e => console.log(`key=${e}  value=${data[e]}`));
   }
 
-  speakers() {
+  speakers(): ISpeakerData[] {
     return this._speakerData || [];
   }
 
-  assets() {
+  assets(): AssetT[] {
     return this._assetData || [];
   }
 
-  timedAssets(): unknown | [] {
+  timedAssets(): TimedAssetT[] | [] {
     return this._timedAssetData || [];
   }
 

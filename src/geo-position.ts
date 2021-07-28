@@ -1,5 +1,6 @@
 import { logger } from "./shims";
 import { GeoListenMode } from "./mixer";
+import { Coordinates } from "./types";
 
 const initialGeoTimeoutSeconds = 5;
 

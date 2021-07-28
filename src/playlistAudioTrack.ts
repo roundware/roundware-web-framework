@@ -1,6 +1,7 @@
 import { getUrlParam, timestamp } from "./utils";
 import { makeInitialTrackState } from "./TrackStates";
 import { TrackOptions } from "./mixer/TrackOptions";
+import { IPlaylistAudiotrack } from "./types/playlistAudioTrack";
 
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
@@ -73,7 +74,8 @@ const LOGGABLE_AUDIO_ELEMENT_EVENTS = [
 ]; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
 const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due to floating point math concerns
 
-export class PlaylistAudiotrack {
+export class PlaylistAudiotrack implements IPlaylistAudiotrack {
+  trackId: any;
   constructor({ audioContext, windowScope, audioData = {}, playlist }) {
     this.trackId = audioData.id;
     this.timedAssetPriority = audioData.timed_asset_priority;

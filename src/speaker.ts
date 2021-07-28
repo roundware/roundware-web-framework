@@ -1,16 +1,9 @@
-import { IApiClient } from "./api-client";
+import { IApiClient } from "./types/api-client";
+import { ISpeaker, ISpeakerData } from "./types/speaker";
 
 const PATH = "/speakers/";
 
-export interface SpeakerData {
-
-}
-export interface ISpeaker {
-  toString(): string;
-  connect(data: object): Promise<SpeakerData>
-}
-export class Speaker implements ISpeaker{
-
+export class Speaker implements ISpeaker {
   private _projectId: number;
   private _apiClient: IApiClient;
 
@@ -24,6 +17,9 @@ export class Speaker implements ISpeaker{
   }
 
   async connect({ ...data }) {
-    return await this._apiClient.get<SpeakerData>(PATH, { ...data, project_id: this._projectId });
+    return await this._apiClient.get<ISpeakerData>(PATH, {
+      ...data,
+      project_id: this._projectId,
+    });
   }
 }

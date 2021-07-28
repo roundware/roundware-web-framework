@@ -4,9 +4,16 @@ import { Point } from "@turf/helpers";
 import { Coord } from "@turf/helpers";
 import { isEmpty } from "./utils";
 import { GeoListenMode } from "./mixer";
-import { Asset } from "./types";
+import { AssetT } from "./types";
 
-export const ASSET_PRIORITIES = Object.freeze({
+export const ASSET_PRIORITIES: Readonly<{
+  DISCARD: boolean;
+  NEUTRAL: number;
+  LOWEST: number;
+  NORMAL: number;
+  HIGHEST: number;
+  [key: string]: boolean | number;
+}> = Object.freeze({
   DISCARD: false,
   NEUTRAL: 0,
   LOWEST: 1,
@@ -20,12 +27,12 @@ const alwaysNeutral = (): number => ASSET_PRIORITIES.NEUTRAL; // eslint-disable-
 // Accept an asset if any one of the provided filters passes, returns the first
 // non-discarded and non-neutral rank
 function anyAssetFilter(
-  filters: Array<(asset: Asset, param: object) => boolean | number> = [],
+  filters: Array<(asset: AssetT, param: object) => boolean | number> = [],
   { ...mixParams }
 ) {
   if (isEmpty(filters)) return alwaysLowest;
 
-  return (asset: Asset, { ...stateParams }) => {
+  return (asset: AssetT, { ...stateParams }) => {
     for (const filter of filters) {
       let rank = filter(asset, { ...mixParams, ...stateParams });
       if (
@@ -42,12 +49,12 @@ function anyAssetFilter(
 
 /** Filter composed of multiple inner filters that accepts assets which pass every inner filter. */
 export function allAssetFilter(
-  filters: Array<(asset: Asset, param: object) => boolean | number> = [],
+  filters: Array<(asset: AssetT, param: object) => boolean | number> = [],
   { ...mixParams }
 ) {
   if (isEmpty(filters)) return alwaysLowest;
 
-  return (asset: Asset, { ...stateParams }) => {
+  return (asset: AssetT, { ...stateParams }) => {
     const ranks = [];
 
     for (let filter of filters) {
@@ -67,7 +74,7 @@ export function allAssetFilter(
 // a "pre-filter" used by geo-enabled filters to make sure if we are missing data, or geoListenMode is DISABLED,
 // we always return a neutral ranking
 function rankForGeofilteringEligibility(
-  asset: Asset,
+  asset: AssetT,
   {
     listenerPoint,
     geoListenMode,
@@ -86,7 +93,7 @@ const calculateDistanceInMeters = (loc1: Coord, loc2: Coord) =>
 export const distanceFixedFilter =
   () =>
   (
-    asset: Asset,
+    asset: AssetT,
     options: {
       geoListenMode: number;
       listenerPoint: Point;
@@ -102,6 +109,8 @@ export const distanceFixedFilter =
     const { locationPoint: assetLocationPoint } = asset;
     const { listenerPoint, recordingRadius } = options;
 
+    if (!assetLocationPoint)
+      throw new Error(`assetLocationPoint is undefined!`);
     const distance = calculateDistanceInMeters(
       listenerPoint,
       assetLocationPoint
@@ -117,45 +126,46 @@ export const distanceFixedFilter =
 /**
  Accepts an asset if the user is within range of it based on the current dynamic distance range.
  */
-export const distanceRangesFilter =
-  () =>
-  (
-    asset: Asset,
-    options: {
-      getListenMode: number;
-      listenerPoint: Point;
-    } = {}
-  ) => {
-    if (options.getListenMode === GeoListenMode.DISABLED) {
-      return ASSET_PRIORITIES.LOWEST;
-    }
-    if (
-      !rankForGeofilteringEligibility(asset, {
-        geoListenMode: options.getListenMode,
-        listenerPoint: options.listenerPoint,
-      })
-    ) {
-      return ASSET_PRIORITIES.NEUTRAL;
-    }
-    const { listenerPoint, minDist, maxDist } = options;
+export const distanceRangesFilter = (
+  asset: AssetT,
+  options: {
+    getListenMode: number;
+    listenerPoint: Point;
+    minDist: number;
+    maxDist: number;
+  }
+) => {
+  if (options.getListenMode === GeoListenMode.DISABLED) {
+    return ASSET_PRIORITIES.LOWEST;
+  }
+  if (
+    !rankForGeofilteringEligibility(asset, {
+      geoListenMode: options.getListenMode,
+      listenerPoint: options.listenerPoint,
+    })
+  ) {
+    return ASSET_PRIORITIES.NEUTRAL;
+  }
+  const { listenerPoint, minDist, maxDist } = options;
 
-    if (minDist === undefined || maxDist === undefined) {
-      return ASSET_PRIORITIES.NEUTRAL;
-    }
-    const { locationPoint } = asset;
+  if (minDist === undefined || maxDist === undefined) {
+    return ASSET_PRIORITIES.NEUTRAL;
+  }
+  const { locationPoint } = asset;
 
-    const distance = calculateDistanceInMeters(listenerPoint, locationPoint);
+  if (!locationPoint) throw new Error(`locationPoint is undefined!`);
+  const distance = calculateDistanceInMeters(listenerPoint, locationPoint);
 
-    if (distance >= minDist && distance <= maxDist) {
-      return ASSET_PRIORITIES.NORMAL;
-    } else {
-      return ASSET_PRIORITIES.DISCARD;
-    }
-  };
+  if (distance >= minDist && distance <= maxDist) {
+    return ASSET_PRIORITIES.NORMAL;
+  } else {
+    return ASSET_PRIORITIES.DISCARD;
+  }
+};
 
 // Rank the asset if it is tagged with one of the currently-enabled tag IDs
 export function anyTagsFilter() {
-  return (asset, { listenTagIds }) => {
+  return (asset: AssetT, { listenTagIds }: { listenTagIds: string[] }) => {
     if (isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
 
     const { tag_ids: assetTagIds = [] } = asset;
@@ -170,14 +180,17 @@ export function anyTagsFilter() {
 
 // keep assets that are slated to start now or in the past few minutes AND haven't been played before
 export function timedAssetFilter() {
-  return (asset, { elapsedSeconds = 0, timedAssetPriority = "normal" }) => {
+  return (
+    asset: AssetT,
+    { elapsedSeconds = 0, timedAssetPriority = "normal" }
+  ) => {
     const { timedAssetStart, timedAssetEnd, playCount } = asset;
 
     if (!timedAssetStart || !timedAssetEnd) return ASSET_PRIORITIES.DISCARD;
     if (
       timedAssetStart >= elapsedSeconds ||
       timedAssetEnd <= elapsedSeconds ||
-      playCount > 0
+      (playCount && playCount > 0)
     )
       return ASSET_PRIORITIES.DISCARD;
 
@@ -189,7 +202,13 @@ export function timedAssetFilter() {
 
 // Accept an asset if the user is currently within its defined shape
 export function assetShapeFilter() {
-  return (asset, options = {}) => {
+  return (
+    asset: AssetT,
+    options: {
+      listenerPoint: Point;
+      geoListenMode: string | number;
+    }
+  ) => {
     const { shape } = asset;
 
     if (!(shape && rankForGeofilteringEligibility(asset, options)))
@@ -208,12 +227,13 @@ export function assetShapeFilter() {
 // Prevents assets from repeating until a certain time threshold has passed
 export const timedRepeatFilter =
   () =>
-  (asset, { bannedDuration = 600 }) => {
+  (asset: AssetT, { bannedDuration = 600 }) => {
     const { lastListenTime } = asset;
 
     if (!lastListenTime) return ASSET_PRIORITIES.NORMAL; // e.g. asset has never been heard before
 
-    const durationSinceLastListen = (new Date() - lastListenTime) / 1000;
+    const durationSinceLastListen =
+      (new Date().getTime() - lastListenTime) / 1000;
 
     if (durationSinceLastListen <= bannedDuration) {
       return ASSET_PRIORITIES.DISCARD;
@@ -224,10 +244,13 @@ export const timedRepeatFilter =
 
 export const dateRangeFilter =
   () =>
-  (asset, { startDate, endDate }) => {
+  (
+    asset: AssetT,
+    { startDate, endDate }: { startDate: Date; endDate: Date }
+  ) => {
     if (startDate || endDate) {
-      return (!startDate || asset.created >= startDate) &&
-        (!endDate || asset.created <= endDate)
+      return (!startDate || asset.created! >= startDate) &&
+        (!endDate || asset.created! <= endDate)
         ? ASSET_PRIORITIES.NORMAL
         : ASSET_PRIORITIES.DISCARD;
     } else {
@@ -235,13 +258,16 @@ export const dateRangeFilter =
     }
   };
 
+// @ts-ignore
 export const roundwareDefaultFilterChain = allAssetFilter([
+  // @ts-ignore
   anyAssetFilter([
     timedAssetFilter(), // if an asset is scheduled to play right now, or
     assetShapeFilter(), // if an asset has a shape and we AREN'T in it, reject entirely, or
-
+    // @ts-ignore
     allAssetFilter([
       distanceFixedFilter(), // if it has no shape, consider a fixed distance from it, or
+      // @ts-ignore
       distanceRangesFilter(),
       //angleFilter() // if the listener is within a user-configured distance or angle range
     ]),
