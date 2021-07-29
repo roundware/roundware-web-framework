@@ -1,6 +1,6 @@
 import { logger } from "./shims";
 import { GeoListenMode } from "./mixer";
-import { Coordinates } from "./types";
+import { Coordinates, IGeoPosition, GeoPositionOptions } from "./types";
 
 const initialGeoTimeoutSeconds = 5;
 
@@ -27,22 +27,6 @@ const accurateGeolocationPositionOptions = {
  * @property {Boolean} isEnabled - whether or not the geo positioning system is enabled and available
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/Using_geolocation **/
 
-interface GeoPositionOptions {
-  defaultCoords: Coordinates;
-  geoListenMode: unknown;
-}
-
-export interface IGeoPosition {
-  geolocation: Geolocation;
-  isEnabled: boolean;
-  updateCallback: CallableFunction;
-  disable(): void;
-  toString(): string;
-  getLastCoords(): Coordinates;
-  connect(geoUpdateCallback: CallableFunction): void;
-  enable(): void;
-  waitForInitialGeolocation(): Promise<Coordinates>;
-}
 export class GeoPosition implements IGeoPosition {
   /** Create a new GeoPosition.
    * @param {Object} navigator - provides access to geolocation system

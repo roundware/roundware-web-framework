@@ -9,7 +9,7 @@ import {
   ITrack,
 } from "./types";
 import { IAssetPool } from "./types/assetPool";
-import { ITimedAssetData } from "./timed_asset";
+import { ITimedAssetData } from "./types";
 
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
 // also rewrite .wav as .mp3

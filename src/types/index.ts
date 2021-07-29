@@ -69,3 +69,47 @@ export interface IAudioData extends Blob {
   timed_asset_priority: any;
   id: string | number;
 }
+
+export interface IAssetSorter {
+  sort(assets: IAssetData[]): void;
+  sortMethods: unknown[];
+}
+
+export interface GeoPositionOptions {
+  defaultCoords: Coordinates;
+  geoListenMode: unknown;
+}
+
+export interface IGeoPosition {
+  geolocation: Geolocation;
+  isEnabled: boolean;
+  updateCallback: CallableFunction;
+  disable(): void;
+  toString(): string;
+  getLastCoords(): Coordinates;
+  connect(geoUpdateCallback: CallableFunction): void;
+  enable(): void;
+  waitForInitialGeolocation(): Promise<Coordinates>;
+}
+export interface UiConfig {}
+
+export interface IProject {
+  uiconfig(sessionId: string | number): Promise<UiConfig>;
+  mixParams: any;
+  toString(): string;
+  connect(sessionId: string | number): Promise<string | undefined>;
+  projectId: number;
+}
+export interface ISession {
+  connect(): Promise<number | string>;
+  sessionId: number | undefined;
+}
+
+export interface ITimedAssetData {
+  asset_id: string | number;
+}
+
+export interface ITimedAsset {
+  toString(): string;
+  connect(data?: object): Promise<ITimedAssetData[]>;
+}

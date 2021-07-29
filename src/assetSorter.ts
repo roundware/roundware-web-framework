@@ -1,15 +1,10 @@
 import * as sortMethodCollection from "./sortMethods";
-import { IAssetData } from "./types";
+import { IAssetData, IAssetSorter } from "./types";
 import { isEmpty } from "./utils";
 
 function mapSortMethods(sortMethodNames: string[]): unknown[] {
   // @ts-ignore
   return sortMethodNames.map((name) => sortMethodCollection[name]);
-}
-
-export interface IAssetSorter {
-  sort(assets: IAssetData[]): void;
-  sortMethods: unknown[];
 }
 
 export class AssetSorter implements IAssetSorter {

@@ -1,16 +1,7 @@
 import { IApiClient } from "./types/api-client";
 import { GeoListenMode } from "./mixer";
-import { Coordinates } from "./types";
+import { Coordinates, IProject, UiConfig } from "./types";
 
-export interface UiConfig {}
-
-export interface IProject {
-  uiconfig(sessionId: string | number): Promise<UiConfig>;
-  mixParams: any;
-  toString(): string;
-  connect(sessionId: string | number): Promise<string | undefined>;
-  projectId: number;
-}
 export class Project implements IProject {
   projectId: number;
   projectName: string;

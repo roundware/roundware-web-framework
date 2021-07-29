@@ -1,15 +1,8 @@
+import { ITimedAsset, ITimedAssetData } from "./types";
 import { IApiClient } from "./types/api-client";
 
 const PATH = "/timedassets/";
 
-export interface ITimedAssetData {
-  asset_id: string | number;
-}
-
-export interface ITimedAsset {
-  toString(): string;
-  connect(data?: object): Promise<ITimedAssetData[]>;
-}
 export class TimedAsset implements ITimedAsset {
   private _projectId: number;
   private _apiClient: IApiClient;

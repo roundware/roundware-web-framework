@@ -1,3 +1,4 @@
+import { ISession } from "./types";
 import { IApiClient } from "./types/api-client";
 
 let clientSystem: string = "Unknown";
@@ -5,13 +6,6 @@ let projectId: number | undefined, sessionId: string, geoListenEnabled: boolean;
 let apiClient: IApiClient;
 
 /** Responsible for establishing a session with the Roundware server **/
-export interface ISession {
-  /**
-   * @returns sessionId
-   */
-  connect(): Promise<number | string>;
-  sessionId: number | undefined;
-}
 
 export class Session implements ISession {
   sessionId: number | undefined;
