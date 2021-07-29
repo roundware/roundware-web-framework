@@ -3,10 +3,11 @@ import { makeInitialTrackState } from "./TrackStates";
 import { TrackOptions } from "./mixer/TrackOptions";
 import { IPlaylistAudiotrack } from "./types/playlistAudioTrack";
 import { IAudioContext } from "standardized-audio-context";
-import { IAudioData } from "./types";
+import { IAssetData, IAudioData, IMixParams } from "./types";
 import { IAudioTrackData } from "./types/audioTrack";
 import { IPlaylist } from "./types/playlist";
 import { IPlayingState, ITrackStates } from "./types/track-states";
+import { ITrackOptions } from "./types/mixer/TrackOptions";
 
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
@@ -85,12 +86,12 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
   playlist: any;
   playing: boolean;
   windowScope: Window;
-  currentAsset: null;
+  currentAsset: IAssetData | undefined;
   audioContext: IAudioContext;
   audioElement: HTMLAudioElement;
   gainNode: any;
   trackOptions: TrackOptions;
-  mixParams: { timedAssetPriority: any };
+  mixParams: IMixParams;
   state: ITrackStates | undefined;
   constructor({
     audioContext,
@@ -108,7 +109,6 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
     this.playlist = playlist;
     this.playing = false;
     this.windowScope = windowScope;
-    this.currentAsset = null;
 
     const audioElement = new Audio();
 
@@ -131,7 +131,7 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
     audioElement.addEventListener("ended", () => this.onAudioEnded());
 
     const trackOptions = new TrackOptions(
-      (param: string) => getUrlParam(windowScope.location.toString(), param),
+      (param) => getUrlParam(windowScope.location.toString(), param),
       audioData
     );
 
@@ -166,7 +166,8 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
 
   updateParams(params = {}) {
     this.mixParams = { ...this.mixParams, ...params };
-    this.state.updateParams(this.mixParams);
+    if (this.state) this.state.updateParams(this.mixParams);
+    else console.warn(`State is undefined!`);
   }
 
   // Halts any scheduled gain changes and holds at current level
@@ -188,11 +189,15 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
   }
 
   // exponentialRampToValueAtTime sounds more gradual for fading in
-  fadeIn(fadeInDurationSeconds) {
-    const {
-      currentAsset,
-      trackOptions: { randomVolume },
-    } = this;
+  fadeIn(fadeInDurationSeconds: number): boolean {
+    const currentAsset = this.currentAsset;
+    if (!currentAsset || !currentAsset.volume) {
+      console.warn(`currentAsset is undefined!`);
+      return false;
+    }
+
+    const randomVolume = this.trackOptions.randomVolume;
+
     const finalVolume = randomVolume * currentAsset.volume;
 
     try {
@@ -201,15 +206,15 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
       this.rampGain(finalVolume, fadeInDurationSeconds);
       return true;
     } catch (err) {
-      this.currentAsset = null;
+      this.currentAsset = undefined;
       console.warn(`${this} unable to play`, currentAsset, err);
       return false;
     }
   }
 
   rampGain(
-    finalVolume,
-    durationSeconds,
+    finalVolume: number,
+    durationSeconds: number,
     rampMethod = "exponentialRampToValueAtTime"
   ) {
     const {
@@ -234,7 +239,7 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
   }
 
   // linearRampToValueAtTime sounds more gradual for fading out
-  fadeOut(fadeOutDurationSeconds) {
+  fadeOut(fadeOutDurationSeconds: number) {
     return this.rampGain(
       NEARLY_ZERO,
       fadeOutDurationSeconds,
@@ -244,7 +249,14 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
 
   loadNextAsset() {
     const { audioElement, currentAsset } = this;
-
+    if (
+      !currentAsset ||
+      !currentAsset.playCount ||
+      !currentAsset.lastListenTime
+    ) {
+      console.warn(`currentAsset properties were undefined!`);
+      return false;
+    }
     if (currentAsset) {
       currentAsset.playCount++;
       currentAsset.lastListenTime = new Date();
@@ -270,6 +282,8 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
 
   pause() {
     console.log(`${timestamp} pausing ${this}`);
+    if (!this.state)
+      return console.warn(`pause() was called on a undefined state!`);
     this.state.pause();
     if (this.audioElement) this.audioElement.pause();
   }
@@ -295,7 +309,7 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
     if (state) state.replay();
   }
 
-  transition(newState) {
+  transition(newState: ITrackStates) {
     const {
       state,
       playlist: { elapsedTimeMs },
@@ -307,6 +321,7 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
       ).toFixed(1)}s elapsed)`
     );
 
+    if (!this.state) return console.warn(`!current state was undefined`);
     this.state.finish();
     this.state = newState;
     this.state.play();

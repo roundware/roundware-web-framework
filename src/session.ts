@@ -9,12 +9,12 @@ export interface ISession {
   /**
    * @returns sessionId
    */
-  connect(): Promise<string>;
-  sessionId: string | undefined;
+  connect(): Promise<number | string>;
+  sessionId: number | undefined;
 }
 
 export class Session implements ISession {
-  sessionId: string | undefined;
+  sessionId: number | undefined;
 
   /** Create a new Session
    * @param {object} navigator - provides access to the userAgent string
@@ -59,7 +59,7 @@ export class Session implements ISession {
       client_system: clientSystem,
     };
 
-    const data = await apiClient.post<{ id: string }>(
+    const data = await apiClient.post<{ id: number }>(
       "/sessions/",
       requestData
     );

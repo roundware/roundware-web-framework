@@ -1,5 +1,5 @@
 import * as sortMethodCollection from "./sortMethods";
-import { AssetT } from "./types";
+import { IAssetData } from "./types";
 import { isEmpty } from "./utils";
 
 function mapSortMethods(sortMethodNames: string[]): unknown[] {
@@ -8,7 +8,7 @@ function mapSortMethods(sortMethodNames: string[]): unknown[] {
 }
 
 export interface IAssetSorter {
-  sort(assets: AssetT[]): void;
+  sort(assets: IAssetData[]): void;
   sortMethods: unknown[];
 }
 
@@ -32,7 +32,7 @@ export class AssetSorter implements IAssetSorter {
     //console.info({ ordering, sortMethods, thisSortMethods: this.sortMethods });
   }
 
-  sort(assets: AssetT[]): void {
+  sort(assets: IAssetData[]): void {
     this.sortMethods.forEach((sortMethod) => sortMethod(assets));
   }
 }

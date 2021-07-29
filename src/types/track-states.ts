@@ -1,15 +1,18 @@
-export interface ILoadingState {
-  play(): void;
+import { IMixParams } from ".";
+
+interface ICommonStateProperties {
+  play: () => void;
   pause(): void;
   finish(): void;
   skip(): void;
   replay(): void;
-  updateParams(): void;
+  updateParams(mixParams: IMixParams): void;
   toString(): string;
 }
+export interface ILoadingState extends ICommonStateProperties {}
 
-export interface ITimedTrackState {
-  play(nextStateSecs?: number): number | undefined;
+export interface ITimedTrackState extends ICommonStateProperties {
+  play(nextStateSecs?: number): number | void;
   pause(): void;
   clearTimer(): any;
   finish(): void;
@@ -18,40 +21,43 @@ export interface ITimedTrackState {
   skip(): void;
   replay(): void;
   setLoadingState(): void;
-  updateParams(): void;
+  updateParams(mixParams: IMixParams): void;
 }
 
-export interface IDeadAirState {
+export interface IDeadAirState extends ICommonStateProperties {
   play(): void;
   setNextState(): void;
   toString(): string;
-  updateParams(): void;
+  updateParams(mixParams: IMixParams): void;
 }
 
-export interface IFadingInState {
+export interface IFadingInState extends ICommonStateProperties {
   play(): void;
   pause(): void;
   setNextState(): void;
   toString(): string;
+  updateParams(mixParams: IMixParams): void;
 }
 
-export interface IPlayingState {
+export interface IPlayingState extends ICommonStateProperties {
   play(): void;
   pause(): void;
   toString(): string;
   setNextState(): void;
+  updateParams(mixParams: IMixParams): void;
 }
 
-export interface IFadingOutState {
+export interface IFadingOutState extends ICommonStateProperties {
   play(): void;
   pause(): void;
   setNextState(): void;
   toString(): string;
+  updateParams(mixParams: IMixParams): void;
 }
 
-export interface IWaitingForAssetState {
+export interface IWaitingForAssetState extends ICommonStateProperties {
   play(): void;
-  updateParams(params: object): void;
+  updateParams(mixParams: IMixParams): void;
   setNextState(): void;
   toString(): string;
 }

@@ -4,7 +4,7 @@ import { Point } from "@turf/helpers";
 import { Coord } from "@turf/helpers";
 import { isEmpty } from "./utils";
 import { GeoListenMode } from "./mixer";
-import { AssetT } from "./types";
+import { IAssetData } from "./types";
 
 export const ASSET_PRIORITIES: Readonly<{
   DISCARD: boolean;
@@ -27,12 +27,12 @@ const alwaysNeutral = (): number => ASSET_PRIORITIES.NEUTRAL; // eslint-disable-
 // Accept an asset if any one of the provided filters passes, returns the first
 // non-discarded and non-neutral rank
 function anyAssetFilter(
-  filters: Array<(asset: AssetT, param: object) => boolean | number> = [],
+  filters: Array<(asset: IAssetData, param: object) => boolean | number> = [],
   { ...mixParams }
 ) {
   if (isEmpty(filters)) return alwaysLowest;
 
-  return (asset: AssetT, { ...stateParams }) => {
+  return (asset: IAssetData, { ...stateParams }) => {
     for (const filter of filters) {
       let rank = filter(asset, { ...mixParams, ...stateParams });
       if (
@@ -49,12 +49,12 @@ function anyAssetFilter(
 
 /** Filter composed of multiple inner filters that accepts assets which pass every inner filter. */
 export function allAssetFilter(
-  filters: Array<(asset: AssetT, param: object) => boolean | number> = [],
+  filters: Array<(asset: IAssetData, param: object) => boolean | number> = [],
   { ...mixParams }
 ) {
   if (isEmpty(filters)) return alwaysLowest;
 
-  return (asset: AssetT, { ...stateParams }) => {
+  return (asset: IAssetData, { ...stateParams }) => {
     const ranks = [];
 
     for (let filter of filters) {
@@ -74,7 +74,7 @@ export function allAssetFilter(
 // a "pre-filter" used by geo-enabled filters to make sure if we are missing data, or geoListenMode is DISABLED,
 // we always return a neutral ranking
 function rankForGeofilteringEligibility(
-  asset: AssetT,
+  asset: IAssetData,
   {
     listenerPoint,
     geoListenMode,
@@ -93,7 +93,7 @@ const calculateDistanceInMeters = (loc1: Coord, loc2: Coord) =>
 export const distanceFixedFilter =
   () =>
   (
-    asset: AssetT,
+    asset: IAssetData,
     options: {
       geoListenMode: number;
       listenerPoint: Point;
@@ -127,7 +127,7 @@ export const distanceFixedFilter =
  Accepts an asset if the user is within range of it based on the current dynamic distance range.
  */
 export const distanceRangesFilter = (
-  asset: AssetT,
+  asset: IAssetData,
   options: {
     getListenMode: number;
     listenerPoint: Point;
@@ -165,12 +165,12 @@ export const distanceRangesFilter = (
 
 // Rank the asset if it is tagged with one of the currently-enabled tag IDs
 export function anyTagsFilter() {
-  return (asset: AssetT, { listenTagIds }: { listenTagIds: string[] }) => {
+  return (asset: IAssetData, { listenTagIds }: { listenTagIds: string[] }) => {
     if (isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
 
-    const { tag_ids: assetTagIds = [] } = asset;
+    const { tag_ids: IAssetDataagIds = [] } = asset;
 
-    for (const tagId of assetTagIds) {
+    for (const tagId of IAssetDataagIds) {
       if (listenTagIds.includes(tagId)) return ASSET_PRIORITIES.LOWEST; // matching only by tag should be the least-important filter
     }
 
@@ -181,7 +181,7 @@ export function anyTagsFilter() {
 // keep assets that are slated to start now or in the past few minutes AND haven't been played before
 export function timedAssetFilter() {
   return (
-    asset: AssetT,
+    asset: IAssetData,
     { elapsedSeconds = 0, timedAssetPriority = "normal" }
   ) => {
     const { timedAssetStart, timedAssetEnd, playCount } = asset;
@@ -203,7 +203,7 @@ export function timedAssetFilter() {
 // Accept an asset if the user is currently within its defined shape
 export function assetShapeFilter() {
   return (
-    asset: AssetT,
+    asset: IAssetData,
     options: {
       listenerPoint: Point;
       geoListenMode: string | number;
@@ -227,13 +227,17 @@ export function assetShapeFilter() {
 // Prevents assets from repeating until a certain time threshold has passed
 export const timedRepeatFilter =
   () =>
-  (asset: AssetT, { bannedDuration = 600 }) => {
+  (asset: IAssetData, { bannedDuration = 600 }) => {
     const { lastListenTime } = asset;
 
     if (!lastListenTime) return ASSET_PRIORITIES.NORMAL; // e.g. asset has never been heard before
 
     const durationSinceLastListen =
-      (new Date().getTime() - lastListenTime) / 1000;
+      (new Date().getTime() -
+        (typeof lastListenTime == "number"
+          ? lastListenTime
+          : lastListenTime.getTime())) /
+      1000;
 
     if (durationSinceLastListen <= bannedDuration) {
       return ASSET_PRIORITIES.DISCARD;
@@ -245,7 +249,7 @@ export const timedRepeatFilter =
 export const dateRangeFilter =
   () =>
   (
-    asset: AssetT,
+    asset: IAssetData,
     { startDate, endDate }: { startDate: Date; endDate: Date }
   ) => {
     if (startDate || endDate) {

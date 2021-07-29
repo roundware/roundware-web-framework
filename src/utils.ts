@@ -97,10 +97,10 @@ export const timestamp = {
   },
 };
 
-export const getUrlParam = (urlStr: string, paramName: string) => {
+export const getUrlParam = (urlStr: string, paramName: string): string => {
   const url = new URL(urlStr);
   const params = new URLSearchParams(url.search);
-  return params.get(paramName);
+  return params.get(paramName) as string;
 };
 
 export const NO_OP = () => {};

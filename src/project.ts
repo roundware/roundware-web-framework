@@ -5,10 +5,10 @@ import { Coordinates } from "./types";
 export interface UiConfig {}
 
 export interface IProject {
-  uiconfig(sessionId: string): Promise<UiConfig>;
+  uiconfig(sessionId: string | number): Promise<UiConfig>;
   mixParams: any;
   toString(): string;
-  connect(sessionId: string): Promise<string | undefined>;
+  connect(sessionId: string | number): Promise<string | undefined>;
   projectId: number;
 }
 export class Project implements IProject {

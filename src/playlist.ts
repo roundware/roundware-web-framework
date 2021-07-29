@@ -1,19 +1,20 @@
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
-import { AudioTrack } from "./types/mixer";
+
 import { IPlaylist } from "./types/playlist";
 import { IRoundware } from "./types/roundware";
 import { getUrlParam } from "./utils";
 import { Point } from "@turf/helpers";
 import { IAssetPool } from "./types/assetPool";
 import { IAudioContext } from "standardized-audio-context";
-import { IAudioTrack } from "./types/audioTrack";
+import { IAudioTrack, IAudioTrackData } from "./types/audioTrack";
+import { ITrack } from "./types";
 
 export class Playlist implements IPlaylist {
   listenerPoint: Point;
-  playingTracks: IAudioTrack[];
+  playingTracks: IAudioTrackData[];
   assetPool: IAssetPool;
   playing: boolean;
-  listenTagIds: never[];
+  listenTagIds: number[];
   _client: IRoundware;
   _elapsedTimeMs: number;
   trackMap: Map<any, any>;
@@ -29,7 +30,7 @@ export class Playlist implements IPlaylist {
     ...playlistTrackOptions
   }: {
     client: IRoundware;
-    audioTracks?: AudioTrack[];
+    audioTracks?: IAudioTrackData[];
     listenerPoint: Point;
     windowScope: Window;
     assetPool: IAssetPool;
@@ -58,7 +59,8 @@ export class Playlist implements IPlaylist {
     const trackIdMap = {};
     const trackMap = new Map();
 
-    audioTracks.forEach((audioData) => {
+    audioTracks.forEach((audioData: IAudioTrackData) => {
+      // @ts-ignore
       const track = new PlaylistAudiotrack({
         audioData,
         ...playlistTrackOptions,
@@ -66,6 +68,7 @@ export class Playlist implements IPlaylist {
         playlist: this,
       });
 
+      // @ts-ignore
       trackIdMap[track.trackId] = track;
       trackMap.set(track, null);
     }, {});
@@ -75,11 +78,13 @@ export class Playlist implements IPlaylist {
   }
 
   get tracks() {
+    // @ts-ignore
     return [...this.trackMap.keys()];
   }
 
   get currentlyPlayingAssets() {
     const assets = [];
+    // @ts-ignore
     for (const a of this.trackMap.values()) {
       if (a) {
         assets.push(a);
@@ -88,7 +93,14 @@ export class Playlist implements IPlaylist {
     return assets;
   }
 
-  updateParams({ listenerPoint, listenTagIds, ...params }) {
+  updateParams({
+    listenerPoint,
+    listenTagIds,
+    ...params
+  }: {
+    listenerPoint: Point;
+    listenTagIds: number[];
+  }) {
     if (listenerPoint) this.listenerPoint = listenerPoint;
     if (listenTagIds) {
       this.listenTagIds = listenTagIds.map((t) => Number(t));
@@ -102,12 +114,15 @@ export class Playlist implements IPlaylist {
     this.playing = true;
   }
 
-  skip(trackId) {
+  skip(trackId?: number) {
+    if (typeof trackId == "undefined") return;
+    // @ts-ignore
     const track = this.trackIdMap[Number(trackId)];
     if (track) track.skip();
   }
 
-  replay(trackId) {
+  replay(trackId: number) {
+    // @ts-ignore
     const track = this.trackIdMap[Number(trackId)];
     if (track) track.replay();
   }
@@ -117,7 +132,9 @@ export class Playlist implements IPlaylist {
 
     if (this.playlistLastStartedAt) {
       this._elapsedTimeMs =
-        this._elapsedTimeMs + (new Date() - this.playlistLastStartedAt);
+        this._elapsedTimeMs +
+        (new Date().getMilliseconds() -
+          this.playlistLastStartedAt.getMilliseconds());
       delete this.playlistLastStartedAt;
     }
 
@@ -129,12 +146,13 @@ export class Playlist implements IPlaylist {
     const lastStartedAt = this.playlistLastStartedAt
       ? this.playlistLastStartedAt
       : now;
-    const elapsedSinceLastStartMs = now - lastStartedAt;
+    const elapsedSinceLastStartMs =
+      now.getMilliseconds() - lastStartedAt.getMilliseconds();
 
     return this._elapsedTimeMs + elapsedSinceLastStartMs;
   }
 
-  next(forTrack) {
+  next(forTrack: ITrack) {
     const {
       assetPool,
       currentlyPlayingAssets: filterOutAssets,

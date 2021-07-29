@@ -1,8 +1,15 @@
 import { AssetSorter } from "./assetSorter";
 import { roundwareDefaultFilterChain } from "./assetFilters";
 import { coordsToPoints, cleanAudioURL } from "./utils";
-import { AssetT, LookupTableT, MixParams, TimedAssetT, TrackT } from "./types";
+import {
+  IAssetData,
+  LookupTableT,
+  IMixParams,
+  TimedAssetT,
+  ITrack,
+} from "./types";
 import { IAssetPool } from "./types/assetPool";
+import { ITimedAssetData } from "./timed_asset";
 
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
 // also rewrite .wav as .mp3
@@ -15,7 +22,7 @@ const assetDecorationMapper = (timedAssets: TimedAssetT[]) => {
     {}
   );
 
-  return (asset: AssetT) => {
+  return (asset: IAssetData) => {
     const {
       start_time: activeRegionLowerBound = 0,
       end_time: activeRegionUpperBound = 0,
@@ -28,7 +35,7 @@ const assetDecorationMapper = (timedAssets: TimedAssetT[]) => {
     if (!assetUrl) throw new Error(`assetUrl was undefined!`);
     const mp3Url = cleanAudioURL(assetUrl);
 
-    const decoratedAsset: AssetT = {
+    const decoratedAsset: IAssetData = {
       locationPoint: coordsToPoints({
         latitude: asset.latitude || 1,
         longitude: asset.longitude || 1,
@@ -58,7 +65,7 @@ export class AssetPool implements IAssetPool {
   playingTracks: {};
   mixParams: {};
   filterChain: CallableFunction;
-  assets: AssetT[];
+  assets: IAssetData[];
 
   constructor({
     assets = [],
@@ -67,11 +74,11 @@ export class AssetPool implements IAssetPool {
     sortMethods = [],
     mixParams = {},
   }: {
-    assets: AssetT[];
+    assets: IAssetData[];
     timedAssets: TimedAssetT[];
     filterChain: CallableFunction;
     sortMethods: unknown[];
-    mixParams: MixParams;
+    mixParams: IMixParams;
   }) {
     this.assets = assets;
     this.updateAssets(assets, timedAssets);
@@ -88,17 +95,19 @@ export class AssetPool implements IAssetPool {
     this.sortAssets();
   }
 
-  updateAssets(assets: AssetT[] = [], timedAssets: TimedAssetT[] = []) {
+  updateAssets(assets: IAssetData[] = [], timedAssets: ITimedAssetData[] = []) {
     this.assets = assets.map(assetDecorationMapper(timedAssets));
   }
 
   nextForTrack(
-    track: TrackT,
+    track: ITrack,
     {
+      elapsedSeconds: number,
       filterOutAssets = [],
       ...stateParams
     }: {
-      filterOutAssets: AssetT[];
+      elapsedSeconds: number;
+      filterOutAssets: IAssetData[];
     }
   ) {
     const mixParams = {
@@ -112,9 +121,9 @@ export class AssetPool implements IAssetPool {
       }, params = ${JSON.stringify(mixParams)}`
     );
     const rankedAssets = this.assets.reduce(
-      (rankings: AssetT, asset: AssetT) => {
+      (rankings: IAssetData, asset: IAssetData) => {
         if (filterOutAssets.includes(asset)) return rankings;
-        const rank: AssetT[] = this.filterChain(asset, mixParams);
+        const rank: IAssetData[] = this.filterChain(asset, mixParams);
 
         if (rank) {
           // @ts-ignore
@@ -143,19 +152,21 @@ export class AssetPool implements IAssetPool {
 
     // @ts-ignore
     const priorityAssets = rankedAssets[topPriorityRanking] || [];
-    priorityAssets.sort((a: AssetT, b: AssetT) => b.playCount! - a.playCount!);
+    priorityAssets.sort(
+      (a: IAssetData, b: IAssetData) => b.playCount! - a.playCount!
+    );
 
     const nextAsset = priorityAssets.pop();
     if (nextAsset) nextAsset.playCount++;
 
-    return nextAsset as AssetT;
+    return nextAsset as IAssetData;
   }
 
   sortAssets() {
     this.assetSorter.sort(this.assets);
   }
 
-  add(asset: AssetT) {
+  add(asset: IAssetData) {
     this.assets.push(asset);
     this.sortAssets();
   }

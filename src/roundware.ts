@@ -5,10 +5,11 @@ import { ISpeaker, ISpeakerFilters } from "./types/speaker";
 import { GeoPosition, IGeoPosition } from "./geo-position";
 import { Asset } from "./asset";
 import { IAsset, IAssetFilters } from "./types/asset";
-import { ITimedAsset, TimedAsset } from "./timed_asset";
+import { ITimedAsset, ITimedAssetData, TimedAsset } from "./timed_asset";
 import { logger } from "./shims";
 import { ApiClient } from "./api-client";
-import { IUser, User } from "./user";
+import { User } from "./user";
+import { IUser } from "./types/user";
 import { Envelope } from "./envelope";
 import { IEnvelope } from "./types/envelope";
 import { Mixer, GeoListenMode } from "./mixer";
@@ -17,11 +18,12 @@ import { IAudioTrack } from "./types/audioTrack";
 import { ASSET_PRIORITIES } from "./assetFilters";
 import { IApiClient } from "./types/api-client";
 import {
-  AssetT,
+  IAssetData,
   Coordinates,
   IInitialParams,
   IUiConfig,
   TimedAssetT,
+  IAudioData,
 } from "./types";
 import {
   IOptions,
@@ -93,14 +95,14 @@ export class Roundware implements IRoundware {
   private _mixer: IMixer;
   private _onUpdateLocation: CallableFunction = () => {};
   private _onUpdateAssets: CallableFunction = () => {};
-  private _assetData: AssetT[] = [];
+  private _assetData: IAssetData[] = [];
   private _onPlayAssets: CallableFunction = () => {};
-  private _sessionId: string | number | undefined;
+  private _sessionId: number | string | undefined;
   uiConfig: IUiConfig = {};
   private _speakerData: ISpeakerData[] = [];
   private _audioTracksData: IAudioTrackData[] = [];
-  private _lastAssetUpdate: unknown;
-  private _timedAssetData: TimedAssetT[] = [];
+  private _lastAssetUpdate: Date | undefined;
+  private _timedAssetData: ITimedAssetData[] = [];
   private _assetDataTimer: NodeJS.Timeout | undefined;
 
   /** Initialize a new Roundware instance
@@ -305,7 +307,10 @@ export class Roundware implements IRoundware {
 
   /// Returns a reduced asset list by filtering the overall pool.
   /// Example: `getAssetsFromPool(allAssetFilter([distanceRangesFilter(), anyTagsFilter()]))`
-  async getAssetsFromPool(assetFilter: CallableFunction, extraParams = {}) {
+  async getAssetsFromPool(
+    assetFilter: CallableFunction,
+    extraParams = {}
+  ): Promise<IAssetData[]> {
     const pool = await this.loadAssetPool();
     const mixParams = { ...this.mixParams, ...extraParams };
     return pool.filter(
@@ -315,7 +320,7 @@ export class Roundware implements IRoundware {
 
   async updateAssetPool() {
     let filters = this._assetFilters;
-    let existingAssets = [];
+    let existingAssets: IAssetData[] = [];
     if (this._lastAssetUpdate) {
       filters = {
         ...filters,
@@ -323,7 +328,9 @@ export class Roundware implements IRoundware {
       };
       existingAssets = this.assets();
     }
-    this._assetData = existingAssets.concat(await this._asset.connect(filters));
+    this._assetData = existingAssets.concat(
+      await this._asset.connect<IAssetData>(filters)
+    );
     this._lastAssetUpdate = new Date();
 
     // Update the mixer's asset pool, if any.
@@ -337,7 +344,7 @@ export class Roundware implements IRoundware {
     }
   }
 
-  async loadAssetPool() {
+  async loadAssetPool(): Promise<IAssetData[]> {
     // Options passed here should only need to go into the assets/ call.
     if (!this._assetData) {
       await this.updateAssetPool();
@@ -404,7 +411,11 @@ export class Roundware implements IRoundware {
 
   /** Update the Roundware stream with new tag IDs and or geo-position
    * @param {object} data - containing keys latitude, longitude and tagIds **/
-  update(data) {
+  update(data: {
+    latitude: number;
+    longitude: number;
+    tagIds: string[] | number[];
+  }) {
     if (this._mixer.playlist) {
       this._mixer.playlist.updateParams(data);
     }
@@ -415,15 +426,15 @@ export class Roundware implements IRoundware {
     return this._speakerData || [];
   }
 
-  assets(): AssetT[] {
+  assets(): IAssetData[] {
     return this._assetData || [];
   }
 
-  timedAssets(): TimedAssetT[] | [] {
+  timedAssets(): ITimedAssetData[] | [] {
     return this._timedAssetData || [];
   }
 
-  audiotracks(): unknown | [] {
+  audiotracks(): IAudioTrackData[] | [] {
     return this._audioTracksData || [];
   }
 
@@ -432,7 +443,7 @@ export class Roundware implements IRoundware {
    * @param {string} fileName - name of the file
    * @return {promise} - represents the API calls to save an asset; can be tested to find out whether upload was successful
    * @see Envelope.upload */
-  async saveAsset(audioData, fileName, data) {
+  async saveAsset(audioData: IAudioData, fileName: string, data: object) {
     const envelope = await this.makeEnvelope();
     return envelope.upload(audioData, fileName, data);
   }
@@ -458,7 +469,7 @@ export class Roundware implements IRoundware {
     return envelope;
   }
 
-  findTagDescription(tagId, tagType = "listen") {
+  findTagDescription(tagId: string, tagType = "listen") {
     const tagGroups = this.uiConfig[tagType];
     for (const group of tagGroups) {
       for (const item of group.display_items) {
@@ -479,7 +490,7 @@ export class Roundware implements IRoundware {
   }
 
   /// @return Detailed information about a particular asset.
-  async getAsset(id: string) {
+  async getAsset(id: string): Promise<IAssetData> {
     // Check for this asset in any already loaded asset pool.
     if (this._assetData) {
       for (const asset of this._assetData) {
@@ -489,14 +500,14 @@ export class Roundware implements IRoundware {
       }
     }
     // Otherwise, ask the server for the asset details.
-    return this._apiClient.get(`/assets/${id}/`, {
+    return this._apiClient.get<IAssetData>(`/assets/${id}/`, {
       session_id: this._sessionId,
     });
   }
 
   /// @return Details about a particular envelope (which may contain multiple assets).
-  async getEnvelope(id) {
-    return this._apiClient.get(`/envelopes/${id}`, {
+  async getEnvelope(id: string | number): Promise<unknown> {
+    return this._apiClient.get<unknown>(`/envelopes/${id}`, {
       session_id: this._sessionId,
     });
   }

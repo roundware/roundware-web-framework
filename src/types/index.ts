@@ -3,11 +3,11 @@ import { Coord } from "@turf/helpers";
 import { Polygon } from "@turf/helpers";
 import { MultiPolygon } from "@turf/helpers";
 export type Coordinates = {
-  longitude: number;
-  latitude: number;
+  longitude?: number;
+  latitude?: number;
 };
 
-export interface AssetT {
+export interface IAssetData {
   weight?: number;
   locationPoint?: Point;
   listenerPoint?: Point;
@@ -16,12 +16,13 @@ export interface AssetT {
   timedAssetEnd?: number;
   playCount?: number;
   shape?: Polygon | MultiPolygon;
-  lastListenTime?: number;
+  lastListenTime?: number | Date;
   created?: Date;
   start_time?: number;
   end_time?: number;
   file?: string;
   latitude?: number;
+  volume?: number;
   longitude?: number;
   id?: number | string;
   activeRegionLength?: number;
@@ -34,11 +35,15 @@ export type ListenTagIds = unknown;
 export type IMixParams = {
   ordering?: string;
   listenerPoint?: Point;
+  timedAssetPriority?: IAudioData[`timed_asset_priority`];
+  listenerLocation?: Coordinates;
 };
 
 export interface IInitialParams {}
 
-export interface IUiConfig {}
+export interface IUiConfig {
+  [index: string]: any;
+}
 
 export type LookupTableT = object;
 
@@ -48,19 +53,19 @@ export type TimedAssetT = {
   end?: number;
 };
 
-export type TrackT = {
+export type ITrack = {
   mixParams: IMixParams;
 };
 
 export type AssetPoolType = {};
 
-export interface GeoPositionType extends Coordinates {
+export interface IGeoPosition extends Coordinates {
   getLastCoords(): Coordinates;
 }
 
 export interface PrefetchAudioType {}
 
-export interface IAudioData {
+export interface IAudioData extends Blob {
   timed_asset_priority: any;
   id: string | number;
 }

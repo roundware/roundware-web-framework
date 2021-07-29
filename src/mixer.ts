@@ -5,9 +5,10 @@ import { AssetPool } from "./assetPool";
 import { IAssetPool } from "./types/assetPool";
 import { IRoundware } from "./types/roundware";
 import { Point } from "@turf/helpers";
-import { AssetT, Coordinates, MixParams } from "./types";
-import { AudioTrack, IMixer, PlaylistType } from "./types/mixer";
+import { IAssetData, Coordinates, IMixParams } from "./types";
+import { AudioTrack, IMixer } from "./types/mixer";
 import { ISpeakerTrack } from "./types/speaker-track";
+import { IPlaylist } from "./types/playlist";
 
 export const GeoListenMode = Object.freeze({
   DISABLED: 0,
@@ -21,8 +22,8 @@ export class Mixer implements IMixer {
   private _client: IRoundware;
   private _prefetchSpeakerAudio: any | boolean;
 
-  mixParams: MixParams;
-  playlist: PlaylistType | undefined;
+  mixParams: IMixParams;
+  playlist: IPlaylist | undefined;
   assetPool: IAssetPool;
   speakerTracks: ISpeakerTrack[] = [];
 
@@ -48,11 +49,14 @@ export class Mixer implements IMixer {
     this._windowScope = windowScope;
     this._client = client;
     this._prefetchSpeakerAudio = prefetchSpeakerAudio;
-    const assets: AssetT[] = client.assets();
+    const assets: IAssetData[] = client.assets();
     const timedAssets = client.timedAssets();
 
     this.mixParams = {
-      listenerPoint: coordsToPoints(listenerLocation),
+      listenerPoint: coordsToPoints({
+        latitude: listenerLocation.latitude!,
+        longitude: listenerLocation.longitude!,
+      }),
       ...mixParams,
     };
 
@@ -66,15 +70,12 @@ export class Mixer implements IMixer {
     });
   }
 
-  updateParams({
-    listenerLocation,
-    ...params
-  }: {
-    listenerLocation: Coordinates;
-    listenerPoint?: Point;
-  }) {
+  updateParams({ listenerLocation, ...params }: IMixParams) {
     if (listenerLocation) {
-      params.listenerPoint = coordsToPoints(listenerLocation);
+      params.listenerPoint = coordsToPoints({
+        latitude: listenerLocation.latitude!,
+        longitude: listenerLocation.longitude!,
+      });
     }
     this.mixParams = { ...this.mixParams, ...params };
     if (this.playlist) {
@@ -92,6 +93,7 @@ export class Mixer implements IMixer {
     if (this.playlist) this.playlist.skip(trackId);
   }
 
+  skip() {}
   replayTrack(trackId: number) {
     if (this.playlist) this.playlist.replay(trackId);
   }
@@ -155,7 +157,7 @@ export class Mixer implements IMixer {
       this.speakerTracks.forEach((s) => s.pause());
     } else {
       this.playing = true;
-      this.playlist.play();
+      if (this.playlist) this.playlist.play();
       this.speakerTracks.forEach((s) => s.play());
     }
 

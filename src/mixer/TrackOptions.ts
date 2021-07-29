@@ -1,45 +1,65 @@
-import { hasOwnProperty, random } from '../utils';
+import { IAudioTrackData } from "../types/audioTrack";
+import { ITrackOptions } from "../types/mixer/TrackOptions";
+import { hasOwnProperty, random } from "../utils";
 
-export class TrackOptions {
-  constructor(urlParamLookup,params = {}) {
-    this.volumeRange = [params.minvolume,params.maxvolume];
-    this.duration = [params.minduration,params.maxduration];
-    this.deadAir = [params.mindeadair,params.maxdeadair];
-    this.fadeInTime = [params.minfadeintime,params.maxfadeintime];
-    this.fadeOutTime = [params.minfadeouttime,params.maxfadeouttime];
+export class TrackOptions implements ITrackOptions {
+  volumeRange: number[];
+  duration: number[];
+  deadAir: number[];
+  fadeInTime: number[];
+  fadeOutTime: number[];
+  repeatRecordings: boolean;
+  tags: string[] | number[];
+  bannedDuration: number;
+  startWithSilence: boolean;
+  fadeOutWhenFiltered: boolean;
+  fadeOutMultiplier: number;
+  constructor(
+    urlParamLookup: (param: string) => string | number,
+    params: IAudioTrackData
+  ) {
+    this.volumeRange = [params.minvolume, params.maxvolume];
+    this.duration = [params.minduration, params.maxduration];
+    this.deadAir = [params.mindeadair, params.maxdeadair];
+    this.fadeInTime = [params.minfadeintime, params.maxfadeintime];
+    this.fadeOutTime = [params.minfadeouttime, params.maxfadeouttime];
     this.repeatRecordings = !!params.repeatrecordings;
     this.tags = params.tag_filters;
-    this.bannedDuration = params.banned_duration || 600,
-    this.startWithSilence = hasOwnProperty(params,'start_with_silence') ? !!params.start_with_silence : true;
-    this.fadeOutWhenFiltered = hasOwnProperty(params,'fadeout_when_filtered') ? !!params.fadeout_when_filtered : true;
+    (this.bannedDuration = params.banned_duration || 600),
+      (this.startWithSilence = hasOwnProperty(params, "start_with_silence")
+        ? !!params.start_with_silence
+        : true);
+    this.fadeOutWhenFiltered = hasOwnProperty(params, "fadeout_when_filtered")
+      ? !!params.fadeout_when_filtered
+      : true;
     this.fadeOutMultiplier = 1;
 
-    const fadeOutMultiplierParam = urlParamLookup('rwfFadeOutMultiplier');
+    const fadeOutMultiplierParam = urlParamLookup("rwfFadeOutMultiplier");
 
     if (fadeOutMultiplierParam) {
       this.fadeOutMultiplier = Number(fadeOutMultiplierParam);
-      console.log('Applying fade-out multiplier',this.fadeOutMultiplier);
+      console.log("Applying fade-out multiplier", this.fadeOutMultiplier);
     }
   }
 
   get randomVolume() {
-    return random(this.volumeRangeLowerBound,this.volumeRangeUpperBound);
+    return random(this.volumeRangeLowerBound, this.volumeRangeUpperBound);
   }
 
   get randomDeadAir() {
-    return random(this.deadAirLowerBound,this.deadAirUpperBound);
+    return random(this.deadAirLowerBound, this.deadAirUpperBound);
   }
 
   get randomFadeInDuration() {
     return Math.min(
-      random(this.fadeInLowerBound,this.fadeInUpperBound),
+      random(this.fadeInLowerBound, this.fadeInUpperBound),
       this.durationHalfway
     );
   }
 
   get randomFadeOutDuration() {
     return Math.min(
-      random(this.fadeOutLowerBound,this.fadeOutUpperBound),
+      random(this.fadeOutLowerBound, this.fadeOutUpperBound),
       this.durationHalfway
     );
   }

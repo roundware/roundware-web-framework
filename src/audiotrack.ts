@@ -25,7 +25,8 @@
 */
 
 import { IApiClient } from "./types/api-client";
-import { AudioTrackData, IAudioTrack } from "./types/audioTrack";
+import { IAudioTrack } from "./types/audioTrack";
+import { IAudioTrackData } from "./types/audioTrack";
 
 const REQUEST_PATH = "/audiotracks/";
 
@@ -41,10 +42,10 @@ export class Audiotrack implements IAudioTrack {
     return `Roundware Audiotracks (#${this._projectId})`;
   }
 
-  async connect(data: any = {}): Promise<AudioTrackData> {
+  async connect(data: any = {}): Promise<IAudioTrackData[]> {
     data.project_id = this._projectId;
     data.active = true;
 
-    return await this._apiClient.get<AudioTrackData>(REQUEST_PATH, data);
+    return await this._apiClient.get<IAudioTrackData[]>(REQUEST_PATH, data);
   }
 }

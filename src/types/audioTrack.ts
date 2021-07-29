@@ -1,4 +1,5 @@
 export interface IAudioTrackData {
+  fadeout_when_filtered: boolean;
   id: number;
   minvolume: number;
   maxvolume: number;
@@ -18,7 +19,7 @@ export interface IAudioTrackData {
   active: boolean;
   start_with_silence: boolean;
   banned_duration: number;
-  tag_filters: unknown[];
+  tag_filters: any[];
   project_id: number;
   timed_asset_priority: number;
 }

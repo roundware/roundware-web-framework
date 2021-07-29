@@ -1,13 +1,13 @@
 import { IApiClient } from "./types/api-client";
 import { IRoundware } from "./types/roundware";
 import { IEnvelope } from "./types/envelope";
-import { Coordinates, GeoPositionType } from "./types";
+import { Coordinates, IGeoPosition, IAudioData } from "./types";
 
 export class Envelope implements IEnvelope {
   _envelopeId: string;
-  _sessionId: number;
+  _sessionId: number | string;
   _apiClient: IApiClient;
-  _geoPosition: GeoPositionType;
+  _geoPosition: IGeoPosition;
   _roundware: IRoundware;
   _assetId: string | undefined;
   /** Create an Envelope
@@ -16,9 +16,9 @@ export class Envelope implements IEnvelope {
    * @param {geoPosition} geoPosition -
    **/
   constructor(
-    sessionId: number,
+    sessionId: number | string,
     apiClient: IApiClient,
-    geoPosition: GeoPositionType,
+    geoPosition: IGeoPosition,
     roundware: IRoundware
   ) {
     this._envelopeId = "(unknown)";
@@ -52,7 +52,7 @@ export class Envelope implements IEnvelope {
    * @param {string} fileName - name of the file
    * @return {Promise} - represents the API call */
   async upload(
-    audioData: Blob,
+    audioData: IAudioData,
     fileName: string,
     data: {
       latitude?: number;

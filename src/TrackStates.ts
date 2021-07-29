@@ -2,8 +2,12 @@ import { AssetEnvelope } from "./mixer/AssetEnvelope";
 import { IAsset } from "./types/asset";
 import { IAudioTrack } from "./types/audioTrack";
 import { IEnvelope } from "./types/envelope";
+import { IAssetEnvelope } from "./types/mixer/AssetEnvelope";
+import { ITrackOptions } from "./types/mixer/TrackOptions";
 import {
   IDeadAirState,
+  IFadingInState,
+  IFadingOutState,
   ILoadingState,
   IPlayingState,
   ITimedTrackState,
@@ -17,9 +21,9 @@ import {
 
 export class LoadingState implements ILoadingState {
   track: any;
-  trackOptions: any;
+  trackOptions: ITrackOptions;
   asset: null;
-  constructor(track: IAudioTrack, trackOptions: object) {
+  constructor(track: IAudioTrack, trackOptions: ITrackOptions) {
     this.track = track;
     this.trackOptions = trackOptions;
     this.asset = null;
@@ -32,7 +36,10 @@ export class LoadingState implements ILoadingState {
     let newState;
 
     if (asset) {
-      const assetEnvelope = new AssetEnvelope(trackOptions, asset);
+      const assetEnvelope: IAssetEnvelope = new AssetEnvelope(
+        trackOptions,
+        asset
+      );
       newState = new FadingInState(track, trackOptions, { assetEnvelope });
     } else {
       newState = new WaitingForAssetState(track, trackOptions);
@@ -66,7 +73,7 @@ class TimedTrackState implements ITimedTrackState {
     this.timerId = null;
   }
 
-  play(nextStateSecs: number = 0): number | undefined {
+  play(nextStateSecs: number = 0): number | void {
     const {
       timerId,
       timeRemainingMs,
@@ -161,7 +168,7 @@ class TimedTrackState implements ITimedTrackState {
 
 class DeadAirState extends TimedTrackState implements IDeadAirState {
   deadAirSeconds: any;
-  constructor(track: any, trackOptions: any) {
+  constructor(track: any, trackOptions: ITrackOptions) {
     super(track, trackOptions);
     this.deadAirSeconds = this.trackOptions.randomDeadAir;
   }
@@ -181,12 +188,12 @@ class DeadAirState extends TimedTrackState implements IDeadAirState {
   updateParams() {}
 }
 
-class FadingInState extends TimedTrackState {
+class FadingInState extends TimedTrackState implements IFadingInState {
   assetEnvelope: any;
   constructor(
     track: any,
-    trackOptions: any,
-    { assetEnvelope }: { assetEnvelope: IAsset }
+    trackOptions: ITrackOptions,
+    { assetEnvelope }: { assetEnvelope: IAssetEnvelope }
   ) {
     super(track, trackOptions);
     this.assetEnvelope = assetEnvelope;
@@ -261,18 +268,18 @@ class PlayingState extends TimedTrackState implements IPlayingState {
   }
 }
 
-class FadingOutState extends TimedTrackState {
+class FadingOutState extends TimedTrackState implements IFadingOutState {
   assetEnvelope: any;
   constructor(
     track: any,
-    trackOptions: any,
-    { assetEnvelope }: { assetEnvelope: any }
+    trackOptions: ITrackOptions,
+    { assetEnvelope }: { assetEnvelope: IAssetEnvelope }
   ) {
     super(track, trackOptions);
     this.assetEnvelope = assetEnvelope;
   }
 
-  play() {
+  play(): void {
     const {
       track,
       assetEnvelope: { fadeOutDuration },
@@ -294,11 +301,7 @@ class FadingOutState extends TimedTrackState {
   }
 
   setNextState() {
-    this.track.transition(
-      new DeadAirState(this.track, this.trackOptions, {
-        assetEnvelope: this.assetEnvelope,
-      })
-    );
+    this.track.transition(new DeadAirState(this.track, this.trackOptions));
   }
 
   toString() {

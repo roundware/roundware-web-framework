@@ -1,6 +1,6 @@
 export interface IAsset {
   toString(): string;
-  connect<T>(): Promise<T>;
+  connect<T>(filters: object): Promise<T>;
 }
 
 export interface IAssetFilters {}

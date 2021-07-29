@@ -8,11 +8,10 @@ module.exports = {
   entry: ['./src/roundware.ts'],
 
   output: {
-    filename: "roundware.ts",
 
+    filename: "roundware.js",
     library: "RoundwareWebFramework",
     libraryTarget: "umd",
-
     globalObject: 'this'
   },
 

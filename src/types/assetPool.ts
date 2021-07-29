@@ -1,11 +1,16 @@
-import { AssetT, TimedAssetT, TrackT } from ".";
-
+import { TimedAssetT, ITrack } from ".";
+import { IAssetData } from ".";
+import { Point } from "@turf/helpers";
 export interface IAssetPool {
-  updateAssets(assets: AssetT[], timedAssets: TimedAssetT[]): void;
+  updateAssets(assets: IAssetData[], timedAssets: TimedAssetT[]): void;
   nextForTrack(
-    track: TrackT,
+    track: ITrack,
     stateParams: {
-      filterOutAssets?: AssetT[];
+      filterOutAssets?: IAssetData[];
+
+      elapsedSeconds?: number;
+      listenerPoint?: Point;
+      listenTagIds?: number[];
     }
-  ): AssetT | undefined;
+  ): IAssetData | undefined;
 }

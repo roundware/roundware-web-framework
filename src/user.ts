@@ -1,14 +1,8 @@
 /** Responsible for identifying the user to the Roundware server and retrieving an auth token **/
-import { IApiClient } from "./api-client";
 
-type ResponseType = {
-  username: string;
-  token: string;
-};
-export interface IUser {
-  toString(): string;
-  connect(): Promise<ResponseType | {}>;
-}
+import { IApiClient } from "./types/api-client";
+import { IUser, IUserResponse } from "./types/user";
+
 export class User implements IUser {
   /** Create a User
    * @param {Object} options - Various configuration parameters for this user
@@ -45,7 +39,7 @@ export class User implements IUser {
   /** Make an API call to associate the (possibly anonymous) application user with a Roundware user account.
    * Upon success, this function receives an auth token, which is passed onto the apiClient object.
    * @returns {Promise} represents the pending API call **/
-  async connect(): Promise<ResponseType | {}> {
+  async connect(): Promise<IUserResponse | {}> {
     const data = {
       device_id: this.deviceId,
       client_type: this.clientType,
@@ -54,8 +48,8 @@ export class User implements IUser {
     // TODO need to also handle auth failures
 
     try {
-      const responseData: ResponseType =
-        await this.apiClient.post<ResponseType>("/users/", data);
+      const responseData: IUserResponse =
+        await this.apiClient.post<IUserResponse>("/users/", data);
       this.userName = responseData.username;
       this.apiClient.authToken = responseData.token;
       return responseData;

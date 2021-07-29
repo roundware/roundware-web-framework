@@ -1,22 +1,15 @@
-import {
-  Coordinates,
-  AssetT,
-  TimedAssetT,
-  IUiConfig,
-  IMixParams,
-  IAudioData,
-} from ".";
+import { Coordinates, IAssetData, IUiConfig, IMixParams, IAudioData } from ".";
 import { IApiClient } from "./api-client";
 import { IAsset, IAssetFilters } from "./asset";
-import { IAudioTrack } from "./audioTrack";
+import { IAudioTrack, IAudioTrackData } from "./audioTrack";
 import { IEnvelope } from "./envelope";
 import { IGeoPosition } from "../geo-position";
 import { AudioTrack, IMixer } from "./mixer";
 import { IProject } from "../project";
 import { ISession } from "../session";
 import { ISpeaker, ISpeakerFilters } from "./speaker";
-import { ITimedAsset } from "../timed_asset";
-import { IUser } from "../user";
+import { ITimedAsset, ITimedAssetData } from "../timed_asset";
+import { IUser } from "./user";
 import { ISpeakerData } from "./speaker";
 import { IAssetPool } from "./assetPool";
 
@@ -37,9 +30,9 @@ export interface IRoundware {
   getAssetsFromPool(
     assetFilter: IAssetFilters,
     extraParams: object
-  ): Promise<IAsset[]>;
+  ): Promise<IAssetData[]>;
   updateAssetPool(): Promise<void>;
-  loadAssetPool(): Promise<void>;
+  loadAssetPool(): Promise<IAssetData[]>;
   activateMixer(activationParams: object): Promise<IMixer>;
   play(firstPlayCallback: (value: Coordinates) => any): Promise<void>;
   pause(): void;
@@ -49,9 +42,9 @@ export interface IRoundware {
   tags(): void;
   update(data: object): void;
 
-  assets(): AssetT[];
-  timedAssets(): TimedAssetT[] | [];
-  audiotracks(): AudioTrack[];
+  assets(): IAssetData[];
+  timedAssets(): ITimedAssetData[] | [];
+  audiotracks(): IAudioTrackData[];
   saveAsset(
     audioData: IAudioData,
     fileName: string,
@@ -60,8 +53,8 @@ export interface IRoundware {
   makeEnvelope(): Promise<IEnvelope>;
   //  findTagDecription(tagId: string, tagType: string): undefined | string;
   vote(assetId: string, voteType: string, value: unknown): Promise<unknown>;
-  getAsset(id: string): Promise<IAsset>;
-  getEnvelope(id: string): Promise<IEnvelope>;
+  getAsset(id: string): Promise<IAssetData>;
+  getEnvelope(id: string | number): Promise<unknown>;
 }
 
 export interface IOptions {
