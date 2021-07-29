@@ -5,7 +5,7 @@ const path = require('path');
 const plugins = [];
 
 module.exports = {
-  entry: ['./src/roundware.ts'],
+  entry: ['./dist/roundware.js'],
 
   output: {
 

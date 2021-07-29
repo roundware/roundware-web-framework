@@ -1,9 +1,3 @@
 {
-  "presets": [
-    ["@babel/preset-env",{ 
-      "useBuiltIns": "usage",
-      "corejs": { "version": 3 },
-      "shippedProposals": true
-    }]
-  ]
+  "presets": ["@babel/preset-typescript"]
 }

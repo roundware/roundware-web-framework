@@ -14,8 +14,8 @@
   "scripts": {
     "test": "babel-node ./node_modules/jasmine/bin/jasmine.js",
     "prebuild": "rimraf dist",
-    "build": "NODE_ENV=production npm-run-all --parallel build:*",
-    "build:main": "babel --copy-files --out-dir dist src",
+    "build": "tsc && NODE_ENV=production npm-run-all --parallel build:*",
+    "build:main": "babel --copy-files --out-dir dist dist",
     "build:umd": "webpack --mode=production --output-filename roundware.umd.js",
     "build:umd.min": "webpack --mode production --output-filename roundware.umd.min.js",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
@@ -36,10 +36,11 @@
     "url": "https://github.com/roundware/roundware-web-framework/issues"
   },
   "devDependencies": {
-    "@babel/cli": "^7.12.10",
-    "@babel/core": "^7.12.10",
+    "@babel/cli": "^7.14.8",
+    "@babel/core": "^7.14.8",
     "@babel/node": "^7.12.10",
     "@babel/preset-env": "^7.12.11",
+    "@babel/preset-typescript": "^7.14.5",
     "@types/jquery": "^3.5.6",
     "babel-loader": "^8.2.2",
     "eslint": "6.1.0",
@@ -65,6 +66,7 @@
     "deasync": "^0.1.21",
     "deep-extend": ">=0.5.1",
     "loglevel": "^1.7.1",
+    "source-map-loader": "^3.0.0",
     "standardized-audio-context": "^25.1.8",
     "ts-loader": "^9.2.4"
   },
