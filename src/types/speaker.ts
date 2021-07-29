@@ -9,5 +9,7 @@ export interface ISpeakerData {
 }
 export interface ISpeaker {
   toString(): string;
-  connect(data: object): Promise<ISpeakerData>;
+  connect(data: object): Promise<ISpeakerData[]>;
 }
+
+export interface ISpeakerFilters {}

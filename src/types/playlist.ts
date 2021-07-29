@@ -1,1 +1,5 @@
-export interface IPlaylist {}
+import { IAssetPool } from "./assetPool";
+
+export interface IPlaylist {
+  assetPool: IAssetPool;
+}

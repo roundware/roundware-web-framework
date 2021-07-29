@@ -20,8 +20,9 @@ export interface IAudioTrackData {
   banned_duration: number;
   tag_filters: unknown[];
   project_id: number;
+  timed_asset_priority: number;
 }
 export interface IAudioTrack {
   toString(): string;
-  connect(data: object): Promise<IAudioTrackData>;
+  connect(data?: object): Promise<IAudioTrackData[]>;
 }

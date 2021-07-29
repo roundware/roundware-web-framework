@@ -31,10 +31,14 @@ export interface AssetT {
 
 export type ListenTagIds = unknown;
 
-export type MixParams = {
+export type IMixParams = {
   ordering?: string;
   listenerPoint?: Point;
 };
+
+export interface IInitialParams {}
+
+export interface IUiConfig {}
 
 export type LookupTableT = object;
 
@@ -45,7 +49,7 @@ export type TimedAssetT = {
 };
 
 export type TrackT = {
-  mixParams: MixParams;
+  mixParams: IMixParams;
 };
 
 export type AssetPoolType = {};
@@ -57,5 +61,6 @@ export interface GeoPositionType extends Coordinates {
 export interface PrefetchAudioType {}
 
 export interface IAudioData {
+  timed_asset_priority: any;
   id: string | number;
 }

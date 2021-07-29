@@ -1,14 +1,9 @@
 import { Point } from "@turf/helpers";
 import { AssetT, Coordinates } from ".";
+import { IPlaylist } from "./playlist";
 
-export type PlaylistType = {
-  updateParams(params: { listenerPoint?: Point }): unknown;
-  currentlyPlayingAssets: AssetT[];
-  skip(trackId: number): void;
-  replay(trackId: number): void;
-};
 export interface IMixer {
-  playlist: PlaylistType | undefined;
+  playlist: IPlaylist | undefined;
   playing: boolean;
   mixParams: unknown;
   updateParams(params: {

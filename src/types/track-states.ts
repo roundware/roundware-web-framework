@@ -9,11 +9,11 @@ export interface ILoadingState {
 }
 
 export interface ITimedTrackState {
-  play(nextStateSecs: number): number | undefined;
+  play(nextStateSecs?: number): number | undefined;
   pause(): void;
   clearTimer(): any;
   finish(): void;
-  setNextStateTimer(timeMs: number): void;
+  setNextStateTimer(timeMs?: number): void;
   setNextState(): void;
   skip(): void;
   replay(): void;
@@ -55,3 +55,12 @@ export interface IWaitingForAssetState {
   setNextState(): void;
   toString(): string;
 }
+
+export type ITrackStates =
+  | IPlayingState
+  | ILoadingState
+  | IWaitingForAssetState
+  | IFadingInState
+  | IFadingOutState
+  | ITimedTrackState
+  | IDeadAirState;

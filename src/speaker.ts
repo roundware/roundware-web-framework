@@ -16,8 +16,8 @@ export class Speaker implements ISpeaker {
     return `Roundware Speaker (#${this._projectId})`;
   }
 
-  async connect({ ...data }) {
-    return await this._apiClient.get<ISpeakerData>(PATH, {
+  async connect({ ...data }): Promise<ISpeakerData[]> {
+    return await this._apiClient.get<ISpeakerData[]>(PATH, {
       ...data,
       project_id: this._projectId,
     });

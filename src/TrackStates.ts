@@ -7,6 +7,7 @@ import {
   ILoadingState,
   IPlayingState,
   ITimedTrackState,
+  IWaitingForAssetState,
 } from "./types/track-states";
 
 /**
@@ -225,7 +226,7 @@ class FadingInState extends TimedTrackState {
 
 class PlayingState extends TimedTrackState implements IPlayingState {
   assetEnvelope: any;
-  constructor(track: any, trackOptions: any, { assetEnvelope }) {
+  constructor(track: any, trackOptions: any, { assetEnvelope }: any) {
     super(track, trackOptions);
     this.assetEnvelope = assetEnvelope;
   }
@@ -262,7 +263,11 @@ class PlayingState extends TimedTrackState implements IPlayingState {
 
 class FadingOutState extends TimedTrackState {
   assetEnvelope: any;
-  constructor(track, trackOptions, { assetEnvelope }) {
+  constructor(
+    track: any,
+    trackOptions: any,
+    { assetEnvelope }: { assetEnvelope: any }
+  ) {
     super(track, trackOptions);
     this.assetEnvelope = assetEnvelope;
   }
@@ -306,12 +311,15 @@ class FadingOutState extends TimedTrackState {
 
 const DEFAULT_WAITING_FOR_ASSET_INTERVAL_SECONDS = 10;
 
-class WaitingForAssetState extends TimedTrackState {
-  constructor(track, trackOptions) {
+class WaitingForAssetState
+  extends TimedTrackState
+  implements IWaitingForAssetState
+{
+  constructor(track: any, trackOptions: any) {
     super(track, trackOptions);
   }
 
-  play() {
+  play(): number | undefined | any {
     super.play(DEFAULT_WAITING_FOR_ASSET_INTERVAL_SECONDS);
   }
 

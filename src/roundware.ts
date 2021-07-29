@@ -1,18 +1,28 @@
 import { IProject, Project } from "./project";
 import { ISession, Session } from "./session";
-import { ISpeaker, Speaker } from "./speaker";
+import { Speaker } from "./speaker";
+import { ISpeaker, ISpeakerFilters } from "./types/speaker";
 import { GeoPosition, IGeoPosition } from "./geo-position";
-import { Asset, IAsset } from "./asset";
+import { Asset } from "./asset";
+import { IAsset, IAssetFilters } from "./types/asset";
 import { ITimedAsset, TimedAsset } from "./timed_asset";
 import { logger } from "./shims";
 import { ApiClient } from "./api-client";
 import { IUser, User } from "./user";
-import { Envelope, IEnvelope } from "./envelope";
+import { Envelope } from "./envelope";
+import { IEnvelope } from "./types/envelope";
 import { Mixer, GeoListenMode } from "./mixer";
-import { Audiotrack, IAudioTrack } from "./audiotrack";
+import { Audiotrack } from "./audiotrack";
+import { IAudioTrack } from "./types/audioTrack";
 import { ASSET_PRIORITIES } from "./assetFilters";
-import { IApiClient } from "./api-client";
-import { AssetT, Coordinates, TimedAssetT } from "./types";
+import { IApiClient } from "./types/api-client";
+import {
+  AssetT,
+  Coordinates,
+  IInitialParams,
+  IUiConfig,
+  TimedAssetT,
+} from "./types";
 import {
   IOptions,
   IRoundware,
@@ -21,6 +31,7 @@ import {
 import { IMixer } from "./types/mixer";
 import { ISpeakerData } from "./types/speaker";
 import { IAudioTrackData } from "./types/audioTrack";
+import { IAssetPool } from "./types/assetPool";
 
 export * from "./assetFilters";
 export { GeoListenMode } from "./mixer";
@@ -62,8 +73,8 @@ export class Roundware implements IRoundware {
   readonly windowScope: Window;
   private _serverUrl: string;
   private _projectId: number;
-  private _speakerFilters: unknown;
-  private _assetFilters: object;
+  private _speakerFilters: ISpeakerFilters = {};
+  private _assetFilters: IAssetFilters;
   private _listenerLocation: Coordinates;
   private _initialOptions: IOptions;
   private _assetUpdateInterval: number;
@@ -77,15 +88,15 @@ export class Roundware implements IRoundware {
   private _asset: IAsset;
   private _timed_asset: ITimedAsset;
   private _audiotrack: IAudioTrack;
-  uiconfig: {};
-  private _initialParams: object = {};
+
+  private _initialParams: IInitialParams = {};
   private _mixer: IMixer;
   private _onUpdateLocation: CallableFunction = () => {};
   private _onUpdateAssets: CallableFunction = () => {};
   private _assetData: AssetT[] = [];
   private _onPlayAssets: CallableFunction = () => {};
   private _sessionId: string | number | undefined;
-  uiConfig: unknown;
+  uiConfig: IUiConfig = {};
   private _speakerData: ISpeakerData[] = [];
   private _audioTracksData: IAudioTrackData[] = [];
   private _lastAssetUpdate: unknown;
@@ -125,7 +136,7 @@ export class Roundware implements IRoundware {
     this.windowScope = windowScope;
     this._serverUrl = serverUrl;
     this._projectId = projectId;
-    this._speakerFilters = speakerFilters;
+    if (speakerFilters) this._speakerFilters = speakerFilters;
     this._assetFilters = assetFilters;
     this._listenerLocation = listenerLocation;
     this._initialOptions = options;
@@ -166,7 +177,7 @@ export class Roundware implements IRoundware {
     this._asset = asset || new Asset(this._projectId, options);
     this._timed_asset = timedAsset || new TimedAsset(this._projectId, options);
     this._audiotrack = audiotrack || new Audiotrack(this._projectId, options);
-    this.uiconfig = {};
+    this.uiConfig = {};
 
     const mixParams: object = {
       ...this.mixParams,
@@ -235,9 +246,9 @@ export class Roundware implements IRoundware {
 
   /** Initiate a connection to Roundware
    *  @return {Promise} - Can be resolved in order to get the audio stream URL, or rejected to get an error message; see example above **/
-  async connect() {
+  async connect(): Promise<{ uiConfig: IUiConfig }> {
     // want to start this process as soon as possible, as it can take a few seconds
-    this._geoPosition.connect((newLocation) =>
+    this._geoPosition.connect((newLocation: Coordinates) =>
       this.updateLocation(newLocation)
     );
 
@@ -288,13 +299,13 @@ export class Roundware implements IRoundware {
     }
   }
 
-  get assetPool() {
+  get assetPool(): IAssetPool | undefined {
     return this._mixer.playlist && this._mixer.playlist.assetPool;
   }
 
   /// Returns a reduced asset list by filtering the overall pool.
   /// Example: `getAssetsFromPool(allAssetFilter([distanceRangesFilter(), anyTagsFilter()]))`
-  async getAssetsFromPool(assetFilter, extraParams = {}) {
+  async getAssetsFromPool(assetFilter: CallableFunction, extraParams = {}) {
     const pool = await this.loadAssetPool();
     const mixParams = { ...this.mixParams, ...extraParams };
     return pool.filter(

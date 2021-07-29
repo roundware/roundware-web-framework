@@ -6,10 +6,11 @@ import { getUrlParam } from "./utils";
 import { Point } from "@turf/helpers";
 import { IAssetPool } from "./types/assetPool";
 import { IAudioContext } from "standardized-audio-context";
+import { IAudioTrack } from "./types/audioTrack";
 
 export class Playlist implements IPlaylist {
   listenerPoint: Point;
-  playingTracks: object;
+  playingTracks: IAudioTrack[];
   assetPool: IAssetPool;
   playing: boolean;
   listenTagIds: never[];
@@ -35,7 +36,7 @@ export class Playlist implements IPlaylist {
     audioContext?: IAudioContext;
   }) {
     this.listenerPoint = listenerPoint;
-    this.playingTracks = {};
+    this.playingTracks = [];
     this.assetPool = assetPool;
     this.playing = false;
     this.listenTagIds = [];

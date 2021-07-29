@@ -1,16 +1,24 @@
-import { Coordinates, AssetT, TimedAssetT } from ".";
+import {
+  Coordinates,
+  AssetT,
+  TimedAssetT,
+  IUiConfig,
+  IMixParams,
+  IAudioData,
+} from ".";
 import { IApiClient } from "./api-client";
-import { IAsset } from "./asset";
+import { IAsset, IAssetFilters } from "./asset";
 import { IAudioTrack } from "./audioTrack";
 import { IEnvelope } from "./envelope";
 import { IGeoPosition } from "../geo-position";
 import { AudioTrack, IMixer } from "./mixer";
 import { IProject } from "../project";
 import { ISession } from "../session";
-import { ISpeaker } from "./speaker";
+import { ISpeaker, ISpeakerFilters } from "./speaker";
 import { ITimedAsset } from "../timed_asset";
 import { IUser } from "../user";
 import { ISpeakerData } from "./speaker";
+import { IAssetPool } from "./assetPool";
 
 export interface IRoundware {
   speakers(): ISpeakerData[];
@@ -22,18 +30,18 @@ export interface IRoundware {
   get currentlyPlayingAssets(): unknown;
   enableGeolocation(mode: number): void;
   disableGeolocation(): void;
-  connect(): Promise<{ uiConfig: unknown }>;
-  get mixParams(): object;
+  connect(): Promise<{ uiConfig: IUiConfig }>;
+  get mixParams(): IMixParams;
   getAssets(options: object): Promise<unknown[]>;
-  get assetPool(): unknown;
+  get assetPool(): IAssetPool | undefined;
   getAssetsFromPool(
-    assetFilter: object,
+    assetFilter: IAssetFilters,
     extraParams: object
-  ): Promise<unknown[]>;
+  ): Promise<IAsset[]>;
   updateAssetPool(): Promise<void>;
-  loadAssetPool(): Promise<unknown>;
+  loadAssetPool(): Promise<void>;
   activateMixer(activationParams: object): Promise<IMixer>;
-  play(firstPlayCallback: (value: Coordinates) => any): Promise<unknown>;
+  play(firstPlayCallback: (value: Coordinates) => any): Promise<void>;
   pause(): void;
   kill(): void;
   replay(): void;
@@ -45,15 +53,15 @@ export interface IRoundware {
   timedAssets(): TimedAssetT[] | [];
   audiotracks(): AudioTrack[];
   saveAsset(
-    audioData: object,
+    audioData: IAudioData,
     fileName: string,
     data: object
   ): Promise<unknown>;
   makeEnvelope(): Promise<IEnvelope>;
   //  findTagDecription(tagId: string, tagType: string): undefined | string;
-  vote(assetId: string, voteType: unknown, value: unknown): Promise<unknown>;
-  getAsset(id: string): Promise<unknown>;
-  getEnvelope(id: string): Promise<unknown>;
+  vote(assetId: string, voteType: string, value: unknown): Promise<unknown>;
+  getAsset(id: string): Promise<IAsset>;
+  getEnvelope(id: string): Promise<IEnvelope>;
 }
 
 export interface IOptions {
@@ -65,8 +73,8 @@ export interface IOptions {
 export interface IRoundwareConstructorOptions extends IOptions {
   serverUrl: string;
   projectId: number;
-  speakerFilters?: unknown;
-  assetFilters: object;
+  speakerFilters?: ISpeakerFilters;
+  assetFilters: IAssetFilters;
   listenerLocation: Coordinates;
   user?: IUser;
   geoPosition?: IGeoPosition;

@@ -2,6 +2,11 @@ import { getUrlParam, timestamp } from "./utils";
 import { makeInitialTrackState } from "./TrackStates";
 import { TrackOptions } from "./mixer/TrackOptions";
 import { IPlaylistAudiotrack } from "./types/playlistAudioTrack";
+import { IAudioContext } from "standardized-audio-context";
+import { IAudioData } from "./types";
+import { IAudioTrackData } from "./types/audioTrack";
+import { IPlaylist } from "./types/playlist";
+import { IPlayingState, ITrackStates } from "./types/track-states";
 
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
@@ -76,7 +81,28 @@ const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due
 
 export class PlaylistAudiotrack implements IPlaylistAudiotrack {
   trackId: any;
-  constructor({ audioContext, windowScope, audioData = {}, playlist }) {
+  timedAssetPriority: any;
+  playlist: any;
+  playing: boolean;
+  windowScope: Window;
+  currentAsset: null;
+  audioContext: IAudioContext;
+  audioElement: HTMLAudioElement;
+  gainNode: any;
+  trackOptions: TrackOptions;
+  mixParams: { timedAssetPriority: any };
+  state: ITrackStates | undefined;
+  constructor({
+    audioContext,
+    windowScope,
+    audioData,
+    playlist,
+  }: {
+    audioContext: IAudioContext;
+    windowScope: Window;
+    audioData: IAudioTrackData;
+    playlist: IPlaylist;
+  }) {
     this.trackId = audioData.id;
     this.timedAssetPriority = audioData.timed_asset_priority;
     this.playlist = playlist;
@@ -105,7 +131,7 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
     audioElement.addEventListener("ended", () => this.onAudioEnded());
 
     const trackOptions = new TrackOptions(
-      (param) => getUrlParam(windowScope.location, param),
+      (param: string) => getUrlParam(windowScope.location.toString(), param),
       audioData
     );
 
@@ -122,7 +148,7 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
     this.state = makeInitialTrackState(this, this.trackOptions);
   }
 
-  onAudioError(evt) {
+  onAudioError(evt?: any) {
     console.warn(`\t[${this} audio error, skipping to next track]`, evt);
     this.setInitialTrackState();
   }
@@ -133,7 +159,9 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
 
   play() {
     console.log(`${timestamp} ${this}: ${this.state}`);
-    this.state.play();
+    if (!this.state)
+      console.warn(`No Initial track state. call \`setInitialTrackState()\``);
+    else this.state.play();
   }
 
   updateParams(params = {}) {
