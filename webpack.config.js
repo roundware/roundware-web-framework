@@ -5,7 +5,7 @@ const path = require('path');
 const plugins = [];
 
 module.exports = {
-  entry: ['./dist/roundware.js'],
+  entry: ['./src/roundware.ts'],
 
   output: {
 
@@ -40,19 +40,8 @@ module.exports = {
 
   module: {
     rules: [
-      {
-        enforce: "pre",
-        test: /\.js$/,
-        exclude: /node_modules/,
-        loader: "eslint-loader"
-      },
-      {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        loader: "babel-loader"
-      },
       // All files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'.
-      { test: /\.tsx?$/, exclude: /node_modules/, loader: "ts-loader" },
+      { test: /\.ts$/, exclude: /node_modules/, loader: "ts-loader" },
       // All output '.js' files will have any sourcemaps re-processed by 'source-map-loader'.
       { test: /\.js$/, exclude: /node_modules/, loader: "source-map-loader" },
     ]
