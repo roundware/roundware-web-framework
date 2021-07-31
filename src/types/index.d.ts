@@ -42,6 +42,11 @@ export type IMixParams = {
 export interface IInitialParams {}
 
 export interface IUiConfig {
+  speak?: {
+    display_items?: {
+      id?: string;
+    };
+  }[];
   [index: string]: any;
 }
 
@@ -91,10 +96,9 @@ export interface IGeoPosition {
   enable(): void;
   waitForInitialGeolocation(): Promise<Coordinates>;
 }
-export interface UiConfig {}
 
 export interface IProject {
-  uiconfig(sessionId: string | number): Promise<UiConfig>;
+  uiconfig(sessionId: string | number): Promise<IUiConfig>;
   mixParams: any;
   toString(): string;
   connect(sessionId: string | number): Promise<string | undefined>;

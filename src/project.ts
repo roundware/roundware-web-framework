@@ -1,6 +1,6 @@
 import { IApiClient } from "./types/api-client";
 import { GeoListenMode } from "./mixer";
-import { Coordinates, IProject, UiConfig } from "./types";
+import { Coordinates, IProject, IUiConfig } from "./types";
 
 export class Project implements IProject {
   projectId: number;
@@ -62,10 +62,10 @@ export class Project implements IProject {
     }
   }
 
-  async uiconfig(sessionId: string): Promise<UiConfig> {
+  async uiconfig(sessionId: string): Promise<IUiConfig> {
     const path = "/projects/" + this.projectId + "/uiconfig/";
     const data = { session_id: sessionId };
 
-    return await this.apiClient.get<UiConfig>(path, data);
+    return await this.apiClient.get<IUiConfig>(path, data);
   }
 }

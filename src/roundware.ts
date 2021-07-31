@@ -265,7 +265,9 @@ export class Roundware implements IRoundware {
       const sessionId = await this._session.connect();
       this._sessionId = sessionId;
 
-      const promises = [
+      const promises: Promise<
+        IUiConfig | ISpeakerData | IAudioTrackData | string | undefined
+      >[] = [
         this._project.connect(sessionId),
         this._project
           .uiconfig(sessionId)

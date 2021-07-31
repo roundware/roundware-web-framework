@@ -15,6 +15,7 @@ import { ISpeakerData } from "./speaker";
 import { IAssetPool } from "./assetPool";
 
 export interface IRoundware {
+  uiConfig: IUiConfig;
   speakers(): ISpeakerData[];
   updateLocation(listenerLocation: Coordinates): void;
   set onUpdateLocation(callback: CallableFunction);
