@@ -14,8 +14,8 @@
   "scripts": {
     "test": "babel-node ./node_modules/jasmine/bin/jasmine.js",
     "prebuild": "rimraf dist",
-    "build": "tsc && NODE_ENV=production npm-run-all --parallel build:*",
-    "build:main": "babel --copy-files --out-dir dist dist",
+    "build": "NODE_ENV=production npm-run-all --parallel build:*",
+    "build:main": "babel src --out-dir dist --presets=@babel/preset-typescript --out-dir dist src --extensions '.ts'",
     "build:umd": "webpack --mode=production --output-filename roundware.umd.js",
     "build:umd.min": "webpack --mode production --output-filename roundware.umd.min.js",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
