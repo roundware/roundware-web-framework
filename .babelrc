@@ -10,6 +10,7 @@
     ],
     "@babel/preset-typescript"
   ],
+  "ignore": ["**/*.d.ts"],
   "overrides": [
     {
       "exclude": ["**/*.d.ts"]
