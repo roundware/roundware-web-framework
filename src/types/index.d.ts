@@ -28,6 +28,15 @@ export interface IAssetData {
   activeRegionLength?: number;
   activeRegionUpperBound?: number;
   activeRegionLowerBound?: number;
+  [index: string]:
+    | number
+    | string
+    | string[]
+    | Polygon
+    | MultiPolygon
+    | Date
+    | Point
+    | undefined;
 }
 
 export type ListenTagIds = unknown;
