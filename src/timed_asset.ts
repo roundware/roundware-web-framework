@@ -1,22 +1,25 @@
-import { ITimedAsset, ITimedAssetData } from "./types";
-import { IApiClient } from "./types/api-client";
+import { ITimedAssetData } from "./types";
+import { ApiClient } from "./api-client";
 
 const PATH = "/timedassets/";
 
-export class TimedAsset implements ITimedAsset {
+export class TimedAsset {
   private _projectId: number;
-  private _apiClient: IApiClient;
+  private _apiClient: ApiClient;
 
-  constructor(projectId: number, { apiClient }: { apiClient: IApiClient }) {
+  constructor(projectId: number, { apiClient }: { apiClient: ApiClient }) {
     this._projectId = projectId;
     this._apiClient = apiClient;
   }
 
-  toString() {
+  toString(): string {
     return `Roundware TimedAssets (#${this._projectId})`;
   }
-
-  async connect({ ...data }) {
+  /**
+   * @param  {object} {...data}
+   * @returns Promise<ITimedAssetData[]>
+   */
+  async connect({ ...data }: object | undefined): Promise<ITimedAssetData[]> {
     const options = { ...data, project_id: this._projectId };
     return await this._apiClient.get<ITimedAssetData[]>(PATH, options);
   }
