@@ -3,7 +3,6 @@ import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import pointToLineDistance from "@turf/point-to-line-distance";
 import lineToPolygon from "@turf/line-to-polygon";
 import { cleanAudioURL } from "./utils";
-import { ISpeakerTrack } from "./types/speaker-track";
 import { IAudioContext, IGainNode } from "standardized-audio-context";
 import { Coord, Feature, LineString, Point, Properties } from "@turf/helpers";
 import { PrefetchAudioType } from "./types";
@@ -19,7 +18,7 @@ const NEARLY_ZERO = 0.001;
  * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker’s defined zone.'
  * (quoted from https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/Speaker.swift)
  * */
-export class SpeakerTrack implements ISpeakerTrack {
+export class SpeakerTrack {
   prefetch: PrefetchAudioType;
   audioContext: IAudioContext;
   speakerId: string;
