@@ -24,16 +24,15 @@
 }] 
 */
 
-import { IApiClient } from "./types/api-client";
-import { IAudioTrack } from "./types/audioTrack";
+import { ApiClient } from "./api-client";
 import { IAudioTrackData } from "./types/audioTrack";
 
 const REQUEST_PATH = "/audiotracks/";
 
-export class Audiotrack implements IAudioTrack {
+export class Audiotrack {
   private _projectId: number;
-  private _apiClient: IApiClient;
-  constructor(projectId: number, options: { apiClient: IApiClient }) {
+  private _apiClient: ApiClient;
+  constructor(projectId: number, options: { apiClient: ApiClient }) {
     this._projectId = projectId;
     this._apiClient = options.apiClient;
   }
