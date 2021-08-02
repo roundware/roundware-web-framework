@@ -1,5 +1,4 @@
-import { IApiClient } from "./types/api-client";
-import { IAsset } from "./types/asset";
+import { ApiClient } from "./api-client";
 
 /* global process */
 export const PATH =
@@ -7,19 +6,19 @@ export const PATH =
     ? "/assets/?created__lte=2019-08-15T18:06:39"
     : "/assets/";
 
-export class Asset implements IAsset {
+export class Asset {
   private _projectId: number;
-  private _apiClient: IApiClient;
-  constructor(projectId: number, { apiClient }: { apiClient: IApiClient }) {
+  private _apiClient: ApiClient;
+  constructor(projectId: number, { apiClient }: { apiClient: ApiClient }) {
     this._projectId = projectId;
     this._apiClient = apiClient;
   }
 
-  toString() {
+  toString(): string {
     return `Roundware Assets (#${this._projectId})`;
   }
 
-  async connect<T>(data = {}) {
+  async connect<T>(data = {}): Promise<T> {
     const options = { ...data, project_id: this._projectId };
     return await this._apiClient.get<T>(PATH, options);
   }
