@@ -1,13 +1,12 @@
-import { ISession } from "./types";
-import { IApiClient } from "./types/api-client";
+import { ApiClient } from "./api-client";
 
 let clientSystem: string = "Unknown";
 let projectId: number | undefined, sessionId: string, geoListenEnabled: boolean;
-let apiClient: IApiClient;
+let apiClient: ApiClient;
 
 /** Responsible for establishing a session with the Roundware server **/
 
-export class Session implements ISession {
+export class Session {
   sessionId: number | undefined;
 
   /** Create a new Session
@@ -22,7 +21,7 @@ export class Session implements ISession {
     newProjectId: number,
     geoListenEnablement: boolean,
     options: {
-      apiClient: IApiClient;
+      apiClient: ApiClient;
     }
   ) {
     clientSystem = navigator.userAgent;
@@ -44,9 +43,9 @@ export class Session implements ISession {
   }
 
   /** Make an asynchronous API call to establish a session with the Roundware server
-   * @return {Promise} represents the pending API call
+   * @return {Promise} sessionId
    **/
-  async connect() {
+  async connect(): Promise<number> {
     const requestData = {
       project_id: projectId,
       geo_listen_enabled: geoListenEnabled,
