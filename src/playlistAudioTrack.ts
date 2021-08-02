@@ -1,12 +1,11 @@
 import { getUrlParam, timestamp } from "./utils";
 import { makeInitialTrackState } from "./TrackStates";
 import { TrackOptions } from "./mixer/TrackOptions";
-import { IPlaylistAudiotrack } from "./types/playlistAudioTrack";
-import { IAudioContext } from "standardized-audio-context";
+import { IAudioContext, IGainNode } from "standardized-audio-context";
 import { IAssetData, IAudioData, IMixParams } from "./types";
 import { IAudioTrackData } from "./types/audioTrack";
-import { IPlaylist } from "./types/playlist";
-import { IPlayingState, ITrackStates } from "./types/track-states";
+import { Playlist } from "./playlist";
+import { ITrackStates } from "./types/track-states";
 import { ITrackOptions } from "./types/mixer/TrackOptions";
 
 /*
@@ -80,16 +79,16 @@ const LOGGABLE_AUDIO_ELEMENT_EVENTS = [
 ]; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
 const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due to floating point math concerns
 
-export class PlaylistAudiotrack implements IPlaylistAudiotrack {
+export class PlaylistAudiotrack {
   trackId: any;
   timedAssetPriority: any;
-  playlist: any;
+  playlist: Playlist;
   playing: boolean;
   windowScope: Window;
   currentAsset: IAssetData | undefined;
   audioContext: IAudioContext;
   audioElement: HTMLAudioElement;
-  gainNode: any;
+  gainNode: IGainNode<IAudioContext> | undefined;
   trackOptions: TrackOptions;
   mixParams: IMixParams;
   state: ITrackStates | undefined;
@@ -102,7 +101,7 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
     audioContext: IAudioContext;
     windowScope: Window;
     audioData: IAudioTrackData;
-    playlist: IPlaylist;
+    playlist: Playlist;
   }) {
     this.trackId = audioData.id;
     this.timedAssetPriority = audioData.timed_asset_priority;
@@ -172,20 +171,20 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
 
   // Halts any scheduled gain changes and holds at current level
   // @see https://developer.mozilla.org/en-US/docs/Web/API/AudioParam/cancelAndHoldAtTime
-  holdGain() {
+
+  holdGain(): void {
     const {
-      gainNode: { gain },
       audioContext: { currentTime },
     } = this;
-    gain.cancelScheduledValues(currentTime);
+
+    this.gainNode?.gain.cancelScheduledValues(currentTime);
   }
 
   setZeroGain() {
     const {
-      gainNode: { gain },
       audioContext: { currentTime },
     } = this;
-    gain.setValueAtTime(NEARLY_ZERO, currentTime); // http://alemangui.github.io/blog//2015/12/26/ramp-to-value.html
+    this.gainNode?.gain.setValueAtTime(NEARLY_ZERO, currentTime); // http://alemangui.github.io/blog//2015/12/26/ramp-to-value.html
   }
 
   // exponentialRampToValueAtTime sounds more gradual for fading in
@@ -218,7 +217,6 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
     rampMethod = "exponentialRampToValueAtTime"
   ) {
     const {
-      gainNode: { gain },
       audioContext: { currentTime },
     } = this;
 
@@ -228,8 +226,11 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
       )} (${durationSeconds.toFixed(1)}s - ${rampMethod})]`
     );
 
+    const gain = this.gainNode?.gain;
+    if (!gain) return;
     try {
       gain.setValueAtTime(gain.value, currentTime); // http://alemangui.github.io/blog//2015/12/26/ramp-to-value.html
+      // @ts-ignore library failed to provide index signature
       gain[rampMethod](finalVolume, currentTime + durationSeconds);
       return true;
     } catch (err) {
@@ -247,7 +248,7 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
     ); // 'exponentialRampToValueAtTime');
   }
 
-  loadNextAsset() {
+  loadNextAsset(): IAssetData | false | null {
     const { audioElement, currentAsset } = this;
     if (
       !currentAsset ||
@@ -269,8 +270,10 @@ export class PlaylistAudiotrack implements IPlaylistAudiotrack {
       const { file, start } = newAsset;
       console.log(`\t[loading next asset ${this}: ${file}]`);
 
-      audioElement.src = file;
-      audioElement.currentTime = start >= NEARLY_ZERO ? start : NEARLY_ZERO; // value but must fininite
+      if (typeof file == "string") {
+        audioElement.src = file;
+      }
+      audioElement.currentTime = start! >= NEARLY_ZERO ? start! : NEARLY_ZERO; // value but must fininite
 
       this.audioElement = audioElement;
 
