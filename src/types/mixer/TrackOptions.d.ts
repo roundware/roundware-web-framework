@@ -15,4 +15,5 @@ export interface ITrackOptions {
   readonly fadeOutLowerBound: number;
   readonly fadeOutUpperBound: number;
   readonly fadeOutMultiplier?: number;
+  readonly startWithSilence?: boolean;
 }

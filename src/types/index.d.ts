@@ -19,6 +19,7 @@ export interface IAssetData {
   lastListenTime?: number | Date;
   created?: Date;
   start_time?: number;
+  start?: number;
   end_time?: number;
   file?: string;
   latitude?: number;
@@ -39,13 +40,16 @@ export interface IAssetData {
     | undefined;
 }
 
-export type ListenTagIds = unknown;
-
 export type IMixParams = {
   ordering?: string;
   listenerPoint?: Point;
   timedAssetPriority?: IAudioData[`timed_asset_priority`];
   listenerLocation?: Coordinates;
+  listenTagIds?: unknown[];
+  geoListenMode?: number;
+  latitude?: number;
+  longitude?: number;
+  tagIds?: string[] | number[];
 };
 
 export interface IInitialParams {}
@@ -56,12 +60,15 @@ export interface IUiConfig {
       id?: string;
     };
   }[];
+  listen?: {
+    group_short_name?: string;
+  };
   [index: string]: any;
 }
 
-export type LookupTableT = object;
+export type ILookupTable = object;
 
-export type TimedAssetT = {
+export type ITimedAssetData = {
   asset_id: string | number;
   start?: number;
   end?: number;
@@ -84,11 +91,6 @@ export interface IAudioData extends Blob {
   id: string | number;
 }
 
-export interface IAssetSorter {
-  sort(assets: IAssetData[]): void;
-  sortMethods: unknown[];
-}
-
 export interface GeoPositionOptions {
   defaultCoords: Coordinates;
   geoListenMode: unknown;
@@ -106,23 +108,7 @@ export interface IGeoPosition {
   waitForInitialGeolocation(): Promise<Coordinates>;
 }
 
-export interface IProject {
-  uiconfig(sessionId: string | number): Promise<IUiConfig>;
-  mixParams: any;
-  toString(): string;
-  connect(sessionId: string | number): Promise<string | undefined>;
-  projectId: number;
-}
 export interface ISession {
   connect(): Promise<number | string>;
   sessionId: number | undefined;
-}
-
-export interface ITimedAssetData {
-  asset_id: string | number;
-}
-
-export interface ITimedAsset {
-  toString(): string;
-  connect(data?: object): Promise<ITimedAssetData[]>;
 }
