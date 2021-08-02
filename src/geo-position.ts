@@ -1,6 +1,6 @@
 import { logger } from "./shims";
 import { GeoListenMode } from "./mixer";
-import { Coordinates, IGeoPosition, GeoPositionOptions } from "./types";
+import { Coordinates, GeoPositionOptions } from "./types";
 
 const initialGeoTimeoutSeconds = 5;
 
@@ -27,9 +27,9 @@ const accurateGeolocationPositionOptions = {
  * @property {Boolean} isEnabled - whether or not the geo positioning system is enabled and available
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/Using_geolocation **/
 
-export class GeoPosition implements IGeoPosition {
+export class GeoPosition {
   /** Create a new GeoPosition.
-   * @param {Object} navigator - provides access to geolocation system
+   * @param {Window[`navigator`]} navigator - provides access to geolocation system
    * @param {Object} options - parameters for initializing this GeoPosition
    * @param {Boolean} [options.geoListenMode = GeoListenMode.DISABLED] - whether or not to attempt to use geolocation
    * @param {Boolean} [options.defaultCoords] */
@@ -63,7 +63,7 @@ export class GeoPosition implements IGeoPosition {
     //console.info({ defaultCoords: this.defaultCoords });
   }
 
-  disable() {
+  disable(): void {
     this.isEnabled = false;
     if (this._geoWatchID) {
       console.log("Canceling geoposition watch", this._geoWatchID);
@@ -81,7 +81,9 @@ export class GeoPosition implements IGeoPosition {
   getLastCoords(): Coordinates {
     return this._lastCoords;
   }
-
+  /**
+   * @param  {CallableFunction} geoUpdateCallback
+   */
   connect(geoUpdateCallback: CallableFunction) {
     this.updateCallback = geoUpdateCallback;
     // Ensure that geolocation is started if it was enabled from instantiation.
@@ -94,7 +96,7 @@ export class GeoPosition implements IGeoPosition {
    * to update the position.
    * @param {Function} geoUpdateCallback - object that should receive geolocation coordinate updates
    * @see isEnabled **/
-  enable() {
+  enable(): void {
     if (this.isEnabled && this._geoWatchID) {
       return;
     }
