@@ -1,6 +1,7 @@
 import { AssetSorter } from "./assetSorter";
 import { roundwareDefaultFilterChain } from "./assetFilters";
 import { coordsToPoints, cleanAudioURL } from "./utils";
+import { Point } from "@turf/helpers";
 import {
   IAssetData,
   ILookupTable,
@@ -105,6 +106,8 @@ export class AssetPool {
       ...stateParams
     }: {
       elapsedSeconds: number;
+      listenerPoint?: Point;
+      listenTagIds?: number[];
       filterOutAssets: IAssetData[];
     }
   ) {
