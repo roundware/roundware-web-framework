@@ -3,19 +3,17 @@ import { roundwareDefaultFilterChain } from "./assetFilters";
 import { coordsToPoints, cleanAudioURL } from "./utils";
 import {
   IAssetData,
-  LookupTableT,
+  ILookupTable,
   IMixParams,
-  TimedAssetT,
+  ITimedAssetData,
   ITrack,
 } from "./types";
-import { IAssetPool } from "./types/assetPool";
-import { ITimedAssetData } from "./types";
 
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
 // also rewrite .wav as .mp3
-const assetDecorationMapper = (timedAssets: TimedAssetT[]) => {
+const assetDecorationMapper = (timedAssets: ITimedAssetData[]) => {
   const timedAssetLookup = timedAssets.reduce(
-    (lookupTable: LookupTableT, timedAsset: TimedAssetT) => ({
+    (lookupTable: ILookupTable, timedAsset: ITimedAssetData) => ({
       ...lookupTable,
       [timedAsset.asset_id]: timedAsset,
     }),
@@ -60,7 +58,7 @@ const assetDecorationMapper = (timedAssets: TimedAssetT[]) => {
   };
 };
 
-export class AssetPool implements IAssetPool {
+export class AssetPool {
   assetSorter: AssetSorter;
   playingTracks: {};
   mixParams: {};
@@ -75,7 +73,7 @@ export class AssetPool implements IAssetPool {
     mixParams = {},
   }: {
     assets: IAssetData[];
-    timedAssets: TimedAssetT[];
+    timedAssets: ITimedAssetData[];
     filterChain: CallableFunction;
     sortMethods: unknown[];
     mixParams: IMixParams;
@@ -152,10 +150,12 @@ export class AssetPool implements IAssetPool {
 
     // @ts-ignore
     const priorityAssets = rankedAssets[topPriorityRanking] || [];
+    // @ts-ignore not sure why sort is used on type object
     priorityAssets.sort(
       (a: IAssetData, b: IAssetData) => b.playCount! - a.playCount!
     );
 
+    // @ts-ignore
     const nextAsset = priorityAssets.pop();
     if (nextAsset) nextAsset.playCount++;
 
