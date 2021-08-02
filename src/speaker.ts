@@ -1,13 +1,13 @@
-import { IApiClient } from "./types/api-client";
-import { ISpeaker, ISpeakerData } from "./types/speaker";
+import { ApiClient } from "./api-client";
+import { ISpeakerData } from "./types/speaker";
 
 const PATH = "/speakers/";
 
-export class Speaker implements ISpeaker {
+export class Speaker {
   private _projectId: number;
-  private _apiClient: IApiClient;
+  private _apiClient: ApiClient;
 
-  constructor(projectId: number, { apiClient }: { apiClient: IApiClient }) {
+  constructor(projectId: number, { apiClient }: { apiClient: ApiClient }) {
     this._projectId = projectId;
     this._apiClient = apiClient;
   }
