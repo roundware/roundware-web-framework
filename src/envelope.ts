@@ -1,25 +1,27 @@
-import { IApiClient } from "./types/api-client";
-import { IRoundware } from "./types/roundware";
-import { IEnvelope } from "./types/envelope";
-import { Coordinates, IGeoPosition, IAudioData } from "./types";
+import { ApiClient } from "./api-client";
+import { GeoPosition } from "./geo-position";
+import { Roundware } from "./roundware";
+import { Coordinates, IAudioData } from "./types";
 
-export class Envelope implements IEnvelope {
+export class Envelope {
   _envelopeId: string;
   _sessionId: number | string;
-  _apiClient: IApiClient;
-  _geoPosition: IGeoPosition;
-  _roundware: IRoundware;
+  _apiClient: ApiClient;
+  _geoPosition: GeoPosition;
+  _roundware: Roundware;
   _assetId: string | undefined;
   /** Create an Envelope
    * @param {number} sessionId - identifies the session associated with this asset
    * @param {ApiClient} apiClient - the API client object to use for server API calls
    * @param {geoPosition} geoPosition -
+   * @param  {Roundware} roundware - roundware object
    **/
+
   constructor(
     sessionId: number | string,
-    apiClient: IApiClient,
-    geoPosition: IGeoPosition,
-    roundware: IRoundware
+    apiClient: ApiClient,
+    geoPosition: GeoPosition,
+    roundware: Roundware
   ) {
     this._envelopeId = "(unknown)";
     this._sessionId = sessionId;
@@ -35,7 +37,7 @@ export class Envelope implements IEnvelope {
 
   /** Create a new Envelope in the server to which we can attach audio recordings as assets
    * @returns {Promise} represents the pending API call **/
-  async connect() {
+  async connect(): Promise<void> {
     let data = {
       session_id: this._sessionId,
     };
@@ -60,7 +62,9 @@ export class Envelope implements IEnvelope {
       tag_ids?: string;
       media_type?: string;
     } = {}
-  ) {
+  ): Promise<{
+    detail: string;
+  }> {
     if (!this._envelopeId) {
       return Promise.reject(
         "cannot upload audio without first connecting this envelope to the server"
