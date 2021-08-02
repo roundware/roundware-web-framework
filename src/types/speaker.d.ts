@@ -7,9 +7,5 @@ export interface ISpeakerData {
   attenuation_distance: number;
   uri: string;
 }
-export interface ISpeaker {
-  toString(): string;
-  connect(data: object): Promise<ISpeakerData[]>;
-}
 
 export interface ISpeakerFilters {}

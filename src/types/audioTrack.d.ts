@@ -23,7 +23,3 @@ export interface IAudioTrackData {
   project_id: number;
   timed_asset_priority: number;
 }
-export interface IAudioTrack {
-  toString(): string;
-  connect(data?: object): Promise<IAudioTrackData[]>;
-}
