@@ -1,5 +1,5 @@
 import * as sortMethodCollection from "./sortMethods";
-import { IAssetData, IAssetSorter } from "./types";
+import { IAssetData } from "./types";
 import { isEmpty } from "./utils";
 
 function mapSortMethods(sortMethodNames: string[]): unknown[] {
@@ -7,7 +7,7 @@ function mapSortMethods(sortMethodNames: string[]): unknown[] {
   return sortMethodNames.map((name) => sortMethodCollection[name]);
 }
 
-export class AssetSorter implements IAssetSorter {
+export class AssetSorter {
   sortMethods: ((assetsArray: any) => void)[];
 
   constructor({
