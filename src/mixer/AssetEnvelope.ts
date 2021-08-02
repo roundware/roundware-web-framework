@@ -1,9 +1,8 @@
 import { IAssetData } from "../types";
-import { IAssetEnvelope } from "../types/mixer/AssetEnvelope";
 import { ITrackOptions } from "../types/mixer/TrackOptions";
 import { random } from "../utils";
 
-export class AssetEnvelope implements IAssetEnvelope {
+export class AssetEnvelope {
   asset: IAssetData;
   assetId: string | number | undefined;
   minDuration: number;
