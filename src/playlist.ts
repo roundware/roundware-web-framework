@@ -1,21 +1,20 @@
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
-
-import { IPlaylist } from "./types/playlist";
-import { IRoundware } from "./types/roundware";
 import { getUrlParam } from "./utils";
 import { Point } from "@turf/helpers";
-import { IAssetPool } from "./types/assetPool";
-import { IAudioContext } from "standardized-audio-context";
-import { IAudioTrack, IAudioTrackData } from "./types/audioTrack";
-import { ITrack } from "./types";
 
-export class Playlist implements IPlaylist {
+import { IAudioContext } from "standardized-audio-context";
+import { IAudioTrackData } from "./types/audioTrack";
+import { IMixParams, ITrack } from "./types";
+import { Roundware } from "./roundware";
+import { AssetPool } from "./assetPool";
+
+export class Playlist {
   listenerPoint: Point;
   playingTracks: IAudioTrackData[];
-  assetPool: IAssetPool;
+  assetPool: AssetPool;
   playing: boolean;
   listenTagIds: number[];
-  _client: IRoundware;
+  _client: Roundware;
   _elapsedTimeMs: number;
   trackMap: Map<any, any>;
   trackIdMap: {};
@@ -29,11 +28,11 @@ export class Playlist implements IPlaylist {
     assetPool,
     ...playlistTrackOptions
   }: {
-    client: IRoundware;
+    client: Roundware;
     audioTracks?: IAudioTrackData[];
     listenerPoint: Point;
     windowScope: Window;
-    assetPool: IAssetPool;
+    assetPool: AssetPool;
     audioContext?: IAudioContext;
   }) {
     this.listenerPoint = listenerPoint;
@@ -93,14 +92,7 @@ export class Playlist implements IPlaylist {
     return assets;
   }
 
-  updateParams({
-    listenerPoint,
-    listenTagIds,
-    ...params
-  }: {
-    listenerPoint: Point;
-    listenTagIds: number[];
-  }) {
+  updateParams({ listenerPoint, listenTagIds, ...params }: IMixParams) {
     if (listenerPoint) this.listenerPoint = listenerPoint;
     if (listenTagIds) {
       this.listenTagIds = listenTagIds.map((t) => Number(t));
@@ -152,7 +144,7 @@ export class Playlist implements IPlaylist {
     return this._elapsedTimeMs + elapsedSinceLastStartMs;
   }
 
-  next(forTrack: ITrack) {
+  next(forTrack: PlaylistAudiotrack) {
     const {
       assetPool,
       currentlyPlayingAssets: filterOutAssets,
