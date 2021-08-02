@@ -1,18 +1,18 @@
-import { IApiClient } from "./types/api-client";
 import { GeoListenMode } from "./mixer";
-import { Coordinates, IProject, IUiConfig } from "./types";
+import { Coordinates, IUiConfig } from "./types";
+import { ApiClient } from "./api-client";
 
-export class Project implements IProject {
+export class Project {
   projectId: number;
   projectName: string;
-  apiClient: IApiClient;
+  apiClient: ApiClient;
   legalAgreement: unknown;
   recordingRadius: unknown;
   maxRecordingLength: unknown;
   location: Coordinates = { latitude: 1, longitude: 1 };
   mixParams: {};
 
-  constructor(newProjectId: number, { apiClient }: { apiClient: IApiClient }) {
+  constructor(newProjectId: number, { apiClient }: { apiClient: ApiClient }) {
     this.projectId = newProjectId;
     this.projectName = "(unknown)";
     this.apiClient = apiClient;
@@ -22,8 +22,11 @@ export class Project implements IProject {
   toString(): string {
     return `Roundware Project '${this.projectName}' (#${this.projectId})`;
   }
-
-  async connect(sessionId: string): Promise<string | undefined> {
+  /**
+   * @param  {number} sessionId
+   * @returns {Promise} sessionId | undefined
+   */
+  async connect(sessionId: number): Promise<number | undefined> {
     const path = "/projects/" + this.projectId + "/";
 
     const requestData = { session_id: sessionId };
@@ -61,8 +64,11 @@ export class Project implements IProject {
       console.error("Unable to get Project details", err);
     }
   }
-
-  async uiconfig(sessionId: string): Promise<IUiConfig> {
+  /**
+   * @param  {number} sessionId
+   * @returns Promise<IUiConfig>
+   */
+  async uiconfig(sessionId: number): Promise<IUiConfig> {
     const path = "/projects/" + this.projectId + "/uiconfig/";
     const data = { session_id: sessionId };
 
