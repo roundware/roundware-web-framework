@@ -1,14 +1,10 @@
-import { SpeakerTrack } from "./speaker_track";
-import { Playlist } from "./playlist";
-import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 import { AssetPool } from "./assetPool";
-import { IAssetPool } from "./types/assetPool";
-import { IRoundware } from "./types/roundware";
-import { Point } from "@turf/helpers";
-import { IAssetData, Coordinates, IMixParams } from "./types";
-import { AudioTrack, IMixer } from "./types/mixer";
-import { ISpeakerTrack } from "./types/speaker-track";
-import { IPlaylist } from "./types/playlist";
+import { Playlist } from "./playlist";
+import { Roundware } from "./roundware";
+import { SpeakerTrack } from "./speaker_track";
+import { Coordinates, IAssetData, IMixParams } from "./types";
+
+import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 
 export const GeoListenMode = Object.freeze({
   DISABLED: 0,
@@ -16,16 +12,16 @@ export const GeoListenMode = Object.freeze({
   AUTOMATIC: 2,
 });
 
-export class Mixer implements IMixer {
+export class Mixer {
   playing: boolean;
   private _windowScope: Window;
-  private _client: IRoundware;
+  private _client: Roundware;
   private _prefetchSpeakerAudio: any | boolean;
 
   mixParams: IMixParams;
-  playlist: IPlaylist | undefined;
-  assetPool: IAssetPool;
-  speakerTracks: ISpeakerTrack[] = [];
+  playlist: Playlist | undefined;
+  assetPool: AssetPool;
+  speakerTracks: SpeakerTrack[] = [];
 
   constructor({
     client,
@@ -36,7 +32,7 @@ export class Mixer implements IMixer {
     sortMethods = [],
     mixParams = {},
   }: {
-    client: IRoundware;
+    client: Roundware;
     windowScope: Window;
     listenerLocation: Coordinates;
     prefetchSpeakerAudio: boolean | unknown;
@@ -63,7 +59,7 @@ export class Mixer implements IMixer {
     this.assetPool = new AssetPool({
       assets,
       timedAssets,
-      // @ts-ignore
+      // @ts-ignore here it asks for a function
       filters,
       sortMethods,
       mixParams: this.mixParams,
@@ -88,16 +84,23 @@ export class Mixer implements IMixer {
       }
     }
   }
-
+  /**
+   * @param  {number} trackId
+   */
   skipTrack(trackId: number) {
     if (this.playlist) this.playlist.skip(trackId);
   }
 
   skip() {}
+  /**
+   * @param  {number} trackId
+   */
   replayTrack(trackId: number) {
     if (this.playlist) this.playlist.replay(trackId);
   }
-
+  /**
+   * @returns string
+   */
   toString(): string {
     return "Roundware Mixer";
   }
@@ -146,8 +149,10 @@ export class Mixer implements IMixer {
       this.updateParams(this.mixParams);
     }
   }
-
-  toggle() {
+  /**
+   * @returns boolean - playing
+   */
+  toggle(): boolean {
     // Build the audio context and playlist if it doesn't exist yet.
     this.initContext();
 
