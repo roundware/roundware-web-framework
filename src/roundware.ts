@@ -1,43 +1,30 @@
-import { Project } from "./project";
-import { IProject } from "./types";
-import { Session } from "./session";
-import { ISession } from "./types";
-import { Speaker } from "./speaker";
-import { ISpeaker, ISpeakerFilters } from "./types/speaker";
-import { GeoPosition } from "./geo-position";
-import { IGeoPosition } from "./types";
-import { Asset } from "./asset";
-import { IAsset, IAssetFilters } from "./types/asset";
-import { TimedAsset } from "./timed_asset";
-import { ITimedAsset, ITimedAssetData } from "./types";
-import { logger } from "./shims";
 import { ApiClient } from "./api-client";
-import { User } from "./user";
-import { IUser } from "./types/user";
-import { Envelope } from "./envelope";
-import { IEnvelope } from "./types/envelope";
-import { Mixer, GeoListenMode } from "./mixer";
-import { Audiotrack } from "./audiotrack";
-import { IAudioTrack } from "./types/audioTrack";
+import { Asset } from "./asset";
 import { ASSET_PRIORITIES } from "./assetFilters";
-import { IApiClient } from "./types/api-client";
+import { AssetPool } from "./assetPool";
+import { Audiotrack } from "./audiotrack";
+import { Envelope } from "./envelope";
+import { GeoPosition } from "./geo-position";
+import { GeoListenMode, Mixer } from "./mixer";
+import { Project } from "./project";
+import { Session } from "./session";
+import { logger } from "./shims";
+import { Speaker } from "./speaker";
+import { TimedAsset } from "./timed_asset";
 import {
-  IAssetData,
   Coordinates,
-  IInitialParams,
-  IUiConfig,
-  TimedAssetT,
+  IAssetData,
   IAudioData,
+  IInitialParams,
+  ITimedAssetData,
+  IUiConfig,
 } from "./types";
-import {
-  IOptions,
-  IRoundware,
-  IRoundwareConstructorOptions,
-} from "./types/roundware";
-import { IMixer } from "./types/mixer";
-import { ISpeakerData } from "./types/speaker";
+import { IAssetFilters } from "./types/asset";
+
 import { IAudioTrackData } from "./types/audioTrack";
-import { IAssetPool } from "./types/assetPool";
+import { IOptions, IRoundwareConstructorOptions } from "./types/roundware";
+import { ISpeakerData, ISpeakerFilters } from "./types/speaker";
+import { User } from "./user";
 
 export * from "./assetFilters";
 export { GeoListenMode } from "./mixer";
@@ -75,7 +62,7 @@ export { GeoListenMode } from "./mixer";
   roundware.play(startListening).catch(handleError);
 **/
 
-export class Roundware implements IRoundware {
+export class Roundware {
   readonly windowScope: Window;
   private _serverUrl: string;
   private _projectId: number;
@@ -84,19 +71,19 @@ export class Roundware implements IRoundware {
   private _listenerLocation: Coordinates;
   private _initialOptions: IOptions;
   private _assetUpdateInterval: number;
-  private _apiClient: IApiClient;
+  private _apiClient: ApiClient;
 
-  private _user: IUser;
-  private _geoPosition: IGeoPosition;
-  private _session: ISession;
-  private _project: IProject;
-  private _speaker: ISpeaker;
-  private _asset: IAsset;
-  private _timed_asset: ITimedAsset;
-  private _audiotrack: IAudioTrack;
+  private _user: User;
+  private _geoPosition: GeoPosition;
+  private _session: Session;
+  private _project: Project;
+  private _speaker: Speaker;
+  private _asset: Asset;
+  private _timed_asset: TimedAsset;
+  private _audiotrack: Audiotrack;
 
   private _initialParams: IInitialParams = {};
-  private _mixer: IMixer;
+  private _mixer: Mixer;
   private _onUpdateLocation: CallableFunction = () => {};
   private _onUpdateAssets: CallableFunction = () => {};
   private _assetData: IAssetData[] = [];
@@ -266,7 +253,7 @@ export class Roundware implements IRoundware {
       this._sessionId = sessionId;
 
       const promises: Promise<
-        IUiConfig | ISpeakerData | IAudioTrackData | string | undefined
+        number | IUiConfig | ISpeakerData | IAudioTrackData | string | undefined
       >[] = [
         this._project.connect(sessionId),
         this._project
@@ -307,7 +294,7 @@ export class Roundware implements IRoundware {
     }
   }
 
-  get assetPool(): IAssetPool | undefined {
+  get assetPool(): AssetPool | undefined {
     return this._mixer.playlist && this._mixer.playlist.assetPool;
   }
 
@@ -361,7 +348,7 @@ export class Roundware implements IRoundware {
       );
     }
     if (!this._timedAssetData) {
-      this._timedAssetData = await this._timed_asset.connect();
+      this._timedAssetData = await this._timed_asset.connect({});
     }
     return this._assetData;
   }
@@ -457,7 +444,7 @@ export class Roundware implements IRoundware {
   /** Explicitly make a new envelope that you can attach multiple assets to by
    calling the `Envelope.upload` method. This is the main way to add text,
    photo, and video assets to an envelope. */
-  async makeEnvelope(): Promise<IEnvelope> {
+  async makeEnvelope(): Promise<Envelope> {
     if (!this._sessionId) {
       throw new Error(
         "can't save assets without first connecting to the server"
