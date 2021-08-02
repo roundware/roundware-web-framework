@@ -1,4 +1,4 @@
-import { IApiClient, ApiClientOptions } from "./types/api-client";
+import { ApiClientOptions } from "./types/api-client";
 
 const GENERIC_ERROR_MSG =
   "We were unable to contact the audio server, please try again.";
@@ -8,7 +8,7 @@ const GENERIC_ERROR_MSG =
 // to verify CORS will allow the response to load in the browser. Sometimes this OPTIONS call can get obscured in debugging tools.
 // @see http://roundware.org/docs/terminology/index.html
 
-export class ApiClient implements IApiClient {
+export class ApiClient {
   /** Create a new ApiClient
    * @param {String} baseServerUrl - identifies the Roundware server to receive API requests
    * @param {Boolean} [options.fetch = fetch] - for testing purposes, you can inject the fetch mechanism to use for making network requests **/
