@@ -11,7 +11,7 @@ export interface IAssetData {
   weight?: number;
   locationPoint?: Point;
   listenerPoint?: Point;
-  tag_ids?: string[];
+  tag_ids?: number[];
   timedAssetStart?: number;
   timedAssetEnd?: number;
   playCount?: number;
@@ -32,7 +32,7 @@ export interface IAssetData {
   [index: string]:
     | number
     | string
-    | string[]
+    | number[]
     | Polygon
     | MultiPolygon
     | Date
@@ -45,11 +45,15 @@ export type IMixParams = {
   listenerPoint?: Point;
   timedAssetPriority?: IAudioData[`timed_asset_priority`];
   listenerLocation?: Coordinates;
-  listenTagIds?: unknown[];
+  listenTagIds?: number[];
   geoListenMode?: number;
   latitude?: number;
   longitude?: number;
   tagIds?: string[] | number[];
+  recordingRadius?: number;
+  getListenMode?: number;
+  minDist?: number;
+  maxDist?: number;
 };
 
 export interface IInitialParams {}
