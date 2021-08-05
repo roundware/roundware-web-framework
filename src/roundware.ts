@@ -124,7 +124,7 @@ export class Roundware {
       assetUpdateInterval,
       prefetchSpeakerAudio,
       ...options
-    }: IRoundwareConstructorOptions
+    }: Exclude<IRoundwareConstructorOptions, `apiClient`>
   ) {
     this.windowScope = windowScope;
     this._serverUrl = serverUrl;
@@ -150,7 +150,13 @@ export class Roundware {
     let navigator = window.navigator;
 
     // TODO need to reorganize/refactor these classes
-    this._user = user || new User(options);
+    this._user =
+      user ||
+      new User({
+        apiClient: options.apiClient,
+        clientType: options.clientType,
+        deviceId: options.deviceId,
+      });
     this._geoPosition =
       geoPosition ||
       new GeoPosition(navigator, {
@@ -159,12 +165,9 @@ export class Roundware {
       });
     this._session =
       session ||
-      new Session(
-        navigator,
-        this._projectId,
-        this._geoPosition.isEnabled,
-        options
-      );
+      new Session(navigator, this._projectId, this._geoPosition.isEnabled, {
+        apiClient: this._apiClient,
+      });
     this._project = project || new Project(this._projectId, options);
     this._speaker = speaker || new Speaker(this._projectId, options);
     this._asset = asset || new Asset(this._projectId, options);
