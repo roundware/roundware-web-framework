@@ -4,7 +4,7 @@ import { Point } from "@turf/helpers";
 import { Coord } from "@turf/helpers";
 import { isEmpty } from "./utils";
 import { GeoListenMode } from "./mixer";
-import { IAssetData } from "./types";
+import { IAssetData, IMixParams } from "./types";
 
 export const ASSET_PRIORITIES: Readonly<{
   DISCARD: boolean;
@@ -27,8 +27,8 @@ const alwaysNeutral = (): number => ASSET_PRIORITIES.NEUTRAL; // eslint-disable-
 // Accept an asset if any one of the provided filters passes, returns the first
 // non-discarded and non-neutral rank
 function anyAssetFilter(
-  filters: Array<(asset: IAssetData, param: object) => boolean | number> = [],
-  { ...mixParams }
+  filters: Array<(asset: IAssetData, param?: IMixParams | any) => number> = [],
+  mixParams?: IMixParams
 ) {
   if (isEmpty(filters)) return alwaysLowest;
 
@@ -36,31 +36,31 @@ function anyAssetFilter(
     for (const filter of filters) {
       let rank = filter(asset, { ...mixParams, ...stateParams });
       if (
-        rank !== ASSET_PRIORITIES.DISCARD &&
+        Boolean(rank) !== ASSET_PRIORITIES.DISCARD &&
         rank !== ASSET_PRIORITIES.NEUTRAL
       ) {
         return rank;
       }
     }
 
-    return ASSET_PRIORITIES.DISCARD;
+    return Number(ASSET_PRIORITIES.DISCARD);
   };
 }
 
 /** Filter composed of multiple inner filters that accepts assets which pass every inner filter. */
 export function allAssetFilter(
-  filters: Array<(asset: IAssetData, param: object) => boolean | number> = [],
-  { ...mixParams }
-) {
+  filters: Array<(asset: IAssetData, param?: IMixParams | any) => number> = [],
+  mixParams?: IMixParams
+): (asset: IAssetData, stateParams: IMixParams | any) => number {
   if (isEmpty(filters)) return alwaysLowest;
 
-  return (asset: IAssetData, { ...stateParams }) => {
-    const ranks = [];
+  return (asset: IAssetData, { ...stateParams }): number => {
+    const ranks: number[] = [];
 
     for (let filter of filters) {
       let rank = filter(asset, { ...mixParams, ...stateParams });
 
-      if (rank === ASSET_PRIORITIES.DISCARD) return rank; // can skip remaining filters
+      if (Boolean(rank) === ASSET_PRIORITIES.DISCARD) return rank; // can skip remaining filters
 
       ranks.push(rank);
     }
@@ -78,10 +78,7 @@ function rankForGeofilteringEligibility(
   {
     listenerPoint,
     geoListenMode,
-  }: {
-    listenerPoint: Point;
-    geoListenMode: string | number;
-  }
+  }: Pick<IMixParams, "listenerPoint" | "geoListenMode">
 ) {
   return geoListenMode !== GeoListenMode.DISABLED && listenerPoint && asset;
 }
@@ -94,78 +91,99 @@ export const distanceFixedFilter =
   () =>
   (
     asset: IAssetData,
-    options: {
-      geoListenMode: number;
-      listenerPoint: Point;
-      recordingRadius: number;
-    }
-  ) => {
-    if (options.geoListenMode === GeoListenMode.DISABLED) {
-      return ASSET_PRIORITIES.LOWEST;
-    }
-    if (!rankForGeofilteringEligibility(asset, options))
-      return ASSET_PRIORITIES.NEUTRAL;
+    options: Pick<
+      IMixParams,
+      "geoListenMode" | "listenerPoint" | "recordingRadius"
+    >
+  ): number => {
+    try {
+      if (options.geoListenMode === GeoListenMode.DISABLED) {
+        return ASSET_PRIORITIES.LOWEST;
+      }
+      if (!rankForGeofilteringEligibility(asset, options))
+        return ASSET_PRIORITIES.NEUTRAL;
 
-    const { locationPoint: assetLocationPoint } = asset;
-    const { listenerPoint, recordingRadius } = options;
+      const { locationPoint: assetLocationPoint } = asset;
+      const { listenerPoint, recordingRadius } = options;
 
-    if (!assetLocationPoint)
-      throw new Error(`assetLocationPoint is undefined!`);
-    const distance = calculateDistanceInMeters(
-      listenerPoint,
-      assetLocationPoint
-    );
+      if (typeof listenerPoint == "undefined")
+        throw new Error(`listenerPoint was undefined`);
+      if (typeof assetLocationPoint == "undefined")
+        throw new Error(`assetLocationPoint was undefined`);
 
-    if (distance < recordingRadius) {
-      return ASSET_PRIORITIES.NORMAL;
-    } else {
-      return ASSET_PRIORITIES.DISCARD;
+      const distance = calculateDistanceInMeters(
+        listenerPoint,
+        assetLocationPoint
+      );
+
+      if (
+        typeof recordingRadius !== "undefined" &&
+        distance < recordingRadius
+      ) {
+        return ASSET_PRIORITIES.NORMAL;
+      } else {
+        return Number(ASSET_PRIORITIES.DISCARD);
+      }
+    } catch (e) {
+      throw new Error(e);
     }
   };
 
 /**
  Accepts an asset if the user is within range of it based on the current dynamic distance range.
  */
-export const distanceRangesFilter = (
-  asset: IAssetData,
-  options: {
-    getListenMode: number;
-    listenerPoint: Point;
-    minDist: number;
-    maxDist: number;
-  }
-) => {
-  if (options.getListenMode === GeoListenMode.DISABLED) {
-    return ASSET_PRIORITIES.LOWEST;
-  }
-  if (
-    !rankForGeofilteringEligibility(asset, {
-      geoListenMode: options.getListenMode,
-      listenerPoint: options.listenerPoint,
-    })
-  ) {
-    return ASSET_PRIORITIES.NEUTRAL;
-  }
-  const { listenerPoint, minDist, maxDist } = options;
+export const distanceRangesFilter =
+  () =>
+  (
+    asset: IAssetData,
+    options: Pick<
+      IMixParams,
+      "getListenMode" | "listenerPoint" | "minDist" | "maxDist"
+    >
+  ): number => {
+    try {
+      if (options.getListenMode === GeoListenMode.DISABLED) {
+        return ASSET_PRIORITIES.LOWEST;
+      }
+      if (
+        !rankForGeofilteringEligibility(asset, {
+          geoListenMode: options.getListenMode,
+          listenerPoint: options.listenerPoint,
+        })
+      ) {
+        return ASSET_PRIORITIES.NEUTRAL;
+      }
+      const { listenerPoint, minDist, maxDist } = options;
 
-  if (minDist === undefined || maxDist === undefined) {
-    return ASSET_PRIORITIES.NEUTRAL;
-  }
-  const { locationPoint } = asset;
+      if (minDist === undefined || maxDist === undefined) {
+        return ASSET_PRIORITIES.NEUTRAL;
+      }
+      const { locationPoint } = asset;
 
-  if (!locationPoint) throw new Error(`locationPoint is undefined!`);
-  const distance = calculateDistanceInMeters(listenerPoint, locationPoint);
+      if (
+        typeof locationPoint == "undefined" ||
+        typeof listenerPoint == "undefined"
+      )
+        throw new Error(`locationPoint is undefined!`);
+      const distance = calculateDistanceInMeters(listenerPoint, locationPoint);
 
-  if (distance >= minDist && distance <= maxDist) {
-    return ASSET_PRIORITIES.NORMAL;
-  } else {
-    return ASSET_PRIORITIES.DISCARD;
-  }
-};
+      if (distance >= minDist && distance <= maxDist) {
+        return ASSET_PRIORITIES.NORMAL;
+      } else {
+        return Number(ASSET_PRIORITIES.DISCARD);
+      }
+    } catch (e) {
+      console.error(e);
+      throw new Error(e);
+    }
+  };
 
 // Rank the asset if it is tagged with one of the currently-enabled tag IDs
 export function anyTagsFilter() {
-  return (asset: IAssetData, { listenTagIds }: { listenTagIds: string[] }) => {
+  return (
+    asset: IAssetData,
+    { listenTagIds = [] }: Pick<IMixParams, "listenTagIds">
+  ): number => {
     if (isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
 
     const { tag_ids: IAssetDataagIds = [] } = asset;
@@ -174,7 +192,7 @@ export function anyTagsFilter() {
       if (listenTagIds.includes(tagId)) return ASSET_PRIORITIES.LOWEST; // matching only by tag should be the least-important filter
     }
 
-    return ASSET_PRIORITIES.DISCARD;
+    return Number(ASSET_PRIORITIES.DISCARD);
   };
 }
 
@@ -183,20 +201,23 @@ export function timedAssetFilter() {
   return (
     asset: IAssetData,
     { elapsedSeconds = 0, timedAssetPriority = "normal" }
-  ) => {
+  ): number => {
     const { timedAssetStart, timedAssetEnd, playCount } = asset;
 
-    if (!timedAssetStart || !timedAssetEnd) return ASSET_PRIORITIES.DISCARD;
+    if (!timedAssetStart || !timedAssetEnd)
+      return Number(ASSET_PRIORITIES.DISCARD);
     if (
       timedAssetStart >= elapsedSeconds ||
       timedAssetEnd <= elapsedSeconds ||
       (playCount && playCount > 0)
     )
-      return ASSET_PRIORITIES.DISCARD;
+      return Number(ASSET_PRIORITIES.DISCARD);
 
     const priorityEnumStr = timedAssetPriority.toUpperCase(); // "highest", "lowest", "normal", etc.
 
-    return ASSET_PRIORITIES[priorityEnumStr] || ASSET_PRIORITIES.NEUTRAL;
+    return (
+      Number(ASSET_PRIORITIES[priorityEnumStr]) || ASSET_PRIORITIES.NEUTRAL
+    );
   };
 }
 
@@ -204,22 +225,19 @@ export function timedAssetFilter() {
 export function assetShapeFilter() {
   return (
     asset: IAssetData,
-    options: {
-      listenerPoint: Point;
-      geoListenMode: string | number;
-    }
-  ) => {
+    options: Pick<IMixParams, "listenerPoint" | "geoListenMode">
+  ): number => {
     const { shape } = asset;
 
     if (!(shape && rankForGeofilteringEligibility(asset, options)))
       return ASSET_PRIORITIES.NEUTRAL;
 
     const { listenerPoint } = options;
-
+    if (!listenerPoint) throw new Error(`listenerPoint was undefined`);
     if (booleanPointInPolygon(listenerPoint, shape)) {
       return ASSET_PRIORITIES.NORMAL;
     } else {
-      return ASSET_PRIORITIES.DISCARD;
+      return Number(ASSET_PRIORITIES.DISCARD);
     }
   };
 }
@@ -227,7 +245,7 @@ export function assetShapeFilter() {
 // Prevents assets from repeating until a certain time threshold has passed
 export const timedRepeatFilter =
   () =>
-  (asset: IAssetData, { bannedDuration = 600 }) => {
+  (asset: IAssetData, { bannedDuration = 600 }): number => {
     const { lastListenTime } = asset;
 
     if (!lastListenTime) return ASSET_PRIORITIES.NORMAL; // e.g. asset has never been heard before
@@ -240,7 +258,7 @@ export const timedRepeatFilter =
       1000;
 
     if (durationSinceLastListen <= bannedDuration) {
-      return ASSET_PRIORITIES.DISCARD;
+      return Number(ASSET_PRIORITIES.DISCARD);
     } else {
       return ASSET_PRIORITIES.LOWEST;
     }
@@ -251,27 +269,26 @@ export const dateRangeFilter =
   (
     asset: IAssetData,
     { startDate, endDate }: { startDate: Date; endDate: Date }
-  ) => {
+  ): number => {
     if (startDate || endDate) {
       return (!startDate || asset.created! >= startDate) &&
         (!endDate || asset.created! <= endDate)
         ? ASSET_PRIORITIES.NORMAL
-        : ASSET_PRIORITIES.DISCARD;
+        : Number(ASSET_PRIORITIES.DISCARD);
     } else {
       return ASSET_PRIORITIES.LOWEST;
     }
   };
 
-// @ts-ignore
-export const roundwareDefaultFilterChain = allAssetFilter([
-  // @ts-ignore
+export const roundwareDefaultFilterChain: (
+  asset: IAssetData,
+  mixParams?: IMixParams
+) => number = allAssetFilter([
   anyAssetFilter([
     timedAssetFilter(), // if an asset is scheduled to play right now, or
     assetShapeFilter(), // if an asset has a shape and we AREN'T in it, reject entirely, or
-    // @ts-ignore
     allAssetFilter([
       distanceFixedFilter(), // if it has no shape, consider a fixed distance from it, or
-      // @ts-ignore
       distanceRangesFilter(),
       //angleFilter() // if the listener is within a user-configured distance or angle range
     ]),
