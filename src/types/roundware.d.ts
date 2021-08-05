@@ -15,7 +15,7 @@ import { ISpeakerFilters } from "./speaker";
 export interface IOptions {
   apiClient: ApiClient;
   deviceId: string;
-  clientType: string;
+  clientType?: string;
   geoListenMode?: boolean;
 }
 export interface IRoundwareConstructorOptions extends IOptions {
