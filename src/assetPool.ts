@@ -61,10 +61,10 @@ const assetDecorationMapper = (timedAssets: ITimedAssetData[]) => {
 
 export class AssetPool {
   assetSorter: AssetSorter;
-  playingTracks: {};
-  mixParams: {};
-  filterChain: CallableFunction;
-  assets: IAssetData[];
+  //playingTracks: {};
+  mixParams: IMixParams;
+  filterChain: (asset: IAssetData, mixParams: IMixParams) => number;
+  assets: IAssetData[] = [];
 
   constructor({
     assets = [],
@@ -75,20 +75,18 @@ export class AssetPool {
   }: {
     assets: IAssetData[];
     timedAssets: ITimedAssetData[];
-    filterChain: CallableFunction;
+    filterChain: (asset: IAssetData, mixParams: IMixParams) => number;
     sortMethods: unknown[];
     mixParams: IMixParams;
   }) {
     this.assets = assets;
     this.updateAssets(assets, timedAssets);
 
-    if (typeof mixParams.ordering !== "string")
-      throw new Error(`Please pass ordering in mixParams`);
     this.assetSorter = new AssetSorter({
       sortMethods,
       ordering: mixParams.ordering,
     });
-    this.playingTracks = {};
+    //this.playingTracks = {};
     this.mixParams = mixParams;
     this.filterChain = filterChain;
     this.sortAssets();
@@ -106,12 +104,12 @@ export class AssetPool {
       ...stateParams
     }: {
       elapsedSeconds: number;
-      listenerPoint?: Point;
-      listenTagIds?: number[];
+      listenerPoint?: IMixParams[`listenerPoint`];
+      listenTagIds?: IMixParams[`listenTagIds`];
       filterOutAssets: IAssetData[];
     }
-  ) {
-    const mixParams = {
+  ): IAssetData | undefined {
+    const mixParams: IMixParams = {
       ...this.mixParams,
       ...track.mixParams,
       ...stateParams,
@@ -121,22 +119,18 @@ export class AssetPool {
         this.assets.length
       }, params = ${JSON.stringify(mixParams)}`
     );
-    const rankedAssets = this.assets.reduce(
-      (rankings: IAssetData, asset: IAssetData) => {
-        if (filterOutAssets.includes(asset)) return rankings;
-        const rank: IAssetData[] = this.filterChain(asset, mixParams);
+    const rankedAssets = this.assets.reduce<IAssetData[]>((rankings, asset) => {
+      if (filterOutAssets.includes(asset)) return rankings;
+      const rank = this.filterChain(asset, mixParams);
 
-        if (rank) {
-          // @ts-ignore
-          rankings[rank] = rankings[rank] || [];
-          // @ts-ignore
-          rankings[rank].push(asset);
-        }
+      if (rank) {
+        rankings[rank] = rankings[rank] || [];
 
-        return rankings;
-      },
-      {}
-    );
+        rankings[rank] = asset;
+      }
+
+      return rankings;
+    }, []);
 
     const rankingGroups = Object.keys(rankedAssets).map((a) =>
       Number.parseInt(a)
@@ -151,18 +145,22 @@ export class AssetPool {
 
     // play least-recently played assets first
 
-    // @ts-ignore
-    const priorityAssets = rankedAssets[topPriorityRanking] || [];
-    // @ts-ignore not sure why sort is used on type object
+    const priorityAssets: IAssetData[] =
+      [rankedAssets[topPriorityRanking]] || [];
+
     priorityAssets.sort(
       (a: IAssetData, b: IAssetData) => b.playCount! - a.playCount!
     );
 
-    // @ts-ignore
-    const nextAsset = priorityAssets.pop();
-    if (nextAsset) nextAsset.playCount++;
+    const nextAsset: IAssetData | undefined = priorityAssets.pop();
+    if (
+      typeof nextAsset !== "undefined" &&
+      typeof nextAsset.playCount !== "undefined"
+    ) {
+      nextAsset.playCount++;
+    }
 
-    return nextAsset as IAssetData;
+    return nextAsset;
   }
 
   sortAssets() {
