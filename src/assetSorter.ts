@@ -15,7 +15,7 @@ export class AssetSorter {
     ordering = "random",
   }: {
     sortMethods: any[];
-    ordering: string;
+    ordering?: string;
   }) {
     if (isEmpty(sortMethods)) {
       this.sortMethods = [sortMethodCollection.sortByProjectDefault(ordering)];
