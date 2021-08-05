@@ -9,17 +9,19 @@ const GENERIC_ERROR_MSG =
 // @see http://roundware.org/docs/terminology/index.html
 
 export class ApiClient {
-  /** Create a new ApiClient
-   * @param {String} baseServerUrl - identifies the Roundware server to receive API requests
-   * @param {Boolean} [options.fetch = fetch] - for testing purposes, you can inject the fetch mechanism to use for making network requests **/
-
   private _jQuery: any;
   private _serverUrl: string;
   private _authToken: string;
-
-  constructor(window: Window, baseServerUrl: string) {
-    //@ts-ignore
-    this._jQuery = window.jQuery;
+  /**
+   * Created new ApiClient
+   * @param  {Window|undefined} window
+   * @param  {string} baseServerUrl- identifies the Roundware server to receive API requests
+   */
+  constructor(window: Window | undefined, baseServerUrl: string) {
+    if (typeof window !== "undefined") {
+      // @ts-ignore need extend window for jQuwey
+      this._jQuery = window?.jQuery;
+    }
     this._serverUrl = baseServerUrl;
     this._authToken = "";
   }
