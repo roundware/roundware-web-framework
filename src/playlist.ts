@@ -13,7 +13,7 @@ export class Playlist {
   playingTracks: IAudioTrackData[];
   assetPool: AssetPool;
   playing: boolean;
-  listenTagIds: number[];
+  listenTagIds: IMixParams[`listenTagIds`];
   _client: Roundware;
   _elapsedTimeMs: number;
   trackMap: Map<any, any>;
