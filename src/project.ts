@@ -7,7 +7,7 @@ export class Project {
   projectName: string;
   apiClient: ApiClient;
   legalAgreement: unknown;
-  recordingRadius: unknown;
+  recordingRadius!: number;
   maxRecordingLength: unknown;
   location: Coordinates = { latitude: 1, longitude: 1 };
   mixParams: {};
@@ -35,7 +35,7 @@ export class Project {
       const data = await this.apiClient.get<{
         name: string;
         legal_agreement: unknown;
-        recording_radius: unknown;
+        recording_radius: number;
         max_recording_length: unknown;
         latitude: number;
         longitude: number;
