@@ -74,7 +74,7 @@ export class Roundware {
   private _apiClient: ApiClient;
 
   private _user: User;
-  private _geoPosition: GeoPosition;
+  geoPosition: GeoPosition;
   private _session: Session;
   project: Project;
   private _speaker: Speaker;
@@ -86,7 +86,7 @@ export class Roundware {
   mixer: Mixer;
   private _onUpdateLocation: CallableFunction = () => {};
   private _onUpdateAssets: CallableFunction = () => {};
-  private _assetData: IAssetData[] = [];
+  assetData: IAssetData[] = [];
   private _onPlayAssets: CallableFunction = () => {};
   private _sessionId: number | string | undefined;
   uiConfig: IUiConfig = {};
@@ -157,7 +157,7 @@ export class Roundware {
         clientType: options.clientType,
         deviceId: options.deviceId,
       });
-    this._geoPosition =
+    this.geoPosition =
       geoPosition ||
       new GeoPosition(navigator, {
         geoListenMode: options.geoListenMode,
@@ -165,7 +165,7 @@ export class Roundware {
       });
     this._session =
       session ||
-      new Session(navigator, this._projectId, this._geoPosition.isEnabled, {
+      new Session(navigator, this._projectId, this.geoPosition.isEnabled, {
         apiClient: this._apiClient,
       });
 
@@ -200,14 +200,14 @@ export class Roundware {
   set onUpdateLocation(callback: CallableFunction) {
     this._onUpdateLocation = callback;
 
-    const lastCoords = this._geoPosition.getLastCoords();
+    const lastCoords = this.geoPosition.getLastCoords();
     callback(lastCoords);
   }
 
   set onUpdateAssets(callback: CallableFunction) {
     this._onUpdateAssets = callback;
 
-    if (this._assetData) {
+    if (this.assetData) {
       callback(this.assets());
     }
   }
@@ -229,15 +229,15 @@ export class Roundware {
 
   enableGeolocation(mode: number) {
     if (mode === GeoListenMode.AUTOMATIC) {
-      this._geoPosition.enable();
+      this.geoPosition.enable();
     } else {
-      this._geoPosition.disable();
+      this.geoPosition.disable();
     }
     this.mixer.updateParams({ geoListenMode: mode });
   }
 
   disableGeolocation() {
-    this._geoPosition.disable();
+    this.geoPosition.disable();
     this.mixer.updateParams({ geoListenMode: GeoListenMode.DISABLED });
   }
 
@@ -245,7 +245,7 @@ export class Roundware {
    *  @return {Promise} - Can be resolved in order to get the audio stream URL, or rejected to get an error message; see example above **/
   async connect(): Promise<{ uiConfig: IUiConfig }> {
     // want to start this process as soon as possible, as it can take a few seconds
-    this._geoPosition.connect((newLocation: Coordinates) =>
+    this.geoPosition.connect((newLocation: Coordinates) =>
       this.updateLocation(newLocation)
     );
 
@@ -286,8 +286,8 @@ export class Roundware {
   /// Requests list of assets from the server given some filters.
   async getAssets(options: object) {
     // If the caller just wants all assets, pass back the preloaded list.
-    if (!options && this._assetData) {
-      return this._assetData;
+    if (!options && this.assetData) {
+      return this.assetData;
     } else {
       return await this._apiClient.get<unknown[]>(`/assets/`, {
         project_id: this._projectId,
@@ -325,7 +325,7 @@ export class Roundware {
       };
       existingAssets = this.assets();
     }
-    this._assetData = existingAssets.concat(
+    this.assetData = existingAssets.concat(
       await this._asset.connect<IAssetData>(filters)
     );
     this._lastAssetUpdate = new Date();
@@ -333,17 +333,17 @@ export class Roundware {
     // Update the mixer's asset pool, if any.
     const pool = this.assetPool;
     if (pool && this._timedAssetData) {
-      pool.updateAssets(this._assetData, this._timedAssetData);
+      pool.updateAssets(this.assetData, this._timedAssetData);
     }
 
     if (this._onUpdateAssets) {
-      this._onUpdateAssets(this._assetData);
+      this._onUpdateAssets(this.assetData);
     }
   }
 
   async loadAssetPool(): Promise<IAssetData[]> {
     // Options passed here should only need to go into the assets/ call.
-    if (!this._assetData) {
+    if (!this.assetData) {
       await this.updateAssetPool();
       // Setup periodic retrieval of newly uploaded assets.
       this._assetDataTimer = setInterval(
@@ -354,7 +354,7 @@ export class Roundware {
     if (!this._timedAssetData) {
       this._timedAssetData = await this._timed_asset.connect({});
     }
-    return this._assetData;
+    return this.assetData;
   }
 
   async activateMixer(activationParams = {}) {
@@ -369,9 +369,7 @@ export class Roundware {
   /** Create or resume the audio stream
    * @see Stream.play **/
   play(firstPlayCallback: (value: Coordinates) => any = () => {}) {
-    return this._geoPosition
-      .waitForInitialGeolocation()
-      .then(firstPlayCallback);
+    return this.geoPosition.waitForInitialGeolocation().then(firstPlayCallback);
   }
 
   /** Tell Roundware server to pause the audio stream. You should always call this when the local audio player has been paused.
@@ -424,7 +422,7 @@ export class Roundware {
   }
 
   assets(): IAssetData[] {
-    return this._assetData || [];
+    return this.assetData || [];
   }
 
   timedAssets(): ITimedAssetData[] | [] {
@@ -458,7 +456,7 @@ export class Roundware {
     let envelope = new Envelope(
       this._sessionId,
       this._apiClient,
-      this._geoPosition,
+      this.geoPosition,
       this
     );
 
@@ -489,8 +487,8 @@ export class Roundware {
   /// @return Detailed information about a particular asset.
   async getAsset(id: string): Promise<IAssetData> {
     // Check for this asset in any already loaded asset pool.
-    if (this._assetData) {
-      for (const asset of this._assetData) {
+    if (this.assetData) {
+      for (const asset of this.assetData) {
         if (asset.id === id) {
           return asset;
         }
