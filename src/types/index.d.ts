@@ -29,6 +29,10 @@ export interface IAssetData {
   activeRegionLength?: number;
   activeRegionUpperBound?: number;
   activeRegionLowerBound?: number;
+  user?: {
+    username: string;
+    email: string;
+  };
   [index: string]:
     | number
     | string
@@ -37,6 +41,10 @@ export interface IAssetData {
     | MultiPolygon
     | Date
     | Point
+    | {
+        username: string;
+        email: string;
+      }
     | undefined;
 }
 
@@ -60,8 +68,8 @@ export interface IInitialParams {}
 
 export interface IUiConfig {
   speak?: {
-    display_items?: {
-      id?: string;
+    display_items: {
+      id: string;
     };
   }[];
   listen?: {
