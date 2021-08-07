@@ -76,7 +76,7 @@ export class Roundware {
   private _user: User;
   private _geoPosition: GeoPosition;
   private _session: Session;
-  private _project: Project;
+  project: Project;
   private _speaker: Speaker;
   private _asset: Asset;
   private _timed_asset: TimedAsset;
@@ -124,7 +124,7 @@ export class Roundware {
       assetUpdateInterval,
       prefetchSpeakerAudio,
       ...options
-    }: Exclude<IRoundwareConstructorOptions, `apiClient`>
+    }: IRoundwareConstructorOptions
   ) {
     this.windowScope = windowScope;
     this._serverUrl = serverUrl;
@@ -168,7 +168,8 @@ export class Roundware {
       new Session(navigator, this._projectId, this._geoPosition.isEnabled, {
         apiClient: this._apiClient,
       });
-    this._project = project || new Project(this._projectId, options);
+
+    this.project = project || new Project(this._projectId, options);
     this._speaker = speaker || new Speaker(this._projectId, options);
     this._asset = asset || new Asset(this._projectId, options);
     this._timed_asset = timedAsset || new TimedAsset(this._projectId, options);
@@ -258,8 +259,8 @@ export class Roundware {
       const promises: Promise<
         number | IUiConfig | ISpeakerData | IAudioTrackData | string | undefined
       >[] = [
-        this._project.connect(sessionId),
-        this._project
+        this.project.connect(sessionId),
+        this.project
           .uiconfig(sessionId)
           .then((uiConfig) => (this.uiConfig = uiConfig)),
         this._speaker
@@ -279,7 +280,7 @@ export class Roundware {
   }
 
   get mixParams() {
-    return (this._project || {}).mixParams;
+    return (this.project || {}).mixParams;
   }
 
   /// Requests list of assets from the server given some filters.
