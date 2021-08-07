@@ -7,11 +7,11 @@
   },
   "version": "0.11.0-alpha.30",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
-  "main": "roundware.js",
+  "main": "dist/roundware.js",
   "files": [
     "dist"
   ],
-  "types": "roundware.d.ts",
+  "types": "dist/roundware.d.ts",
   "scripts": {
     "test": "babel-node ./node_modules/jasmine/bin/jasmine.js",
     "prebuild": "rimraf dist",
