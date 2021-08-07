@@ -83,7 +83,7 @@ export class Roundware {
   private _audiotrack: Audiotrack;
 
   private _initialParams: IInitialParams = {};
-  private _mixer: Mixer;
+  mixer: Mixer;
   private _onUpdateLocation: CallableFunction = () => {};
   private _onUpdateAssets: CallableFunction = () => {};
   private _assetData: IAssetData[] = [];
@@ -181,7 +181,7 @@ export class Roundware {
       ...this._initialParams,
     };
 
-    this._mixer = new Mixer({
+    this.mixer = new Mixer({
       client: this,
       windowScope: this.windowScope,
       listenerLocation: this._listenerLocation,
@@ -193,7 +193,7 @@ export class Roundware {
   updateLocation(listenerLocation: Coordinates): void {
     this._listenerLocation = listenerLocation;
 
-    this._mixer.updateParams({ listenerLocation });
+    this.mixer.updateParams({ listenerLocation });
     if (this._onUpdateLocation) this._onUpdateLocation(listenerLocation);
   }
 
@@ -224,7 +224,7 @@ export class Roundware {
   }
 
   get currentlyPlayingAssets() {
-    return this._mixer.playlist && this._mixer.playlist.currentlyPlayingAssets;
+    return this.mixer.playlist && this.mixer.playlist.currentlyPlayingAssets;
   }
 
   enableGeolocation(mode: number) {
@@ -233,12 +233,12 @@ export class Roundware {
     } else {
       this._geoPosition.disable();
     }
-    this._mixer.updateParams({ geoListenMode: mode });
+    this.mixer.updateParams({ geoListenMode: mode });
   }
 
   disableGeolocation() {
     this._geoPosition.disable();
-    this._mixer.updateParams({ geoListenMode: GeoListenMode.DISABLED });
+    this.mixer.updateParams({ geoListenMode: GeoListenMode.DISABLED });
   }
 
   /** Initiate a connection to Roundware
@@ -299,7 +299,7 @@ export class Roundware {
   }
 
   get assetPool(): AssetPool | undefined {
-    return this._mixer.playlist && this._mixer.playlist.assetPool;
+    return this.mixer.playlist && this.mixer.playlist.assetPool;
   }
 
   /// Returns a reduced asset list by filtering the overall pool.
@@ -361,9 +361,9 @@ export class Roundware {
     // Make sure the asset pool is loaded.
     await this.loadAssetPool();
 
-    this._mixer.updateParams(activationParams);
+    this.mixer.updateParams(activationParams);
 
-    return this._mixer;
+    return this.mixer;
   }
 
   /** Create or resume the audio stream
@@ -377,8 +377,8 @@ export class Roundware {
   /** Tell Roundware server to pause the audio stream. You should always call this when the local audio player has been paused.
    * @see Stream.pause **/
   pause() {
-    if (this._mixer.playlist) {
-      this._mixer.playlist.pause();
+    if (this.mixer.playlist) {
+      this.mixer.playlist.pause();
     }
   }
 
@@ -397,8 +397,8 @@ export class Roundware {
   /** Tell Roundware server to skip the current asset.
    * @see Stream.skip **/
   skip() {
-    if (this._mixer.playlist) {
-      this._mixer.playlist.skip();
+    if (this.mixer.playlist) {
+      this.mixer.playlist.skip();
     }
   }
 
@@ -413,8 +413,8 @@ export class Roundware {
     longitude: number;
     tagIds: string[] | number[];
   }) {
-    if (this._mixer.playlist) {
-      this._mixer.playlist.updateParams(data);
+    if (this.mixer.playlist) {
+      this.mixer.playlist.updateParams(data);
     }
     // Object.keys(data).map(e => console.log(`key=${e}  value=${data[e]}`));
   }
