@@ -69,7 +69,11 @@ export interface IInitialParams {}
 export interface IUiConfig {
   speak?: {
     display_items: {
-      id: string;
+      default_state: boolean;
+      id: number;
+      parent_id: null | number;
+      tag_display_text: string;
+      tag_id: number;
     }[];
   }[];
   listen?: {
