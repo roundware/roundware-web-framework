@@ -8,7 +8,7 @@ export class Project {
   apiClient: ApiClient;
   legalAgreement: unknown;
   recordingRadius!: number;
-  maxRecordingLength: unknown;
+  maxRecordingLength?: number;
   location: Coordinates = { latitude: 1, longitude: 1 };
   mixParams: {};
 
@@ -36,7 +36,7 @@ export class Project {
         name: string;
         legal_agreement: unknown;
         recording_radius: number;
-        max_recording_length: unknown;
+        max_recording_length: number | string;
         latitude: number;
         longitude: number;
         geo_listen_enabled: boolean;
@@ -47,7 +47,7 @@ export class Project {
       this.projectName = data.name;
       this.legalAgreement = data.legal_agreement;
       this.recordingRadius = data.recording_radius;
-      this.maxRecordingLength = data.max_recording_length;
+      this.maxRecordingLength = parseInt(data.max_recording_length.toString());
       this.location = { latitude: data.latitude, longitude: data.longitude };
 
       this.mixParams = {
