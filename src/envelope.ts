@@ -59,7 +59,7 @@ export class Envelope {
     data: {
       latitude?: number;
       longitude?: number;
-      tag_ids?: string;
+      tag_ids?: number[];
       media_type?: string;
     } = {}
   ): Promise<{
@@ -89,7 +89,7 @@ export class Envelope {
     formData.append("longitude", coordinates.longitude!.toString());
 
     if (data.tag_ids) {
-      formData.append("tag_ids", data.tag_ids);
+      formData.append("tag_ids", JSON.stringify(data.tag_ids));
     }
     if (data.media_type) {
       formData.append("media_type", data.media_type);
