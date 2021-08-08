@@ -82,10 +82,8 @@ export interface ITagGroup {
 }
 export interface IUiConfig {
   speak?: ITagGroup[];
-  listen?: {
-    group_short_name?: string;
-  };
-  [index: string]: any;
+  listen?: ITagGroup[];
+  [index: string]: ITagGroup[] | undefined;
 }
 
 export type ILookupTable = object;
