@@ -4,7 +4,7 @@ import { Point } from "@turf/helpers";
 
 import { IAudioContext } from "standardized-audio-context";
 import { IAudioTrackData } from "./types/audioTrack";
-import { IMixParams, ITrack } from "./types";
+import { IAssetData, IMixParams, ITrack, ITrackIdMap } from "./types";
 import { Roundware } from "./roundware";
 import { AssetPool } from "./assetPool";
 
@@ -16,8 +16,8 @@ export class Playlist {
   listenTagIds: IMixParams[`listenTagIds`];
   _client: Roundware;
   _elapsedTimeMs: number;
-  trackMap: Map<any, any>;
-  trackIdMap: {};
+  trackMap: Map<PlaylistAudiotrack, IAssetData | null>;
+  trackIdMap: ITrackIdMap;
   playlistLastStartedAt: Date | undefined;
 
   constructor({
@@ -33,7 +33,7 @@ export class Playlist {
     listenerPoint: Point;
     windowScope: Window;
     assetPool: AssetPool;
-    audioContext?: IAudioContext;
+    audioContext: IAudioContext;
   }) {
     this.listenerPoint = listenerPoint;
     this.playingTracks = [];
@@ -55,11 +55,10 @@ export class Playlist {
     }
 
     this._elapsedTimeMs = elapsedTimeMs;
-    const trackIdMap = {};
-    const trackMap = new Map();
+    const trackIdMap: ITrackIdMap = {};
+    const trackMap: Map<PlaylistAudiotrack, IAssetData | null> = new Map();
 
     audioTracks.forEach((audioData: IAudioTrackData) => {
-      // @ts-ignore
       const track = new PlaylistAudiotrack({
         audioData,
         ...playlistTrackOptions,
@@ -67,7 +66,6 @@ export class Playlist {
         playlist: this,
       });
 
-      // @ts-ignore
       trackIdMap[track.trackId] = track;
       trackMap.set(track, null);
     }, {});
@@ -76,9 +74,8 @@ export class Playlist {
     this.trackIdMap = trackIdMap;
   }
 
-  get tracks() {
-    // @ts-ignore
-    return [...this.trackMap.keys()];
+  get tracks(): PlaylistAudiotrack[] {
+    return [...Array.from(this.trackMap.keys())];
   }
 
   get currentlyPlayingAssets() {
@@ -108,13 +105,11 @@ export class Playlist {
 
   skip(trackId?: number) {
     if (typeof trackId == "undefined") return;
-    // @ts-ignore
     const track = this.trackIdMap[Number(trackId)];
     if (track) track.skip();
   }
 
   replay(trackId: number) {
-    // @ts-ignore
     const track = this.trackIdMap[Number(trackId)];
     if (track) track.replay();
   }
@@ -160,7 +155,7 @@ export class Playlist {
       listenTagIds,
     });
 
-    this.trackMap.set(forTrack, nextAsset);
+    this.trackMap.set(forTrack, nextAsset ? nextAsset : null);
     this._client._triggerOnPlayAssets();
 
     return nextAsset;

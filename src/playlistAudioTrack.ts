@@ -80,7 +80,7 @@ const LOGGABLE_AUDIO_ELEMENT_EVENTS = [
 const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due to floating point math concerns
 
 export class PlaylistAudiotrack {
-  trackId: any;
+  trackId: number;
   timedAssetPriority: any;
   playlist: Playlist;
   playing: boolean;
