@@ -256,9 +256,12 @@ export class Roundware {
       const sessionId = await this._session.connect();
       this._sessionId = sessionId;
 
-      const promises: Promise<
-        number | IUiConfig | ISpeakerData | IAudioTrackData | string | undefined
-      >[] = [
+      const promises: [
+        Promise<number | undefined>,
+        Promise<IUiConfig>,
+        Promise<ISpeakerData[]>,
+        Promise<IAudioTrackData[]>
+      ] = [
         this.project.connect(sessionId),
         this.project
           .uiconfig(sessionId)
@@ -465,15 +468,16 @@ export class Roundware {
     return envelope;
   }
 
-  findTagDescription(tagId: string, tagType = "listen") {
+  findTagDescription(tagId: number, tagType = "listen") {
     const tagGroups = this.uiConfig[tagType];
-    for (const group of tagGroups) {
-      for (const item of group.display_items) {
-        if (item.tag_id == tagId) {
-          return item.tag_display_text;
+    if (tagGroups)
+      for (const group of tagGroups) {
+        for (const item of group.display_items) {
+          if (item.tag_id == tagId) {
+            return item.tag_display_text;
+          }
         }
       }
-    }
     return undefined;
   }
 
