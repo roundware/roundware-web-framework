@@ -2,6 +2,7 @@ import { Point } from "@turf/helpers";
 import { Coord } from "@turf/helpers";
 import { Polygon } from "@turf/helpers";
 import { MultiPolygon } from "@turf/helpers";
+import { PlaylistAudiotrack } from "../playlistAudioTrack";
 export type Coordinates = {
   longitude?: number;
   latitude?: number;
@@ -73,10 +74,13 @@ export interface ITag {
   tag_display_text: string;
   tag_id: number;
 }
+
+export interface ITagGroup {
+  display_items: ITag[];
+  group_short_name?: string;
+}
 export interface IUiConfig {
-  speak?: {
-    display_items: ITag[];
-  }[];
+  speak?: ITagGroup[];
   listen?: {
     group_short_name?: string;
   };
@@ -129,3 +133,7 @@ export interface ISession {
   connect(): Promise<number | string>;
   sessionId: number | undefined;
 }
+
+export type ITrackIdMap = {
+  [trackId in string | number]: PlaylistAudiotrack;
+};
