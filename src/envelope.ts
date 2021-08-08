@@ -64,6 +64,7 @@ export class Envelope {
     } = {}
   ): Promise<{
     detail: string;
+    envelope_ids: number[];
   }> {
     if (!this._envelopeId) {
       return Promise.reject(
@@ -103,11 +104,10 @@ export class Envelope {
       contentType: "multipart/form-data",
     };
 
-    const res = await this._apiClient.patch<{ detail: string }>(
-      path,
-      formData,
-      options
-    );
+    const res = await this._apiClient.patch<{
+      detail: string;
+      envelope_ids: number[];
+    }>(path, formData, options);
     console.info("UPLOADDATA", res);
     if (res.detail) {
       throw new Error(res.detail);
