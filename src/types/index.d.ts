@@ -66,15 +66,16 @@ export type IMixParams = {
 
 export interface IInitialParams {}
 
+export interface ITag {
+  default_state: boolean;
+  id: number;
+  parent_id: null | number;
+  tag_display_text: string;
+  tag_id: number;
+}
 export interface IUiConfig {
   speak?: {
-    display_items: {
-      default_state: boolean;
-      id: number;
-      parent_id: null | number;
-      tag_display_text: string;
-      tag_id: number;
-    }[];
+    display_items: ITag[];
   }[];
   listen?: {
     group_short_name?: string;
