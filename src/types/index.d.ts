@@ -109,8 +109,8 @@ export interface IGeoPosition extends Coordinates {
 export interface PrefetchAudioType {}
 
 export interface IAudioData extends Blob {
-  timed_asset_priority: any;
-  id: string | number;
+  timed_asset_priority?: any;
+  id?: string | number;
 }
 
 export interface GeoPositionOptions {
