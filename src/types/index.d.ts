@@ -78,6 +78,7 @@ export interface ITag {
 export interface ITagGroup {
   display_items: ITag[];
   group_short_name?: string;
+  header_display_text?: string;
 }
 export interface IUiConfig {
   speak?: ITagGroup[];
