@@ -68,7 +68,7 @@ export class Roundware {
   private _projectId: number;
   private _speakerFilters: ISpeakerFilters = {};
   private _assetFilters: IAssetFilters;
-  private _listenerLocation: Coordinates;
+  listenerLocation: Coordinates;
   private _initialOptions: IOptions;
   private _assetUpdateInterval: number;
   private _apiClient: ApiClient;
@@ -131,7 +131,7 @@ export class Roundware {
     this._projectId = projectId;
     if (speakerFilters) this._speakerFilters = speakerFilters;
     this._assetFilters = assetFilters;
-    this._listenerLocation = listenerLocation;
+    this.listenerLocation = listenerLocation;
     this._initialOptions = options;
     // By default, update the asset pool every 5 minutes.
     this._assetUpdateInterval = assetUpdateInterval || 300000;
@@ -184,14 +184,14 @@ export class Roundware {
     this.mixer = new Mixer({
       client: this,
       windowScope: this.windowScope,
-      listenerLocation: this._listenerLocation,
+      listenerLocation: this.listenerLocation,
       prefetchSpeakerAudio: prefetchSpeakerAudio || false,
       mixParams,
     });
   }
 
   updateLocation(listenerLocation: Coordinates): void {
-    this._listenerLocation = listenerLocation;
+    this.listenerLocation = listenerLocation;
 
     this.mixer.updateParams({ listenerLocation });
     if (this._onUpdateLocation) this._onUpdateLocation(listenerLocation);
@@ -284,7 +284,7 @@ export class Roundware {
   }
 
   /// Requests list of assets from the server given some filters.
-  async getAssets(options: object) {
+  async getAssets(options?: object) {
     // If the caller just wants all assets, pass back the preloaded list.
     if (!options && this.assetData) {
       return this.assetData;
@@ -326,8 +326,9 @@ export class Roundware {
       existingAssets = this.assets();
     }
     this.assetData = existingAssets.concat(
-      await this._asset.connect<IAssetData>(filters)
+      await this._asset.connect<IAssetData[]>(filters)
     );
+
     this._lastAssetUpdate = new Date();
 
     // Update the mixer's asset pool, if any.
@@ -343,7 +344,7 @@ export class Roundware {
 
   async loadAssetPool(): Promise<IAssetData[]> {
     // Options passed here should only need to go into the assets/ call.
-    if (!this.assetData) {
+    if (!this.assetData.length) {
       await this.updateAssetPool();
       // Setup periodic retrieval of newly uploaded assets.
       this._assetDataTimer = setInterval(

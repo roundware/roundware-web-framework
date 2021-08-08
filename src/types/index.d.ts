@@ -17,7 +17,7 @@ export interface IAssetData {
   playCount?: number;
   shape?: Polygon | MultiPolygon;
   lastListenTime?: number | Date;
-  created?: Date;
+  created?: Date | string;
   start_time?: number;
   start?: number;
   end_time?: number;
@@ -70,7 +70,7 @@ export interface IUiConfig {
   speak?: {
     display_items: {
       id: string;
-    };
+    }[];
   }[];
   listen?: {
     group_short_name?: string;
