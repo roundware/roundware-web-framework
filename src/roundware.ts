@@ -468,8 +468,8 @@ export class Roundware {
     return envelope;
   }
 
-  findTagDescription(tagId: string, tagType = "listen") {
-    const tagGroups = this.uiConfig[tagType];
+  findTagDescription(tagId: number, tagType = "listen") {
+    const tagGroups = this.uiConfig[tagType]!;
     for (const group of tagGroups) {
       for (const item of group.display_items) {
         if (item.tag_id == tagId) {
