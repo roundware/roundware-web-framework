@@ -256,9 +256,12 @@ export class Roundware {
       const sessionId = await this._session.connect();
       this._sessionId = sessionId;
 
-      const promises: Promise<
-        number | IUiConfig | ISpeakerData | IAudioTrackData | string | undefined
-      >[] = [
+      const promises: [
+        Promise<number | undefined>,
+        Promise<IUiConfig>,
+        Promise<ISpeakerData[]>,
+        Promise<IAudioTrackData[]>
+      ] = [
         this.project.connect(sessionId),
         this.project
           .uiconfig(sessionId)
