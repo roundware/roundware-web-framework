@@ -9,7 +9,7 @@ export type Coordinates = {
 
 export interface IAssetData {
   weight?: number;
-  locationPoint?: Point;
+  locationPoint?: Feature<Point>;
   listenerPoint?: Point;
   tag_ids?: number[];
   timedAssetStart?: number;
@@ -41,6 +41,7 @@ export interface IAssetData {
     | MultiPolygon
     | Date
     | Point
+    | Feature<Point>
     | {
         username: string;
         email: string;
