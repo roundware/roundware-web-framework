@@ -1,6 +1,6 @@
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
 import { getUrlParam } from "./utils";
-import { Point } from "@turf/helpers";
+import { Point, Feature } from "@turf/helpers";
 
 import { IAudioContext } from "standardized-audio-context";
 import { IAudioTrackData } from "./types/audioTrack";
@@ -9,7 +9,7 @@ import { Roundware } from "./roundware";
 import { AssetPool } from "./assetPool";
 
 export class Playlist {
-  listenerPoint: Point;
+  listenerPoint: Feature<Point>;
   playingTracks: IAudioTrackData[];
   assetPool: AssetPool;
   playing: boolean;
@@ -30,7 +30,7 @@ export class Playlist {
   }: {
     client: Roundware;
     audioTracks?: IAudioTrackData[];
-    listenerPoint: Point;
+    listenerPoint: Feature<Point>;
     windowScope: Window;
     assetPool: AssetPool;
     audioContext: IAudioContext;

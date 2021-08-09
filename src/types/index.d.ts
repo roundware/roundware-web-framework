@@ -1,5 +1,4 @@
-import { Point } from "@turf/helpers";
-import { Coord } from "@turf/helpers";
+import { Point, Feature } from "@turf/helpers";
 import { Polygon } from "@turf/helpers";
 import { MultiPolygon } from "@turf/helpers";
 import { PlaylistAudiotrack } from "../playlistAudioTrack";
@@ -51,7 +50,7 @@ export interface IAssetData {
 
 export type IMixParams = {
   ordering?: string;
-  listenerPoint?: Point;
+  listenerPoint?: Feature<Point>;
   timedAssetPriority?: IAudioData[`timed_asset_priority`];
   listenerLocation?: Coordinates;
   listenTagIds?: number[];

@@ -56,7 +56,7 @@ export class SpeakerTrack {
     data,
   }: {
     audioContext: IAudioContext;
-    listenerPoint: Point;
+    listenerPoint: Feature<Point>;
     prefetchAudio: PrefetchAudioType;
     data: ISpeakerData;
   }) {
@@ -77,7 +77,9 @@ export class SpeakerTrack {
     this.minVolume = minVolume;
     this.attenuationDistanceKm = attenuationDistance / 1000;
     this.uri = uri;
-    this.listenerPoint = listenerPoint;
+
+    this.listenerPoint = listenerPoint.geometry;
+
     this.playing = false;
 
     this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
@@ -158,7 +160,7 @@ export class SpeakerTrack {
 
   async updateParams(
     isPlaying: boolean,
-    opts: { listenerPoint: { geometry: Point } }
+    opts: { listenerPoint: Feature<Point> }
   ) {
     if (opts && opts.listenerPoint) {
       this.listenerPoint = opts.listenerPoint.geometry;

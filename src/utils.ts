@@ -1,7 +1,7 @@
 /* global require */
 
 const { point } = require("@turf/helpers");
-import { Point } from "@turf/helpers";
+import { Point, Feature } from "@turf/helpers";
 import { AudioContext, IAudioContext } from "standardized-audio-context";
 
 const MATCHES_URI_SCHEME = new RegExp(/^https?:\/\//i);
@@ -16,7 +16,7 @@ export const cleanAudioURL = (url: string): string =>
 /**
  * @param  {number} {latitude
  * @param  {number} longitude
- * @returns Point
+ * @returns Feature<Point>
  */
 export function coordsToPoints({
   latitude,
@@ -24,7 +24,7 @@ export function coordsToPoints({
 }: {
   latitude: number;
   longitude: number;
-}): Point {
+}): Feature<Point> {
   // NOTE we need to reverse the order here to make geolocations compatible with Roundware geometries, which have points listed w/ longitude first
   return point([+longitude, +latitude]); // NOTE we need to reverse the order here to make geolocations compatible with Roundware geometries, which have points listed w/ longitude first
 }
