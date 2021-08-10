@@ -268,11 +268,21 @@ export const dateRangeFilter =
   () =>
   (
     asset: IAssetData,
-    { startDate, endDate }: { startDate: Date; endDate: Date }
+    { startDate, endDate }: { startDate: string | Date; endDate: string | Date }
   ): number => {
     if (startDate || endDate) {
-      return (!startDate || asset.created! >= startDate) &&
-        (!endDate || asset.created! <= endDate)
+      // dates can be of type strings
+      // need to convert to date objects
+
+      if (!(startDate instanceof Date)) startDate = new Date(startDate);
+      if (!(endDate instanceof Date)) endDate = new Date(endDate);
+
+      let assetCreated: string | any = asset.created;
+      if (!(assetCreated instanceof Date))
+        assetCreated = new Date(assetCreated);
+
+      return (!startDate || assetCreated >= startDate) &&
+        (!endDate || assetCreated <= endDate)
         ? ASSET_PRIORITIES.NORMAL
         : Number(ASSET_PRIORITIES.DISCARD);
     } else {

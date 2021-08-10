@@ -17,7 +17,7 @@ export interface IAssetData {
   playCount?: number;
   shape?: Polygon | MultiPolygon | null;
   lastListenTime?: number | Date;
-  created?: string;
+  created?: string | Date;
   start_time?: number;
   start?: number;
   end_time?: number;
@@ -36,7 +36,7 @@ export interface IAssetData {
   description?: string;
   filename?: string;
   submitted?: boolean;
-  updated?: string;
+  updated?: string | Date;
   media_type?: string;
   audio_length_in_seconds?: number;
   session_id?: number;
