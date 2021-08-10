@@ -484,7 +484,11 @@ export class Roundware {
     return undefined;
   }
 
-  async vote(assetId: number, voteType: string, value: unknown): Promise<void> {
+  async vote(
+    assetId: number,
+    voteType: string,
+    value?: unknown
+  ): Promise<void> {
     return this._apiClient.post(`/assets/${assetId}/votes/`, {
       session_id: this._sessionId,
       vote_type: voteType,
