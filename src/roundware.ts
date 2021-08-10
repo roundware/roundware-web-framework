@@ -23,6 +23,7 @@ import {
 import { IAssetFilters } from "./types/asset";
 
 import { IAudioTrackData } from "./types/audioTrack";
+import { IEnvelopeData } from "./types/envelope";
 import { IOptions, IRoundwareConstructorOptions } from "./types/roundware";
 import { ISpeakerData, ISpeakerFilters } from "./types/speaker";
 import { User } from "./user";
@@ -161,7 +162,7 @@ export class Roundware {
     this.geoPosition =
       geoPosition ||
       new GeoPosition(navigator, {
-        geoListenMode: options.geoListenMode,
+        geoListenMode: options.geoListenMode || false,
         defaultCoords: listenerLocation,
       });
     this._session =
@@ -513,8 +514,8 @@ export class Roundware {
   }
 
   /// @return Details about a particular envelope (which may contain multiple assets).
-  async getEnvelope(id: number): Promise<unknown> {
-    return this._apiClient.get<unknown>(`/envelopes/${id}`, {
+  async getEnvelope(id: number): Promise<IEnvelopeData> {
+    return this._apiClient.get<IEnvelopeData>(`/envelopes/${id}`, {
       session_id: this._sessionId,
     });
   }

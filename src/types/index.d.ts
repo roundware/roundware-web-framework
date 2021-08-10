@@ -130,7 +130,7 @@ export interface IAudioData extends Blob {
 
 export interface GeoPositionOptions {
   defaultCoords: Coordinates;
-  geoListenMode: unknown;
+  geoListenMode: boolean;
 }
 
 export interface IGeoPosition {
