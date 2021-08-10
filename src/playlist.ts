@@ -78,8 +78,8 @@ export class Playlist {
     return [...Array.from(this.trackMap.keys())];
   }
 
-  get currentlyPlayingAssets() {
-    const assets = [];
+  get currentlyPlayingAssets(): IAssetData[] {
+    const assets: IAssetData[] = [];
     // @ts-ignore
     for (const a of this.trackMap.values()) {
       if (a) {
