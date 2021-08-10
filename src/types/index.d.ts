@@ -42,7 +42,7 @@ export interface IAssetData {
   session_id?: number;
   project_id?: number;
   language_id?: number;
-  envelope_ids: number[];
+  envelope_ids?: number[];
   description_loc_ids?: number[];
   alt_text_loc_ids?: number[];
 
