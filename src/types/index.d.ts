@@ -63,6 +63,8 @@ export type IMixParams = {
   getListenMode?: number;
   minDist?: number;
   maxDist?: number;
+  startDate?: Date;
+  endDate?: Date;
 };
 
 export interface IInitialParams {}

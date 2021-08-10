@@ -287,12 +287,12 @@ export class Roundware {
   }
 
   /// Requests list of assets from the server given some filters.
-  async getAssets(options?: object) {
+  async getAssets(options?: IAssetData): Promise<IAssetData[]> {
     // If the caller just wants all assets, pass back the preloaded list.
     if (!options && this.assetData) {
       return this.assetData;
     } else {
-      return await this._apiClient.get<unknown[]>(`/assets/`, {
+      return await this._apiClient.get<IAssetData[]>(`/assets/`, {
         project_id: this._projectId,
         // Override default filters with unknown passed in options.
         ...this._assetFilters,
