@@ -16,6 +16,7 @@ import {
   IAssetData,
   IAudioData,
   IInitialParams,
+  IMixParams,
   ITimedAssetData,
   IUiConfig,
 } from "./types";
@@ -197,14 +198,14 @@ export class Roundware {
     if (this._onUpdateLocation) this._onUpdateLocation(listenerLocation);
   }
 
-  set onUpdateLocation(callback: CallableFunction) {
+  set onUpdateLocation(callback: (lastCoords: Coordinates) => any) {
     this._onUpdateLocation = callback;
 
     const lastCoords = this.geoPosition.getLastCoords();
     callback(lastCoords);
   }
 
-  set onUpdateAssets(callback: CallableFunction) {
+  set onUpdateAssets(callback: (assets?: IAssetData[]) => any) {
     this._onUpdateAssets = callback;
 
     if (this.assetData) {
@@ -212,7 +213,7 @@ export class Roundware {
     }
   }
 
-  set onPlayAssets(callback: CallableFunction) {
+  set onPlayAssets(callback: (currentlyPlaylingAssets?: IAssetData[]) => any) {
     this._onPlayAssets = callback;
     callback(this.currentlyPlayingAssets);
   }
@@ -223,11 +224,11 @@ export class Roundware {
     }
   }
 
-  get currentlyPlayingAssets() {
+  get currentlyPlayingAssets(): IAssetData[] | undefined {
     return this.mixer.playlist && this.mixer.playlist.currentlyPlayingAssets;
   }
 
-  enableGeolocation(mode: number) {
+  enableGeolocation(mode: number): void {
     if (mode === GeoListenMode.AUTOMATIC) {
       this.geoPosition.enable();
     } else {
@@ -236,7 +237,7 @@ export class Roundware {
     this.mixer.updateParams({ geoListenMode: mode });
   }
 
-  disableGeolocation() {
+  disableGeolocation(): void {
     this.geoPosition.disable();
     this.mixer.updateParams({ geoListenMode: GeoListenMode.DISABLED });
   }
@@ -309,7 +310,7 @@ export class Roundware {
   /// Example: `getAssetsFromPool(allAssetFilter([distanceRangesFilter(), anyTagsFilter()]))`
   async getAssetsFromPool(
     assetFilter: CallableFunction,
-    extraParams = {}
+    extraParams: IMixParams = {}
   ): Promise<IAssetData[]> {
     const pool = await this.loadAssetPool();
     const mixParams = { ...this.mixParams, ...extraParams };
@@ -318,7 +319,7 @@ export class Roundware {
     );
   }
 
-  async updateAssetPool() {
+  async updateAssetPool(): Promise<void> {
     let filters = this._assetFilters;
     let existingAssets: IAssetData[] = [];
     if (this._lastAssetUpdate) {
@@ -360,8 +361,11 @@ export class Roundware {
     }
     return this.assetData;
   }
-
-  async activateMixer(activationParams = {}) {
+  /**
+   * @param  {IMixParams} activationParams
+   * @returns Mixer
+   */
+  async activateMixer(activationParams: IMixParams = {}): Promise<Mixer> {
     // Make sure the asset pool is loaded.
     await this.loadAssetPool();
 
@@ -480,7 +484,7 @@ export class Roundware {
     return undefined;
   }
 
-  async vote(assetId: string, voteType: string, value: unknown) {
+  async vote(assetId: number, voteType: string, value: unknown): Promise<void> {
     return this._apiClient.post(`/assets/${assetId}/votes/`, {
       session_id: this._sessionId,
       vote_type: voteType,
@@ -489,7 +493,7 @@ export class Roundware {
   }
 
   /// @return Detailed information about a particular asset.
-  async getAsset(id: string): Promise<IAssetData> {
+  async getAsset(id: number): Promise<IAssetData> {
     // Check for this asset in any already loaded asset pool.
     if (this.assetData) {
       for (const asset of this.assetData) {
@@ -505,7 +509,7 @@ export class Roundware {
   }
 
   /// @return Details about a particular envelope (which may contain multiple assets).
-  async getEnvelope(id: string | number): Promise<unknown> {
+  async getEnvelope(id: number): Promise<unknown> {
     return this._apiClient.get<unknown>(`/envelopes/${id}`, {
       session_id: this._sessionId,
     });
