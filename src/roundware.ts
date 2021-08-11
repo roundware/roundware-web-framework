@@ -11,8 +11,10 @@ import { Session } from "./session";
 import { logger } from "./shims";
 import { Speaker } from "./speaker";
 import { TimedAsset } from "./timed_asset";
+
 import {
   Coordinates,
+  GeoListenModeType,
   IAssetData,
   IAudioData,
   IInitialParams,
@@ -103,7 +105,7 @@ export class Roundware {
    * @param {Object} options - Collection of parameters for configuring this Roundware instance
    * @param {String} options.serverUrl - identifies the Roundware server
    * @param {Number} options.projectId - identifies the Roundware project to connect
-   * @param {Boolean} options.geoListenMode - whether or not to attempt to initialize geolocation-based listening
+   * @param {number} options.geoListenMode - whether or not to attempt to initialize geolocation-based listening
    * @throws Will throw an error if serveUrl or projectId are missing
     TODO need to provide a more modern/ES6-aware architecture here vs burdening the constructor with all of these details **/
 
@@ -162,7 +164,7 @@ export class Roundware {
     this.geoPosition =
       geoPosition ||
       new GeoPosition(navigator, {
-        geoListenMode: options.geoListenMode || false,
+        geoListenMode: options.geoListenMode,
         defaultCoords: listenerLocation,
       });
     this._session =
@@ -229,7 +231,7 @@ export class Roundware {
     return this.mixer.playlist && this.mixer.playlist.currentlyPlayingAssets;
   }
 
-  enableGeolocation(mode: number): void {
+  enableGeolocation(mode: GeoListenModeType): void {
     if (mode === GeoListenMode.AUTOMATIC) {
       this.geoPosition.enable();
     } else {

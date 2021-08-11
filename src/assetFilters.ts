@@ -4,7 +4,7 @@ import { Point } from "@turf/helpers";
 import { Coord } from "@turf/helpers";
 import { isEmpty } from "./utils";
 import { GeoListenMode } from "./mixer";
-import { IAssetData, IMixParams } from "./types";
+import { GeoListenModeType, IAssetData, IMixParams } from "./types";
 
 export const ASSET_PRIORITIES: Readonly<{
   DISCARD: boolean;
@@ -145,9 +145,10 @@ export const distanceRangesFilter =
       if (options.getListenMode === GeoListenMode.DISABLED) {
         return ASSET_PRIORITIES.LOWEST;
       }
+
       if (
         !rankForGeofilteringEligibility(asset, {
-          geoListenMode: options.getListenMode,
+          geoListenMode: options.getListenMode as GeoListenModeType,
           listenerPoint: options.listenerPoint,
         })
       ) {

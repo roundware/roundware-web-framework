@@ -1,4 +1,4 @@
-import { Coordinates } from ".";
+import { Coordinates, GeoListenModeType } from ".";
 import { ApiClient } from "../api-client";
 import { Asset } from "../asset";
 import { Audiotrack } from "../audiotrack";
@@ -16,7 +16,7 @@ export interface IOptions {
   apiClient: ApiClient;
   deviceId: string;
   clientType?: string;
-  geoListenMode?: boolean;
+  geoListenMode: GeoListenModeType;
 }
 export interface IRoundwareConstructorOptions extends IOptions {
   serverUrl: string;

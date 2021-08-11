@@ -2,11 +2,20 @@ import { AssetPool } from "./assetPool";
 import { Playlist } from "./playlist";
 import { Roundware } from "./roundware";
 import { SpeakerTrack } from "./speaker_track";
-import { Coordinates, IAssetData, IMixParams } from "./types";
+import {
+  Coordinates,
+  GeoListenModeType,
+  IAssetData,
+  IMixParams,
+} from "./types";
 
 import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 
-export const GeoListenMode = Object.freeze({
+export const GeoListenMode: {
+  DISABLED: GeoListenModeType;
+  MANUAL: GeoListenModeType;
+  AUTOMATIC: GeoListenModeType;
+} = Object.freeze({
   DISABLED: 0,
   MANUAL: 1,
   AUTOMATIC: 2,

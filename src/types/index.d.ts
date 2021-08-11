@@ -6,7 +6,12 @@ export type Coordinates = {
   longitude?: number;
   latitude?: number;
 };
-
+/*
+ * DISABLED: 0,
+ * MANUAL: 1,
+ * AUTOMATIC: 2,
+ */
+export type GeoListenModeType = 0 | 1 | 2;
 export interface IAssetData {
   weight?: number;
   locationPoint?: Feature<Point>;
@@ -70,7 +75,7 @@ export type IMixParams = {
   timedAssetPriority?: IAudioData[`timed_asset_priority`];
   listenerLocation?: Coordinates;
   listenTagIds?: number[];
-  geoListenMode?: number;
+  geoListenMode?: GeoListenModeType;
   latitude?: number;
   longitude?: number;
   tagIds?: string[] | number[];
@@ -130,7 +135,7 @@ export interface IAudioData extends Blob {
 
 export interface GeoPositionOptions {
   defaultCoords: Coordinates;
-  geoListenMode: boolean;
+  geoListenMode: GeoListenModeType;
 }
 
 export interface IGeoPosition {

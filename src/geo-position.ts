@@ -56,8 +56,7 @@ export class GeoPosition {
     this._lastCoords = initialCoords;
     this.geolocation = navigator.geolocation;
     this.isEnabled =
-      navigator.geolocation &&
-      geoListenMode === Boolean(GeoListenMode.AUTOMATIC);
+      navigator.geolocation && geoListenMode === GeoListenMode.AUTOMATIC;
     this.updateCallback = () => {};
     this._geoWatchID = null;
 
