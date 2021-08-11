@@ -47,7 +47,7 @@ export class Mixer {
     prefetchSpeakerAudio: boolean | unknown;
     filters?: unknown[];
     sortMethods?: unknown[];
-    mixParams: object;
+    mixParams: IMixParams;
   }) {
     this.playing = false;
 
