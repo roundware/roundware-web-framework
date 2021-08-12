@@ -64,7 +64,7 @@ export class AssetPool {
   //playingTracks: {};
   mixParams: IMixParams;
   filterChain: (asset: IAssetData, mixParams: IMixParams) => number;
-  assets: IAssetData[] = [];
+  assets: IAssetData[];
 
   constructor({
     assets = [],
