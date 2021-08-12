@@ -85,8 +85,6 @@ export class Roundware {
   private _asset: Asset;
   private _timed_asset: TimedAsset;
   private _audiotrack: Audiotrack;
-
-  private _initialParams: IInitialParams = {};
   mixer: Mixer;
   private _onUpdateLocation: CallableFunction = () => {};
   private _onUpdateAssets: CallableFunction = () => {};
@@ -180,11 +178,10 @@ export class Roundware {
     this._audiotrack = audiotrack || new Audiotrack(this._projectId, options);
     this.uiConfig = {};
 
-    const mixParams: object = {
+    const mixParams: IMixParams = {
       ...this.mixParams,
-      ...this._initialParams,
+      ...this._initialOptions,
     };
-
     this.mixer = new Mixer({
       client: this,
       windowScope: this.windowScope,
