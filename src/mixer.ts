@@ -30,7 +30,7 @@ export class Mixer {
   mixParams: IMixParams;
   playlist: Playlist | undefined;
   assetPool: AssetPool;
-  speakerTracks: SpeakerTrack[] = [];
+  speakerTracks: SpeakerTrack[] | undefined;
 
   constructor({
     client,
@@ -168,11 +168,13 @@ export class Mixer {
     if (this.playing) {
       this.playing = false;
       if (this.playlist) this.playlist.pause();
-      this.speakerTracks.forEach((s) => s.pause());
+      if (Array.isArray(this.speakerTracks))
+        this.speakerTracks.forEach((s) => s.pause());
     } else {
       this.playing = true;
       if (this.playlist) this.playlist.play();
-      this.speakerTracks.forEach((s) => s.play());
+      if (Array.isArray(this.speakerTracks))
+        this.speakerTracks.forEach((s) => s.play());
     }
 
     return this.playing;
