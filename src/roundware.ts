@@ -369,7 +369,11 @@ export class Roundware {
     // Make sure the asset pool is loaded.
     await this.loadAssetPool();
 
-    this.mixer.updateParams(activationParams);
+    this.mixer.updateParams(
+      activationParams,
+      this.assets(),
+      this.timedAssets()
+    );
 
     return this.mixer;
   }
