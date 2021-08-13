@@ -248,22 +248,17 @@ export class PlaylistAudiotrack {
     ); // 'exponentialRampToValueAtTime');
   }
 
-  loadNextAsset(): IAssetData | false | null {
+  loadNextAsset(): IAssetData | null {
     const { audioElement, currentAsset } = this;
-    if (
-      !currentAsset ||
-      !currentAsset.playCount ||
-      !currentAsset.lastListenTime
-    ) {
-      console.warn(`currentAsset properties were undefined!`);
-      return false;
-    }
+
     if (currentAsset) {
-      currentAsset.playCount++;
+      if (!currentAsset.playCount) currentAsset.playCount = 1;
+      else currentAsset.playCount++;
       currentAsset.lastListenTime = new Date();
     }
 
     const newAsset = this.playlist.next(this);
+
     this.currentAsset = newAsset;
 
     if (newAsset) {
