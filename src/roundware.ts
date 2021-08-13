@@ -225,7 +225,13 @@ export class Roundware {
   }
 
   get currentlyPlayingAssets(): IAssetData[] | undefined {
-    return this.mixer.playlist && this.mixer.playlist.currentlyPlayingAssets;
+    if (!this.mixer.playlist) {
+      console.warn(
+        `Cannot get currently playing assets. roundware.mixer is not activated yet!`
+      );
+      return undefined;
+    }
+    return this.mixer.playlist.currentlyPlayingAssets;
   }
 
   enableGeolocation(mode: GeoListenModeType): void {
@@ -369,11 +375,13 @@ export class Roundware {
     // Make sure the asset pool is loaded.
     await this.loadAssetPool();
 
-    this.mixer.updateParams(
-      activationParams,
-      this.assets(),
-      this.timedAssets()
-    );
+    const allMixParams = {
+      ...this.mixParams,
+      ...this._initialOptions,
+      ...activationParams,
+    };
+
+    this.mixer.updateParams(allMixParams, this.assets(), this.timedAssets());
 
     return this.mixer;
   }
