@@ -88,7 +88,7 @@ export class Roundware {
   mixer: Mixer;
   private _onUpdateLocation: CallableFunction = () => {};
   private _onUpdateAssets: CallableFunction = () => {};
-  assetData: IAssetData[] = [];
+  assetData: IAssetData[] | null = null;
   private _onPlayAssets: CallableFunction = () => {};
   private _sessionId: number | string | undefined;
   uiConfig: IUiConfig = {};
@@ -317,12 +317,17 @@ export class Roundware {
   async getAssetsFromPool(
     assetFilter: CallableFunction,
     extraParams: IMixParams = {}
-  ): Promise<IAssetData[]> {
+  ): Promise<IAssetData[] | null> {
     const pool = await this.loadAssetPool();
     const mixParams = { ...this.mixParams, ...extraParams };
-    return pool.filter(
-      (a) => assetFilter(a, mixParams) != ASSET_PRIORITIES.DISCARD
-    );
+    if (pool)
+      return pool.filter(
+        (a) => assetFilter(a, mixParams) != ASSET_PRIORITIES.DISCARD
+      );
+    else {
+      console.error(`Cannot get assets! Asset Data was not fetched!`);
+      return null;
+    }
   }
 
   async updateAssetPool(): Promise<void> {
@@ -352,9 +357,9 @@ export class Roundware {
     }
   }
 
-  async loadAssetPool(): Promise<IAssetData[]> {
+  async loadAssetPool(): Promise<IAssetData[] | null> {
     // Options passed here should only need to go into the assets/ call.
-    if (!this.assetData.length) {
+    if (!this.assetData) {
       await this.updateAssetPool();
       // Setup periodic retrieval of newly uploaded assets.
       this._assetDataTimer = setInterval(
@@ -364,6 +369,10 @@ export class Roundware {
     }
     if (!this._timedAssetData) {
       this._timedAssetData = await this._timed_asset.connect({});
+    }
+    if (!Array.isArray(this.assetData)) {
+      console.error(`Failed to loadAssetPool! Asset Data was not fetched!`);
+      return null;
     }
     return this.assetData;
   }
