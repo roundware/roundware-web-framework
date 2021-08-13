@@ -376,8 +376,8 @@ export class Roundware {
     await this.loadAssetPool();
 
     const allMixParams = {
-      ...this.mixParams,
       ...this._initialOptions,
+      ...this.mixParams,
       ...activationParams,
     };
 
