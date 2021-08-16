@@ -14,8 +14,6 @@
   "types": "dist/roundware.d.ts",
   "scripts": {
     "test": "jest",
-    "prebuild": "rimraf dist",
-    "prepublish": "npm run build",
     "build": "NODE_ENV=production npm-run-all --parallel build:*",
     "build:main": "babel src --out-dir dist --extensions '.ts' --copy-files src/types/*.d.ts && tsc --declaration --outDir dist/ --emitDeclarationOnly --declarationMap",
     "build:umd": "webpack --mode=production --output-filename roundware.umd.js",
