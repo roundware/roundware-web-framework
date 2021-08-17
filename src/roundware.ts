@@ -3,6 +3,7 @@ import { Asset } from "./asset";
 import { ASSET_PRIORITIES } from "./assetFilters";
 import { AssetPool } from "./assetPool";
 import { Audiotrack } from "./audiotrack";
+import { noAssetData } from "./constants/warning";
 import { Envelope } from "./envelope";
 import {
   InvalidArgumentError,
@@ -484,10 +485,12 @@ export class Roundware {
   }
 
   assets(): IAssetData[] {
+    if (!this.assetData) console.warn(noAssetData);
     return this.assetData || [];
   }
 
   timedAssets(): ITimedAssetData[] | [] {
+    if (!this.assetData) console.warn(noAssetData);
     return this._timedAssetData || [];
   }
 
