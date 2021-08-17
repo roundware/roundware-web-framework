@@ -110,7 +110,18 @@ export class Roundware {
 
   constructor(windowScope: Window, options: IRoundwareConstructorOptions) {
     if (!windowScope)
-      throw new MissingArgumentError(`windowScope`, `instantiating Roundware`);
+      throw new MissingArgumentError(
+        `windowScope`,
+        `instantiating Roundware`,
+        `window`
+      );
+
+    if (!options)
+      throw new MissingArgumentError(
+        `options`,
+        `instantiating Roundware`,
+        `IRoundwareConstructorOptions`
+      );
 
     const {
       serverUrl,
