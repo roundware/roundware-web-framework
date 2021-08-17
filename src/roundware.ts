@@ -4,7 +4,10 @@ import { ASSET_PRIORITIES } from "./assetFilters";
 import { AssetPool } from "./assetPool";
 import { Audiotrack } from "./audiotrack";
 import { Envelope } from "./envelope";
-import { MissingArgumentError } from "./errors/app.errors";
+import {
+  InvalidArgumentError,
+  MissingArgumentError,
+} from "./errors/app.errors";
 import { GeoPosition } from "./geo-position";
 import { GeoListenMode, Mixer } from "./mixer";
 import { Project } from "./project";
@@ -116,7 +119,7 @@ export class Roundware {
         `window`
       );
 
-    if (!options)
+    if (typeof options !== "object")
       throw new MissingArgumentError(
         `options`,
         `instantiating Roundware`,
@@ -140,23 +143,41 @@ export class Roundware {
       assetUpdateInterval,
       prefetchSpeakerAudio,
     } = options;
+
+    if (typeof serverUrl !== "string") {
+      throw new InvalidArgumentError(
+        `options.serverUrl`,
+        `string`,
+        `instantiating Roundware`
+      );
+    }
+
+    if (typeof projectId !== "number") {
+      throw new InvalidArgumentError(
+        `options.serverUrl`,
+        `string`,
+        `instantiating Roundware`
+      );
+    }
+
     this.windowScope = windowScope;
     this._serverUrl = serverUrl;
     this._projectId = projectId;
     if (speakerFilters) this._speakerFilters = speakerFilters;
     this._assetFilters = assetFilters;
+    if (
+      typeof listenerLocation.longitude !== "number" &&
+      typeof listenerLocation.latitude !== "number"
+    )
+      throw new InvalidArgumentError(
+        `options.listenerLocation`,
+        `Coordinates`,
+        `instantiating Roundware`
+      );
     this.listenerLocation = listenerLocation;
     this._initialOptions = options;
     // By default, update the asset pool every 5 minutes.
     this._assetUpdateInterval = assetUpdateInterval || 300000;
-
-    if (this._serverUrl === undefined) {
-      throw "Roundware objects must be initialized with a serverUrl";
-    }
-
-    if (this._projectId === undefined) {
-      throw "Roundware objects must be initialized with a projectId";
-    }
 
     this._apiClient = new ApiClient(window, this._serverUrl);
     options.apiClient = this._apiClient;
