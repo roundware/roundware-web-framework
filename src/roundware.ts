@@ -4,6 +4,7 @@ import { ASSET_PRIORITIES } from "./assetFilters";
 import { AssetPool } from "./assetPool";
 import { Audiotrack } from "./audiotrack";
 import { Envelope } from "./envelope";
+import { MissingArgumentError } from "./errors/app.errors";
 import { GeoPosition } from "./geo-position";
 import { GeoListenMode, Mixer } from "./mixer";
 import { Project } from "./project";
@@ -107,9 +108,11 @@ export class Roundware {
    * @throws Will throw an error if serveUrl or projectId are missing
     TODO need to provide a more modern/ES6-aware architecture here vs burdening the constructor with all of these details **/
 
-  constructor(
-    windowScope: Window,
-    {
+  constructor(windowScope: Window, options: IRoundwareConstructorOptions) {
+    if (!windowScope)
+      throw new MissingArgumentError(`windowScope`, `instantiating Roundware`);
+
+    const {
       serverUrl,
       projectId,
       speakerFilters,
@@ -125,9 +128,7 @@ export class Roundware {
       audiotrack,
       assetUpdateInterval,
       prefetchSpeakerAudio,
-      ...options
-    }: IRoundwareConstructorOptions
-  ) {
+    } = options;
     this.windowScope = windowScope;
     this._serverUrl = serverUrl;
     this._projectId = projectId;
