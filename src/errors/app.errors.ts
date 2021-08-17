@@ -6,9 +6,14 @@ export class RoundwareFrameworkError extends Error {
 }
 
 export class MissingArgumentError extends RoundwareFrameworkError {
-  constructor(argumentName: string, whileDescription: string, ...args: any) {
+  constructor(
+    argumentName: string,
+    whileDescription: string,
+    expectedType: string,
+    ...args: any
+  ) {
     super(
-      `Expected argument "${argumentName}" was missing while ${whileDescription}`,
+      `Expected argument "${argumentName}" was missing while ${whileDescription}. Please pass ${argumentName} of type ${expectedType} while ${whileDescription}`,
       ...args
     );
   }
