@@ -13,7 +13,7 @@ export class MissingArgumentError extends RoundwareFrameworkError {
     ...args: any
   ) {
     super(
-      `Expected argument "${argumentName}" was missing while ${whileDescription}. Please pass ${argumentName} of type ${expectedType} while ${whileDescription}`,
+      `Expected argument "${argumentName}" was missing or invalid while ${whileDescription}. Please pass ${argumentName} of type "${expectedType}" while ${whileDescription}`,
       ...args
     );
   }
@@ -27,7 +27,7 @@ export class InvalidArgumentError extends RoundwareFrameworkError {
     ...args: any
   ) {
     super(
-      `Expected argument ${argumentName} to be ${expected} ${whileDescription}`,
+      `Expected argument "${argumentName}" to be "${expected}" while ${whileDescription}`,
       ...args
     );
   }
