@@ -156,7 +156,7 @@ export class Playlist {
     });
 
     this.trackMap.set(forTrack, nextAsset ? nextAsset : null);
-    this._client._triggerOnPlayAssets();
+    this._client.triggerOnPlayAssets();
 
     return nextAsset;
   }

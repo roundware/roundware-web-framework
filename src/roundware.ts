@@ -252,8 +252,8 @@ export class Roundware {
     callback(this.currentlyPlayingAssets);
   }
 
-  _triggerOnPlayAssets() {
-    if (this._onPlayAssets) {
+  triggerOnPlayAssets() {
+    if (typeof this._onPlayAssets == "function") {
       this._onPlayAssets(this.currentlyPlayingAssets);
     }
   }
@@ -422,6 +422,7 @@ export class Roundware {
       ...activationParams,
     };
 
+    this.mixer.initContext();
     this.mixer.updateParams(allMixParams, this.assets(), this.timedAssets());
 
     return this.mixer;
