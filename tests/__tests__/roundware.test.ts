@@ -1,3 +1,4 @@
+import { assetDecorationMapper } from "../../src/assetPool";
 import { noAssetData } from "../../src/constants/warning";
 import {
   InvalidArgumentError,
@@ -5,7 +6,12 @@ import {
 } from "../../src/errors/app.errors";
 import { GeoListenMode, Roundware } from "../../src/roundware";
 import { IRoundwareConstructorOptions } from "../../src/types/roundware";
-import { MOCK_PROJECT_UICONFIG_DATA } from "../__mocks__/mock_api_responses";
+import { coordsToPoints } from "../../src/utils";
+import {
+  MOCK_ASSET_DATA,
+  MOCK_PROJECT_UICONFIG_DATA,
+  MOCK_TIMED_ASSET_DATA,
+} from "../__mocks__/mock_api_responses";
 
 describe("Roundware", () => {
   describe("Instantiation", () => {
@@ -96,9 +102,87 @@ describe("Roundware", () => {
       expect(Array.isArray(assets)).toBe(true);
     });
 
-    it(".connect() - should return promise of uiConfig", async () => {
+    it(".connect() - should successfully connect return promise of uiConfig", async () => {
       const data = await roundware.connect();
       expect(data.uiConfig).toMatchObject(MOCK_PROJECT_UICONFIG_DATA);
+    });
+
+    const MOCK_LOCATION = {
+      latitude: 20,
+      longitude: 43,
+    };
+    it(".updateLocation() - update location in mixer", () => {
+      roundware.updateLocation(MOCK_LOCATION);
+
+      const mixerListenerPoint = coordsToPoints(MOCK_LOCATION);
+      expect(roundware.mixer.mixParams.listenerPoint).toEqual(
+        mixerListenerPoint
+      );
+    });
+
+    it(".onUpdateLocation() - should execute callback with listenerLocation when passed", () => {
+      const onLocationUpdateCallback = jest.fn();
+      roundware.onUpdateLocation = onLocationUpdateCallback;
+      expect(onLocationUpdateCallback).toBeCalledTimes(1);
+      expect(onLocationUpdateCallback).toHaveBeenLastCalledWith(
+        roundware.geoPosition.getLastCoords()
+      );
+      roundware.updateLocation(MOCK_LOCATION);
+      expect(onLocationUpdateCallback).toBeCalledTimes(2);
+      expect(onLocationUpdateCallback).toHaveBeenLastCalledWith(MOCK_LOCATION);
+    });
+
+    it("onUpdateAssets() - called when assets are updated", async () => {
+      const onUpdateAssetsCallback = jest.fn();
+      roundware.onUpdateAssets = onUpdateAssetsCallback;
+      expect(onUpdateAssetsCallback).toHaveBeenCalledTimes(0);
+      await roundware.updateAssetPool();
+
+      expect(onUpdateAssetsCallback).toHaveBeenCalledTimes(1);
+      expect(onUpdateAssetsCallback).toHaveBeenLastCalledWith(
+        roundware.assets()
+      );
+    });
+
+    describe(".updateAssetPool()", () => {
+      let roundware;
+      beforeEach(() => {
+        const options: IRoundwareConstructorOptions = {
+          serverUrl: "https://prod.roundware.com/api/2",
+          projectId: 10,
+          assetFilters: {},
+          listenerLocation: {
+            latitude: 50,
+            longitude: 155,
+          },
+          deviceId: "",
+          apiClient: undefined,
+          geoListenMode: GeoListenMode.DISABLED,
+        };
+        roundware = new Roundware(global.window, options);
+      });
+      afterAll(() => (roundware = undefined));
+      it("update _lastAssetUpdate", async () => {
+        // @ts-ignore
+        expect(roundware._lastAssetUpdate).toBeUndefined();
+        await roundware.updateAssetPool();
+        // @ts-ignore
+        expect(roundware._lastAssetUpdate instanceof Date).toBeTruthy();
+      });
+
+      it("update assetData when first time", async () => {
+        expect(roundware.assetData).toBeNull();
+        await roundware.updateAssetPool();
+        expect(roundware.assetData).toEqual(MOCK_ASSET_DATA);
+      });
+
+      it("update assetPool assets with decoration", async () => {
+        expect(roundware.assetPool.assets).toEqual([]);
+        await roundware.updateAssetPool();
+        expect(roundware.assetPool.assets).toEqual(
+          MOCK_ASSET_DATA.map(assetDecorationMapper(MOCK_TIMED_ASSET_DATA))
+        );
+      });
     });
   });
 });
