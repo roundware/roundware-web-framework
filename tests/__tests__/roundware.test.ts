@@ -5,6 +5,7 @@ import {
 } from "../../src/errors/app.errors";
 import { GeoListenMode, Roundware } from "../../src/roundware";
 import { IRoundwareConstructorOptions } from "../../src/types/roundware";
+import { MOCK_PROJECT_UICONFIG_DATA } from "../__mocks__/mock_api_responses";
 
 describe("Roundware", () => {
   describe("Instantiation", () => {
@@ -95,59 +96,9 @@ describe("Roundware", () => {
       expect(Array.isArray(assets)).toBe(true);
     });
 
-    it(".connect() - should return uiConfig", async () => {
-      // @ts-ignore
-      // fetch.enableMocks();
-
-      // // @ts-ignore
-      // fetch.mockResponse((req): Promise<void | any> => {
-      //   console.log(req);
-      //   if (req.method == "OPTIONS") return Promise.resolve("");
-
-      //   switch (req.url) {
-      //     case "https://prod.roundware.com/api/2/users/?method=POST":
-      //       if (req.method == "POST")
-      //         return Promise.resolve(JSON.stringify(MOCK_USER_DATA));
-
-      //     case "https://prod.roundware.com/api/2/sessions/method=POST":
-      //       if (req.method == "POST")
-      //         return Promise.resolve(JSON.stringify(MOCK_SESSION_DATA));
-
-      //     case "https://prod.roundware.com/api/2/projects/10/?session_id=91152":
-      //       if (req.method == "GET")
-      //         Promise.resolve(JSON.stringify(MOCK_PROJECT_DATA));
-      //       break;
-
-      //     case "https://prod.roundware.com/api/2/projects/10/uiconfig/?session_id=91152":
-      //       if (req.method == "GET")
-      //         Promise.resolve(JSON.stringify(MOCK_PROJECT_UICONFIG_DATA));
-      //       break;
-      //     case "https://prod.roundware.com/api/2/speakers/?activeyn=true&project_id=10":
-      //       if (req.method == "GET")
-      //         Promise.resolve(JSON.stringify(MOCK_SPEAKER_DATA));
-      //       break;
-      //     case "https://prod.roundware.com/api/2/audiotracks/?project_id=10&active=true":
-      //       if (req.method == "GET")
-      //         Promise.resolve(JSON.stringify(MOCK_AUDIO_TRACKS_DATA));
-      //       break;
-      //     case "https://prod.roundware.com/api/2/assets/?submitted=true&media_type=audio&project_id=10":
-      //       if (req.method == "GET")
-      //         Promise.resolve(JSON.stringify(MOCK_ASSET_DATA));
-      //       break;
-
-      //     case "https://prod.roundware.com/api/2/timedassets/?project_id=10":
-      //       if (req.method == "GET")
-      //         Promise.resolve(JSON.stringify(MOCK_TIMED_ASSET_DATA));
-      //       break;
-      //     default:
-      //       return Promise.resolve();
-      //   }
-      // });
-
+    it(".connect() - should return promise of uiConfig", async () => {
       const data = await roundware.connect();
-      console.log(data);
-      expect(data).toHaveProperty("uiConfig");
-      expect(data.uiConfig).toHaveProperty("speak");
+      expect(data.uiConfig).toMatchObject(MOCK_PROJECT_UICONFIG_DATA);
     });
   });
 });
