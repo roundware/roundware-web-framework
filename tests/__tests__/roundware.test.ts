@@ -247,5 +247,30 @@ describe("Roundware", () => {
         },
       ]);
     });
+
+    describe(".loadAssetPool() must load assetPool", () => {
+      const options: IRoundwareConstructorOptions = {
+        serverUrl: "https://prod.roundware.com/api/2",
+        projectId: 10,
+        assetFilters: {},
+        listenerLocation: {
+          latitude: 50,
+          longitude: 155,
+        },
+        deviceId: "",
+        apiClient: undefined,
+        geoListenMode: GeoListenMode.DISABLED,
+      };
+      const roundware = new Roundware(global.window, options);
+
+      it("if assetPool not loaded check and update it", async () => {
+        expect(roundware.assetPool.assets).toEqual([]);
+        const assets = await roundware.loadAssetPool();
+        expect(roundware.assetPool.assets).toEqual(
+          MOCK_ASSET_DATA.map(assetDecorationMapper(MOCK_TIMED_ASSET_DATA))
+        );
+        expect(assets).toEqual(MOCK_ASSET_DATA);
+      });
+    });
   });
 });
