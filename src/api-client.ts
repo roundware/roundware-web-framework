@@ -1,7 +1,5 @@
+import { GENERIC_ERROR_MSG } from "./constants/errors";
 import { ApiClientOptions } from "./types/api-client";
-
-const GENERIC_ERROR_MSG =
-  "We were unable to contact the audio server, please try again.";
 
 // Handles HTTP interactions with the Roundware API server, v2.
 // NOTE: Every HTTP method except ".get()" will cause most browsers to issue a preflight requirements check to the server via the OPTIONS verb,
