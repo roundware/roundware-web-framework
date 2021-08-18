@@ -13,7 +13,6 @@ global.fetch = jest.fn(
   (input: RequestInfo, init?: RequestInit): Promise<any> => {
     if (init.method == "OPTIONS") return Promise.resolve(getResponse());
 
-    console.log(input);
     switch (input) {
       case "https://prod.roundware.com/api/2/users/?method=POST":
         if (init.method == "POST")
