@@ -151,6 +151,15 @@ describe("Roundware", () => {
       );
     });
 
+    it("onPlayAssets() - should set the callback and return currently playing assets", () => {
+      const onPlayAssetsCallback = jest.fn();
+      roundware.onPlayAssets = onPlayAssetsCallback;
+      expect(onPlayAssetsCallback).toBeCalledTimes(1);
+      expect(onPlayAssetsCallback).toHaveBeenLastCalledWith(
+        roundware.currentlyPlayingAssets
+      );
+    });
+
     describe(".updateAssetPool()", () => {
       let roundware;
       beforeEach(() => {
