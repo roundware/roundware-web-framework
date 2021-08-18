@@ -44,7 +44,7 @@ global.fetch = jest.fn(
           return Promise.resolve(getResponse(MOCK_AUDIO_TRACKS_DATA));
         return Promise.resolve(getResponse());
 
-      case "https://prod.roundware.com/api/2/assets/?submitted=true&media_type=audio&project_id=10":
+      case "https://prod.roundware.com/api/2/assets/?method=GET&contentType=x-www-form-urlencoded&project_id=10":
         if (init.method == "GET")
           return Promise.resolve(getResponse(MOCK_ASSET_DATA));
         return Promise.resolve(getResponse());
@@ -55,6 +55,7 @@ global.fetch = jest.fn(
         return Promise.resolve(getResponse());
 
       default:
+        console.warn(`Sent empty response for: `, input);
         return Promise.resolve(getResponse());
     }
   }
