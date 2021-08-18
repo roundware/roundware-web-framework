@@ -4,7 +4,14 @@ import {
   InvalidArgumentError,
   MissingArgumentError,
 } from "../../src/errors/app.errors";
-import { GeoListenMode, Roundware } from "../../src/roundware";
+import {
+  allAssetFilter,
+  anyTagsFilter,
+  distanceRangesFilter,
+  GeoListenMode,
+  Roundware,
+} from "../../src/roundware";
+import { IAssetData } from "../../src/types";
 import { IRoundwareConstructorOptions } from "../../src/types/roundware";
 import { coordsToPoints } from "../../src/utils";
 import {
@@ -202,6 +209,43 @@ describe("Roundware", () => {
           MOCK_ASSET_DATA.map(assetDecorationMapper(MOCK_TIMED_ASSET_DATA))
         );
       });
+    });
+
+    it(".getAssetsFromPool() Returns a reduced asset list by filtering the overall pool.", async () => {
+      let assets = await roundware.getAssetsFromPool(() => true);
+      expect(assets).toEqual(MOCK_ASSET_DATA);
+      assets = await roundware.getAssetsFromPool(
+        (asset, mixParams) => asset.id == 5936
+      );
+
+      expect(assets).toEqual([
+        {
+          id: 5936,
+          description: "",
+          latitude: 1,
+          longitude: 1,
+          shape: null,
+          filename: "20150119-113758-18467.wav",
+          file: "https://prod.roundware.com/rwmedia/20150119-113758-18467.mp3",
+          volume: 1,
+          submitted: true,
+          created: "2015-01-19T11:37:59",
+          updated: "2015-01-19T11:37:59",
+          weight: 50,
+          start_time: 0,
+          end_time: 7.407,
+          user: null,
+          media_type: "audio",
+          audio_length_in_seconds: 7.41,
+          tag_ids: [92],
+          session_id: 18467,
+          project_id: 10,
+          language_id: 1,
+          envelope_ids: [3392],
+          description_loc_ids: [],
+          alt_text_loc_ids: [],
+        },
+      ]);
     });
   });
 });
