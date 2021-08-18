@@ -406,10 +406,6 @@ export class Roundware {
     if (!this._timedAssetData) {
       this._timedAssetData = await this._timed_asset.connect({});
     }
-    if (!Array.isArray(this.assetData)) {
-      console.error(`Failed to loadAssetPool! Asset Data was not fetched!`);
-      return null;
-    }
     return this.assetData;
   }
   /**
