@@ -349,7 +349,7 @@ export class Roundware {
   /// Returns a reduced asset list by filtering the overall pool.
   /// Example: `getAssetsFromPool(allAssetFilter([distanceRangesFilter(), anyTagsFilter()]))`
   async getAssetsFromPool(
-    assetFilter: CallableFunction,
+    assetFilter: (asset: IAssetData, mixParams: IMixParams) => boolean,
     extraParams: IMixParams = {}
   ): Promise<IAssetData[] | null> {
     const pool = await this.loadAssetPool();
