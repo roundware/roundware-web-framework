@@ -1,8 +1,12 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import {
   InvalidArgumentError,
   RoundwareConnectionError,
 } from "./errors/app.errors";
+=======
+import { GENERIC_ERROR_MSG } from "./constants/errors";
+>>>>>>> 62ce5f0 (Moved constants to specific folder)
 =======
 import { GENERIC_ERROR_MSG } from "./constants/errors";
 >>>>>>> 62ce5f0 (Moved constants to specific folder)
