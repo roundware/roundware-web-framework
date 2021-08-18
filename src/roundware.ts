@@ -343,7 +343,7 @@ export class Roundware {
   }
 
   get assetPool(): AssetPool | undefined {
-    return this.mixer.playlist && this.mixer.playlist.assetPool;
+    return this.mixer.assetPool;
   }
 
   /// Returns a reduced asset list by filtering the overall pool.
@@ -374,6 +374,7 @@ export class Roundware {
       };
       existingAssets = this.assets();
     }
+
     this.assetData = existingAssets.concat(
       await this._asset.connect<IAssetData[]>(filters)
     );
@@ -386,9 +387,10 @@ export class Roundware {
       pool.updateAssets(this.assetData, this._timedAssetData);
     }
 
-    if (this._onUpdateAssets) {
+    if (typeof this._onUpdateAssets == "function") {
       this._onUpdateAssets(this.assetData);
     }
+    Promise.resolve();
   }
 
   async loadAssetPool(): Promise<IAssetData[] | null> {
@@ -490,7 +492,7 @@ export class Roundware {
   }
 
   timedAssets(): ITimedAssetData[] | [] {
-    if (!this.assetData) console.warn(noAssetData);
+    if (!this._timedAssetData) console.warn(noAssetData);
     return this._timedAssetData || [];
   }
 
