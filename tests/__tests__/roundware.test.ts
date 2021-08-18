@@ -161,7 +161,7 @@ describe("Roundware", () => {
         };
         roundware = new Roundware(global.window, options);
       });
-      afterAll(() => (roundware = undefined));
+      afterEach(() => (roundware = undefined));
       it("update _lastAssetUpdate", async () => {
         // @ts-ignore
         expect(roundware._lastAssetUpdate).toBeUndefined();
@@ -174,6 +174,25 @@ describe("Roundware", () => {
         expect(roundware.assetData).toBeNull();
         await roundware.updateAssetPool();
         expect(roundware.assetData).toEqual(MOCK_ASSET_DATA);
+      });
+
+      it("update assetData second time with created__gte:", async () => {
+        expect(roundware.assetData).toBeNull();
+        await roundware.updateAssetPool();
+        expect(roundware.assetData).toEqual(MOCK_ASSET_DATA);
+        await roundware.updateAssetPool();
+
+        const fetchLastUrl: string =
+          // @ts-ignore
+          global.fetch.mock.calls[
+            // @ts-ignore
+            global.fetch.mock.calls.length - 1
+          ][0].toString();
+        expect(
+          fetchLastUrl.startsWith(
+            "https://prod.roundware.com/api/2/assets/?method=GET&contentType=x-www-form-urlencoded&created__gte"
+          )
+        ).toBeTruthy();
       });
 
       it("update assetPool assets with decoration", async () => {
