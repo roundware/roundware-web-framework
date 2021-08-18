@@ -55,6 +55,15 @@ global.fetch = jest.fn(
         return Promise.resolve(getResponse());
 
       default:
+        if (
+          input
+            .toString()
+            .startsWith(
+              "https://prod.roundware.com/api/2/assets/?method=GET&contentType=x-www-form-urlencoded&created__gte"
+            )
+        ) {
+          return Promise.resolve(getResponse([]));
+        }
         console.warn(`Sent empty response for: `, input);
         return Promise.resolve(getResponse());
     }
