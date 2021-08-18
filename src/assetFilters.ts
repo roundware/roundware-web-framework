@@ -7,7 +7,7 @@ import { GeoListenMode } from "./mixer";
 import { GeoListenModeType, IAssetData, IMixParams } from "./types";
 
 export const ASSET_PRIORITIES: Readonly<{
-  DISCARD: boolean;
+  DISCARD: false;
   NEUTRAL: number;
   LOWEST: number;
   NORMAL: number;
