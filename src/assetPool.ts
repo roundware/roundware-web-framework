@@ -12,7 +12,7 @@ import {
 
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
 // also rewrite .wav as .mp3
-const assetDecorationMapper = (timedAssets: ITimedAssetData[]) => {
+export const assetDecorationMapper = (timedAssets: ITimedAssetData[]) => {
   const timedAssetLookup = timedAssets.reduce(
     (lookupTable: ILookupTable, timedAsset: ITimedAssetData) => ({
       ...lookupTable,
