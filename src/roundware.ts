@@ -373,9 +373,7 @@ export class Roundware {
       existingAssets = this.assets();
     }
 
-    this.assetData = existingAssets.concat(
-      await this._asset.connect<IAssetData[]>(filters)
-    );
+    this.assetData = existingAssets.concat(await this._asset.connect(filters));
 
     // also fetch timedAssetData if not available
     if (!Array.isArray(this.timedAssetData)) {
