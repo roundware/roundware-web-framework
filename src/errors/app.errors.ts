@@ -32,3 +32,14 @@ export class InvalidArgumentError extends RoundwareFrameworkError {
     );
   }
 }
+
+export class RoundwareConnectionError extends RoundwareFrameworkError {
+  constructor(additonalContext?: string, ...args: any) {
+    super(
+      `${
+        additonalContext ? additonalContext + " " : ""
+      }Sorry, we were unable to connect to Roundware. Please try again.`,
+      ...args
+    );
+  }
+}
