@@ -67,6 +67,18 @@ global.fetch = jest.fn(
           return Promise.resolve(getResponse(input, []));
         }
         if (
+          input.toString() ==
+          "https://prod.roundware.com/api/2/assets/?method=GET&contentType=x-www-form-urlencoded&project_id=10&latitude=42.4986343383789"
+        )
+          return Promise.resolve(
+            getResponse(
+              input,
+              MOCK_ASSET_DATA.filter(
+                (asset) => asset.latitude == 42.4986343383789
+              )
+            )
+          );
+        if (
           input
             .toString()
             .startsWith(
