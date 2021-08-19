@@ -91,8 +91,9 @@ export const setupFetchMock = () => {
           }
 
           if (
-            input.toString() ==
-            "https://prod.roundware.com/api/2/mock_path?method=GET&contentType=x-www-form-urlencoded"
+            input
+              .toString()
+              .startsWith("https://prod.roundware.com/api/2/mock_path")
           )
             return Promise.resolve(getResponse(input, MOCK_ASSET_DATA));
           console.warn(`Sent empty response for: `, input);
