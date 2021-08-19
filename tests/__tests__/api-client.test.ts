@@ -110,5 +110,25 @@ describe("Api Client", () => {
         }
       });
     });
+
+    describe(".patch()", () => {
+      it("should call fetch with given path", async () => {
+        const mockData = {
+          test: "mock_data",
+          id: 1234,
+        };
+        await apiClient.patch(mockPath, mockData);
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path?method=PATCH",
+          {
+            body: JSON.stringify(mockData),
+            headers: { "Content-Type": "application/json" },
+            method: "PATCH",
+            mode: "cors",
+          }
+        );
+      });
+    });
   });
 });
