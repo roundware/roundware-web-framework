@@ -1,4 +1,8 @@
 import { ApiClient } from "./api-client";
+import {
+  InvalidArgumentError,
+  MissingArgumentError,
+} from "./errors/app.errors";
 
 /* global process */
 export const PATH =
@@ -9,9 +13,28 @@ export const PATH =
 export class Asset {
   private _projectId: number;
   private _apiClient: ApiClient;
-  constructor(projectId: number, { apiClient }: { apiClient: ApiClient }) {
+  constructor(projectId: number, options: { apiClient: ApiClient }) {
+    if (typeof projectId == "undefined")
+      throw new MissingArgumentError(
+        "projectId",
+        "instantiating Asset",
+        "number"
+      );
+    if (typeof projectId !== "number")
+      throw new InvalidArgumentError(
+        "projectId",
+        "number",
+        "instantiating Asset"
+      );
+    if (options.apiClient instanceof ApiClient)
+      this._apiClient = options.apiClient;
+    else
+      throw new InvalidArgumentError(
+        "apiClient",
+        "ApiClient",
+        "instantiating Asset"
+      );
     this._projectId = projectId;
-    this._apiClient = apiClient;
   }
 
   toString(): string {
