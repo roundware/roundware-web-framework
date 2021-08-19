@@ -8,6 +8,7 @@ import { Envelope } from "./envelope";
 import {
   InvalidArgumentError,
   MissingArgumentError,
+  RoundwareConnectionError,
 } from "./errors/app.errors";
 import { GeoPosition } from "./geo-position";
 import { GeoListenMode, Mixer } from "./mixer";
@@ -285,14 +286,14 @@ export class Roundware {
   /** Initiate a connection to Roundware
    *  @return {Promise} - Can be resolved in order to get the audio stream URL, or rejected to get an error message; see example above **/
   async connect(): Promise<{ uiConfig: IUiConfig }> {
-    // want to start this process as soon as possible, as it can take a few seconds
-    this.geoPosition.connect((newLocation: Coordinates) =>
-      this.updateLocation(newLocation)
-    );
-
-    logger.info(`Initializing Roundware for project ID ${this._projectId}`);
-
     try {
+      // want to start this process as soon as possible, as it can take a few seconds
+      this.geoPosition.connect((newLocation: Coordinates) =>
+        this.updateLocation(newLocation)
+      );
+
+      logger.info(`Initializing Roundware for project ID ${this._projectId}`);
+
       await this._user.connect();
       const sessionId = await this._session.connect();
       this._sessionId = sessionId;
@@ -319,7 +320,7 @@ export class Roundware {
       console.info("Roundware connected");
       return { uiConfig: this.uiConfig };
     } catch {
-      throw "Sorry, we were unable to connect to Roundware. Please try again.";
+      throw new RoundwareConnectionError();
     }
   }
 
