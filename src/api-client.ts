@@ -1,4 +1,8 @@
 import { GENERIC_ERROR_MSG } from "./constants/errors";
+import {
+  InvalidArgumentError,
+  RoundwareConnectionError,
+} from "./errors/app.errors";
 import { ApiClientOptions } from "./types/api-client";
 
 // Handles HTTP interactions with the Roundware API server, v2.
@@ -20,6 +24,12 @@ export class ApiClient {
       // @ts-ignore need extend window for jQuwey
       this._jQuery = window?.jQuery;
     }
+    if (typeof baseServerUrl !== "string")
+      throw new InvalidArgumentError(
+        "baseServerUrl",
+        "string",
+        "instantiating ApiClient"
+      );
     this._serverUrl = baseServerUrl;
     this._authToken = "";
   }
@@ -123,12 +133,12 @@ export class ApiClient {
       response = await fetch(url.toString(), requestInit);
     } catch (error) {
       console.error("Roundware network error:", error.message);
-      throw GENERIC_ERROR_MSG;
+      throw new RoundwareConnectionError();
     }
 
     if (!response.ok) {
       console.error("Roundware API error, code:", response.status);
-      throw GENERIC_ERROR_MSG;
+      throw new RoundwareConnectionError();
     }
 
     try {
@@ -136,7 +146,7 @@ export class ApiClient {
       return json;
     } catch (error) {
       console.error("Unable to decode Roundware response", error);
-      throw GENERIC_ERROR_MSG;
+      throw new RoundwareConnectionError();
     }
   }
 
