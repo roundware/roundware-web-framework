@@ -42,32 +42,61 @@ describe("Api Client", () => {
     };
 
     beforeEach(() => setupFetchMock());
-    it("should make get request to Roundware server", async () => {
-      expect.assertions(2);
-      const data = await apiClient.get(mockPath, {});
-      expect(global.fetch).toBeCalledTimes(1);
-      expect(global.fetch).toBeCalledWith(
-        getUrl("/mock_path?method=GET&contentType=x-www-form-urlencoded"),
-        mockInit
-      );
-    });
 
-    it("should throw error for network error", async () => {
-      global.fetch = jest.fn(() => {
-        throw Error();
+    describe(".get()", () => {
+      it("should make get request to Roundware server", async () => {
+        expect.assertions(2);
+        const data = await apiClient.get(mockPath, {});
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          getUrl("/mock_path?method=GET&contentType=x-www-form-urlencoded"),
+          mockInit
+        );
       });
-      expect.assertions(1);
-      try {
-        await apiClient.get(mockPath, {});
-      } catch (e) {
-        expect(e).toBeInstanceOf(RoundwareConnectionError);
-      }
+
+      it("should throw error for network error", async () => {
+        global.fetch = jest.fn(() => {
+          throw Error();
+        });
+        expect.assertions(1);
+        try {
+          await apiClient.get(mockPath, {});
+        } catch (e) {
+          expect(e).toBeInstanceOf(RoundwareConnectionError);
+        }
+      });
+
+      it("should return data back from server", () => {
+        return expect(apiClient.get(mockPath, {})).resolves.toEqual(
+          MOCK_ASSET_DATA
+        );
+      });
     });
 
-    it("should return data back from server", () => {
-      return expect(apiClient.get(mockPath, {})).resolves.toEqual(
-        MOCK_ASSET_DATA
-      );
+    describe(".post()", () => {
+      it("should make a post request to server", async () => {
+        await apiClient.post(mockPath, {
+          data: "mock Data",
+          id: 123,
+        });
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path?method=POST",
+          {
+            body: '{"data":"mock Data","id":123}',
+            headers: {
+              "Content-Type": "application/json",
+            },
+            method: "POST",
+            mode: "cors",
+          }
+        );
+      });
+
+      it("should return data after request", async () => {
+        const response = await apiClient.post(mockPath, {});
+        expect(response).toEqual(MOCK_ASSET_DATA);
+      });
     });
   });
 });
