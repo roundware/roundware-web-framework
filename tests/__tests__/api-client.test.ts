@@ -4,7 +4,7 @@ import {
   RoundwareConnectionError,
 } from "../../src/errors/app.errors";
 import { getResponse, setupFetchMock } from "../fetch.setup";
-import config from "../roundware.config";
+import config from "../__mocks__/roundware.config";
 import { MOCK_ASSET_DATA } from "../__mocks__/mock_api_responses";
 
 describe("Api Client", () => {
