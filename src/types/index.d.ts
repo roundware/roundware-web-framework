@@ -70,7 +70,7 @@ export interface IAssetData {
 }
 
 export type IMixParams = {
-  ordering?: string;
+  ordering?: "by_like" | "by_weight" | "random";
   listenerPoint?: Feature<Point>;
   timedAssetPriority?: IAudioData[`timed_asset_priority`];
   listenerLocation?: Coordinates;
