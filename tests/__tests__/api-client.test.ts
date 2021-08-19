@@ -198,6 +198,21 @@ describe("Api Client", () => {
         );
       });
 
+      it("shoud use default {} if data not passed", async () => {
+        await apiClient.send(mockPath, undefined, {
+          method: "POST",
+        });
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path?method=POST",
+          {
+            body: JSON.stringify({}),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+            mode: "cors",
+          }
+        );
+      });
       it("should pass body in correctly for PATCH request", async () => {
         await apiClient.send(mockPath, mockData, {
           method: "PATCH",
