@@ -1,15 +1,9 @@
-import { AssetSorter } from "./assetSorter";
 import { roundwareDefaultFilterChain } from "./assetFilters";
-import { coordsToPoints, cleanAudioURL } from "./utils";
-import { Point } from "@turf/helpers";
-import {
-  IAssetData,
-  ILookupTable,
-  IMixParams,
-  ITimedAssetData,
-  ITrack,
-} from "./types";
+import { AssetSorter } from "./assetSorter";
 import { InvalidArgumentError } from "./errors/app.errors";
+import { PlaylistAudiotrack } from "./playlistAudioTrack";
+import { IAssetData, ILookupTable, IMixParams, ITimedAssetData } from "./types";
+import { cleanAudioURL, coordsToPoints } from "./utils";
 
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
 // also rewrite .wav as .mp3
@@ -116,7 +110,7 @@ export class AssetPool {
   }
 
   nextForTrack(
-    track: ITrack,
+    track: PlaylistAudiotrack,
     {
       elapsedSeconds: number,
       filterOutAssets = [],

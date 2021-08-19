@@ -116,10 +116,6 @@ export type ITimedAssetData = {
   end?: number;
 };
 
-export type ITrack = {
-  mixParams: IMixParams;
-};
-
 export type AssetPoolType = {};
 
 export interface IGeoPosition extends Coordinates {

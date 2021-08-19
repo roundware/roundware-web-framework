@@ -4,7 +4,7 @@ import { Point, Feature } from "@turf/helpers";
 
 import { IAudioContext } from "standardized-audio-context";
 import { IAudioTrackData } from "./types/audioTrack";
-import { IAssetData, IMixParams, ITrack, ITrackIdMap } from "./types";
+import { IAssetData, IMixParams, ITrackIdMap } from "./types";
 import { Roundware } from "./roundware";
 import { AssetPool } from "./assetPool";
 
