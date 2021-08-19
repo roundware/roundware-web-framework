@@ -89,19 +89,25 @@ export const setupFetchMock = () => {
           ) {
             return Promise.resolve(getResponse(input, []));
           }
+
+          if (
+            input.toString() ==
+            "https://prod.roundware.com/api/2/mock_path?method=GET&contentType=x-www-form-urlencoded"
+          )
+            return Promise.resolve(getResponse(input, MOCK_ASSET_DATA));
           console.warn(`Sent empty response for: `, input);
           return Promise.resolve(getResponse(input));
       }
     }
   );
-
-  function getResponse(input: RequestInfo, body?: object) {
-    if (!body) console.warn(`Sent empty response for: `, input);
-    return {
-      status: 200,
-      ok: true,
-      json: () => Promise.resolve(body),
-    };
-  }
 };
+export function getResponse(input: RequestInfo, body?: object) {
+  if (typeof body == "undefined")
+    console.info(`Sent empty response for: `, input);
+  return {
+    status: 200,
+    ok: true,
+    json: () => Promise.resolve(body),
+  };
+}
 setupFetchMock();
