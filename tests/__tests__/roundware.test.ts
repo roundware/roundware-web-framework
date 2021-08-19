@@ -1,5 +1,5 @@
 import { assetDecorationMapper } from "../../src/assetPool";
-import { noAssetData } from "../../src/constants/warning";
+
 import {
   InvalidArgumentError,
   MissingArgumentError,
@@ -151,13 +151,41 @@ describe("Roundware", () => {
       );
     });
 
-    it("onPlayAssets() - should set the callback and return currently playing assets", () => {
-      const onPlayAssetsCallback = jest.fn();
+    const onPlayAssetsCallback = jest.fn();
+
+    it(".onPlayAssets() - should set the callback and return currently playing assets", () => {
       roundware.onPlayAssets = onPlayAssetsCallback;
       expect(onPlayAssetsCallback).toBeCalledTimes(1);
       expect(onPlayAssetsCallback).toHaveBeenLastCalledWith(
         roundware.currentlyPlayingAssets
       );
+    });
+
+    it(".triggerOnPlayAsset() - should trigger callback call when onPlayAssets set", () => {
+      roundware.triggerOnPlayAssets();
+      expect(onPlayAssetsCallback).toBeCalledTimes(2);
+      expect(onPlayAssetsCallback).toHaveBeenLastCalledWith(
+        roundware.currentlyPlayingAssets
+      );
+      roundware.triggerOnPlayAssets();
+      expect(onPlayAssetsCallback).toBeCalledTimes(3);
+      expect(onPlayAssetsCallback).toHaveBeenLastCalledWith(
+        roundware.currentlyPlayingAssets
+      );
+    });
+
+    it(".currentlyPlayingAssets should return currently playing assets or warn", async () => {
+      jest.spyOn(console, "warn").mockImplementation(() => {});
+
+      let cpa = roundware.currentlyPlayingAssets;
+
+      expect(cpa).toBeUndefined();
+      expect(console.warn).toHaveBeenLastCalledWith(
+        `Cannot get currently playing assets. roundware.mixer is not activated yet!`
+      );
+      // await roundware.activateMixer();
+      // cpa = roundware.currentlyPlayingAssets;
+      // expect(cpa).not.toBeUndefined();
     });
 
     describe(".updateAssetPool()", () => {
@@ -258,27 +286,83 @@ describe("Roundware", () => {
     });
 
     describe(".loadAssetPool() must load assetPool", () => {
-      const options: IRoundwareConstructorOptions = {
-        serverUrl: "https://prod.roundware.com/api/2",
-        projectId: 10,
-        assetFilters: {},
-        listenerLocation: {
-          latitude: 50,
-          longitude: 155,
-        },
-        deviceId: "",
-        apiClient: undefined,
-        geoListenMode: GeoListenMode.DISABLED,
-      };
-      const roundware = new Roundware(global.window, options);
+      let roundware;
 
-      it("if assetPool not loaded check and update it", async () => {
+      beforeEach(() => {
+        const options: IRoundwareConstructorOptions = {
+          serverUrl: "https://prod.roundware.com/api/2",
+          projectId: 10,
+          assetFilters: {},
+          listenerLocation: {
+            latitude: 50,
+            longitude: 155,
+          },
+          deviceId: "",
+          apiClient: undefined,
+          geoListenMode: GeoListenMode.DISABLED,
+        };
+        roundware = new Roundware(global.window, options);
+      });
+      afterEach(() => (roundware = undefined));
+
+      it("fetches latest assets when called first time", async () => {
+        expect(roundware.assetData).toBeNull();
+        await roundware.loadAssetPool();
+        expect(roundware.assetData).toEqual(MOCK_ASSET_DATA);
+      });
+
+      it("fetches latest timed assets when called first time", async () => {
+        expect(roundware.timedAssetData).toBeNull();
+        await roundware.loadAssetPool();
+        expect(roundware.timedAssetData).toEqual(MOCK_TIMED_ASSET_DATA);
+      });
+
+      it("loads asset pool with decorated assets", async () => {
         expect(roundware.assetPool.assets).toEqual([]);
-        const assets = await roundware.loadAssetPool();
+        await roundware.loadAssetPool();
+
         expect(roundware.assetPool.assets).toEqual(
           MOCK_ASSET_DATA.map(assetDecorationMapper(MOCK_TIMED_ASSET_DATA))
         );
-        expect(assets).toEqual(MOCK_ASSET_DATA);
+      });
+
+      it("sets _assetDataTimer after first call", async () => {
+        // @ts-ignore - checking private property
+        expect(roundware._assetDataTimer).toBeUndefined();
+        global.setInterval = jest.fn();
+        await roundware.loadAssetPool();
+        expect(setInterval).toHaveBeenCalledTimes(1);
+        expect(setInterval).toHaveBeenLastCalledWith(
+          roundware.updateAssetPool,
+          // @ts-ignore
+          roundware._assetUpdateInterval
+        );
+      });
+
+      it("setInternal not called second time", async () => {
+        // @ts-ignore - checking private property
+        expect(roundware._assetDataTimer).toBeUndefined();
+        // @ts-ignore
+        global.setInterval = jest.fn(
+          (callback: Function, ms: number, ...args) => "NodeJSTIMERMOCK"
+        );
+        console.log("timer", roundware._assetDataTimer);
+        await roundware.loadAssetPool();
+
+        expect(setInterval).toHaveBeenCalledTimes(1);
+        expect(setInterval).toHaveBeenLastCalledWith(
+          roundware.updateAssetPool,
+          // @ts-ignore
+          roundware._assetUpdateInterval
+        );
+        console.log("timer", roundware._assetDataTimer);
+        expect(roundware._assetDataTimer).toEqual("NodeJSTIMERMOCK");
+
+        // do not call second time
+        await roundware.loadAssetPool();
+        expect(setInterval).toHaveBeenCalledTimes(1);
+        // @ts-ignore
+        expect(roundware._assetDataTimer).toEqual("NodeJSTIMERMOCK");
       });
     });
   });
