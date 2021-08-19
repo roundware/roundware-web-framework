@@ -351,17 +351,13 @@ export class Roundware {
   async getAssetsFromPool(
     assetFilter: (asset: IAssetData, mixParams: IMixParams) => boolean,
     extraParams: IMixParams = {}
-  ): Promise<IAssetData[] | null> {
+  ): Promise<IAssetData[]> {
     const pool = await this.loadAssetPool();
     const mixParams = { ...this.mixParams, ...extraParams };
-    if (pool)
-      return pool.filter(
-        (a) => assetFilter(a, mixParams) != ASSET_PRIORITIES.DISCARD
-      );
-    else {
-      console.error(`Cannot get assets! Asset Data was not fetched!`);
-      return null;
-    }
+
+    return pool.filter(
+      (a) => assetFilter(a, mixParams) != ASSET_PRIORITIES.DISCARD
+    );
   }
 
   async updateAssetPool(): Promise<void> {
@@ -398,7 +394,7 @@ export class Roundware {
     Promise.resolve();
   }
 
-  async loadAssetPool(): Promise<IAssetData[] | null> {
+  async loadAssetPool(): Promise<IAssetData[]> {
     // fetch timedAssetData before updating assetPool
     if (!Array.isArray(this.timedAssetData)) {
       this.timedAssetData = await this._timed_asset.connect({});
@@ -414,7 +410,7 @@ export class Roundware {
       );
     }
 
-    return this.assetData;
+    return this.assetData!; // it's alway going to be an array as we update assetPool
   }
   /**
    * @param  {IMixParams} activationParams
