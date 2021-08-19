@@ -182,6 +182,7 @@ export class Roundware {
     this._assetUpdateInterval = assetUpdateInterval || 300000;
 
     this._apiClient = new ApiClient(this._serverUrl);
+
     options.apiClient = this._apiClient;
 
     let navigator = window.navigator;

@@ -1,8 +1,10 @@
 import { GENERIC_ERROR_MSG } from "./constants/errors";
+
 import {
   InvalidArgumentError,
   RoundwareConnectionError,
 } from "./errors/app.errors";
+
 import { ApiClientOptions } from "./types/api-client";
 
 // Handles HTTP interactions with the Roundware API server, v2.
@@ -18,7 +20,9 @@ export class ApiClient {
    * @param  {Window|undefined} window
    * @param  {string} baseServerUrl- identifies the Roundware server to receive API requests
    */
+
   constructor(baseServerUrl: string) {
+
     if (typeof baseServerUrl !== "string")
       throw new InvalidArgumentError(
         "baseServerUrl",
