@@ -105,7 +105,14 @@ export class AssetPool {
   }
 
   updateAssets(assets: IAssetData[] = [], timedAssets: ITimedAssetData[] = []) {
-    this.assets = assets.map(assetDecorationMapper(timedAssets));
+    if (Array.isArray(assets) && Array.isArray(timedAssets))
+      this.assets = assets.map(assetDecorationMapper(timedAssets));
+    else
+      throw new InvalidArgumentError(
+        "assets/timedAssets",
+        "array",
+        "updateAssets() in AssetPool"
+      );
   }
 
   nextForTrack(
