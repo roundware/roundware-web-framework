@@ -36,6 +36,10 @@ describe("Api Client", () => {
     };
 
     const mockPath = "/mock_path";
+    const mockData = {
+      test: "mock_data",
+      id: 1234,
+    };
     const getUrl = (path: string) => {
       const url = new URL(config.baseServerUrl + path);
       return url.toString();
@@ -113,10 +117,6 @@ describe("Api Client", () => {
 
     describe(".patch()", () => {
       it("should call fetch with given path", async () => {
-        const mockData = {
-          test: "mock_data",
-          id: 1234,
-        };
         await apiClient.patch(mockPath, mockData);
         expect(global.fetch).toBeCalledTimes(1);
         expect(global.fetch).toBeCalledWith(
@@ -128,6 +128,129 @@ describe("Api Client", () => {
             mode: "cors",
           }
         );
+      });
+
+      it("should return data after request", async () => {
+        const response = await apiClient.patch(mockPath, {});
+        expect(response).toEqual(MOCK_ASSET_DATA);
+      });
+
+      it("should throw error if failed", async () => {
+        expect.assertions(1);
+        global.fetch = jest.fn(() => {
+          throw new Error();
+        });
+        try {
+          await apiClient.patch(mockPath, {});
+        } catch (e) {
+          expect(e).toBeInstanceOf(RoundwareConnectionError);
+        }
+      });
+    });
+
+    describe(".send()", () => {
+      it("should call fetch with given path", async () => {
+        await apiClient.send(
+          mockPath,
+          {},
+          {
+            method: "GET",
+          }
+        );
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path?method=GET",
+          {
+            headers: {},
+            method: "GET",
+            mode: "cors",
+          }
+        );
+      });
+
+      it("should pass query params correctly for GET request", async () => {
+        await apiClient.send(mockPath, mockData, {
+          method: "GET",
+        });
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path?method=GET&test=mock_data&id=1234",
+          {
+            headers: {},
+            method: "GET",
+            mode: "cors",
+          }
+        );
+      });
+      it("should pass body in correctly for POST request", async () => {
+        await apiClient.send(mockPath, mockData, {
+          method: "POST",
+        });
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path?method=POST",
+          {
+            body: JSON.stringify(mockData),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+            mode: "cors",
+          }
+        );
+      });
+
+      it("should pass body in correctly for PATCH request", async () => {
+        await apiClient.send(mockPath, mockData, {
+          method: "PATCH",
+        });
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path?method=PATCH",
+          {
+            body: JSON.stringify(mockData),
+            headers: { "Content-Type": "application/json" },
+            method: "PATCH",
+            mode: "cors",
+          }
+        );
+      });
+
+      it("should return response after request", async () => {
+        const response = await apiClient.send(mockPath, {}, {});
+        expect(response).toEqual(MOCK_ASSET_DATA);
+      });
+
+      it("should throw error if failed", async () => {
+        expect.assertions(1);
+        global.fetch = jest.fn(() => {
+          throw new Error();
+        });
+        try {
+          await apiClient.send(mockPath, {}, {});
+        } catch (e) {
+          expect(e).toBeInstanceOf(RoundwareConnectionError);
+        }
+      });
+
+      it("should throw error is response not ok", async () => {
+        expect.assertions(1);
+        global.fetch = jest.fn((): any => Promise.resolve({ ok: false }));
+        try {
+          await apiClient.send(mockPath, {}, {});
+        } catch (e) {
+          expect(e).toBeInstanceOf(RoundwareConnectionError);
+        }
+      });
+
+      it("should throw error is response is not parsable", async () => {
+        expect.assertions(1);
+        global.fetch = jest.fn((): any =>
+          Promise.resolve({ ok: true, json: () => Promise.reject() })
+        );
+        try {
+          await apiClient.send(mockPath, {}, {});
+        } catch (e) {
+          expect(e).toBeInstanceOf(RoundwareConnectionError);
+        }
       });
     });
   });
