@@ -379,6 +379,11 @@ export class Roundware {
       await this._asset.connect<IAssetData[]>(filters)
     );
 
+    // also fetch timedAssetData if not available
+    if (!Array.isArray(this.timedAssetData)) {
+      this.timedAssetData = await this._timed_asset.connect({});
+    }
+
     this._lastAssetUpdate = new Date();
 
     // Update the mixer's asset pool, if any.
