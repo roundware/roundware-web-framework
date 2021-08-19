@@ -1,1 +1,3 @@
-export interface IAssetFilters {}
+import { IAssetData } from ".";
+
+export interface IAssetFilters extends IAssetData {}
