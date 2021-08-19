@@ -97,6 +97,18 @@ describe("Api Client", () => {
         const response = await apiClient.post(mockPath, {});
         expect(response).toEqual(MOCK_ASSET_DATA);
       });
+
+      it("should throw error if failed", async () => {
+        expect.assertions(1);
+        global.fetch = jest.fn(() => {
+          throw new Error();
+        });
+        try {
+          await apiClient.post(mockPath, {});
+        } catch (e) {
+          expect(e).toBeInstanceOf(RoundwareConnectionError);
+        }
+      });
     });
   });
 });
