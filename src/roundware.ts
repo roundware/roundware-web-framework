@@ -100,7 +100,7 @@ export class Roundware {
   private _speakerData: ISpeakerData[] = [];
   private _audioTracksData: IAudioTrackData[] = [];
   private _lastAssetUpdate: Date | undefined;
-  private _timedAssetData: ITimedAssetData[] = [];
+  timedAssetData: ITimedAssetData[] | null = null;
   private _assetDataTimer: NodeJS.Timeout | undefined;
 
   /** Initialize a new Roundware instance
@@ -383,8 +383,8 @@ export class Roundware {
 
     // Update the mixer's asset pool, if any.
     const pool = this.assetPool;
-    if (pool && this._timedAssetData) {
-      pool.updateAssets(this.assetData, this._timedAssetData);
+    if (pool && Array.isArray(this.timedAssetData)) {
+      pool.updateAssets(this.assetData, this.timedAssetData);
     }
 
     if (typeof this._onUpdateAssets == "function") {
@@ -399,12 +399,12 @@ export class Roundware {
       await this.updateAssetPool();
       // Setup periodic retrieval of newly uploaded assets.
       this._assetDataTimer = setInterval(
-        () => this.updateAssetPool(),
+        this.updateAssetPool,
         this._assetUpdateInterval
       );
     }
-    if (!this._timedAssetData) {
-      this._timedAssetData = await this._timed_asset.connect({});
+    if (!Array.isArray(this.timedAssetData)) {
+      this.timedAssetData = await this._timed_asset.connect({});
     }
     return this.assetData;
   }
@@ -429,13 +429,13 @@ export class Roundware {
   }
 
   /** Create or resume the audio stream
-   * @see Stream.play **/
-  play(firstPlayCallback: (value: Coordinates) => any = () => {}) {
-    return this.geoPosition.waitForInitialGeolocation().then(firstPlayCallback);
+   * @see Mixer.toogle **/
+  play() {
+    return this.mixer.toggle(true);
   }
 
   /** Tell Roundware server to pause the audio stream. You should always call this when the local audio player has been paused.
-   * @see Stream.pause **/
+   * @see Mixer.playlist.pause **/
   pause() {
     if (this.mixer.playlist) {
       this.mixer.playlist.pause();
@@ -444,11 +444,7 @@ export class Roundware {
 
   /** Tell Roundware server to kill the audio stream.
    * @see Stream.kill **/
-  kill() {
-    if (this._assetDataTimer) {
-      clearInterval(this._assetDataTimer);
-    }
-  }
+  kill() {}
 
   /** Tell Roundware server to replay the current asset.
    * @see Stream.replay **/
@@ -489,8 +485,8 @@ export class Roundware {
   }
 
   timedAssets(): ITimedAssetData[] | [] {
-    if (!this._timedAssetData) console.warn(noAssetData);
-    return this._timedAssetData || [];
+    if (!this.timedAssetData) console.warn(noAssetData);
+    return this.timedAssetData || [];
   }
 
   audiotracks(): IAudioTrackData[] | [] {
