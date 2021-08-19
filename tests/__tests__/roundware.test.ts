@@ -18,6 +18,7 @@ import { coordsToPoints } from "../../src/utils";
 import { setupFetchMock } from "../fetch.setup";
 import {
   MOCK_ASSET_DATA,
+  MOCK_AUDIO_TRACKS_DATA,
   MOCK_PROJECT_UICONFIG_DATA,
   MOCK_TIMED_ASSET_DATA,
 } from "../__mocks__/mock_api_responses";
@@ -410,6 +411,15 @@ describe("Roundware", () => {
       const roundware2 = new Roundware(global.window, options);
       it("return empty when called before connect", () => {
         expect(roundware2.audiotracks()).toEqual([]);
+        // @ts-ignore
+        expect(roundware2._audioTracksData).toBeNull();
+      });
+
+      it("return audiotracks data when called after connect", async () => {
+        await roundware2.connect();
+        expect(roundware2.audiotracks()).toEqual(MOCK_AUDIO_TRACKS_DATA);
+        // @ts-ignore
+        expect(roundware2._audioTracksData).toEqual(MOCK_AUDIO_TRACKS_DATA);
       });
     });
   });
