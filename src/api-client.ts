@@ -1,22 +1,10 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
+import { GENERIC_ERROR_MSG } from "./constants/errors";
+
 import {
   InvalidArgumentError,
   RoundwareConnectionError,
 } from "./errors/app.errors";
-=======
-import { GENERIC_ERROR_MSG } from "./constants/errors";
-<<<<<<< HEAD
->>>>>>> 62ce5f0 (Moved constants to specific folder)
-=======
-import { GENERIC_ERROR_MSG } from "./constants/errors";
->>>>>>> 62ce5f0 (Moved constants to specific folder)
-=======
-import {
-  InvalidArgumentError,
-  RoundwareConnectionError,
-} from "./errors/app.errors";
->>>>>>> 585ec2e (src change - throw error is baseServerUrl is not string)
+
 import { ApiClientOptions } from "./types/api-client";
 
 // Handles HTTP interactions with the Roundware API server, v2.
@@ -25,7 +13,6 @@ import { ApiClientOptions } from "./types/api-client";
 // @see http://roundware.org/docs/terminology/index.html
 
 export class ApiClient {
-  private _jQuery: any;
   private _serverUrl: string;
   private _authToken: string;
   /**
@@ -33,11 +20,9 @@ export class ApiClient {
    * @param  {Window|undefined} window
    * @param  {string} baseServerUrl- identifies the Roundware server to receive API requests
    */
-  constructor(window: Window | undefined, baseServerUrl: string) {
-    if (typeof window !== "undefined") {
-      // @ts-ignore need extend window for jQuwey
-      this._jQuery = window?.jQuery;
-    }
+
+  constructor(baseServerUrl: string) {
+
     if (typeof baseServerUrl !== "string")
       throw new InvalidArgumentError(
         "baseServerUrl",
