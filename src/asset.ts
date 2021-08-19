@@ -3,6 +3,8 @@ import {
   InvalidArgumentError,
   MissingArgumentError,
 } from "./errors/app.errors";
+import { IAssetData } from "./types";
+import { IAssetFilters } from "./types/asset";
 
 /* global process */
 export const PATH =
@@ -41,8 +43,8 @@ export class Asset {
     return `Roundware Assets (#${this._projectId})`;
   }
 
-  async connect<T>(data = {}): Promise<T> {
+  async connect(data: IAssetFilters = {}): Promise<IAssetData[]> {
     const options = { ...data, project_id: this._projectId };
-    return await this._apiClient.get<T>(PATH, options);
+    return await this._apiClient.get<IAssetData[]>(PATH, options);
   }
 }
