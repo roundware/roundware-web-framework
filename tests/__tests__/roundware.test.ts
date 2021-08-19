@@ -188,6 +188,20 @@ describe("Roundware", () => {
       // expect(cpa).not.toBeUndefined();
     });
 
+    it("getAssets() return already existing assets when no filter passed", async () => {
+      const assets = await roundware.getAssets();
+      expect(assets).toEqual(roundware.assetData);
+    });
+
+    it("getAssets() fetch assets from filter", async () => {
+      const assets = await roundware.getAssets({
+        latitude: 42.4986343383789,
+      });
+      expect(assets).toEqual(
+        MOCK_ASSET_DATA.filter((asset) => asset.latitude === 42.4986343383789)
+      );
+    });
+
     describe(".updateAssetPool()", () => {
       let roundware;
       beforeEach(() => {
@@ -346,7 +360,7 @@ describe("Roundware", () => {
         global.setInterval = jest.fn(
           (callback: Function, ms: number, ...args) => "NodeJSTIMERMOCK"
         );
-        console.log("timer", roundware._assetDataTimer);
+
         await roundware.loadAssetPool();
 
         expect(setInterval).toHaveBeenCalledTimes(1);
@@ -355,7 +369,7 @@ describe("Roundware", () => {
           // @ts-ignore
           roundware._assetUpdateInterval
         );
-        console.log("timer", roundware._assetDataTimer);
+
         expect(roundware._assetDataTimer).toEqual("NodeJSTIMERMOCK");
 
         // do not call second time
