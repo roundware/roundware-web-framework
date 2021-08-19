@@ -394,6 +394,11 @@ export class Roundware {
   }
 
   async loadAssetPool(): Promise<IAssetData[] | null> {
+    // fetch timedAssetData before updating assetPool
+    if (!Array.isArray(this.timedAssetData)) {
+      this.timedAssetData = await this._timed_asset.connect({});
+    }
+
     // Options passed here should only need to go into the assets/ call.
     if (!this.assetData) {
       await this.updateAssetPool();
@@ -403,9 +408,7 @@ export class Roundware {
         this._assetUpdateInterval
       );
     }
-    if (!Array.isArray(this.timedAssetData)) {
-      this.timedAssetData = await this._timed_asset.connect({});
-    }
+
     return this.assetData;
   }
   /**
