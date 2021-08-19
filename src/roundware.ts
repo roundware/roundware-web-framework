@@ -181,7 +181,7 @@ export class Roundware {
     // By default, update the asset pool every 5 minutes.
     this._assetUpdateInterval = assetUpdateInterval || 300000;
 
-    this._apiClient = new ApiClient(window, this._serverUrl);
+    this._apiClient = new ApiClient(this._serverUrl);
     options.apiClient = this._apiClient;
 
     let navigator = window.navigator;
