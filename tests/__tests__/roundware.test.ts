@@ -405,5 +405,12 @@ describe("Roundware", () => {
         expect(roundware._assetDataTimer).toEqual("NodeJSTIMERMOCK");
       });
     });
+
+    describe(".audiotrack() should return audio tracks", () => {
+      const roundware2 = new Roundware(global.window, options);
+      it("return empty when called before connect", () => {
+        expect(roundware2.audiotracks()).toEqual([]);
+      });
+    });
   });
 });
