@@ -213,6 +213,23 @@ describe("Api Client", () => {
           }
         );
       });
+
+      it("should work with multipart/form-data", async () => {
+        await apiClient.send(mockPath, mockData, {
+          method: "POST",
+          contentType: "multipart/form-data",
+        });
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path?method=POST&contentType=multipart%2Fform-data",
+          {
+            body: "",
+            headers: {},
+            method: "POST",
+            mode: "cors",
+          }
+        );
+      });
       it("should pass body in correctly for PATCH request", async () => {
         await apiClient.send(mockPath, mockData, {
           method: "PATCH",
