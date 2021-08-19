@@ -3,6 +3,7 @@ import { assetDecorationMapper } from "../../src/assetPool";
 import {
   InvalidArgumentError,
   MissingArgumentError,
+  RoundwareConnectionError,
 } from "../../src/errors/app.errors";
 import {
   allAssetFilter,
@@ -14,6 +15,7 @@ import {
 import { IAssetData } from "../../src/types";
 import { IRoundwareConstructorOptions } from "../../src/types/roundware";
 import { coordsToPoints } from "../../src/utils";
+import { setupFetchMock } from "../fetch.setup";
 import {
   MOCK_ASSET_DATA,
   MOCK_PROJECT_UICONFIG_DATA,
@@ -103,6 +105,8 @@ describe("Roundware", () => {
       geoListenMode: GeoListenMode.DISABLED,
     };
     const roundware = new Roundware(global.window, options);
+
+    beforeEach(() => setupFetchMock());
     it("Return array of assets", () => {
       const assets = roundware.assets();
       console.log(assets);
@@ -112,6 +116,17 @@ describe("Roundware", () => {
     it(".connect() - should successfully connect return promise of uiConfig", async () => {
       const data = await roundware.connect();
       expect(data.uiConfig).toMatchObject(MOCK_PROJECT_UICONFIG_DATA);
+    });
+
+    it(".connect() - should throw error when unale to fetch", async () => {
+      global.fetch = jest.fn((input, init) => {
+        throw Error();
+      });
+      try {
+        await roundware.connect();
+      } catch (e) {
+        expect(e).toEqual(new RoundwareConnectionError());
+      }
     });
 
     const MOCK_LOCATION = {
