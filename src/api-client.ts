@@ -126,9 +126,6 @@ export class ApiClient {
     let response;
 
     try {
-      if (method == "GET") {
-        delete requestInit.body;
-      }
       response = await fetch(url.toString(), requestInit);
     } catch (error) {
       console.error("Roundware network error:", error.message);
