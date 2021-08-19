@@ -129,6 +129,17 @@ describe("Roundware", () => {
       }
     });
 
+    it(".connect() - should call updateLocation", async () => {
+      const updateLocationCallback = jest.fn((coordinates) => {});
+      roundware.onUpdateLocation = updateLocationCallback;
+      await roundware.connect();
+      expect(updateLocationCallback).toHaveBeenCalledTimes(1);
+      expect(updateLocationCallback).toHaveBeenCalledWith({
+        latitude: 50,
+        longitude: 155,
+      });
+    });
+
     const MOCK_LOCATION = {
       latitude: 20,
       longitude: 43,
