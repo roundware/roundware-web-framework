@@ -11,7 +11,6 @@ import { ApiClientOptions } from "./types/api-client";
 // @see http://roundware.org/docs/terminology/index.html
 
 export class ApiClient {
-  private _jQuery: any;
   private _serverUrl: string;
   private _authToken: string;
   /**
@@ -19,11 +18,7 @@ export class ApiClient {
    * @param  {Window|undefined} window
    * @param  {string} baseServerUrl- identifies the Roundware server to receive API requests
    */
-  constructor(window: Window | undefined, baseServerUrl: string) {
-    if (typeof window !== "undefined") {
-      // @ts-ignore need extend window for jQuwey
-      this._jQuery = window?.jQuery;
-    }
+  constructor(baseServerUrl: string) {
     if (typeof baseServerUrl !== "string")
       throw new InvalidArgumentError(
         "baseServerUrl",
