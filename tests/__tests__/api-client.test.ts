@@ -21,13 +21,13 @@ describe("Api Client", () => {
     });
 
     it("should create a ApiClient instance", () => {
-      const apiClient = new ApiClient(global.window, config.baseServerUrl);
+      const apiClient = new ApiClient(config.baseServerUrl);
       expect(apiClient).toBeInstanceOf(ApiClient);
     });
   });
 
   describe("Functions", () => {
-    const apiClient = new ApiClient(global.window, config.baseServerUrl);
+    const apiClient = new ApiClient(config.baseServerUrl);
 
     const mockInit = {
       headers: {},
