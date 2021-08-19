@@ -41,6 +41,7 @@ export function sortByProjectDefault(
     case "by_like":
       return sortByLikes;
     case "random":
+      return sortRandomly;
     default:
       return sortRandomly;
   }
