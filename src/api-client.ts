@@ -6,10 +6,17 @@ import {
 } from "./errors/app.errors";
 =======
 import { GENERIC_ERROR_MSG } from "./constants/errors";
+<<<<<<< HEAD
 >>>>>>> 62ce5f0 (Moved constants to specific folder)
 =======
 import { GENERIC_ERROR_MSG } from "./constants/errors";
 >>>>>>> 62ce5f0 (Moved constants to specific folder)
+=======
+import {
+  InvalidArgumentError,
+  RoundwareConnectionError,
+} from "./errors/app.errors";
+>>>>>>> 585ec2e (src change - throw error is baseServerUrl is not string)
 import { ApiClientOptions } from "./types/api-client";
 
 // Handles HTTP interactions with the Roundware API server, v2.
