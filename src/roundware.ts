@@ -99,7 +99,7 @@ export class Roundware {
   private _sessionId: number | string | undefined;
   uiConfig: IUiConfig = {};
   private _speakerData: ISpeakerData[] = [];
-  private _audioTracksData: IAudioTrackData[] = [];
+  private _audioTracksData: IAudioTrackData[] | null = null;
   private _lastAssetUpdate: Date | undefined;
   timedAssetData: ITimedAssetData[] | null = null;
   private _assetDataTimer: NodeJS.Timeout | undefined;
