@@ -9,6 +9,7 @@ import {
   ITimedAssetData,
   ITrack,
 } from "./types";
+import { InvalidArgumentError } from "./errors/app.errors";
 
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
 // also rewrite .wav as .mp3
@@ -64,7 +65,7 @@ export class AssetPool {
   //playingTracks: {};
   mixParams: IMixParams;
   filterChain: (asset: IAssetData, mixParams: IMixParams) => number;
-  assets: IAssetData[];
+  assets!: IAssetData[];
 
   constructor({
     assets = [],
@@ -73,13 +74,24 @@ export class AssetPool {
     sortMethods = [],
     mixParams = {},
   }: {
-    assets: IAssetData[];
-    timedAssets: ITimedAssetData[];
-    filterChain: (asset: IAssetData, mixParams: IMixParams) => number;
-    sortMethods: unknown[];
-    mixParams: IMixParams;
+    assets?: IAssetData[];
+    timedAssets?: ITimedAssetData[];
+    filterChain?: (asset: IAssetData, mixParams: IMixParams) => number;
+    sortMethods?: unknown[];
+    mixParams?: IMixParams;
   }) {
-    this.assets = assets;
+    if (!Array.isArray(assets))
+      throw new InvalidArgumentError(
+        "assets",
+        "array of IAssetData",
+        "instantiation assetPool"
+      );
+    if (!Array.isArray(timedAssets))
+      throw new InvalidArgumentError(
+        "timedAssets",
+        "array of ITimedAssetData",
+        "instantiation assetPool"
+      );
     this.updateAssets(assets, timedAssets);
 
     this.assetSorter = new AssetSorter({
