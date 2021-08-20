@@ -76,13 +76,12 @@ export class Mixer {
     });
   }
 
+  
+
   updateParams(
-    { listenerLocation, ...params }: IMixParams,
-    assets?: IAssetData[],
-    timedAssets?: ITimedAssetData[]
+    { listenerLocation, ...params }: IMixParams
   ) {
-    // update assets when mixer is activated
-    this.assetPool.updateAssets(assets, timedAssets);
+    
 
     if (listenerLocation) {
       params.listenerPoint = coordsToPoints({
