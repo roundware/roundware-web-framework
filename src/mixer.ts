@@ -171,24 +171,32 @@ export class Mixer {
    * @param  {boolean} true to play false to stop
    * @returns boolean
    */
-  toggle(play: boolean): boolean {
+  toggle(play?: boolean): boolean {
     // Build the audio context and playlist if it doesn't exist yet.
     this.initContext();
 
-    if (this.playing && play == true) return true;
-
-    if (this.playing && play == false) {
-      this.playing = false;
-      if (this.playlist) this.playlist.pause();
-      if (Array.isArray(this.speakerTracks))
-        this.speakerTracks.forEach((s) => s.pause());
-    } else if (!this.playing && play == true) {
-      this.playing = true;
-      if (this.playlist) this.playlist.play();
-      if (Array.isArray(this.speakerTracks))
-        this.speakerTracks.forEach((s) => s.play());
+    if (typeof play == "boolean") {
+      // do based on what asked..
+      play ? this.play() : this.stop();
+    } else {
+      // automatically decide based on playing status
+      this.playing ? this.stop() : this.play();
     }
 
     return this.playing;
+  }
+
+  play() {
+    this.playing = true;
+    if (this.playlist) this.playlist.play();
+    if (Array.isArray(this.speakerTracks))
+      this.speakerTracks.forEach((s) => s.play());
+  }
+
+  stop() {
+    this.playing = false;
+    if (this.playlist) this.playlist.pause();
+    if (Array.isArray(this.speakerTracks))
+      this.speakerTracks.forEach((s) => s.pause());
   }
 }
