@@ -9,10 +9,11 @@ import { IAssetData } from "./types";
  @see http://sedition.com/perl/javascript-fy.html
  */
 export function sortRandomly(assetsArray: IAssetData[]) {
-  for (let i = assetsArray.length - 1; i > 0; i--) {
-    const rand = Math.floor(Math.random() * (i + 1));
-    [assetsArray[i], assetsArray[rand]] = [assetsArray[rand], assetsArray[i]];
-  }
+  if (Array.isArray(assetsArray))
+    for (let i = assetsArray.length - 1; i > 0; i--) {
+      const rand = Math.floor(Math.random() * (i + 1));
+      [assetsArray[i], assetsArray[rand]] = [assetsArray[rand], assetsArray[i]];
+    }
 }
 
 /**
@@ -20,7 +21,8 @@ export function sortRandomly(assetsArray: IAssetData[]) {
  */
 
 export function sortByWeight(assetsArray: IAssetData[]) {
-  assetsArray.sort((assetA, assetB) => assetA.weight! - assetB.weight!);
+  if (Array.isArray(assetsArray))
+    assetsArray.sort((assetA, assetB) => assetA.weight! - assetB.weight!);
 }
 
 /**
@@ -29,7 +31,8 @@ Sort assets destructively, in descending order of current number of likes.
 */
 export function sortByLikes(assetsArray: IAssetData[]) {
   // eslint-disable-line no-unused-vars
-  console.warn("sortByLikes not implemented yet"); // TODO: implement sortByLikes
+  console.warn("sortByLikes not implemented yet");
+  return assetsArray; // TODO: implement sortByLikes
 }
 
 export function sortByProjectDefault(
