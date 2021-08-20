@@ -396,6 +396,7 @@ export class Roundware {
     if (typeof this._onUpdateAssets == "function") {
       this._onUpdateAssets(this.assetData);
     }
+
     Promise.resolve();
   }
 
@@ -410,7 +411,7 @@ export class Roundware {
       await this.updateAssetPool();
       // Setup periodic retrieval of newly uploaded assets.
       this._assetDataTimer = setInterval(
-        this.updateAssetPool,
+        () => this.updateAssetPool(),
         this._assetUpdateInterval
       );
     }
@@ -434,13 +435,15 @@ export class Roundware {
     this.mixer.initContext();
     this.mixer.updateParams(allMixParams, this.assets(), this.timedAssets());
 
+    console.info("Mixer activated!");
     return this.mixer;
   }
 
   /** Create or resume the audio stream
    * @see Mixer.toogle **/
-  play() {
-    return this.mixer.toggle(true);
+  play(firstPlayCallback: (value: Coordinates) => any = () => {}) {
+    console.log("Playing...");
+    return this.geoPosition.waitForInitialGeolocation().then(firstPlayCallback);
   }
 
   /** Tell Roundware server to pause the audio stream. You should always call this when the local audio player has been paused.
