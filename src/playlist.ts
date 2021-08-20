@@ -10,7 +10,7 @@ import { AssetPool } from "./assetPool";
 
 export class Playlist {
   listenerPoint: Feature<Point>;
-  playingTracks: IAudioTrackData[];
+  playingTracks: {};
   assetPool: AssetPool;
   playing: boolean;
   listenTagIds: IMixParams[`listenTagIds`];
@@ -36,7 +36,7 @@ export class Playlist {
     audioContext: IAudioContext;
   }) {
     this.listenerPoint = listenerPoint;
-    this.playingTracks = [];
+    this.playingTracks = {};
     this.assetPool = assetPool;
     this.playing = false;
     this.listenTagIds = [];
@@ -80,8 +80,7 @@ export class Playlist {
 
   get currentlyPlayingAssets(): IAssetData[] {
     const assets: IAssetData[] = [];
-    // @ts-ignore
-    for (const a of this.trackMap.values()) {
+    for (const a of Array.from(this.trackMap.values())) {
       if (a) {
         assets.push(a);
       }
@@ -104,7 +103,6 @@ export class Playlist {
   }
 
   skip(trackId?: number) {
-    if (typeof trackId == "undefined") return;
     const track = this.trackIdMap[Number(trackId)];
     if (track) track.skip();
   }
@@ -120,8 +118,7 @@ export class Playlist {
     if (this.playlistLastStartedAt) {
       this._elapsedTimeMs =
         this._elapsedTimeMs +
-        (new Date().getMilliseconds() -
-          this.playlistLastStartedAt.getMilliseconds());
+        Number(new Date().getTime() - this.playlistLastStartedAt.getTime());
       delete this.playlistLastStartedAt;
     }
 
@@ -129,12 +126,11 @@ export class Playlist {
   }
 
   get elapsedTimeMs() {
-    const now = new Date();
+    const now = new Date().getTime();
     const lastStartedAt = this.playlistLastStartedAt
-      ? this.playlistLastStartedAt
+      ? this.playlistLastStartedAt.getTime()
       : now;
-    const elapsedSinceLastStartMs =
-      now.getMilliseconds() - lastStartedAt.getMilliseconds();
+    const elapsedSinceLastStartMs = now - lastStartedAt;
 
     return this._elapsedTimeMs + elapsedSinceLastStartMs;
   }
