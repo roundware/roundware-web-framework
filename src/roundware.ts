@@ -433,7 +433,7 @@ export class Roundware {
     };
 
     this.mixer.initContext();
-    this.mixer.updateParams(allMixParams, this.assets(), this.timedAssets());
+    this.mixer.updateParams(allMixParams);
 
     console.info("Mixer activated!");
     return this.mixer;
