@@ -9,6 +9,7 @@ import {
   InvalidArgumentError,
   MissingArgumentError,
   RoundwareConnectionError,
+  RoundwareFrameworkError,
 } from "./errors/app.errors";
 import { GeoPosition } from "./geo-position";
 import { GeoListenMode, Mixer } from "./mixer";
@@ -210,6 +211,10 @@ export class Roundware {
     this.project = project || new Project(this._projectId, options);
     this._speaker = speaker || new Speaker(this._projectId, options);
     this._asset = asset || new Asset(this._projectId, options);
+    if (!this._asset)
+      throw new RoundwareFrameworkError(
+        "Failed to connect to assets! Please try again."
+      );
     this._timed_asset = timedAsset || new TimedAsset(this._projectId, options);
     this._audiotrack = audiotrack || new Audiotrack(this._projectId, options);
     this.uiConfig = {};
