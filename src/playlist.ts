@@ -118,7 +118,10 @@ export class Playlist {
     if (this.playlistLastStartedAt) {
       this._elapsedTimeMs =
         this._elapsedTimeMs +
-        Number(new Date().getTime() - this.playlistLastStartedAt.getTime());
+        Number(
+          new Date().getMilliseconds() -
+            this.playlistLastStartedAt.getMilliseconds()
+        );
       delete this.playlistLastStartedAt;
     }
 
@@ -126,9 +129,9 @@ export class Playlist {
   }
 
   get elapsedTimeMs() {
-    const now = new Date().getTime();
+    const now = new Date().getMilliseconds();
     const lastStartedAt = this.playlistLastStartedAt
-      ? this.playlistLastStartedAt.getTime()
+      ? this.playlistLastStartedAt.getMilliseconds()
       : now;
     const elapsedSinceLastStartMs = now - lastStartedAt;
 
@@ -151,7 +154,7 @@ export class Playlist {
       listenTagIds,
     });
 
-    this.trackMap.set(forTrack, nextAsset ? nextAsset : null);
+    this.trackMap.set(forTrack, nextAsset || null);
     this._client.triggerOnPlayAssets();
 
     return nextAsset;
