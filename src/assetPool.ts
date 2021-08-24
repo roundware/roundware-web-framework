@@ -102,24 +102,27 @@ export class AssetPool {
   }
 
   updateAssets(assets: IAssetData[] = [], timedAssets: ITimedAssetData[] = []) {
-    if (Array.isArray(assets) && Array.isArray(timedAssets)) {
-      let newAssets = assets.map(assetDecorationMapper(timedAssets));
-      // preserve the playCount property of previously played assets to avoid repitition..
-      this.assets = newAssets.map((asset) => {
-        const existing = this.assets.find((a) => a.id === asset.id);
-        if (existing)
-          return {
-            ...asset,
-            playCount: existing.playCount,
-          };
-        return asset;
-      });
-    } else
+    if (!Array.isArray(assets) || !Array.isArray(timedAssets)) {
       throw new InvalidArgumentError(
         "assets/timedAssets",
         "array",
         "updateAssets() in AssetPool"
       );
+    }
+
+    let newAssets = assets.map(assetDecorationMapper(timedAssets));
+    // preserve the playCount property of previously played assets to avoid repitition..
+    Array.isArray(this.assets)
+      ? (this.assets = newAssets.map((asset) => {
+          const existing = this.assets.find((a) => a.id === asset.id);
+          if (existing)
+            return {
+              ...asset,
+              playCount: existing.playCount,
+            };
+          return asset;
+        }))
+      : (this.assets = newAssets);
   }
 
   nextForTrack(
