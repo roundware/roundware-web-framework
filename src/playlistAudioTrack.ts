@@ -270,6 +270,7 @@ export class PlaylistAudiotrack {
       }
       audioElement.currentTime = start! >= NEARLY_ZERO ? start! : NEARLY_ZERO; // value but must fininite
 
+      this.audioElement.load();
       this.audioElement = audioElement;
 
       return newAsset;
