@@ -419,6 +419,7 @@ export class Roundware {
     return this.assetData!; // it's alway going to be an array as we update assetPool
   }
   /**
+   * Updates params with passed params, Builds playlist instance, loads assetPool
    * @param  {IMixParams} activationParams
    * @returns Mixer
    */

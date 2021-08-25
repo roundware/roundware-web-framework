@@ -76,13 +76,7 @@ export class Mixer {
     });
   }
 
-  
-
-  updateParams(
-    { listenerLocation, ...params }: IMixParams
-  ) {
-    
-
+  updateParams({ listenerLocation, ...params }: IMixParams) {
     if (listenerLocation) {
       params.listenerPoint = coordsToPoints({
         latitude: listenerLocation.latitude!,
@@ -121,6 +115,10 @@ export class Mixer {
     return "Roundware Mixer";
   }
 
+  /**
+   * Builds audioContext and playlist instance if it doesn't exist yet
+   * @returns {void}
+   */
   initContext() {
     if (!this.playlist) {
       const audioContext = buildAudioContext(this._windowScope);
