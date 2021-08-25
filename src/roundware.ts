@@ -267,10 +267,7 @@ export class Roundware {
 
   get currentlyPlayingAssets(): IAssetData[] | undefined {
     if (!this.mixer.playlist) {
-      console.warn(
-        `Cannot get currently playing assets. roundware.mixer is not activated yet!`
-      );
-      return undefined;
+      return;
     }
     return this.mixer.playlist.currentlyPlayingAssets;
   }
