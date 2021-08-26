@@ -156,11 +156,11 @@ export class PlaylistAudiotrack {
     console.log(`\t[${this} audio ended event]`);
   }
 
-  play() {
+  async play() {
     console.log(`${timestamp} ${this}: ${this.state}`);
     if (!this.state)
       console.warn(`No Initial track state. call \`setInitialTrackState()\``);
-    else this.state.play();
+    else await this.state.play();
   }
 
   updateParams(params = {}) {
@@ -310,7 +310,7 @@ export class PlaylistAudiotrack {
     if (state) state.replay();
   }
 
-  transition(newState: ITrackStates) {
+  async transition(newState: ITrackStates) {
     const {
       state,
       playlist: { elapsedTimeMs },
@@ -325,7 +325,7 @@ export class PlaylistAudiotrack {
     if (!this.state) return console.warn(`!current state was undefined`);
     this.state.finish();
     this.state = newState;
-    this.state.play();
+    await this.state.play();
   }
 
   toString() {
