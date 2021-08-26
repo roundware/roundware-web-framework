@@ -13,7 +13,7 @@ import {
 interface ICommonStateProperties {
   track: PlaylistAudiotrack;
   timerApproximateEndingAtMs?: number;
-  play(nextStateSecs?: number): number | void;
+  play(nextStateSecs?: number): Promise<number | void>;
   pause(): void;
   finish(): void;
   skip(): void;
