@@ -208,20 +208,19 @@ export class SpeakerTrack {
       if (!this.audio)
         throw new Error(`Audio is undefined! Please use buildAudio()`);
       await this.audio.play();
+      console.info("Speaker Audio Started!");
       this.playing = true;
     } catch (err) {
       console.error("Unable to play", this.logline, err);
     }
   }
 
-  async pause() {
-    if (!this.playing) return;
-
+  pause() {
     try {
       //console.log('Pausing',this.logline);
       if (!this.audio)
         throw new Error(`Audio is undefined! Please use buildAudio()`);
-      this.audio.pause();
+      this.audio?.pause();
       this.playing = false;
     } catch (err) {
       console.error("Unable to pause", this.logline, err);
