@@ -36,7 +36,7 @@ export class LoadingState implements ICommonStateProperties {
       newState = new WaitingForAssetState(track, trackOptions);
     }
 
-    this.track.transition(newState);
+    await this.track.transition(newState);
   }
 
   pause() {}
@@ -219,9 +219,11 @@ export class FadingInState
     this.track.pauseAudio();
   }
 
-  setNextState() {
+  async setNextState() {
     const { track, trackOptions, assetEnvelope } = this;
-    track.transition(new PlayingState(track, trackOptions, { assetEnvelope }));
+    await track.transition(
+      new PlayingState(track, trackOptions, { assetEnvelope })
+    );
   }
 
   toString() {
