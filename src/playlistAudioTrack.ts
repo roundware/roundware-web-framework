@@ -188,7 +188,7 @@ export class PlaylistAudiotrack {
   }
 
   // exponentialRampToValueAtTime sounds more gradual for fading in
-  fadeIn(fadeInDurationSeconds: number): boolean {
+  async fadeIn(fadeInDurationSeconds: number): Promise<boolean> {
     const currentAsset = this.currentAsset;
     if (!currentAsset || !currentAsset.volume) {
       console.warn(`currentAsset is undefined!`);
@@ -201,7 +201,7 @@ export class PlaylistAudiotrack {
 
     try {
       this.setZeroGain();
-      this.playAudio();
+      await this.playAudio();
       this.rampGain(finalVolume, fadeInDurationSeconds);
       return true;
     } catch (err) {
@@ -287,8 +287,10 @@ export class PlaylistAudiotrack {
     if (this.audioElement) this.audioElement.pause();
   }
 
-  playAudio() {
-    if (this.audioElement) this.audioElement.play();
+  async playAudio() {
+    if (this.audioElement) {
+      return await this.audioElement.play();
+    }
   }
 
   pauseAudio() {
