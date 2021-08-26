@@ -20,7 +20,7 @@ export class LoadingState implements ICommonStateProperties {
     this.asset = null;
   }
 
-  play() {
+  async play() {
     const { track, trackOptions } = this;
     const asset = track.loadNextAsset();
 
@@ -44,13 +44,13 @@ export class LoadingState implements ICommonStateProperties {
   skip() {}
   replay() {}
   updateParams() {}
-
   toString() {
     return "Loading";
   }
 }
 
 export class TimedTrackState implements ICommonStateProperties {
+  updateParams(params: {}) {}
   track: PlaylistAudiotrack;
   windowScope: Window;
   trackOptions: ITrackOptions;
@@ -67,7 +67,7 @@ export class TimedTrackState implements ICommonStateProperties {
    * @param  {number=0} nextStateSecs
    * @returns number
    */
-  play(nextStateSecs: number = 0): number | void {
+  async play(nextStateSecs: number = 0): Promise<number | void> {
     const {
       timerId,
       timeRemainingMs,
@@ -161,23 +161,20 @@ export class TimedTrackState implements ICommonStateProperties {
     const loadingState = new LoadingState(track, trackOptions);
     track.transition(loadingState);
   }
-
-  //@ts-ignore
-  updateParams(params: object) {}
 }
 
 export class DeadAirState
   extends TimedTrackState
   implements ICommonStateProperties
 {
-  deadAirSeconds: any;
-  constructor(track: any, trackOptions: ITrackOptions) {
+  deadAirSeconds: number;
+  constructor(track: PlaylistAudiotrack, trackOptions: ITrackOptions) {
     super(track, trackOptions);
     this.deadAirSeconds = this.trackOptions.randomDeadAir;
   }
 
-  play(): any {
-    super.play(this.deadAirSeconds);
+  async play() {
+    await super.play(this.deadAirSeconds);
   }
 
   setNextState() {
@@ -187,17 +184,15 @@ export class DeadAirState
   toString() {
     return `DeadAir (${this.deadAirSeconds.toFixed(1)}s)`;
   }
-
-  updateParams() {}
 }
 
 export class FadingInState
   extends TimedTrackState
   implements ICommonStateProperties
 {
-  assetEnvelope: any;
+  assetEnvelope: IAssetEnvelope;
   constructor(
-    track: any,
+    track: PlaylistAudiotrack,
     trackOptions: ITrackOptions,
     { assetEnvelope }: { assetEnvelope: IAssetEnvelope }
   ) {
@@ -205,16 +200,16 @@ export class FadingInState
     this.assetEnvelope = assetEnvelope;
   }
 
-  play(): any {
+  async play(): Promise<void> {
     const {
       track,
       assetEnvelope: { fadeInDuration },
     } = this;
-    const fadeInSecondsRemaining = super.play(fadeInDuration);
+    const fadeInSecondsRemaining = await super.play(fadeInDuration);
 
     if (!fadeInSecondsRemaining) return;
 
-    const success = track.fadeIn(fadeInSecondsRemaining);
+    const success = await track.fadeIn(fadeInSecondsRemaining);
 
     if (!success) this.setLoadingState();
   }
@@ -241,19 +236,23 @@ export class PlayingState
   extends TimedTrackState
   implements ICommonStateProperties
 {
-  assetEnvelope: any;
-  constructor(track: any, trackOptions: any, { assetEnvelope }: any) {
+  assetEnvelope: IAssetEnvelope;
+  constructor(
+    track: PlaylistAudiotrack,
+    trackOptions: ITrackOptions,
+    { assetEnvelope }: { assetEnvelope: IAssetEnvelope }
+  ) {
     super(track, trackOptions);
     this.assetEnvelope = assetEnvelope;
   }
 
-  play(): any {
+  async play() {
     const {
       track,
       assetEnvelope: { startFadingOutSecs },
     } = this;
-    super.play(startFadingOutSecs);
-    track.playAudio();
+    await super.play(startFadingOutSecs);
+    await track.playAudio();
     //console.log(`Playing asset #${assetId} (start fading out: ${remainingSeconds.toFixed(1)}s)`);
   }
 
@@ -281,7 +280,7 @@ export class FadingOutState
   extends TimedTrackState
   implements ICommonStateProperties
 {
-  assetEnvelope: any;
+  assetEnvelope: IAssetEnvelope;
   constructor(
     track: PlaylistAudiotrack,
     trackOptions: ITrackOptions,
@@ -291,12 +290,12 @@ export class FadingOutState
     this.assetEnvelope = assetEnvelope;
   }
 
-  play(): void {
+  async play() {
     const {
       track,
       assetEnvelope: { fadeOutDuration },
     } = this;
-    const remainingSeconds = super.play(fadeOutDuration);
+    const remainingSeconds = await super.play(fadeOutDuration);
 
     if (!remainingSeconds) return;
 
@@ -334,8 +333,8 @@ export class WaitingForAssetState
     super(track, trackOptions);
   }
 
-  play(): void {
-    super.play(DEFAULT_WAITING_FOR_ASSET_INTERVAL_SECONDS);
+  async play() {
+    await super.play(DEFAULT_WAITING_FOR_ASSET_INTERVAL_SECONDS);
   }
 
   updateParams(params = {}) {
