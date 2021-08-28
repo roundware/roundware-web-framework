@@ -6,7 +6,7 @@ import {
 } from "./errors/app.errors";
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
 import { IAssetData, ILookupTable, IMixParams, ITimedAssetData } from "./types";
-import { cleanAudioURL, coordsToPoints } from "./utils";
+import { cleanAudioURL, coordsToPoints, debugLogger } from "./utils";
 
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
 // also rewrite .wav as .mp3
@@ -151,6 +151,7 @@ export class AssetPool {
     );
     const rankedAssets = this.assets.reduce<IAssetData[]>((rankings, asset) => {
       if (filterOutAssets.includes(asset)) return rankings;
+      console.log("Calculating ranks...");
       const rank = this.filterChain(asset, mixParams);
 
       if (rank) {
@@ -167,7 +168,7 @@ export class AssetPool {
       Number.parseInt(a)
     );
 
-    if (rankingGroups === []) {
+    if (Array.isArray(rankingGroups) && rankingGroups.length < 1) {
       console.warn("All assets filtered out");
       return;
     }
@@ -184,10 +185,7 @@ export class AssetPool {
     );
 
     const nextAsset: IAssetData | undefined = priorityAssets.pop();
-    if (
-      typeof nextAsset !== "undefined" &&
-      typeof nextAsset.playCount !== "undefined"
-    ) {
+    if (nextAsset && typeof nextAsset.playCount == "number") {
       nextAsset.playCount++;
     }
 
