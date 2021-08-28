@@ -1,13 +1,11 @@
-import { getUrlParam, timestamp } from "./utils";
-import { makeInitialTrackState } from "./TrackStates";
 import { TrackOptions } from "./mixer/TrackOptions";
-import { IAudioContext, IGainNode } from "standardized-audio-context";
-import { IAssetData, IAudioData, IMixParams } from "./types";
-import { IAudioTrackData } from "./types/audioTrack";
 import { Playlist } from "./playlist";
+import { makeInitialTrackState } from "./TrackStates";
+import { IAssetData, IMixParams } from "./types";
+import { IAudioTrackData } from "./types/audioTrack";
 import { ITrackStates } from "./types/track-states";
-import { ITrackOptions } from "./types/mixer/TrackOptions";
-
+import { debugLogger, getUrlParam, timestamp } from "./utils";
+import { Howl } from "howler";
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
 
@@ -77,28 +75,55 @@ const LOGGABLE_AUDIO_ELEMENT_EVENTS = [
   "waiting",
   "stalled",
 ]; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
+
+const LOGGABLE_HOWL_EVENTS = [
+  "load",
+  "loaderror",
+  "playerror",
+  "play",
+  "end",
+  "pause",
+  "stop",
+  "mute",
+  "volume",
+  "rate",
+  "seek",
+  "fade",
+  "unlock",
+];
 const NEARLY_ZERO = 0.01; // webaudio spec says you can't use 0.0 as a value due to floating point math concerns
 
 export class PlaylistAudiotrack {
+  /**
+   * id of audiotrack
+   * @type {number}
+   * @memberof PlaylistAudiotrack
+   */
   trackId: number;
+
   timedAssetPriority: any;
+
+  /**
+   * @type {Playlist}
+   * @memberof PlaylistAudiotrack
+   */
   playlist: Playlist;
   playing: boolean;
   windowScope: Window;
-  currentAsset: IAssetData | undefined;
-  audioContext: IAudioContext;
-  audioElement: HTMLAudioElement;
-  gainNode: IGainNode<IAudioContext> | undefined;
+  currentAsset: IAssetData | null;
+
+  gainNode?: GainNode;
+
   trackOptions: TrackOptions;
-  mixParams: IMixParams;
-  state: ITrackStates | undefined;
+  mixParams?: IMixParams;
+  state?: ITrackStates;
+  audio?: Howl;
+
   constructor({
-    audioContext,
     windowScope,
     audioData,
     playlist,
   }: {
-    audioContext: IAudioContext;
     windowScope: Window;
     audioData: IAudioTrackData;
     playlist: Playlist;
@@ -109,38 +134,33 @@ export class PlaylistAudiotrack {
     this.playing = false;
     this.windowScope = windowScope;
 
-    const audioElement = new Audio();
-
-    audioElement.crossOrigin = "anonymous";
-    audioElement.loop = false;
-
-    const audioSrc = audioContext.createMediaElementSource(audioElement);
-    const gainNode = audioContext.createGain();
-
-    audioSrc.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach((name) =>
-      audioElement.addEventListener(name, () =>
-        console.log(`\t[${this} audio ${name} event]`)
-      )
-    );
-
-    audioElement.addEventListener("error", () => this.onAudioError());
-    audioElement.addEventListener("ended", () => this.onAudioEnded());
+    this.currentAsset = null;
 
     const trackOptions = new TrackOptions(
       (param) => getUrlParam(windowScope.location.toString(), param),
       audioData
     );
-
-    this.audioContext = audioContext;
-    this.audioElement = audioElement;
-    this.gainNode = gainNode;
     this.trackOptions = trackOptions;
     this.mixParams = { timedAssetPriority: audioData.timed_asset_priority };
-
     this.setInitialTrackState();
+  }
+
+  makeAudio(src: string) {
+    const audio = new Howl({
+      src: [src],
+    });
+
+    LOGGABLE_HOWL_EVENTS.forEach((name) =>
+      audio.on(name, () => console.log(`\t[${this} audio ${name} event]`))
+    );
+
+    audio.on("loaderror", () => this.onAudioError());
+    audio.on("playerror", () => this.onAudioError());
+    audio.on("end", () => this.onAudioEnded());
+
+    return audio;
+    // this.audioContext = Howler.ctx;
+    // this.gainNode = Howler.masterGain;
   }
 
   setInitialTrackState() {
@@ -156,11 +176,11 @@ export class PlaylistAudiotrack {
     console.log(`\t[${this} audio ended event]`);
   }
 
-  async play() {
+  play() {
     console.log(`${timestamp} ${this}: ${this.state}`);
     if (!this.state)
       console.warn(`No Initial track state. call \`setInitialTrackState()\``);
-    else await this.state.play();
+    else this.state.play();
   }
 
   updateParams(params = {}) {
@@ -169,29 +189,19 @@ export class PlaylistAudiotrack {
     else console.warn(`State is undefined!`);
   }
 
-  // Halts any scheduled gain changes and holds at current level
-  // @see https://developer.mozilla.org/en-US/docs/Web/API/AudioParam/cancelAndHoldAtTime
-
-  holdGain(): void {
-    const {
-      audioContext: { currentTime },
-    } = this;
-
-    this.gainNode?.gain.cancelScheduledValues(currentTime);
-  }
-
   setZeroGain() {
-    const {
-      audioContext: { currentTime },
-    } = this;
-    this.gainNode?.gain.setValueAtTime(NEARLY_ZERO, currentTime); // http://alemangui.github.io/blog//2015/12/26/ramp-to-value.html
+    this.audio?.volume(NEARLY_ZERO);
   }
 
   // exponentialRampToValueAtTime sounds more gradual for fading in
-  async fadeIn(fadeInDurationSeconds: number): Promise<boolean> {
+  fadeIn(fadeInDurationSeconds: number): boolean {
     const currentAsset = this.currentAsset;
     if (!currentAsset || !currentAsset.volume) {
       console.warn(`currentAsset is undefined!`);
+      return false;
+    }
+    if (!this.audio) {
+      console.warn("Cannot fadeIn on empty audio instance!");
       return false;
     }
 
@@ -199,57 +209,30 @@ export class PlaylistAudiotrack {
 
     const finalVolume = randomVolume * currentAsset.volume;
 
+    const { start } = this.currentAsset!;
     try {
-      this.setZeroGain();
-      await this.playAudio();
-      this.rampGain(finalVolume, fadeInDurationSeconds);
+      this.audio.fade(0.0, finalVolume, fadeInDurationSeconds * 1000);
       return true;
     } catch (err) {
-      this.currentAsset = undefined;
-      console.warn(`${this} unable to play`, currentAsset, err);
-      return false;
-    }
-  }
-
-  rampGain(
-    finalVolume: number,
-    durationSeconds: number,
-    rampMethod = "exponentialRampToValueAtTime"
-  ) {
-    const {
-      audioContext: { currentTime },
-    } = this;
-
-    console.log(
-      `\t[ramping ${this} gain to ${finalVolume.toFixed(
-        2
-      )} (${durationSeconds.toFixed(1)}s - ${rampMethod})]`
-    );
-
-    const gain = this.gainNode?.gain;
-    if (!gain) return;
-    try {
-      gain.setValueAtTime(gain.value, currentTime); // http://alemangui.github.io/blog//2015/12/26/ramp-to-value.html
-      // @ts-ignore library failed to provide index signature
-      gain[rampMethod](finalVolume, currentTime + durationSeconds);
-      return true;
-    } catch (err) {
-      console.warn(`Unable to ramp gain ${this}`, err);
+      console.warn(`${this} unable to fadeIn`, currentAsset, err);
       return false;
     }
   }
 
   // linearRampToValueAtTime sounds more gradual for fading out
   fadeOut(fadeOutDurationSeconds: number) {
-    return this.rampGain(
-      NEARLY_ZERO,
-      fadeOutDurationSeconds,
-      "linearRampToValueAtTime"
-    ); // 'exponentialRampToValueAtTime');
+    debugLogger(`Fading out from: ${this.audio?.volume}`);
+    this.audio?.fade(this.audio?.volume(), 0.0, fadeOutDurationSeconds * 1000);
   }
 
+  /**
+   *This will perform cleanup, get next asset to play and update/set the `src` property to current audio
+   *
+   * @return {*}  {(IAssetData | null)}
+   * @memberof PlaylistAudiotrack
+   */
   loadNextAsset(): IAssetData | null {
-    const { audioElement, currentAsset } = this;
+    let { audio, currentAsset } = this;
 
     if (currentAsset) {
       if (!currentAsset.playCount) currentAsset.playCount = 1;
@@ -259,22 +242,23 @@ export class PlaylistAudiotrack {
 
     const newAsset = this.playlist.next(this);
 
-    this.currentAsset = newAsset;
+    this.currentAsset = newAsset || null;
 
     if (newAsset) {
       const { file, start } = newAsset;
       console.log(`\t[loading next asset ${this}: ${file}]`);
 
-      if (typeof file == "string") {
-        audioElement.src = file;
+      if (typeof file !== "string") {
+        return null;
       }
-      audioElement.currentTime = start! >= NEARLY_ZERO ? start! : NEARLY_ZERO; // value but must fininite
-
-      this.audioElement.load();
-      this.audioElement = audioElement;
-
+      const audio = this.makeAudio(file);
+      // start from given start value
+      audio?.seek(start || 0);
+      this.audio = audio;
+      console.log("New Audio Made!");
       return newAsset;
     }
+    console.log("No new asset found!");
 
     return null;
   }
@@ -284,18 +268,17 @@ export class PlaylistAudiotrack {
     if (!this.state)
       return console.warn(`pause() was called on a undefined state!`);
     this.state.pause();
-    if (this.audioElement) this.audioElement.pause();
+    if (this.audio?.playing()) this.audio.pause();
   }
 
   async playAudio() {
-    if (this.audioElement) {
-      return await this.audioElement.play();
+    if (!this.audio?.playing()) {
+      this.audio?.play();
     }
   }
 
   pauseAudio() {
-    this.holdGain();
-    if (this.audioElement) this.audioElement.pause();
+    if (!this.audio?.playing()) this.audio?.pause();
   }
 
   skip() {
@@ -310,7 +293,7 @@ export class PlaylistAudiotrack {
     if (state) state.replay();
   }
 
-  async transition(newState: ITrackStates) {
+  transition(newState: ITrackStates) {
     const {
       state,
       playlist: { elapsedTimeMs },
@@ -322,10 +305,10 @@ export class PlaylistAudiotrack {
       ).toFixed(1)}s elapsed)`
     );
 
-    if (!this.state) return console.warn(`!current state was undefined`);
+    if (!this.state) return console.warn(`Current state was undefined`);
     this.state.finish();
     this.state = newState;
-    await this.state.play();
+    this.state.play();
   }
 
   toString() {
