@@ -87,11 +87,10 @@ export class Mixer {
     if (this.playlist) {
       this.playlist.updateParams(params);
     }
-    if (this.speakerTracks) {
-      for (const t of this.speakerTracks) {
-        //@ts-ignore
-        t.updateParams(this.playing, params);
-      }
+    if (Array.isArray(this.speakerTracks)) {
+      this.speakerTracks.forEach((t) =>
+        t.updateParams(this.playing, { listenerPoint: params.listenerPoint })
+      );
     }
   }
   /**
@@ -116,15 +115,12 @@ export class Mixer {
   }
 
   /**
-   * Builds audioContext and playlist instance if it doesn't exist yet
-   * @returns {void}
+   * Builds speaker tracks & playlist instance if it doesn't exist yet
    */
   initContext() {
     if (!this.playlist) {
-      const audioContext = buildAudioContext(this._windowScope);
-
       if (!this.mixParams.listenerPoint)
-        throw new Error(`listenerPoint was missing from mixParams!`);
+        throw new Error(`listenerPoint was missing in mixer!`);
       const listenerPoint = this.mixParams.listenerPoint;
       const speakers = this._client.speakers();
 
@@ -137,7 +133,6 @@ export class Mixer {
       if (selectTrackId) {
         selectTrackId = Number(selectTrackId);
         audioTracks = audioTracks.filter((t) => t.id === selectTrackId);
-
         console.info(`isolating track #${selectTrackId}`);
       }
 
@@ -146,14 +141,12 @@ export class Mixer {
         audioTracks,
         listenerPoint,
         assetPool: this.assetPool,
-        audioContext,
         windowScope: this._windowScope,
       });
 
       this.speakerTracks = speakers.map(
         (speakerData) =>
           new SpeakerTrack({
-            audioContext,
             listenerPoint,
             prefetchAudio: this._prefetchSpeakerAudio,
             data: speakerData,
