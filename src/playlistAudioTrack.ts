@@ -1,11 +1,11 @@
 import { TrackOptions } from "./mixer/TrackOptions";
 import { Playlist } from "./playlist";
-import { makeInitialTrackState } from "./TrackStates";
+import { DeadAirState, makeInitialTrackState } from "./TrackStates";
 import { IAssetData, IMixParams } from "./types";
 import { IAudioTrackData } from "./types/audioTrack";
 import { ITrackStates } from "./types/track-states";
 import { debugLogger, getUrlParam, timestamp } from "./utils";
-import { Howl } from "howler";
+import { Howl, Howler } from "howler";
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
 
@@ -145,9 +145,13 @@ export class PlaylistAudiotrack {
     this.setInitialTrackState();
   }
 
-  makeAudio(src: string) {
+  makeAudio(src: string, asset: IAssetData) {
     const audio = new Howl({
       src: [src],
+      volume: 0, //as we are going to fadeIn,
+      onend: () => {
+        this.transition(new DeadAirState(this, this.trackOptions));
+      },
     });
 
     LOGGABLE_HOWL_EVENTS.forEach((name) =>
@@ -211,7 +215,7 @@ export class PlaylistAudiotrack {
 
     const { start } = this.currentAsset!;
     try {
-      this.audio.fade(0.0, finalVolume, fadeInDurationSeconds * 1000);
+      this.audio.fade(0, finalVolume, fadeInDurationSeconds * 1000);
       return true;
     } catch (err) {
       console.warn(`${this} unable to fadeIn`, currentAsset, err);
@@ -251,9 +255,9 @@ export class PlaylistAudiotrack {
       if (typeof file !== "string") {
         return null;
       }
-      const audio = this.makeAudio(file);
+      const audio = this.makeAudio(file, newAsset);
       // start from given start value
-      audio?.seek(start || 0);
+      audio.seek(start || 0);
       this.audio = audio;
       console.log("New Audio Made!");
       return newAsset;
