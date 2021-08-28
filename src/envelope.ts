@@ -89,9 +89,10 @@ export class Envelope {
     formData.append("latitude", coordinates.latitude!.toString());
     formData.append("longitude", coordinates.longitude!.toString());
 
-    if (data.tag_ids) {
+    if (Array.isArray(data.tag_ids)) {
+      formData.append("tag_ids", JSON.stringify(data.tag_ids).slice(1, -1));
+    } else if (data.tag_ids)
       formData.append("tag_ids", JSON.stringify(data.tag_ids));
-    }
     if (data.media_type) {
       formData.append("media_type", data.media_type);
     }
