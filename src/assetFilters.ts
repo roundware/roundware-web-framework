@@ -25,12 +25,19 @@ export const ASSET_PRIORITIES: Readonly<{
 const alwaysLowest = (): number => ASSET_PRIORITIES.LOWEST;
 const alwaysNeutral = (): number => ASSET_PRIORITIES.NEUTRAL; // eslint-disable-line no-unused-vars
 
-// Accept an asset if any one of the provided filters passes, returns the first
-// non-discarded and non-neutral rank
-const anyAssetFilter = (
+/**
+ *Accept an asset if any one of the provided filters passes, returns the first non-discarded and non-neutral rank
+ *
+ * @export
+ * @param {(Array<(asset: IAssetData, param?: IMixParams | any) => number>)} [filters=[]]
+ * @param {IMixParams} [mixParams]
+ * @return {*}
+ */
+
+export function anyAssetFilter(
   filters: Array<(asset: IAssetData, param?: IMixParams | any) => number> = [],
   mixParams?: IMixParams
-) => {
+) {
   if (isEmpty(filters)) return alwaysLowest;
 
   return (asset: IAssetData, { ...stateParams }) => {
@@ -47,13 +54,13 @@ const anyAssetFilter = (
 
     return ASSET_PRIORITIES.DISCARD;
   };
-};
+}
 
 /** Filter composed of multiple inner filters that accepts assets which pass every inner filter. */
-export const allAssetFilter = (
+export function allAssetFilter(
   filters: Array<(asset: IAssetData, param?: IMixParams | any) => number> = [],
   mixParams?: IMixParams
-): ((asset: IAssetData, stateParams: IMixParams | any) => number) => {
+): (asset: IAssetData, stateParams: IMixParams | any) => number {
   if (isEmpty(filters)) return alwaysLowest;
 
   return (asset: IAssetData, { ...stateParams }): number => {
@@ -72,7 +79,7 @@ export const allAssetFilter = (
       ranks.find((r) => r !== ASSET_PRIORITIES.NEUTRAL) || ranks[0];
     return finalRank;
   };
-};
+}
 
 // a "pre-filter" used by geo-enabled filters to make sure if we are missing data, or geoListenMode is DISABLED,
 // we always return a neutral ranking
@@ -147,12 +154,7 @@ export const distanceRangesFilter =
         return ASSET_PRIORITIES.LOWEST;
       }
 
-      if (
-        !rankForGeofilteringEligibility(asset, {
-          geoListenMode: options.getListenMode as GeoListenModeType,
-          listenerPoint: options.listenerPoint,
-        })
-      ) {
+      if (!rankForGeofilteringEligibility(asset, options)) {
         return ASSET_PRIORITIES.NEUTRAL;
       }
       const { listenerPoint, minDist, maxDist } = options;
