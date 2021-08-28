@@ -1,6 +1,6 @@
 import { IAssetData } from "../types";
-import { ITrackOptions } from "../types/mixer/TrackOptions";
 import { random } from "../utils";
+import { TrackOptions } from "./TrackOptions";
 
 export class AssetEnvelope {
   asset: IAssetData;
@@ -13,7 +13,7 @@ export class AssetEnvelope {
   fadeOutDuration: number;
   startFadingOutSecs: number;
 
-  constructor(trackOptions: ITrackOptions, asset: IAssetData) {
+  constructor(trackOptions: TrackOptions, asset: IAssetData) {
     const {
       randomFadeInDuration,
       randomFadeOutDuration,
