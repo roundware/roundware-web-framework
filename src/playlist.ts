@@ -33,7 +33,6 @@ export class Playlist {
     listenerPoint: Feature<Point>;
     windowScope: Window;
     assetPool: AssetPool;
-    audioContext: IAudioContext;
   }) {
     this.listenerPoint = listenerPoint;
     this.playingTracks = {};
@@ -61,7 +60,6 @@ export class Playlist {
     audioTracks.forEach((audioData: IAudioTrackData) => {
       const track = new PlaylistAudiotrack({
         audioData,
-        ...playlistTrackOptions,
         windowScope,
         playlist: this,
       });
@@ -118,10 +116,7 @@ export class Playlist {
     if (this.playlistLastStartedAt) {
       this._elapsedTimeMs =
         this._elapsedTimeMs +
-        Number(
-          new Date().getMilliseconds() -
-            this.playlistLastStartedAt.getMilliseconds()
-        );
+        Number(new Date().getTime() - this.playlistLastStartedAt.getTime());
       delete this.playlistLastStartedAt;
     }
 
@@ -129,9 +124,9 @@ export class Playlist {
   }
 
   get elapsedTimeMs() {
-    const now = new Date().getMilliseconds();
+    const now = new Date().getTime();
     const lastStartedAt = this.playlistLastStartedAt
-      ? this.playlistLastStartedAt.getMilliseconds()
+      ? this.playlistLastStartedAt.getTime()
       : now;
     const elapsedSinceLastStartMs = now - lastStartedAt;
 
