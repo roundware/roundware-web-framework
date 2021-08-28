@@ -70,17 +70,14 @@ export class ApiClient {
    * **/
   async send<T>(
     path: string,
-    data: { [key: string]: any } = {},
-    urlOptions: ApiClientOptions
+    data: string | { [key: string]: any } = {},
+    { contentType, method, ...urlOptions }: ApiClientOptions
   ): Promise<T> {
     const url = new URL(this._serverUrl + path);
 
-    let { contentType, method } = urlOptions;
     const requestInit: RequestInit = {
       method,
       mode: "cors",
-      body: "",
-      headers: {},
     };
 
     const queryParams = new URLSearchParams("");
@@ -95,28 +92,27 @@ export class ApiClient {
       // for these cases, anything in 'data' has to be appended to query string
       case "GET":
       case "HEAD":
-        for (let key in data) queryParams.append(key, data[key]);
-        delete requestInit.body;
+        if (typeof data == "object")
+          for (let key in data) queryParams.append(key, data[key]);
         break;
       // for other HTTP methods, 'data' has to be turned into a request body, with a properly-set Content-Type required by the Roundware server API.
       default:
-        let stringData: string = "";
         if (!contentType) {
           // If you don't specify a contentType, we assume you want us to convert your payload to JSON
           contentType = "application/json";
-          stringData = JSON.stringify(data);
+          data = JSON.stringify(data);
         }
 
         if (contentType != "multipart/form-data") {
           headers["Content-Type"] = contentType;
         }
-        requestInit.body = stringData;
+
+        requestInit.body = data as BodyInit;
 
         break;
     }
 
     url.search = queryParams.toString();
-
     if (this._authToken) {
       headers["Authorization"] = this._authToken;
     }
