@@ -43,12 +43,17 @@ export class LoadingState implements ICommonStateProperties {
     const { track, trackOptions } = this;
     const asset = track.loadNextAsset();
 
-    let newState;
+    let newState: FadingInState | WaitingForAssetState;
 
     if (asset) {
       debugLogger("Asset Length: " + asset?.audio_length_in_seconds);
       const assetEnvelope = new AssetEnvelope(trackOptions, asset);
       newState = new FadingInState(track, trackOptions, { assetEnvelope });
+      this.track?.audio?.on("load", () => this.track.transition(newState));
+      this.track?.audio?.on("loaderror", () =>
+        this.track.transition(new WaitingForAssetState(track, trackOptions))
+      );
+      return;
     } else {
       newState = new WaitingForAssetState(track, trackOptions);
     }
@@ -227,12 +232,13 @@ export class FadingInState
       track,
       assetEnvelope: { fadeInDuration },
     } = this;
+
     const fadeInSecondsRemaining = super.play(fadeInDuration);
 
     if (!fadeInSecondsRemaining) return;
-
     const success = track.fadeIn(fadeInSecondsRemaining);
     if (!success) debugLogger("Failed to fadeIn");
+
     if (!success) this.setLoadingState();
   }
 
@@ -331,6 +337,7 @@ export class FadingOutState
   }
 
   setNextState() {
+    this.track.audio?.unload();
     this.track.transition(new DeadAirState(this.track, this.trackOptions));
   }
 

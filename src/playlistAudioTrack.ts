@@ -271,7 +271,7 @@ export class PlaylistAudiotrack {
     if (this.audio?.playing()) this.audio.pause();
   }
 
-  async playAudio() {
+  playAudio() {
     if (!this.audio?.playing()) {
       this.audio?.play();
     }

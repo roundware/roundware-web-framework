@@ -151,7 +151,7 @@ export class AssetPool {
     );
     const rankedAssets = this.assets.reduce<IAssetData[]>((rankings, asset) => {
       if (filterOutAssets.includes(asset)) return rankings;
-      console.log("Calculating ranks...");
+
       const rank = this.filterChain(asset, mixParams);
 
       if (rank) {
