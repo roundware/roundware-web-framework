@@ -1,5 +1,5 @@
 import * as sortMethodCollection from "./sortMethods";
-import { IAssetData } from "./types";
+import { IAssetData } from "./types/asset";
 import { isEmpty } from "./utils";
 
 function mapSortMethods(sortMethodNames: string[]): unknown[] {

@@ -5,10 +5,10 @@ import { SpeakerTrack } from "./speaker_track";
 import {
   Coordinates,
   GeoListenModeType,
-  IAssetData,
   IMixParams,
   ITimedAssetData,
 } from "./types";
+import { IAssetData } from "./types/asset";
 
 import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 

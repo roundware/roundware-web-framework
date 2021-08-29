@@ -3,7 +3,7 @@ import {
   InvalidArgumentError,
   MissingArgumentError,
 } from "./errors/app.errors";
-import { IAssetData } from "./types";
+import { IAssetData } from "./types/asset";
 import { IAssetFilters } from "./types/asset";
 
 /* global process */
