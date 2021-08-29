@@ -1,5 +1,5 @@
 export interface ISpeakerData {
-  id: string;
+  id: number;
   maxvolume: number;
   minvolume: number;
   attenuation_border: any;
