@@ -12,62 +12,6 @@ export type Coordinates = {
  * AUTOMATIC: 2,
  */
 export type GeoListenModeType = 0 | 1 | 2;
-export interface IAssetData {
-  weight?: number;
-  locationPoint?: Feature<Point>;
-  listenerPoint?: Point;
-  tag_ids?: number[];
-  timedAssetStart?: number;
-  timedAssetEnd?: number;
-  playCount?: number;
-  shape?: Polygon | MultiPolygon | null;
-  lastListenTime?: number | Date;
-  created?: string | Date;
-  start_time?: number;
-  start?: number;
-  end_time?: number;
-  file?: string;
-  latitude?: number;
-  volume?: number;
-  longitude?: number;
-  id?: number;
-  activeRegionLength?: number;
-  activeRegionUpperBound?: number;
-  activeRegionLowerBound?: number;
-  user?: {
-    username: string;
-    email: string;
-  } | null;
-  description?: string;
-  filename?: string;
-  submitted?: boolean;
-  updated?: string | Date;
-  media_type?: string;
-  audio_length_in_seconds?: number;
-  session_id?: number;
-  project_id?: number;
-  language_id?: number;
-  envelope_ids?: number[];
-  description_loc_ids?: number[];
-  alt_text_loc_ids?: number[];
-
-  [index: string]:
-    | number
-    | string
-    | number[]
-    | Polygon
-    | MultiPolygon
-    | Date
-    | Point
-    | Feature<Point>
-    | {
-        username: string;
-        email: string;
-      }
-    | undefined
-    | null
-    | boolean;
-}
 
 export type IMixParams = {
   ordering?: "by_like" | "by_weight" | "random";

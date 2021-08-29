@@ -4,7 +4,8 @@ import { Point, Feature } from "@turf/helpers";
 
 import { IAudioContext } from "standardized-audio-context";
 import { IAudioTrackData } from "./types/audioTrack";
-import { IAssetData, IMixParams, ITrackIdMap } from "./types";
+import { IMixParams, ITrackIdMap } from "./types";
+import { IDecoratedAsset } from "./types/asset";
 import { Roundware } from "./roundware";
 import { AssetPool } from "./assetPool";
 
@@ -16,7 +17,7 @@ export class Playlist {
   listenTagIds: IMixParams[`listenTagIds`];
   _client: Roundware;
   _elapsedTimeMs: number;
-  trackMap: Map<PlaylistAudiotrack, IAssetData | null>;
+  trackMap: Map<PlaylistAudiotrack, IDecoratedAsset | null>;
   trackIdMap: ITrackIdMap;
   playlistLastStartedAt: Date | undefined;
 
@@ -55,7 +56,7 @@ export class Playlist {
 
     this._elapsedTimeMs = elapsedTimeMs;
     const trackIdMap: ITrackIdMap = {};
-    const trackMap: Map<PlaylistAudiotrack, IAssetData | null> = new Map();
+    const trackMap: Map<PlaylistAudiotrack, IDecoratedAsset | null> = new Map();
 
     audioTracks.forEach((audioData: IAudioTrackData) => {
       const track = new PlaylistAudiotrack({
@@ -76,8 +77,8 @@ export class Playlist {
     return [...Array.from(this.trackMap.keys())];
   }
 
-  get currentlyPlayingAssets(): IAssetData[] {
-    const assets: IAssetData[] = [];
+  get currentlyPlayingAssets(): IDecoratedAsset[] {
+    const assets: IDecoratedAsset[] = [];
     for (const a of Array.from(this.trackMap.values())) {
       if (a) {
         assets.push(a);

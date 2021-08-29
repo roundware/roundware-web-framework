@@ -1,11 +1,19 @@
 import { TrackOptions } from "./mixer/TrackOptions";
 import { Playlist } from "./playlist";
-import { DeadAirState, makeInitialTrackState } from "./TrackStates";
-import { IAssetData, IMixParams } from "./types";
+import {
+  DeadAirState,
+  FadingOutState,
+  LoadingState,
+  makeInitialTrackState,
+  TimedTrackState,
+} from "./TrackStates";
+import { IMixParams } from "./types";
 import { IAudioTrackData } from "./types/audioTrack";
 import { ITrackStates } from "./types/track-states";
 import { debugLogger, getUrlParam, timestamp } from "./utils";
 import { Howl, Howler } from "howler";
+import { AssetEnvelope } from "./mixer/AssetEnvelope";
+import { IDecoratedAsset } from "./types/asset";
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
 
@@ -110,7 +118,7 @@ export class PlaylistAudiotrack {
   playlist: Playlist;
   playing: boolean;
   windowScope: Window;
-  currentAsset: IAssetData | null;
+  currentAsset: IDecoratedAsset | null;
 
   gainNode?: GainNode;
 
@@ -118,6 +126,8 @@ export class PlaylistAudiotrack {
   mixParams?: IMixParams;
   state?: ITrackStates;
   audio?: Howl;
+
+  assetEnvelope?: AssetEnvelope;
 
   constructor({
     windowScope,
@@ -145,13 +155,26 @@ export class PlaylistAudiotrack {
     this.setInitialTrackState();
   }
 
-  makeAudio(src: string, asset: IAssetData) {
+  makeAudio(src: string) {
     const audio = new Howl({
       src: [src],
       volume: 0, //as we are going to fadeIn,
+      html5: true, // as per halsey recording should start immediately
       onend: () => {
+        debugLogger("Audio ended, switching to DeadAirState");
         this.transition(new DeadAirState(this, this.trackOptions));
       },
+    });
+
+    // regulate volume with max/min range
+    audio.on("volume", () => {
+      const volume = this.audio?.volume();
+      console.log("Current Track Volume: ", volume);
+      if (typeof volume == "undefined") return;
+      if (volume > this.trackOptions.volumeRangeUpperBound)
+        this.audio?.volume(this.trackOptions.volumeRangeUpperBound);
+      if (volume < this.trackOptions.volumeRangeLowerBound)
+        this.audio?.volume(this.trackOptions.volumeRangeLowerBound);
     });
 
     LOGGABLE_HOWL_EVENTS.forEach((name) =>
@@ -214,6 +237,15 @@ export class PlaylistAudiotrack {
     const finalVolume = randomVolume * currentAsset.volume;
 
     const { start } = this.currentAsset!;
+
+    // make sure fadeInDuration is in range
+    const { fadeInLowerBound, fadeInUpperBound } = this.trackOptions;
+
+    if (fadeInDurationSeconds > fadeInUpperBound)
+      fadeInDurationSeconds = fadeInUpperBound;
+    if (fadeInDurationSeconds < fadeInLowerBound)
+      fadeInDurationSeconds = fadeInLowerBound;
+
     try {
       this.audio.fade(0, finalVolume, fadeInDurationSeconds * 1000);
       return true;
@@ -225,7 +257,15 @@ export class PlaylistAudiotrack {
 
   // linearRampToValueAtTime sounds more gradual for fading out
   fadeOut(fadeOutDurationSeconds: number) {
-    debugLogger(`Fading out from: ${this.audio?.volume}`);
+    debugLogger(`Fading out from: ${this.audio?.volume()}`);
+
+    // make sure duration is in range
+    const { fadeOutLowerBound, fadeOutUpperBound } = this.trackOptions;
+    if (fadeOutDurationSeconds > fadeOutUpperBound)
+      fadeOutDurationSeconds = fadeOutUpperBound;
+    if (fadeOutDurationSeconds < fadeOutLowerBound)
+      fadeOutDurationSeconds = fadeOutLowerBound;
+
     this.audio?.fade(this.audio?.volume(), 0.0, fadeOutDurationSeconds * 1000);
   }
 
@@ -235,8 +275,8 @@ export class PlaylistAudiotrack {
    * @return {*}  {(IAssetData | null)}
    * @memberof PlaylistAudiotrack
    */
-  loadNextAsset(): IAssetData | null {
-    let { audio, currentAsset } = this;
+  loadNextAsset(): IDecoratedAsset | null {
+    let { audio, currentAsset, trackOptions } = this;
 
     if (currentAsset) {
       if (!currentAsset.playCount) currentAsset.playCount = 1;
@@ -249,17 +289,17 @@ export class PlaylistAudiotrack {
     this.currentAsset = newAsset || null;
 
     if (newAsset) {
-      const { file, start } = newAsset;
+      const { file, start_time } = newAsset;
       console.log(`\t[loading next asset ${this}: ${file}]`);
 
+      this.assetEnvelope = new AssetEnvelope(trackOptions, newAsset);
       if (typeof file !== "string") {
         return null;
       }
-      const audio = this.makeAudio(file, newAsset);
+      const audio = this.makeAudio(file);
+      audio.seek(start_time);
       // start from given start value
-      audio.seek(start || 0);
       this.audio = audio;
-      console.log("New Audio Made!");
       return newAsset;
     }
     console.log("No new asset found!");
@@ -288,7 +328,11 @@ export class PlaylistAudiotrack {
   skip() {
     const { state } = this;
     console.log(`Skipping ${this}`);
-    if (state) state.skip();
+    if (state instanceof TimedTrackState && this.assetEnvelope) {
+      this.state = new FadingOutState(this, this.trackOptions, {
+        assetEnvelope: this.assetEnvelope,
+      });
+    } else makeInitialTrackState(this, this.trackOptions);
   }
 
   replay() {

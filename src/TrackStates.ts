@@ -1,7 +1,7 @@
 import { AssetEnvelope } from "./mixer/AssetEnvelope";
 import { TrackOptions } from "./mixer/TrackOptions";
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
-import { IAssetData } from "./types";
+import { IDecoratedAsset } from "./types/asset";
 import { ICommonStateProperties } from "./types/track-states";
 import { debugLogger } from "./utils";
 
@@ -29,7 +29,7 @@ import { debugLogger } from "./utils";
 export class LoadingState implements ICommonStateProperties {
   track: PlaylistAudiotrack;
   trackOptions: TrackOptions;
-  asset: IAssetData | null;
+  asset: IDecoratedAsset | null;
   constructor(track: PlaylistAudiotrack, trackOptions: TrackOptions) {
     this.track = track;
     this.trackOptions = trackOptions;
@@ -49,10 +49,9 @@ export class LoadingState implements ICommonStateProperties {
       debugLogger("Asset Length: " + asset?.audio_length_in_seconds);
       const assetEnvelope = new AssetEnvelope(trackOptions, asset);
       newState = new FadingInState(track, trackOptions, { assetEnvelope });
-      this.track?.audio?.on("load", () => this.track.transition(newState));
-      this.track?.audio?.on("loaderror", () =>
-        this.track.transition(new WaitingForAssetState(track, trackOptions))
-      );
+      this.track.audio?.once("load", () => {
+        this.track.transition(newState);
+      });
       return;
     } else {
       newState = new WaitingForAssetState(track, trackOptions);
@@ -61,9 +60,17 @@ export class LoadingState implements ICommonStateProperties {
     this.track.transition(newState);
   }
 
-  pause() {}
-  finish() {}
-  skip() {}
+  pause() {
+    console.log(`${this.toString()} State Paused!`);
+  }
+  finish() {
+    console.log(`${this.toString()} State Finished!`);
+  }
+  skip() {
+    console.log(`${this.toString()} State Skipping!`);
+    this.finish();
+    this.play();
+  }
   replay() {}
   updateParams() {}
   toString() {
@@ -90,9 +97,9 @@ export class TimedTrackState implements ICommonStateProperties {
     this.timerId = null;
   }
   /**
-   *
+   * This will set a timer for next state
    * @param  {number=0} nextStateSecs
-   * @returns number
+   * @returns number - seconds for nextState can be approximately called
    */
   play(nextStateSecs: number = 0): number | void {
     const {
@@ -101,9 +108,12 @@ export class TimedTrackState implements ICommonStateProperties {
       track: { trackId },
     } = this;
 
-    if (timerId) return; // state is already active/playing
-
+    if (timerId) {
+      debugLogger("State already active");
+      return; // state is already active/playing
+    }
     if (timeRemainingMs) {
+      // this means state was paused before
       const timeRemainingSecs = timeRemainingMs / 1000;
       console.log(
         `\t[Resuming track #${trackId} timer: next state in ${timeRemainingSecs.toFixed(
@@ -139,9 +149,7 @@ export class TimedTrackState implements ICommonStateProperties {
 
     if (timerId) {
       windowScope.clearTimeout(timerId);
-
       delete this.timerApproximateEndingAtMs;
-
       const timeRemainingMs = Math.max(timerApproximateEndingAtMs - now, 0);
       return timeRemainingMs;
     }
@@ -150,6 +158,7 @@ export class TimedTrackState implements ICommonStateProperties {
   }
 
   finish() {
+    console.log(`${this.toString()} State Finished!`);
     this.clearTimer();
     delete this.timeRemainingMs;
   }
@@ -167,6 +176,7 @@ export class TimedTrackState implements ICommonStateProperties {
   }
 
   skip() {
+    console.log(`${this.toString()} State Skipping!`);
     this.finish();
     this.setNextState();
   }
@@ -196,7 +206,6 @@ export class DeadAirState
   }
 
   play() {
-    debugLogger("Playing silence for: " + this.deadAirSeconds);
     super.play(this.deadAirSeconds);
   }
 
@@ -224,7 +233,7 @@ export class FadingInState
   }
 
   /**
-   *Will fadeIn
+   * Will fadeIn
    * @memberof FadingInState
    */
   play(): void {
@@ -232,24 +241,24 @@ export class FadingInState
       track,
       assetEnvelope: { fadeInDuration },
     } = this;
-
+    console.log(`${this.toString()} State Playing!`);
     const fadeInSecondsRemaining = super.play(fadeInDuration);
-
     if (!fadeInSecondsRemaining) return;
-    const success = track.fadeIn(fadeInSecondsRemaining);
-    if (!success) debugLogger("Failed to fadeIn");
 
+    const success = track.fadeIn(fadeInDuration);
+
+    // player failed to play audio
     if (!success) this.setLoadingState();
   }
 
   pause() {
+    console.log(`${this.toString()} State Pausing!`);
     super.pause();
     this.track.pauseAudio();
   }
 
   setNextState() {
     const { track, trackOptions, assetEnvelope } = this;
-    debugLogger("Transitioning to playing state from FadingIn");
     track.transition(new PlayingState(track, trackOptions, { assetEnvelope }));
   }
 
@@ -259,6 +268,11 @@ export class FadingInState
     } = this;
     return `FadingIn Asset #${assetId} (${fadeInDuration.toFixed(1)}s)`;
   }
+
+  finish() {}
+  replay() {}
+  skip() {}
+  updateParams() {}
 }
 
 export class PlayingState
@@ -282,7 +296,6 @@ export class PlayingState
     } = this;
     super.play(startFadingOutSecs);
     track.playAudio();
-    debugLogger(this.toString());
   }
 
   pause() {
@@ -326,9 +339,9 @@ export class FadingOutState
     } = this;
     const remainingSeconds = super.play(fadeOutDuration);
     if (!remainingSeconds) return;
-    debugLogger("Fading out for: " + remainingSeconds);
+
     track.fadeOut(remainingSeconds);
-    this.setLoadingState();
+    // this.setLoadingState();
   }
 
   pause() {
@@ -337,7 +350,6 @@ export class FadingOutState
   }
 
   setNextState() {
-    this.track.audio?.unload();
     this.track.transition(new DeadAirState(this.track, this.trackOptions));
   }
 
@@ -367,7 +379,7 @@ export class WaitingForAssetState
   }
 
   play() {
-    debugLogger(this.toString());
+    console.log(`${this.toString()} State Playing!`);
     super.play(DEFAULT_WAITING_FOR_ASSET_INTERVAL_SECONDS);
   }
 
@@ -394,6 +406,6 @@ export const makeInitialTrackState = (
 
   const stateClass = startWithSilence ? DeadAirState : LoadingState;
   const newState = new stateClass(track, trackOptions);
-
+  console.log(`Made initial state with ${newState.toString()}!`);
   return newState;
 };
