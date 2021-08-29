@@ -158,23 +158,9 @@ export class PlaylistAudiotrack {
   makeAudio(src: string) {
     const audio = new Howl({
       src: [src],
-      volume: 0, //as we are going to fadeIn,
+      preload: "metadata",
+      volume: 0, // as we are going to fadeIn,
       html5: true, // as per halsey recording should start immediately
-      onend: () => {
-        debugLogger("Audio ended, switching to DeadAirState");
-        this.transition(new DeadAirState(this, this.trackOptions));
-      },
-    });
-
-    // regulate volume with max/min range
-    audio.on("volume", () => {
-      const volume = this.audio?.volume();
-      console.log("Current Track Volume: ", volume);
-      if (typeof volume == "undefined") return;
-      if (volume > this.trackOptions.volumeRangeUpperBound)
-        this.audio?.volume(this.trackOptions.volumeRangeUpperBound);
-      if (volume < this.trackOptions.volumeRangeLowerBound)
-        this.audio?.volume(this.trackOptions.volumeRangeLowerBound);
     });
 
     LOGGABLE_HOWL_EVENTS.forEach((name) =>
@@ -238,16 +224,14 @@ export class PlaylistAudiotrack {
 
     const { start } = this.currentAsset!;
 
-    // make sure fadeInDuration is in range
-    const { fadeInLowerBound, fadeInUpperBound } = this.trackOptions;
-
-    if (fadeInDurationSeconds > fadeInUpperBound)
-      fadeInDurationSeconds = fadeInUpperBound;
-    if (fadeInDurationSeconds < fadeInLowerBound)
-      fadeInDurationSeconds = fadeInLowerBound;
-
     try {
-      this.audio.fade(0, finalVolume, fadeInDurationSeconds * 1000);
+      debugLogger(
+        `Fading In from ${0} to ${finalVolume} for ${fadeInDurationSeconds}`
+      );
+      if (!this.audio.playing()) this.audio.play();
+      this.audio.once("play", () => {
+        this.audio!.fade(0, finalVolume, fadeInDurationSeconds * 1000);
+      });
       return true;
     } catch (err) {
       console.warn(`${this} unable to fadeIn`, currentAsset, err);
@@ -257,15 +241,9 @@ export class PlaylistAudiotrack {
 
   // linearRampToValueAtTime sounds more gradual for fading out
   fadeOut(fadeOutDurationSeconds: number) {
-    debugLogger(`Fading out from: ${this.audio?.volume()}`);
-
-    // make sure duration is in range
-    const { fadeOutLowerBound, fadeOutUpperBound } = this.trackOptions;
-    if (fadeOutDurationSeconds > fadeOutUpperBound)
-      fadeOutDurationSeconds = fadeOutUpperBound;
-    if (fadeOutDurationSeconds < fadeOutLowerBound)
-      fadeOutDurationSeconds = fadeOutLowerBound;
-
+    debugLogger(
+      `Fading out from: ${this.audio?.volume()} for ${fadeOutDurationSeconds}`
+    );
     this.audio?.fade(this.audio?.volume(), 0.0, fadeOutDurationSeconds * 1000);
   }
 
@@ -322,7 +300,7 @@ export class PlaylistAudiotrack {
   }
 
   pauseAudio() {
-    if (!this.audio?.playing()) this.audio?.pause();
+    this.audio?.pause();
   }
 
   skip() {
