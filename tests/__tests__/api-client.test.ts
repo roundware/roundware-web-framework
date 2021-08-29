@@ -52,10 +52,7 @@ describe("Api Client", () => {
         expect.assertions(2);
         const data = await apiClient.get(mockPath, {});
         expect(global.fetch).toBeCalledTimes(1);
-        expect(global.fetch).toBeCalledWith(
-          getUrl("/mock_path?method=GET&contentType=x-www-form-urlencoded"),
-          mockInit
-        );
+        expect(global.fetch).toBeCalledWith(getUrl("/mock_path"), mockInit);
       });
 
       it("should throw error for network error", async () => {
@@ -85,7 +82,7 @@ describe("Api Client", () => {
         });
         expect(global.fetch).toBeCalledTimes(1);
         expect(global.fetch).toBeCalledWith(
-          "https://prod.roundware.com/api/2/mock_path?method=POST",
+          "https://prod.roundware.com/api/2/mock_path",
           {
             body: '{"data":"mock Data","id":123}',
             headers: {
@@ -120,7 +117,7 @@ describe("Api Client", () => {
         await apiClient.patch(mockPath, mockData);
         expect(global.fetch).toBeCalledTimes(1);
         expect(global.fetch).toBeCalledWith(
-          "https://prod.roundware.com/api/2/mock_path?method=PATCH",
+          "https://prod.roundware.com/api/2/mock_path",
           {
             body: JSON.stringify(mockData),
             headers: { "Content-Type": "application/json" },
@@ -159,7 +156,7 @@ describe("Api Client", () => {
         );
         expect(global.fetch).toBeCalledTimes(1);
         expect(global.fetch).toBeCalledWith(
-          "https://prod.roundware.com/api/2/mock_path?method=GET",
+          "https://prod.roundware.com/api/2/mock_path",
           {
             headers: {},
             method: "GET",
@@ -174,7 +171,7 @@ describe("Api Client", () => {
         });
         expect(global.fetch).toBeCalledTimes(1);
         expect(global.fetch).toBeCalledWith(
-          "https://prod.roundware.com/api/2/mock_path?method=GET&test=mock_data&id=1234",
+          "https://prod.roundware.com/api/2/mock_path?test=mock_data&id=1234",
           {
             headers: {},
             method: "GET",
@@ -188,7 +185,7 @@ describe("Api Client", () => {
         });
         expect(global.fetch).toBeCalledTimes(1);
         expect(global.fetch).toBeCalledWith(
-          "https://prod.roundware.com/api/2/mock_path?method=POST",
+          "https://prod.roundware.com/api/2/mock_path",
           {
             body: JSON.stringify(mockData),
             headers: { "Content-Type": "application/json" },
@@ -204,7 +201,7 @@ describe("Api Client", () => {
         });
         expect(global.fetch).toBeCalledTimes(1);
         expect(global.fetch).toBeCalledWith(
-          "https://prod.roundware.com/api/2/mock_path?method=POST",
+          "https://prod.roundware.com/api/2/mock_path",
           {
             body: JSON.stringify({}),
             headers: { "Content-Type": "application/json" },
@@ -221,9 +218,12 @@ describe("Api Client", () => {
         });
         expect(global.fetch).toBeCalledTimes(1);
         expect(global.fetch).toBeCalledWith(
-          "https://prod.roundware.com/api/2/mock_path?method=POST&contentType=multipart%2Fform-data",
+          "https://prod.roundware.com/api/2/mock_path",
           {
-            body: "",
+            body: {
+              id: 1234,
+              test: "mock_data",
+            },
             headers: {},
             method: "POST",
             mode: "cors",
@@ -236,7 +236,7 @@ describe("Api Client", () => {
         });
         expect(global.fetch).toBeCalledTimes(1);
         expect(global.fetch).toBeCalledWith(
-          "https://prod.roundware.com/api/2/mock_path?method=PATCH",
+          "https://prod.roundware.com/api/2/mock_path",
           {
             body: JSON.stringify(mockData),
             headers: { "Content-Type": "application/json" },
