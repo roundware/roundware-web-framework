@@ -331,7 +331,7 @@ export class Roundware {
   }
 
   /// Requests list of assets from the server given some filters.
-  async getAssets(options?: IAssetData): Promise<IAssetData[]> {
+  async getAssets(options?: IAssetFilters): Promise<IAssetData[]> {
     // If the caller just wants all assets, pass back the preloaded list.
     if (!options && this.assetData) {
       return this.assetData;
