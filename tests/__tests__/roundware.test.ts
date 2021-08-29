@@ -1,18 +1,10 @@
 import { assetDecorationMapper } from "../../src/assetPool";
-
 import {
   InvalidArgumentError,
   MissingArgumentError,
   RoundwareConnectionError,
 } from "../../src/errors/app.errors";
-import {
-  allAssetFilter,
-  anyTagsFilter,
-  distanceRangesFilter,
-  GeoListenMode,
-  Roundware,
-} from "../../src/roundware";
-
+import { GeoListenMode, Roundware } from "../../src/roundware";
 import { IRoundwareConstructorOptions } from "../../src/types/roundware";
 import { coordsToPoints } from "../../src/utils";
 import { setupFetchMock } from "../fetch.setup";
