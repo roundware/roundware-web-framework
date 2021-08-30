@@ -185,10 +185,7 @@ export class TimedTrackState implements ICommonStateProperties {
   setLoadingState() {
     const { track, trackOptions } = this;
     const loadingState = new LoadingState(track, trackOptions);
-    this.track.fadeOut(this.trackOptions.fadeOutLowerBound);
-    this.track.audio?.once("fade", () => {
-      track.transition(loadingState);
-    });
+    track.transition(loadingState);
   }
 
   updateParams(params: IMixParams) {}
