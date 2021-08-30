@@ -1,6 +1,7 @@
 import { AssetEnvelope } from "./mixer/AssetEnvelope";
 import { TrackOptions } from "./mixer/TrackOptions";
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
+import { IMixParams } from "./types";
 import { IDecoratedAsset } from "./types/asset";
 import { ICommonStateProperties } from "./types/track-states";
 import { debugLogger } from "./utils";
@@ -8,8 +9,8 @@ import { debugLogger } from "./utils";
 /**
  Common sequence of states:
                           (if asset not available)
-              =>   =>   Loading     =>  WaitingForAssetState
-              ↑             ↓             
+              =>   =>   Loading     =>  WaitingForAsset (returns to Loading after 10s)
+              ↑             ↓ (asset found)            
               ↑         FadingIn 
               ↑             ↓
               ↑         PlayingState
@@ -31,6 +32,7 @@ export class LoadingState implements ICommonStateProperties {
   trackOptions: TrackOptions;
   asset: IDecoratedAsset | null;
   constructor(track: PlaylistAudiotrack, trackOptions: TrackOptions) {
+    track.clearEvents(); // clean any scheduled tasks
     this.track = track;
     this.trackOptions = trackOptions;
     this.asset = null;
@@ -49,7 +51,7 @@ export class LoadingState implements ICommonStateProperties {
       debugLogger("Asset Length: " + asset?.audio_length_in_seconds);
       const assetEnvelope = new AssetEnvelope(trackOptions, asset);
       newState = new FadingInState(track, trackOptions, { assetEnvelope });
-      this.track.audio?.once("load", () => {
+      this.track.audio?.once("seek", () => {
         this.track.transition(newState);
       });
       return;
@@ -83,7 +85,6 @@ export class LoadingState implements ICommonStateProperties {
  *When asset is available
  */
 export class TimedTrackState implements ICommonStateProperties {
-  updateParams(params: {}) {}
   track: PlaylistAudiotrack;
   windowScope: Window;
   trackOptions: TrackOptions;
@@ -158,7 +159,6 @@ export class TimedTrackState implements ICommonStateProperties {
   }
 
   finish() {
-    console.log(`${this.toString()} State Finished!`);
     this.clearTimer();
     delete this.timeRemainingMs;
   }
@@ -188,8 +188,11 @@ export class TimedTrackState implements ICommonStateProperties {
   setLoadingState() {
     const { track, trackOptions } = this;
     const loadingState = new LoadingState(track, trackOptions);
+    this.track.fadeOut(this.trackOptions.fadeOutLowerBound);
     track.transition(loadingState);
   }
+
+  updateParams(params: IMixParams) {}
 }
 
 /**
@@ -269,9 +272,8 @@ export class FadingInState
     return `FadingIn Asset #${assetId} (${fadeInDuration.toFixed(1)}s)`;
   }
 
-  finish() {}
   replay() {}
-  skip() {}
+
   updateParams() {}
 }
 
@@ -341,7 +343,6 @@ export class FadingOutState
     if (!remainingSeconds) return;
 
     track.fadeOut(remainingSeconds);
-    // this.setLoadingState();
   }
 
   pause() {
