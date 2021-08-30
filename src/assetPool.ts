@@ -1,4 +1,5 @@
-import { roundwareDefaultFilterChain } from "./assetFilters";
+import distance from "@turf/distance";
+import { AssetPriorityType, roundwareDefaultFilterChain } from "./assetFilters";
 import { AssetSorter } from "./assetSorter";
 import {
   InvalidArgumentError,
@@ -62,7 +63,10 @@ export class AssetPool {
   assetSorter: AssetSorter;
   playingTracks: {};
   mixParams: IMixParams;
-  filterChain: (asset: IDecoratedAsset, mixParams: IMixParams) => number;
+  filterChain: (
+    asset: IDecoratedAsset,
+    mixParams: IMixParams
+  ) => AssetPriorityType;
   assets!: IDecoratedAsset[];
 
   constructor({
@@ -74,7 +78,10 @@ export class AssetPool {
   }: {
     assets?: IAssetData[];
     timedAssets?: ITimedAssetData[];
-    filterChain?: (asset: IDecoratedAsset, mixParams: IMixParams) => number;
+    filterChain?: (
+      asset: IDecoratedAsset,
+      mixParams: IMixParams
+    ) => AssetPriorityType;
     sortMethods?: unknown[];
     mixParams?: IMixParams;
   }) {
@@ -146,9 +153,8 @@ export class AssetPool {
     };
 
     console.log(
-      `picking asset for ${track} from ${
-        this.assets.length
-      }, params = ${JSON.stringify(mixParams)}`
+      `picking asset for ${track} from ${this.assets.length}, params = `,
+      mixParams
     );
     interface IRankedAssets {
       [rank: number]: IDecoratedAsset[];
@@ -159,14 +165,11 @@ export class AssetPool {
 
         const rank = this.filterChain(asset, mixParams);
 
-        if (rank) {
+        if (rank !== false) {
           rankings[rank] = rankings[rank] || [];
-          // @ts-ignore
           rankings[rank].push(asset);
         }
-
         return rankings;
-        // @ts-ignore
       },
       {}
     );
