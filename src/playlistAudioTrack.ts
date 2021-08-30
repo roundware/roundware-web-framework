@@ -14,6 +14,8 @@ import { debugLogger, getUrlParam, timestamp } from "./utils";
 import { Howl, Howler } from "howler";
 import { AssetEnvelope } from "./mixer/AssetEnvelope";
 import { IDecoratedAsset } from "./types/asset";
+import distance from "@turf/distance";
+import { distanceFixedFilter } from "./assetFilters";
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
 
@@ -158,15 +160,19 @@ export class PlaylistAudiotrack {
   makeAudio(src: string) {
     const audio = new Howl({
       src: [src],
-      preload: "metadata",
       volume: 0, // as we are going to fadeIn,
-      html5: true, // as per halsey recording should start immediately
+      preload: true,
+      html5: true,
     });
 
     LOGGABLE_HOWL_EVENTS.forEach((name) =>
       audio.on(name, () => console.log(`\t[${this} audio ${name} event]`))
     );
 
+    // audio.on("play", () => {
+    //   // @ts-ignore
+    //   console.log(audio.stereo());
+    // });
     audio.on("loaderror", () => this.onAudioError());
     audio.on("playerror", () => this.onAudioError());
     audio.on("end", () => this.onAudioEnded());
@@ -180,6 +186,16 @@ export class PlaylistAudiotrack {
     this.state = makeInitialTrackState(this, this.trackOptions);
   }
 
+  /**
+   *
+   * This will remove any eventlisteners attached to audio
+   * @memberof PlaylistAudiotrack
+   */
+  clearEvents() {
+    LOGGABLE_HOWL_EVENTS.forEach((e) => {
+      this.audio?.off(e);
+    });
+  }
   onAudioError(evt?: any) {
     console.warn(`\t[${this} audio error, skipping to next track]`, evt);
     this.setInitialTrackState();
@@ -198,6 +214,12 @@ export class PlaylistAudiotrack {
 
   updateParams(params = {}) {
     this.mixParams = { ...this.mixParams, ...params };
+    if (this.mixParams.listenerPoint && this.currentAsset?.locationPoint) {
+      // if currently playing asset is far away then skip that asset;
+      const priority = distanceFixedFilter()(this.currentAsset, this.mixParams);
+      console.info("Current Asset in Range: ", priority);
+      if (priority === false) this.skip();
+    }
     if (this.state) this.state.updateParams(this.mixParams);
     else console.warn(`State is undefined!`);
   }
@@ -222,14 +244,12 @@ export class PlaylistAudiotrack {
 
     const finalVolume = randomVolume * currentAsset.volume;
 
-    const { start } = this.currentAsset!;
-
     try {
-      debugLogger(
-        `Fading In from ${0} to ${finalVolume} for ${fadeInDurationSeconds}`
-      );
       if (!this.audio.playing()) this.audio.play();
       this.audio.once("play", () => {
+        debugLogger(
+          `Fading In from ${0} to ${finalVolume} for ${fadeInDurationSeconds}`
+        );
         this.audio!.fade(0, finalVolume, fadeInDurationSeconds * 1000);
       });
       return true;
@@ -239,12 +259,21 @@ export class PlaylistAudiotrack {
     }
   }
 
-  // linearRampToValueAtTime sounds more gradual for fading out
   fadeOut(fadeOutDurationSeconds: number) {
     debugLogger(
       `Fading out from: ${this.audio?.volume()} for ${fadeOutDurationSeconds}`
     );
-    this.audio?.fade(this.audio?.volume(), 0.0, fadeOutDurationSeconds * 1000);
+    if (!this.audio?.playing()) {
+      this.audio?.play();
+      this.audio?.once("play", () => {
+        this.audio?.fade(
+          this.audio?.volume(),
+          0,
+          fadeOutDurationSeconds * 1000
+        );
+      });
+    }
+    this.audio?.fade(this.audio?.volume(), 0, fadeOutDurationSeconds * 1000);
   }
 
   /**
@@ -280,7 +309,6 @@ export class PlaylistAudiotrack {
       this.audio = audio;
       return newAsset;
     }
-    console.log("No new asset found!");
 
     return null;
   }
@@ -289,6 +317,7 @@ export class PlaylistAudiotrack {
     console.log(`${timestamp} pausing ${this}`);
     if (!this.state)
       return console.warn(`pause() was called on a undefined state!`);
+    this.clearEvents();
     this.state.pause();
     if (this.audio?.playing()) this.audio.pause();
   }
@@ -300,17 +329,21 @@ export class PlaylistAudiotrack {
   }
 
   pauseAudio() {
+    if (!this.audio?.playing()) return;
     this.audio?.pause();
   }
 
-  skip() {
-    const { state } = this;
-    console.log(`Skipping ${this}`);
-    if (state instanceof TimedTrackState && this.assetEnvelope) {
-      this.state = new FadingOutState(this, this.trackOptions, {
-        assetEnvelope: this.assetEnvelope,
-      });
-    } else makeInitialTrackState(this, this.trackOptions);
+  /**
+   *
+   * Fade Out currently playing asset quickly and get nextAsset
+   * @return {void}
+   * @memberof PlaylistAudiotrack
+   */
+  skip(): void {
+    this.fadeOut(this.trackOptions.fadeOutLowerBound);
+    this.audio?.once("fade", () => {
+      this.transition(makeInitialTrackState(this, this.trackOptions));
+    });
   }
 
   replay() {
