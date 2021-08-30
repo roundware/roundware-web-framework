@@ -82,7 +82,6 @@ export class Envelope {
         longitude: data.longitude,
       };
     }
-    console.log(coordinates);
 
     formData.append("session_id", this._sessionId.toString());
     formData.append("file", audioData);
