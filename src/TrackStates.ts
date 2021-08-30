@@ -51,6 +51,8 @@ export class LoadingState implements ICommonStateProperties {
       debugLogger("Asset Length: " + asset?.audio_length_in_seconds);
       const assetEnvelope = new AssetEnvelope(trackOptions, asset);
       newState = new FadingInState(track, trackOptions, { assetEnvelope });
+
+      // wait for audio to load and seek to start time before playing
       this.track.audio?.once("seek", () => {
         this.track.transition(newState);
       });
@@ -146,6 +148,7 @@ export class TimedTrackState implements ICommonStateProperties {
 
     if (timerId) {
       windowScope.clearTimeout(timerId);
+      console.log("Timeout cleared!");
       delete this.timerApproximateEndingAtMs;
       const timeRemainingMs = Math.max(timerApproximateEndingAtMs - now, 0);
       return timeRemainingMs;
@@ -236,18 +239,23 @@ export class FadingInState
    * @memberof FadingInState
    */
   play(): void {
-    const {
+    let {
       track,
       assetEnvelope: { fadeInDuration },
+      trackOptions: { fadeInLowerBound, fadeInUpperBound },
     } = this;
     console.log(`${this.toString()} State Playing!`);
-    const fadeInSecondsRemaining = super.play(fadeInDuration);
-    if (!fadeInSecondsRemaining) return;
 
+    //if (!fadeInSecondsRemaining) return;
+
+    if (fadeInDuration > fadeInUpperBound) fadeInDuration = fadeInUpperBound;
+    if (fadeInDuration < fadeInLowerBound) fadeInDuration = fadeInLowerBound;
     const success = track.fadeIn(fadeInDuration);
-
-    // player failed to play audio
     if (!success) this.setLoadingState();
+    this.track.audio?.once("play", () => {
+      super.play(fadeInDuration);
+    });
+    // player failed to play audio
   }
 
   pause() {
@@ -335,12 +343,13 @@ export class FadingOutState
       track,
       assetEnvelope: { fadeOutDuration },
     } = this;
-    const remainingSeconds = super.play(fadeOutDuration);
-    if (!remainingSeconds) return;
-
-    track.fadeOut(remainingSeconds);
+    let remainingSeconds = super.play(fadeOutDuration);
+    if (remainingSeconds < this.trackOptions.fadeOutLowerBound)
+      remainingSeconds = this.trackOptions.fadeOutLowerBound;
+    if (remainingSeconds > this.trackOptions.fadeOutUpperBound)
+      remainingSeconds = this.trackOptions.fadeOutUpperBound;
+    track.fadeOut(remainingSeconds || this.trackOptions.fadeInLowerBound);
   }
-
   pause() {
     super.pause();
     this.track.pauseAudio();
