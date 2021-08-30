@@ -68,11 +68,7 @@ export class LoadingState implements ICommonStateProperties {
   finish() {
     console.log(`${this.toString()} State Finished!`);
   }
-  skip() {
-    console.log(`${this.toString()} State Skipping!`);
-    this.finish();
-    this.play();
-  }
+  skip() {}
   replay() {}
   updateParams() {}
   toString() {
@@ -110,7 +106,7 @@ export class TimedTrackState implements ICommonStateProperties {
     } = this;
 
     if (timerId) {
-      debugLogger("State already active");
+      debugLogger("State already active, next state in");
       return; // state is already active/playing
     }
     if (timeRemainingMs) {
@@ -161,6 +157,7 @@ export class TimedTrackState implements ICommonStateProperties {
   finish() {
     this.clearTimer();
     delete this.timeRemainingMs;
+    this.track.clearEvents();
   }
 
   setNextStateTimer(timeMs: number) {
@@ -189,7 +186,9 @@ export class TimedTrackState implements ICommonStateProperties {
     const { track, trackOptions } = this;
     const loadingState = new LoadingState(track, trackOptions);
     this.track.fadeOut(this.trackOptions.fadeOutLowerBound);
-    track.transition(loadingState);
+    this.track.audio?.once("fade", () => {
+      track.transition(loadingState);
+    });
   }
 
   updateParams(params: IMixParams) {}
