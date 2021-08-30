@@ -8,14 +8,16 @@ import { GeoListenModeType, IMixParams } from "./types";
 import { IDecoratedAsset } from "./types/asset";
 import { RoundwareFrameworkError } from "./errors/app.errors";
 
-export const ASSET_PRIORITIES: Readonly<{
-  DISCARD: false;
-  NEUTRAL: number;
-  LOWEST: number;
-  NORMAL: number;
-  HIGHEST: number;
-  [key: string]: boolean | number;
-}> = Object.freeze({
+export interface IAssetPriorities {
+  readonly DISCARD: false;
+  readonly NEUTRAL: number;
+  readonly LOWEST: number;
+  readonly NORMAL: number;
+  readonly HIGHEST: number;
+  readonly [key: string]: boolean | number;
+}
+export type AssetPriorityType = false | 0 | 1 | 100 | 999 | number;
+export const ASSET_PRIORITIES: IAssetPriorities = Object.freeze({
   DISCARD: false,
   NEUTRAL: 0,
   LOWEST: 1,
@@ -23,8 +25,9 @@ export const ASSET_PRIORITIES: Readonly<{
   HIGHEST: 999,
 });
 
-const alwaysLowest = (): number => ASSET_PRIORITIES.LOWEST;
-const alwaysNeutral = (): number => ASSET_PRIORITIES.NEUTRAL; // eslint-disable-line no-unused-vars
+const alwaysLowest = (): IAssetPriorities[`LOWEST`] => ASSET_PRIORITIES.LOWEST;
+const alwaysNeutral = (): IAssetPriorities[`NEUTRAL`] =>
+  ASSET_PRIORITIES.NEUTRAL; // eslint-disable-line no-unused-vars
 
 /**
  *Accept an asset if any one of the provided filters passes, returns the first non-discarded and non-neutral rank
@@ -36,10 +39,8 @@ const alwaysNeutral = (): number => ASSET_PRIORITIES.NEUTRAL; // eslint-disable-
  */
 
 export function anyAssetFilter(
-  filters: Array<
-    (asset: IDecoratedAsset, param?: IMixParams | any) => number
-  > = [],
-  mixParams?: IMixParams
+  filters: Array<(asset: IDecoratedAsset, param: IMixParams) => number> = [],
+  mixParams: IMixParams
 ) {
   if (isEmpty(filters)) return alwaysLowest;
 
@@ -62,10 +63,10 @@ export function anyAssetFilter(
 /** Filter composed of multiple inner filters that accepts assets which pass every inner filter. */
 export function allAssetFilter(
   filters: Array<
-    (asset: IDecoratedAsset, param?: IMixParams | any) => number
+    (asset: IDecoratedAsset, param: IMixParams) => AssetPriorityType
   > = [],
   mixParams?: IMixParams
-): (asset: IDecoratedAsset, stateParams: IMixParams | any) => number {
+): (asset: IDecoratedAsset, stateParams: IMixParams) => AssetPriorityType {
   if (isEmpty(filters)) return alwaysLowest;
 
   return (asset: IDecoratedAsset, { ...stateParams }): number => {
@@ -110,7 +111,7 @@ export const distanceFixedFilter =
       IMixParams,
       "geoListenMode" | "listenerPoint" | "recordingRadius"
     >
-  ): number => {
+  ): number | boolean => {
     try {
       if (options.geoListenMode === GeoListenMode.DISABLED) {
         return ASSET_PRIORITIES.LOWEST;
@@ -162,7 +163,7 @@ export const distanceRangesFilter =
       if (!rankForGeofilteringEligibility(asset, options)) {
         return ASSET_PRIORITIES.NEUTRAL;
       }
-      const { listenerPoint, minDist, maxDist } = options;
+      const { listenerPoint, minDist = 0, maxDist } = options;
 
       if (minDist === undefined || maxDist === undefined) {
         return ASSET_PRIORITIES.NEUTRAL;
@@ -189,11 +190,10 @@ export const distanceRangesFilter =
 
 // Rank the asset if it is tagged with one of the currently-enabled tag IDs
 export function anyTagsFilter() {
-  return (
-    asset: IDecoratedAsset,
-    { listenTagIds = [] }: Pick<IMixParams, "listenTagIds">
-  ): number => {
-    if (isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
+  return (asset: IDecoratedAsset, mixParams: IMixParams): number => {
+    const { listenTagIds } = mixParams;
+
+    if (!listenTagIds || isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
 
     const { tag_ids: assetTagIds = [] } = asset;
 
@@ -281,7 +281,7 @@ export const dateRangeFilter =
       if (!(startDate instanceof Date)) startDate = new Date(startDate);
       if (!(endDate instanceof Date)) endDate = new Date(endDate);
 
-      let assetCreated: string | any = asset.created;
+      let assetCreated: string | Date = asset.created;
       if (!(assetCreated instanceof Date))
         assetCreated = new Date(assetCreated);
 
@@ -296,8 +296,8 @@ export const dateRangeFilter =
 
 export const roundwareDefaultFilterChain: (
   asset: IDecoratedAsset,
-  mixParams?: IMixParams
-) => number = allAssetFilter([
+  mixParams: IMixParams
+) => AssetPriorityType = allAssetFilter([
   // @ts-ignore
   anyAssetFilter([
     // @ts-ignore
@@ -305,6 +305,7 @@ export const roundwareDefaultFilterChain: (
     // @ts-ignore
     assetShapeFilter(), // if an asset has a shape and we AREN'T in it, reject entirely, or
     allAssetFilter([
+      // @ts-ignore
       distanceFixedFilter(), // if it has no shape, consider a fixed distance from it, or
       // @ts-ignore
       distanceRangesFilter(),
