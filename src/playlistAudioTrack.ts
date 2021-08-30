@@ -317,9 +317,9 @@ export class PlaylistAudiotrack {
     console.log(`${timestamp} pausing ${this}`);
     if (!this.state)
       return console.warn(`pause() was called on a undefined state!`);
-    this.clearEvents();
     this.state.pause();
     if (this.audio?.playing()) this.audio.pause();
+    this.clearEvents(); // so it doesn't keep playing after pausing
   }
 
   playAudio() {
@@ -340,9 +340,10 @@ export class PlaylistAudiotrack {
    * @memberof PlaylistAudiotrack
    */
   skip(): void {
+    this.clearEvents(); // remove scheduled plays, fades, etc.
     this.fadeOut(this.trackOptions.fadeOutLowerBound);
     this.audio?.once("fade", () => {
-      this.transition(makeInitialTrackState(this, this.trackOptions));
+      this.state?.skip();
     });
   }
 
