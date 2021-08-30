@@ -56,7 +56,7 @@ export class SpeakerTrack {
       attenuation_distance: attenuationDistance,
       uri,
     } = data;
-
+    console.info("Speaker Track Initialized: ", speakerId);
     this.prefetch = prefetchAudio;
 
     this.speakerData = data;
@@ -120,8 +120,9 @@ export class SpeakerTrack {
 
     const audio = new Howl({
       src: [cleanURL],
-      preload: this.prefetch ? "metadata" : false,
+      preload: false,
       html5: true,
+      autoplay: false,
       loop: true,
       volume: 0, // initially 0 and fade later
     });
@@ -137,9 +138,9 @@ export class SpeakerTrack {
       this.listenerPoint = opts.listenerPoint.geometry;
     }
     const newVolume = this.updateVolume();
-    if (isPlaying === false) this.audio?.pause();
-    else if (newVolume < 0.05) this.audio?.pause();
-    else if (isPlaying === true) this.audio?.play();
+    if (isPlaying === false) this.pause();
+    else if (newVolume < 0.05) this.pause();
+    else if (isPlaying === true && !this.audio?.playing()) this.play();
   }
 
   /**
@@ -155,7 +156,10 @@ export class SpeakerTrack {
       console.info(
         `Speaker Volume: ${currentVolume} -> ${newVolume} (${FADE_DURATION_SECONDS}s)`
       );
-    this.audio?.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
+
+    this.audio?.once("play", () => {
+      this.audio?.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
+    });
     return newVolume;
   }
 
@@ -166,15 +170,10 @@ export class SpeakerTrack {
   play() {
     const newVolume = this.updateVolume();
     if (newVolume < 0.05 || this.audio?.playing()) {
-      console.info(
-        `Speaker ${
-          this.speakerId
-        }: Not Playing because newVolume:${newVolume} | audio already playing: ${this.audio?.playing()}`
-      );
       return;
     }
     try {
-      console.info(`Speaker ${this.speakerId}: Playing`);
+      console.info(`Speaker ${this.speakerId}: Playing at volume ${newVolume}`);
       this.audio!.play();
     } catch (err) {
       console.error("Unable to play", this.logline, err);
@@ -183,6 +182,7 @@ export class SpeakerTrack {
 
   pause() {
     try {
+      if (!this.audio?.playing()) return;
       console.log(`Speaker ${this.speakerId}: Pausing`);
       this.audio!.pause();
     } catch (err) {
