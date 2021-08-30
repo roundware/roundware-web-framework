@@ -56,7 +56,7 @@ export class SpeakerTrack {
       attenuation_distance: attenuationDistance,
       uri,
     } = data;
-    console.info("Speaker Track Initialized: ", speakerId);
+
     this.prefetch = prefetchAudio;
 
     this.speakerData = data;
