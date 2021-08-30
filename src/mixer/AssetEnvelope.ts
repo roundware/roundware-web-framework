@@ -28,7 +28,6 @@ export class AssetEnvelope {
       activeRegionLength,
     } = asset;
 
-    console.log("In assetEnvelope", asset);
     this.asset = asset;
     this.assetId = asset.id;
 
