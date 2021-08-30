@@ -195,6 +195,10 @@ export class PlaylistAudiotrack {
     LOGGABLE_HOWL_EVENTS.forEach((e) => {
       this.audio?.off(e);
     });
+
+    this.audio?.on("loaderror", () => this.onAudioError());
+    this.audio?.on("playerror", () => this.onAudioError());
+    this.audio?.on("end", () => this.onAudioEnded());
   }
   onAudioError(evt?: any) {
     console.warn(`\t[${this} audio error, skipping to next track]`, evt);
@@ -259,10 +263,18 @@ export class PlaylistAudiotrack {
     }
   }
 
-  fadeOut(fadeOutDurationSeconds: number) {
+  /**
+   * Schedules a Fade out and returns true if success
+   *
+   * @param {number} fadeOutDurationSeconds
+   * @return {*}  {boolean}
+   * @memberof PlaylistAudiotrack
+   */
+  fadeOut(fadeOutDurationSeconds: number): boolean {
     debugLogger(
       `Fading out from: ${this.audio?.volume()} for ${fadeOutDurationSeconds}`
     );
+    if (!this.audio) return false;
     if (!this.audio?.playing()) {
       this.audio?.play();
       this.audio?.once("play", () => {
@@ -272,8 +284,10 @@ export class PlaylistAudiotrack {
           fadeOutDurationSeconds * 1000
         );
       });
+      return true;
     }
     this.audio?.fade(this.audio?.volume(), 0, fadeOutDurationSeconds * 1000);
+    return true;
   }
 
   /**
@@ -318,8 +332,6 @@ export class PlaylistAudiotrack {
     if (!this.state)
       return console.warn(`pause() was called on a undefined state!`);
     this.state.pause();
-    if (this.audio?.playing()) this.audio.pause();
-    this.clearEvents(); // so it doesn't keep playing after pausing
   }
 
   playAudio() {
@@ -340,11 +352,13 @@ export class PlaylistAudiotrack {
    * @memberof PlaylistAudiotrack
    */
   skip(): void {
-    this.clearEvents(); // remove scheduled plays, fades, etc.
-    this.fadeOut(this.trackOptions.fadeOutLowerBound);
-    this.audio?.once("fade", () => {
-      this.state?.skip();
-    });
+    this.fadeOut(0.5);
+    setTimeout(() => {
+      this.clearEvents(); // remove scheduled plays, fades, etc.
+      this.audio?.stop(); // make sure audio is stopped to avoid overlapping
+      const newState = makeInitialTrackState(this, this.trackOptions);
+      this.transition(newState);
+    }, 500);
   }
 
   replay() {
