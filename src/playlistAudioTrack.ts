@@ -249,7 +249,12 @@ export class PlaylistAudiotrack {
     const finalVolume = randomVolume * currentAsset.volume;
 
     try {
-      if (!this.audio.playing()) this.audio.play();
+      if (this.audio.playing()) {
+        this.audio!.fade(0, finalVolume, fadeInDurationSeconds * 1000);
+        return true;
+      }
+      this.audio.volume(0);
+      this.audio.play();
       this.audio.once("play", () => {
         debugLogger(
           `Fading In from ${0} to ${finalVolume} for ${fadeInDurationSeconds}`
