@@ -53,9 +53,11 @@ export class LoadingState implements ICommonStateProperties {
       newState = new FadingInState(track, trackOptions, { assetEnvelope });
 
       // wait for audio to load and seek to start time before playing
+
       this.track.audio?.once("seek", () => {
         this.track.transition(newState);
       });
+
       return;
     } else {
       newState = new WaitingForAssetState(track, trackOptions);
@@ -64,12 +66,8 @@ export class LoadingState implements ICommonStateProperties {
     this.track.transition(newState);
   }
 
-  pause() {
-    console.log(`${this.toString()} State Paused!`);
-  }
-  finish() {
-    console.log(`${this.toString()} State Finished!`);
-  }
+  pause() {}
+  finish() {}
   skip() {}
   replay() {}
   updateParams() {}
@@ -107,8 +105,8 @@ export class TimedTrackState implements ICommonStateProperties {
       track: { trackId },
     } = this;
 
-    if (timerId) {
-      debugLogger("State already active, next state in");
+    if (timerId || timeRemainingMs! > 1) {
+      debugLogger("State already active, next state in " + timeRemainingMs);
       return; // state is already active/playing
     }
     if (timeRemainingMs) {
@@ -148,7 +146,7 @@ export class TimedTrackState implements ICommonStateProperties {
 
     if (timerId) {
       windowScope.clearTimeout(timerId);
-      console.log("Timeout cleared!");
+      this.timerId = null;
       delete this.timerApproximateEndingAtMs;
       const timeRemainingMs = Math.max(timerApproximateEndingAtMs - now, 0);
       return timeRemainingMs;
@@ -176,14 +174,11 @@ export class TimedTrackState implements ICommonStateProperties {
   }
 
   skip() {
-    console.log(`${this.toString()} State Skipping!`);
     this.finish();
     this.setNextState();
   }
 
-  replay() {
-    console.log("replay() not implemented yet");
-  }
+  replay() {}
 
   setLoadingState() {
     const { track, trackOptions } = this;
@@ -244,7 +239,6 @@ export class FadingInState
       assetEnvelope: { fadeInDuration },
       trackOptions: { fadeInLowerBound, fadeInUpperBound },
     } = this;
-    console.log(`${this.toString()} State Playing!`);
 
     //if (!fadeInSecondsRemaining) return;
 
@@ -259,7 +253,6 @@ export class FadingInState
   }
 
   pause() {
-    console.log(`${this.toString()} State Pausing!`);
     super.pause();
     this.track.pauseAudio();
   }
@@ -385,7 +378,6 @@ export class WaitingForAssetState
   }
 
   play() {
-    console.log(`${this.toString()} State Playing!`);
     super.play(DEFAULT_WAITING_FOR_ASSET_INTERVAL_SECONDS);
   }
 
@@ -412,6 +404,5 @@ export const makeInitialTrackState = (
 
   const stateClass = startWithSilence ? DeadAirState : LoadingState;
   const newState = new stateClass(track, trackOptions);
-  console.log(`Made initial state with ${newState.toString()}!`);
   return newState;
 };
