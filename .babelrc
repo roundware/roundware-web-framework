@@ -1,13 +1,13 @@
 {
   "presets": [
-    // [
-    //   "@babel/preset-env",
-    //   {
-    //     "useBuiltIns": "usage",
-    //     "corejs": { "version": 3 },
-    //     "shippedProposals": true
-    //   }
-    // ],
+    [
+      "@babel/preset-env",
+      {
+        "useBuiltIns": "usage",
+        "corejs": { "version": 3 },
+        "shippedProposals": true
+      }
+    ],
     "@babel/preset-typescript"
   ],
   "ignore": ["**/*.d.ts"],
