@@ -2,7 +2,7 @@ import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
 import pointToLineDistance from "@turf/point-to-line-distance";
 import lineToPolygon from "@turf/line-to-polygon";
-import { cleanAudioURL, debugLogger, random } from "./utils";
+import { cleanAudioURL } from "./utils";
 
 import { Coord, Feature, LineString, Point, Properties } from "@turf/helpers";
 import { MultiPolygon } from "@turf/helpers";
