@@ -2,9 +2,11 @@ import { TrackOptions } from "./mixer/TrackOptions";
 import { Playlist } from "./playlist";
 import {
   DeadAirState,
+  FadingInState,
   FadingOutState,
   LoadingState,
   makeInitialTrackState,
+  PlayingState,
   TimedTrackState,
 } from "./TrackStates";
 import { IMixParams } from "./types";
@@ -16,6 +18,7 @@ import { AssetEnvelope } from "./mixer/AssetEnvelope";
 import { IDecoratedAsset } from "./types/asset";
 import distance from "@turf/distance";
 import { distanceFixedFilter } from "./assetFilters";
+import { AudioPanner } from "./audioPanner";
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
 
@@ -131,6 +134,8 @@ export class PlaylistAudiotrack {
 
   assetEnvelope?: AssetEnvelope;
 
+  audioPanner: AudioPanner;
+  audioData: IAudioTrackData;
   constructor({
     windowScope,
     audioData,
@@ -147,13 +152,21 @@ export class PlaylistAudiotrack {
     this.windowScope = windowScope;
 
     this.currentAsset = null;
-
+    this.audioData = audioData;
     const trackOptions = new TrackOptions(
       (param) => getUrlParam(windowScope.location.toString(), param),
       audioData
     );
     this.trackOptions = trackOptions;
     this.mixParams = { timedAssetPriority: audioData.timed_asset_priority };
+
+    const { minpanpos, maxpanpos, minpanduration, maxpanduration } = audioData;
+    this.audioPanner = new AudioPanner(
+      minpanpos,
+      maxpanpos,
+      minpanduration,
+      maxpanduration
+    );
     this.setInitialTrackState();
   }
 
@@ -162,17 +175,14 @@ export class PlaylistAudiotrack {
       src: [src],
       volume: 0, // as we are going to fadeIn,
       preload: true,
-      html5: true,
+      html5: false,
+      autoplay: false,
     });
 
     LOGGABLE_HOWL_EVENTS.forEach((name) =>
       audio.on(name, () => console.log(`\t[${this} audio ${name} event]`))
     );
 
-    // audio.on("play", () => {
-    //   // @ts-ignore
-    //   console.log(audio.stereo());
-    // });
     audio.on("loaderror", () => this.onAudioError());
     audio.on("playerror", () => this.onAudioError());
     audio.on("end", () => this.onAudioEnded());
@@ -183,6 +193,7 @@ export class PlaylistAudiotrack {
   }
 
   setInitialTrackState() {
+    this.clearEvents();
     this.state = makeInitialTrackState(this, this.trackOptions);
   }
 
@@ -323,9 +334,13 @@ export class PlaylistAudiotrack {
         return null;
       }
       const audio = this.makeAudio(file);
-      audio.seek(start_time);
+      audio.once("load", () => {
+        audio.seek(start_time);
+      });
       // start from given start value
       this.audio = audio;
+      this.audioPanner.updateAudioInstance(this.audio);
+      this.audioPanner.start();
       return newAsset;
     }
 
