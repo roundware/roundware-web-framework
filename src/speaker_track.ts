@@ -10,7 +10,9 @@ import { Polygon } from "@turf/helpers";
 import { ISpeakerData } from "./types/speaker";
 import { Howl } from "howler";
 
-const convertLinesToPolygon = (shape: any) => lineToPolygon(shape);
+const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
+  // @ts-ignore
+  lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
 const NEARLY_ZERO = 0.001;
 
@@ -28,13 +30,9 @@ export class SpeakerTrack {
   uri: string;
   listenerPoint: Point;
 
-  attenuationBorderPolygon:
-    | Feature<MultiPolygon, { [name: string]: any }>
-    | Feature<Polygon, { [name: string]: any }>;
-  attenuationBorderLineString: Feature<LineString, { [name: string]: any }>;
-  outerBoundary:
-    | Feature<MultiPolygon, { [name: string]: any }>
-    | Feature<Polygon, { [name: string]: any }>;
+  attenuationBorderPolygon: MultiPolygon | Polygon;
+  attenuationBorderLineString: LineString;
+  outerBoundary: MultiPolygon | Polygon;
   currentVolume: number;
   audio: Howl | undefined;
   speakerData: ISpeakerData;
@@ -73,15 +71,15 @@ export class SpeakerTrack {
 
     this.outerBoundary = convertLinesToPolygon(boundary);
     this.currentVolume = NEARLY_ZERO;
-    this.buildAudio();
+    // this.buildAudio();
   }
 
   outerBoundaryContains(point: Coord) {
-    return booleanPointInPolygon(point, this.outerBoundary.geometry);
+    return booleanPointInPolygon(point, this.outerBoundary);
   }
 
   attenuationShapeContains(point: Coord) {
-    return booleanPointInPolygon(point, this.attenuationBorderPolygon.geometry);
+    return booleanPointInPolygon(point, this.attenuationBorderPolygon);
   }
 
   attenuationRatio(atPoint: Coord) {
@@ -105,6 +103,7 @@ export class SpeakerTrack {
       const range = this.maxVolume - this.minVolume;
       const volumeGradient =
         this.minVolume + range * this.attenuationRatio(listenerPoint);
+
       return volumeGradient;
     } else {
       return this.minVolume;
@@ -120,7 +119,7 @@ export class SpeakerTrack {
 
     const audio = new Howl({
       src: [cleanURL],
-      preload: false,
+      preload: true,
       html5: true,
       autoplay: false,
       loop: true,
@@ -137,10 +136,12 @@ export class SpeakerTrack {
     if (opts && opts.listenerPoint) {
       this.listenerPoint = opts.listenerPoint.geometry;
     }
-    const newVolume = this.updateVolume();
-    if (isPlaying === false) this.pause();
-    else if (newVolume < 0.05) this.pause();
-    else if (isPlaying === true && !this.audio?.playing()) this.play();
+    if (this.audio instanceof Howl) {
+      const newVolume = this.updateVolume();
+      if (isPlaying === false) this.pause();
+      else if (newVolume < 0.05) this.pause();
+      else if (isPlaying === true && !this.audio?.playing()) this.play();
+    }
   }
 
   /**
@@ -152,12 +153,11 @@ export class SpeakerTrack {
     this.currentVolume = newVolume;
     this.buildAudio();
     const currentVolume = this.audio!.volume();
-    this.speakerId === 208 &&
-      console.info(
-        `Speaker Volume: ${currentVolume} -> ${newVolume} (${FADE_DURATION_SECONDS}s)`
-      );
 
     this.audio?.once("play", () => {
+      console.info(
+        `Speaker #${this.speakerId}: \n\tVolume: ${currentVolume} -> ${newVolume} (${FADE_DURATION_SECONDS}s)`
+      );
       this.audio?.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
     });
     return newVolume;
@@ -168,10 +168,13 @@ export class SpeakerTrack {
   }
 
   play() {
-    const newVolume = this.updateVolume();
+    const newVolume = this.calculateVolume();
     if (newVolume < 0.05 || this.audio?.playing()) {
       return;
     }
+
+    this.buildAudio();
+    this.updateVolume();
     try {
       console.info(`Speaker ${this.speakerId}: Playing at volume ${newVolume}`);
       this.audio!.play();
@@ -184,7 +187,7 @@ export class SpeakerTrack {
     try {
       if (!this.audio?.playing()) return;
       console.log(`Speaker ${this.speakerId}: Pausing`);
-      this.audio!.pause();
+      this.audio?.pause();
     } catch (err) {
       console.error("Unable to pause", this.logline, err);
     }
