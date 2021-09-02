@@ -101,7 +101,7 @@ export class AssetPool {
 
     this.assetSorter = new AssetSorter({
       sortMethods,
-      ordering: mixParams.ordering,
+      ...mixParams,
     });
     this.playingTracks = {};
     this.mixParams = mixParams;
@@ -119,18 +119,12 @@ export class AssetPool {
     }
 
     let newAssets = assets.map(assetDecorationMapper(timedAssets));
-    // preserve the playCount property of previously played assets to avoid repitition..
-    Array.isArray(this.assets)
-      ? (this.assets = newAssets.map((asset) => {
-          const existing = this.assets.find((a) => a.id === asset.id);
-          if (existing)
-            return {
-              ...asset,
-              playCount: existing.playCount,
-            };
-          return asset;
-        }))
-      : (this.assets = newAssets);
+    // preserve the existing properties of assets, add instead of replacing...
+    if (Array.isArray(this.assets)) {
+      newAssets.forEach((asset) => {
+        if (!this.assets.some((a) => a.id === asset.id)) this.add(asset);
+      });
+    } else this.assets = newAssets;
   }
 
   nextForTrack(
@@ -190,6 +184,7 @@ export class AssetPool {
     const priorityAssets: IDecoratedAsset[] =
       rankedAssets[topPriorityRanking] || [];
 
+    // this.assetSorter.sort(priorityAssets);
     priorityAssets.sort((a, b) => b.playCount - a.playCount);
 
     const nextAsset = priorityAssets.pop();
