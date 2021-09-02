@@ -127,20 +127,25 @@ export class SpeakerTrack {
     });
 
     this.audio = audio;
-    this.speakerId === 208 &&
-      console.info("Speaker Audio: Made: ", this.speakerId);
     return this.audio;
   }
 
   updateParams(isPlaying: boolean, opts: { listenerPoint?: Feature<Point> }) {
-    if (opts && opts.listenerPoint) {
+    if (opts && opts.listenerPoint && opts.listenerPoint.geometry) {
       this.listenerPoint = opts.listenerPoint.geometry;
     }
-    if (this.audio instanceof Howl) {
-      const newVolume = this.updateVolume();
-      if (isPlaying === false) this.pause();
-      else if (newVolume < 0.05) this.pause();
-      else if (isPlaying === true && !this.audio?.playing()) this.play();
+
+    const newVolume = this.calculateVolume();
+    console.info(`Speaker #${this.speakerId}: ${isPlaying}, ${newVolume}`);
+    if (isPlaying === false) this.pause();
+    else if (newVolume < 0.05 && this.audio?.playing()) {
+      this.updateVolume();
+      this.audio?.once("fade", () => {
+        this.audio?.pause();
+      });
+    } else {
+      this.buildAudio();
+      this.play();
     }
   }
 
@@ -154,12 +159,19 @@ export class SpeakerTrack {
     this.buildAudio();
     const currentVolume = this.audio!.volume();
 
-    this.audio?.once("play", () => {
-      console.info(
-        `Speaker #${this.speakerId}: \n\tVolume: ${currentVolume} -> ${newVolume} (${FADE_DURATION_SECONDS}s)`
-      );
+    if (this.audio?.playing()) {
       this.audio?.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
-    });
+    } else
+      this.audio?.once("play", () => {
+        console.info(
+          `Speaker #${this.speakerId}: \n\tVolume: ${currentVolume} -> ${newVolume} (${FADE_DURATION_SECONDS}s)`
+        );
+        this.audio?.fade(
+          currentVolume,
+          newVolume,
+          FADE_DURATION_SECONDS * 1000
+        );
+      });
     return newVolume;
   }
 
@@ -168,13 +180,12 @@ export class SpeakerTrack {
   }
 
   play() {
-    const newVolume = this.calculateVolume();
+    const newVolume = this.updateVolume();
+
     if (newVolume < 0.05 || this.audio?.playing()) {
       return;
     }
 
-    this.buildAudio();
-    this.updateVolume();
     try {
       console.info(`Speaker ${this.speakerId}: Playing at volume ${newVolume}`);
       this.audio!.play();
