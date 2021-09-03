@@ -29,6 +29,7 @@ export type IMixParams = {
   maxDist?: number;
   startDate?: Date;
   endDate?: Date;
+  sessionId?: number;
 };
 
 export interface IInitialParams {}

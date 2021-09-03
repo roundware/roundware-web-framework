@@ -4,7 +4,7 @@ import { TrackOptions } from "./TrackOptions";
 
 export class AssetEnvelope {
   asset: IDecoratedAsset;
-  assetId: string | number | undefined;
+  assetId: number;
   minDuration: number;
   maxDuration: number;
   duration: number;
