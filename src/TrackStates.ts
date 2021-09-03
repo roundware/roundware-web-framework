@@ -247,6 +247,7 @@ export class FadingInState
     const success = track.fadeIn(fadeInDuration);
     if (!success) this.setLoadingState();
     this.track.audio?.once("play", () => {
+      this.track.listenEvents?.logAssetStart(this.assetEnvelope.assetId);
       super.play(fadeInDuration);
     });
     // player failed to play audio
@@ -350,6 +351,11 @@ export class FadingOutState
 
   setNextState() {
     this.track.transition(new DeadAirState(this.track, this.trackOptions));
+  }
+
+  finish() {
+    super.finish();
+    this.track.listenEvents?.logAssetEnd(this.assetEnvelope.assetId);
   }
 
   toString() {

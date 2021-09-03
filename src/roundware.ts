@@ -11,6 +11,7 @@ import {
   RoundwareConnectionError,
   RoundwareFrameworkError,
 } from "./errors/app.errors";
+import { RoundwareEvents } from "./events";
 import { GeoPosition } from "./geo-position";
 import { GeoListenMode, Mixer } from "./mixer";
 import { Project } from "./project";
@@ -96,7 +97,7 @@ export class Roundware {
   private _onUpdateAssets: CallableFunction = () => {};
   assetData: IAssetData[] | null = null;
   private _onPlayAssets: CallableFunction = () => {};
-  private _sessionId: number | string | undefined;
+  private _sessionId: number | undefined;
   uiConfig: IUiConfig = {};
   private _speakerData: ISpeakerData[] = [];
   private _audioTracksData: IAudioTrackData[] | null = null;
@@ -104,6 +105,7 @@ export class Roundware {
   timedAssetData: ITimedAssetData[] | null = null;
   private _assetDataTimer: NodeJS.Timeout | undefined;
 
+  events?: RoundwareEvents;
   /** Initialize a new Roundware instance
    * @param {Object} windowScope - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
    * @param {Object} options - Collection of parameters for configuring this Roundware instance
@@ -300,6 +302,7 @@ export class Roundware {
       const sessionId = await this._session.connect();
       this._sessionId = sessionId;
 
+      this.events = new RoundwareEvents(this._sessionId, this._apiClient);
       const promises: [
         Promise<number | undefined>,
         Promise<IUiConfig>,
@@ -427,6 +430,7 @@ export class Roundware {
       ...this._initialOptions,
       ...this.mixParams,
       ...activationParams,
+      sessionId: this._sessionId,
     };
 
     this.mixer.initContext();

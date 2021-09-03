@@ -19,6 +19,8 @@ import { IDecoratedAsset } from "./types/asset";
 import distance from "@turf/distance";
 import { distanceFixedFilter } from "./assetFilters";
 import { AudioPanner } from "./audioPanner";
+import { RoundwareEvents } from "./events";
+import { Roundware } from "./roundware";
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
 
@@ -136,21 +138,32 @@ export class PlaylistAudiotrack {
 
   audioPanner: AudioPanner;
   audioData: IAudioTrackData;
+
+  /**
+   *
+   * Logs asset events to roundware server
+   * @type {RoundwareEvents}
+   * @memberof PlaylistAudiotrack
+   */
+  listenEvents?: RoundwareEvents;
+
   constructor({
     windowScope,
     audioData,
     playlist,
+    client,
   }: {
     windowScope: Window;
     audioData: IAudioTrackData;
     playlist: Playlist;
+    client: Roundware;
   }) {
     this.trackId = audioData.id;
     this.timedAssetPriority = audioData.timed_asset_priority;
     this.playlist = playlist;
     this.playing = false;
     this.windowScope = windowScope;
-
+    this.listenEvents = client.events;
     this.currentAsset = null;
     this.audioData = audioData;
     const trackOptions = new TrackOptions(
@@ -227,8 +240,9 @@ export class PlaylistAudiotrack {
     else this.state.play();
   }
 
-  updateParams(params = {}) {
+  updateParams(params: IMixParams = {}) {
     this.mixParams = { ...this.mixParams, ...params };
+
     if (this.mixParams.listenerPoint && this.currentAsset?.locationPoint) {
       // if currently playing asset is far away then skip that asset;
       const priority = distanceFixedFilter()(this.currentAsset, this.mixParams);
@@ -376,6 +390,7 @@ export class PlaylistAudiotrack {
     setTimeout(() => {
       this.clearEvents(); // remove scheduled plays, fades, etc.
       this.audio?.stop(); // make sure audio is stopped to avoid overlapping
+      this.listenEvents?.logAssetEnd(this.currentAsset?.id!);
       const newState = makeInitialTrackState(this, this.trackOptions);
       this.transition(newState);
     }, 500);
