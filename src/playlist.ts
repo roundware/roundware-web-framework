@@ -63,6 +63,7 @@ export class Playlist {
         audioData,
         windowScope,
         playlist: this,
+        client: this._client,
       });
 
       trackIdMap[track.trackId] = track;
