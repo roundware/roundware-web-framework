@@ -3,14 +3,17 @@ import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import pointToLineDistance from "@turf/point-to-line-distance";
 import lineToPolygon from "@turf/line-to-polygon";
 import { cleanAudioURL } from "./utils";
-import { IAudioContext, IGainNode } from "standardized-audio-context";
+
 import { Coord, Feature, LineString, Point, Properties } from "@turf/helpers";
-import { PrefetchAudioType } from "./types";
 import { MultiPolygon } from "@turf/helpers";
 import { Polygon } from "@turf/helpers";
 import { ISpeakerData } from "./types/speaker";
+import { Howl } from "howler";
+import { LOGGABLE_HOWL_EVENTS } from "./playlistAudioTrack";
 
-const convertLinesToPolygon = (shape: any) => lineToPolygon(shape);
+const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
+  // @ts-ignore
+  lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
 const NEARLY_ZERO = 0.001;
 
@@ -19,45 +22,28 @@ const NEARLY_ZERO = 0.001;
  * (quoted from https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/Speaker.swift)
  * */
 export class SpeakerTrack {
-  prefetch: PrefetchAudioType;
-  audioContext: IAudioContext;
-  speakerId: string;
+  prefetch: boolean;
+
+  speakerId: number;
   maxVolume: number;
   minVolume: number;
   attenuationDistanceKm: number;
   uri: string;
   listenerPoint: Point;
-  playing: boolean;
-  attenuationBorderPolygon:
-    | Feature<MultiPolygon, { [name: string]: any }>
-    | Feature<Polygon, { [name: string]: any }>;
-  attenuationBorderLineString: Feature<LineString, { [name: string]: any }>;
-  outerBoundary:
-    | Feature<
-        MultiPolygon,
-        {
-          [name: string]: any;
-        }
-      >
-    | Feature<
-        Polygon,
-        {
-          [name: string]: any;
-        }
-      >;
-  currentVolume: number;
-  audio: HTMLAudioElement | undefined;
-  gainNode: IGainNode<IAudioContext> | undefined;
 
+  attenuationBorderPolygon: MultiPolygon | Polygon;
+  attenuationBorderLineString: LineString;
+  outerBoundary: MultiPolygon | Polygon;
+  currentVolume: number;
+  audio: Howl | undefined;
+  speakerData: ISpeakerData;
   constructor({
-    audioContext,
     listenerPoint,
     prefetchAudio,
     data,
   }: {
-    audioContext: IAudioContext;
     listenerPoint: Feature<Point>;
-    prefetchAudio: PrefetchAudioType;
+    prefetchAudio: boolean;
     data: ISpeakerData;
   }) {
     const {
@@ -71,7 +57,8 @@ export class SpeakerTrack {
     } = data;
 
     this.prefetch = prefetchAudio;
-    this.audioContext = audioContext;
+
+    this.speakerData = data;
     this.speakerId = speakerId;
     this.maxVolume = maxVolume;
     this.minVolume = minVolume;
@@ -80,22 +67,19 @@ export class SpeakerTrack {
 
     this.listenerPoint = listenerPoint.geometry;
 
-    this.playing = false;
-
     this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
     this.attenuationBorderLineString = attenuation_border;
 
     this.outerBoundary = convertLinesToPolygon(boundary);
     this.currentVolume = NEARLY_ZERO;
+    // this.buildAudio();
   }
 
   outerBoundaryContains(point: Coord) {
-    // @ts-ignore
     return booleanPointInPolygon(point, this.outerBoundary);
   }
 
   attenuationShapeContains(point: Coord) {
-    // @ts-ignore
     return booleanPointInPolygon(point, this.attenuationBorderPolygon);
   }
 
@@ -112,84 +96,88 @@ export class SpeakerTrack {
   calculateVolume() {
     const { listenerPoint } = this;
 
+    let newVolume = this.currentVolume;
     if (!listenerPoint) {
-      return this.currentVolume;
+      newVolume = this.currentVolume;
     } else if (this.attenuationShapeContains(listenerPoint)) {
-      return this.maxVolume;
+      newVolume = this.maxVolume;
     } else if (this.outerBoundaryContains(listenerPoint)) {
       const range = this.maxVolume - this.minVolume;
       const volumeGradient =
         this.minVolume + range * this.attenuationRatio(listenerPoint);
-      return volumeGradient;
+
+      newVolume = volumeGradient;
     } else {
-      return this.minVolume;
+      newVolume = this.minVolume;
     }
+
+    // howler don't support values greater than 1.0
+    if (newVolume > 1) newVolume = 1;
+    console.log(`New Volume ${this.speakerId}: ${newVolume}`);
+    return newVolume;
   }
 
   // @see https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/createGain
-  async buildAudio() {
-    if (this.audio) return this.audio;
+  buildAudio() {
+    if (this.audio instanceof Howl) return this.audio;
 
-    const { audioContext, uri } = this;
+    const { uri } = this;
     const cleanURL = cleanAudioURL(uri);
 
-    let audio: HTMLAudioElement;
-    if (this.prefetch) {
-      // Download the speaker audio fully before playing it.
-      const response = await fetch(cleanURL);
-      const blob = await response.blob();
-      audio = new Audio(URL.createObjectURL(blob));
-    } else {
-      audio = new Audio(cleanURL);
-    }
-    audio.crossOrigin = "anonymous";
-    audio.loop = true;
+    const audio = new Howl({
+      src: [cleanURL],
+      preload: true,
+      html5: true,
+      autoplay: false,
+      loop: true,
+      volume: 0, // initially 0 and fade later
+    });
 
-    const audioSrc = audioContext.createMediaElementSource(audio);
-    const gainNode = audioContext.createGain();
-
-    audioSrc.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    this.gainNode = gainNode;
     this.audio = audio;
-    this.audioContext = audioContext;
 
     return this.audio;
   }
 
-  async updateParams(
-    isPlaying: boolean,
-    opts: { listenerPoint: Feature<Point> }
-  ) {
-    if (opts && opts.listenerPoint) {
+  updateParams(isPlaying: boolean, opts: { listenerPoint?: Feature<Point> }) {
+    if (opts && opts.listenerPoint && opts.listenerPoint.geometry) {
       this.listenerPoint = opts.listenerPoint.geometry;
     }
 
-    const newVolume = await this.updateVolume();
-    if (!this.audio) throw new Error(`Audio is undefined! use buildAudio()`);
-    if (isPlaying != this.playing) {
-      if (newVolume < 0.05) {
-        this.audio.pause();
-      } else {
-        await this.audio.play();
-      }
+    const newVolume = this.updateVolume();
+
+    if (isPlaying === false) this.pause();
+    if (newVolume === 0.05 && this.audio?.playing()) {
+      // allow to fade before pausing
+      this.audio.once("fade", () => {
+        this.pause();
+      });
+    }
+    if (isPlaying === true) {
+      this.play();
     }
   }
 
-  async updateVolume() {
+  /**
+   * Updates / (Schedules a update to if not playing) volume to match speaker track configurations using the `fade()` function
+   * @memberof SpeakerTrack
+   */
+  updateVolume() {
     const newVolume = this.calculateVolume();
-
     this.currentVolume = newVolume;
+    this.buildAudio();
+    const currentVolume = this.audio!.volume();
 
-    const secondsFromNow =
-      this.audioContext.currentTime + FADE_DURATION_SECONDS;
-
-    await this.buildAudio();
-    if (this.gainNode)
-      this.gainNode.gain.linearRampToValueAtTime(newVolume, secondsFromNow);
-
-    //console.info(`Setting '${this}' volume: ${newVolume.toFixed(2)} over ${FADE_DURATION_SECONDS} seconds`);
+    if (newVolume - currentVolume === 0) return newVolume; // no need to udpate
+    if (this.audio!.playing()) {
+      this.audio!.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
+    } else
+      this.audio!.once("play", () => {
+        this.audio!.fade(
+          currentVolume,
+          newVolume,
+          FADE_DURATION_SECONDS * 1000
+        );
+      });
 
     return newVolume;
   }
@@ -198,18 +186,9 @@ export class SpeakerTrack {
     return `${this} (${this.uri})`;
   }
 
-  async play() {
-    const newVolume = await this.updateVolume();
-
-    if (newVolume < 0.05) return;
-
+  play() {
     try {
-      //console.log('Playing',this.logline);
-      if (!this.audio)
-        throw new Error(`Audio is undefined! Please use buildAudio()`);
-      await this.audio.play();
-      console.info("Speaker Audio Started!");
-      this.playing = true;
+      !this.audio?.playing() && this.audio!.play();
     } catch (err) {
       console.error("Unable to play", this.logline, err);
     }
@@ -217,11 +196,8 @@ export class SpeakerTrack {
 
   pause() {
     try {
-      //console.log('Pausing',this.logline);
-      if (!this.audio)
-        throw new Error(`Audio is undefined! Please use buildAudio()`);
+      if (!this.audio?.playing()) return;
       this.audio?.pause();
-      this.playing = false;
     } catch (err) {
       console.error("Unable to pause", this.logline, err);
     }

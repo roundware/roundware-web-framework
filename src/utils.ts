@@ -104,3 +104,7 @@ export const getUrlParam = (urlStr: string, paramName: string): string => {
 };
 
 export const NO_OP = () => {};
+
+export const debugLogger = (message: string) => {
+  console.log(`%c\nDebug Info\n\t>${message}`, "color: red");
+};

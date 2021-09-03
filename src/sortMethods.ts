@@ -1,6 +1,6 @@
 // see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/SortMethod.swift
 
-import { IAssetData } from "./types";
+import { IAssetData } from "./types/asset";
 
 /**
  Sort assets destructively, in random order.
@@ -44,7 +44,6 @@ export function sortByProjectDefault(
     case "by_like":
       return sortByLikes;
     case "random":
-      return sortRandomly;
     default:
       return sortRandomly;
   }

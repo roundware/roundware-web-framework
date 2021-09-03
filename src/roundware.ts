@@ -22,7 +22,6 @@ import { TimedAsset } from "./timed_asset";
 import {
   Coordinates,
   GeoListenModeType,
-  IAssetData,
   IAudioData,
   IInitialParams,
   IMixParams,
@@ -30,7 +29,7 @@ import {
   IUiConfig,
 } from "./types";
 import { IAssetFilters } from "./types/asset";
-
+import { IAssetData } from "./types/asset";
 import { IAudioTrackData } from "./types/audioTrack";
 import { IEnvelopeData } from "./types/envelope";
 import { IOptions, IRoundwareConstructorOptions } from "./types/roundware";
@@ -332,7 +331,7 @@ export class Roundware {
   }
 
   /// Requests list of assets from the server given some filters.
-  async getAssets(options?: IAssetData): Promise<IAssetData[]> {
+  async getAssets(options?: IAssetFilters): Promise<IAssetData[]> {
     // If the caller just wants all assets, pass back the preloaded list.
     if (!options && this.assetData) {
       return this.assetData;

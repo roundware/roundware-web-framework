@@ -13,8 +13,22 @@ import {
 interface ICommonStateProperties {
   track: PlaylistAudiotrack;
   timerApproximateEndingAtMs?: number;
-  play(nextStateSecs?: number): Promise<number | void>;
+
+  /**
+   *Performs specific actions based on state, for example fading in, fading out, dead air
+   *
+   * @param {number} [nextStateSecs]
+   * @return {*}  {(number | void)}
+   * @memberof ICommonStateProperties
+   */
+  play(nextStateSecs?: number): number | void;
+
   pause(): void;
+  /**
+   *Performs cleanup before transitioning to new state
+   *
+   * @memberof ICommonStateProperties
+   */
   finish(): void;
   skip(): void;
   replay(): void;

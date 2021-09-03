@@ -1,8 +1,7 @@
 import { IAudioTrackData } from "../types/audioTrack";
-import { ITrackOptions } from "../types/mixer/TrackOptions";
 import { hasOwnProperty, random } from "../utils";
 
-export class TrackOptions implements ITrackOptions {
+export class TrackOptions {
   volumeRange: number[];
   duration: number[];
   deadAir: number[];

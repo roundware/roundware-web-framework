@@ -1,12 +1,14 @@
-import { roundwareDefaultFilterChain } from "./assetFilters";
+import distance from "@turf/distance";
+import { AssetPriorityType, roundwareDefaultFilterChain } from "./assetFilters";
 import { AssetSorter } from "./assetSorter";
 import {
   InvalidArgumentError,
   RoundwareFrameworkError,
 } from "./errors/app.errors";
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
-import { IAssetData, ILookupTable, IMixParams, ITimedAssetData } from "./types";
-import { cleanAudioURL, coordsToPoints } from "./utils";
+import { ILookupTable, IMixParams, ITimedAssetData } from "./types";
+import { IDecoratedAsset, IAssetData } from "./types/asset";
+import { cleanAudioURL, coordsToPoints, debugLogger } from "./utils";
 
 // add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
 // also rewrite .wav as .mp3
@@ -19,7 +21,7 @@ export const assetDecorationMapper = (timedAssets: ITimedAssetData[]) => {
     {}
   );
 
-  return (asset: IAssetData) => {
+  return (asset: IAssetData): IDecoratedAsset => {
     const {
       start_time: activeRegionLowerBound = 0,
       end_time: activeRegionUpperBound = 0,
@@ -32,7 +34,7 @@ export const assetDecorationMapper = (timedAssets: ITimedAssetData[]) => {
     if (!assetUrl) throw new Error(`assetUrl was undefined!`);
     const mp3Url = cleanAudioURL(assetUrl);
 
-    const decoratedAsset: IAssetData = {
+    const decoratedAsset: IDecoratedAsset = {
       locationPoint: coordsToPoints({
         latitude: asset.latitude!,
         longitude: asset.longitude!,
@@ -42,15 +44,15 @@ export const assetDecorationMapper = (timedAssets: ITimedAssetData[]) => {
       activeRegionUpperBound,
       activeRegionLowerBound,
       ...asset,
-      created: asset.created ? new Date(asset.created) : undefined,
+      created: asset.created ? new Date(asset.created) : new Date(),
       file: mp3Url,
     };
 
     const timedAsset = timedAssetLookup[asset.id!];
 
     if (timedAsset) {
-      decoratedAsset.timedAssetStart = timedAsset.start;
-      decoratedAsset.timedAssetEnd = timedAsset.end;
+      decoratedAsset.timedAssetStart = timedAsset.start!;
+      decoratedAsset.timedAssetEnd = timedAsset.end!;
     }
 
     return decoratedAsset;
@@ -61,8 +63,11 @@ export class AssetPool {
   assetSorter: AssetSorter;
   playingTracks: {};
   mixParams: IMixParams;
-  filterChain: (asset: IAssetData, mixParams: IMixParams) => number;
-  assets!: IAssetData[];
+  filterChain: (
+    asset: IDecoratedAsset,
+    mixParams: IMixParams
+  ) => AssetPriorityType;
+  assets!: IDecoratedAsset[];
 
   constructor({
     assets = [],
@@ -73,7 +78,10 @@ export class AssetPool {
   }: {
     assets?: IAssetData[];
     timedAssets?: ITimedAssetData[];
-    filterChain?: (asset: IAssetData, mixParams: IMixParams) => number;
+    filterChain?: (
+      asset: IDecoratedAsset,
+      mixParams: IMixParams
+    ) => AssetPriorityType;
     sortMethods?: unknown[];
     mixParams?: IMixParams;
   }) {
@@ -93,7 +101,7 @@ export class AssetPool {
 
     this.assetSorter = new AssetSorter({
       sortMethods,
-      ordering: mixParams.ordering,
+      ...mixParams,
     });
     this.playingTracks = {};
     this.mixParams = mixParams;
@@ -111,18 +119,12 @@ export class AssetPool {
     }
 
     let newAssets = assets.map(assetDecorationMapper(timedAssets));
-    // preserve the playCount property of previously played assets to avoid repitition..
-    Array.isArray(this.assets)
-      ? (this.assets = newAssets.map((asset) => {
-          const existing = this.assets.find((a) => a.id === asset.id);
-          if (existing)
-            return {
-              ...asset,
-              playCount: existing.playCount,
-            };
-          return asset;
-        }))
-      : (this.assets = newAssets);
+    // preserve the existing properties of assets, add instead of replacing...
+    if (Array.isArray(this.assets)) {
+      newAssets.forEach((asset) => {
+        if (!this.assets.some((a) => a.id === asset.id)) this.add(asset);
+      });
+    } else this.assets = newAssets;
   }
 
   nextForTrack(
@@ -137,7 +139,7 @@ export class AssetPool {
       listenTagIds?: IMixParams[`listenTagIds`];
       filterOutAssets: IAssetData[];
     }
-  ): IAssetData | undefined {
+  ): IDecoratedAsset | undefined {
     const mixParams: IMixParams = {
       ...this.mixParams,
       ...track.mixParams,
@@ -145,29 +147,32 @@ export class AssetPool {
     };
 
     console.log(
-      `picking asset for ${track} from ${
-        this.assets.length
-      }, params = ${JSON.stringify(mixParams)}`
+      `picking asset for ${track} from ${this.assets.length}, params = `,
+      mixParams
     );
-    const rankedAssets = this.assets.reduce<IAssetData[]>((rankings, asset) => {
-      if (filterOutAssets.includes(asset)) return rankings;
-      const rank = this.filterChain(asset, mixParams);
+    interface IRankedAssets {
+      [rank: number]: IDecoratedAsset[];
+    }
+    const rankedAssets = this.assets.reduce(
+      (rankings: IRankedAssets, asset) => {
+        if (filterOutAssets.includes(asset)) return rankings;
 
-      if (rank) {
-        rankings[rank] = rankings[rank] || [];
-        // @ts-ignore
-        rankings[rank].push(asset);
-      }
+        const rank = this.filterChain(asset, mixParams);
 
-      return rankings;
-      // @ts-ignore
-    }, {});
+        if (rank !== false) {
+          rankings[rank] = rankings[rank] || [];
+          rankings[rank].push(asset);
+        }
+        return rankings;
+      },
+      {}
+    );
 
     const rankingGroups = Object.keys(rankedAssets).map((a) =>
       Number.parseInt(a)
     );
 
-    if (rankingGroups === []) {
+    if (Array.isArray(rankingGroups) && rankingGroups.length < 1) {
       console.warn("All assets filtered out");
       return;
     }
@@ -176,18 +181,14 @@ export class AssetPool {
 
     // play least-recently played assets first
 
-    // @ts-ignore
-    const priorityAssets: IAssetData[] = rankedAssets[topPriorityRanking] || [];
+    const priorityAssets: IDecoratedAsset[] =
+      rankedAssets[topPriorityRanking] || [];
 
-    priorityAssets.sort(
-      (a: IAssetData, b: IAssetData) => b.playCount! - a.playCount!
-    );
+    // this.assetSorter.sort(priorityAssets);
+    priorityAssets.sort((a, b) => b.playCount - a.playCount);
 
-    const nextAsset: IAssetData | undefined = priorityAssets.pop();
-    if (
-      typeof nextAsset !== "undefined" &&
-      typeof nextAsset.playCount !== "undefined"
-    ) {
+    const nextAsset = priorityAssets.pop();
+    if (nextAsset && typeof nextAsset.playCount == "number") {
       nextAsset.playCount++;
     }
 
@@ -198,7 +199,7 @@ export class AssetPool {
     this.assetSorter.sort(this.assets);
   }
 
-  add(asset: IAssetData) {
+  add(asset: IDecoratedAsset) {
     this.assets.push(asset);
     this.sortAssets();
   }

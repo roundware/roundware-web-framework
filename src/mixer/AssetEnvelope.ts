@@ -1,9 +1,9 @@
-import { IAssetData } from "../types";
-import { ITrackOptions } from "../types/mixer/TrackOptions";
+import { IDecoratedAsset } from "../types/asset";
 import { random } from "../utils";
+import { TrackOptions } from "./TrackOptions";
 
 export class AssetEnvelope {
-  asset: IAssetData;
+  asset: IDecoratedAsset;
   assetId: string | number | undefined;
   minDuration: number;
   maxDuration: number;
@@ -13,7 +13,7 @@ export class AssetEnvelope {
   fadeOutDuration: number;
   startFadingOutSecs: number;
 
-  constructor(trackOptions: ITrackOptions, asset: IAssetData) {
+  constructor(trackOptions: TrackOptions, asset: IDecoratedAsset) {
     const {
       randomFadeInDuration,
       randomFadeOutDuration,
@@ -37,7 +37,6 @@ export class AssetEnvelope {
 
     const latestStart = Number(activeRegionUpperBound) - this.duration;
     this.start = random(activeRegionLowerBound, latestStart);
-
     this.fadeInDuration = Math.min(randomFadeInDuration, this.duration / 2);
     this.fadeOutDuration =
       Math.min(randomFadeOutDuration, this.duration / 2) *

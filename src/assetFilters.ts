@@ -4,17 +4,20 @@ import { Point } from "@turf/helpers";
 import { Coord } from "@turf/helpers";
 import { isEmpty } from "./utils";
 import { GeoListenMode } from "./mixer";
-import { GeoListenModeType, IAssetData, IMixParams } from "./types";
+import { GeoListenModeType, IMixParams } from "./types";
+import { IDecoratedAsset } from "./types/asset";
 import { RoundwareFrameworkError } from "./errors/app.errors";
 
-export const ASSET_PRIORITIES: Readonly<{
-  DISCARD: false;
-  NEUTRAL: number;
-  LOWEST: number;
-  NORMAL: number;
-  HIGHEST: number;
-  [key: string]: boolean | number;
-}> = Object.freeze({
+export interface IAssetPriorities {
+  readonly DISCARD: false;
+  readonly NEUTRAL: number;
+  readonly LOWEST: number;
+  readonly NORMAL: number;
+  readonly HIGHEST: number;
+  readonly [key: string]: boolean | number;
+}
+export type AssetPriorityType = false | 0 | 1 | 100 | 999 | number;
+export const ASSET_PRIORITIES: IAssetPriorities = Object.freeze({
   DISCARD: false,
   NEUTRAL: 0,
   LOWEST: 1,
@@ -22,18 +25,26 @@ export const ASSET_PRIORITIES: Readonly<{
   HIGHEST: 999,
 });
 
-const alwaysLowest = (): number => ASSET_PRIORITIES.LOWEST;
-const alwaysNeutral = (): number => ASSET_PRIORITIES.NEUTRAL; // eslint-disable-line no-unused-vars
+const alwaysLowest = (): IAssetPriorities[`LOWEST`] => ASSET_PRIORITIES.LOWEST;
+const alwaysNeutral = (): IAssetPriorities[`NEUTRAL`] =>
+  ASSET_PRIORITIES.NEUTRAL; // eslint-disable-line no-unused-vars
 
-// Accept an asset if any one of the provided filters passes, returns the first
-// non-discarded and non-neutral rank
-const anyAssetFilter = (
-  filters: Array<(asset: IAssetData, param?: IMixParams | any) => number> = [],
-  mixParams?: IMixParams
-) => {
+/**
+ *Accept an asset if any one of the provided filters passes, returns the first non-discarded and non-neutral rank
+ *
+ * @export
+ * @param {(Array<(asset: IDecoratedAsset, param?: IMixParams | any) => number>)} [filters=[]]
+ * @param {IMixParams} [mixParams]
+ * @return {*}
+ */
+
+export function anyAssetFilter(
+  filters: Array<(asset: IDecoratedAsset, param: IMixParams) => number> = [],
+  mixParams: IMixParams
+) {
   if (isEmpty(filters)) return alwaysLowest;
 
-  return (asset: IAssetData, { ...stateParams }) => {
+  return (asset: IDecoratedAsset, { ...stateParams }) => {
     for (const filter of filters) {
       let rank = filter(asset, { ...mixParams, ...stateParams });
       if (
@@ -47,16 +58,18 @@ const anyAssetFilter = (
 
     return ASSET_PRIORITIES.DISCARD;
   };
-};
+}
 
 /** Filter composed of multiple inner filters that accepts assets which pass every inner filter. */
-export const allAssetFilter = (
-  filters: Array<(asset: IAssetData, param?: IMixParams | any) => number> = [],
+export function allAssetFilter(
+  filters: Array<
+    (asset: IDecoratedAsset, param: IMixParams) => AssetPriorityType
+  > = [],
   mixParams?: IMixParams
-): ((asset: IAssetData, stateParams: IMixParams | any) => number) => {
+): (asset: IDecoratedAsset, stateParams: IMixParams) => AssetPriorityType {
   if (isEmpty(filters)) return alwaysLowest;
 
-  return (asset: IAssetData, { ...stateParams }): number => {
+  return (asset: IDecoratedAsset, { ...stateParams }): number => {
     const ranks: number[] = [];
 
     for (let filter of filters) {
@@ -72,12 +85,12 @@ export const allAssetFilter = (
       ranks.find((r) => r !== ASSET_PRIORITIES.NEUTRAL) || ranks[0];
     return finalRank;
   };
-};
+}
 
 // a "pre-filter" used by geo-enabled filters to make sure if we are missing data, or geoListenMode is DISABLED,
 // we always return a neutral ranking
 const rankForGeofilteringEligibility = (
-  asset: IAssetData,
+  asset: IDecoratedAsset,
   {
     listenerPoint,
     geoListenMode,
@@ -93,12 +106,12 @@ const calculateDistanceInMeters = (loc1: Coord, loc2: Coord) =>
 export const distanceFixedFilter =
   () =>
   (
-    asset: IAssetData,
+    asset: IDecoratedAsset,
     options: Pick<
       IMixParams,
       "geoListenMode" | "listenerPoint" | "recordingRadius"
     >
-  ): number => {
+  ): number | boolean => {
     try {
       if (options.geoListenMode === GeoListenMode.DISABLED) {
         return ASSET_PRIORITIES.LOWEST;
@@ -136,7 +149,7 @@ export const distanceFixedFilter =
 export const distanceRangesFilter =
   () =>
   (
-    asset: IAssetData,
+    asset: IDecoratedAsset,
     options: Pick<
       IMixParams,
       "getListenMode" | "listenerPoint" | "minDist" | "maxDist"
@@ -147,15 +160,10 @@ export const distanceRangesFilter =
         return ASSET_PRIORITIES.LOWEST;
       }
 
-      if (
-        !rankForGeofilteringEligibility(asset, {
-          geoListenMode: options.getListenMode as GeoListenModeType,
-          listenerPoint: options.listenerPoint,
-        })
-      ) {
+      if (!rankForGeofilteringEligibility(asset, options)) {
         return ASSET_PRIORITIES.NEUTRAL;
       }
-      const { listenerPoint, minDist, maxDist } = options;
+      const { listenerPoint, minDist = 0, maxDist } = options;
 
       if (minDist === undefined || maxDist === undefined) {
         return ASSET_PRIORITIES.NEUTRAL;
@@ -182,11 +190,10 @@ export const distanceRangesFilter =
 
 // Rank the asset if it is tagged with one of the currently-enabled tag IDs
 export function anyTagsFilter() {
-  return (
-    asset: IAssetData,
-    { listenTagIds = [] }: Pick<IMixParams, "listenTagIds">
-  ): number => {
-    if (isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
+  return (asset: IDecoratedAsset, mixParams: IMixParams): number => {
+    const { listenTagIds } = mixParams;
+
+    if (!listenTagIds || isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
 
     const { tag_ids: assetTagIds = [] } = asset;
 
@@ -202,7 +209,7 @@ export function anyTagsFilter() {
 // keep assets that are slated to start now or in the past few minutes AND haven't been played before
 export const timedAssetFilter = () => {
   return (
-    asset: IAssetData,
+    asset: IDecoratedAsset,
     { elapsedSeconds = 0, timedAssetPriority = "normal" }
   ): number | boolean => {
     const { timedAssetStart, timedAssetEnd, playCount } = asset;
@@ -224,7 +231,7 @@ export const timedAssetFilter = () => {
 // Accept an asset if the user is currently within its defined shape
 export const assetShapeFilter = () => {
   return (
-    asset: IAssetData,
+    asset: IDecoratedAsset,
     options: Pick<IMixParams, "listenerPoint" | "geoListenMode">
   ): number | boolean => {
     const { shape } = asset;
@@ -246,7 +253,7 @@ export const assetShapeFilter = () => {
 // Prevents assets from repeating until a certain time threshold has passed
 export const timedRepeatFilter =
   () =>
-  (asset: IAssetData, { bannedDuration = 600 }): number | boolean => {
+  (asset: IDecoratedAsset, { bannedDuration = 600 }): number | boolean => {
     const { lastListenTime } = asset;
 
     if (!lastListenTime) return ASSET_PRIORITIES.NORMAL; // e.g. asset has never been heard before
@@ -264,7 +271,7 @@ export const timedRepeatFilter =
 export const dateRangeFilter =
   () =>
   (
-    asset: IAssetData,
+    asset: IDecoratedAsset,
     { startDate, endDate }: { startDate: string | Date; endDate: string | Date }
   ): number | false => {
     if (startDate || endDate) {
@@ -274,7 +281,7 @@ export const dateRangeFilter =
       if (!(startDate instanceof Date)) startDate = new Date(startDate);
       if (!(endDate instanceof Date)) endDate = new Date(endDate);
 
-      let assetCreated: string | any = asset.created;
+      let assetCreated: string | Date = asset.created;
       if (!(assetCreated instanceof Date))
         assetCreated = new Date(assetCreated);
 
@@ -288,9 +295,9 @@ export const dateRangeFilter =
   };
 
 export const roundwareDefaultFilterChain: (
-  asset: IAssetData,
-  mixParams?: IMixParams
-) => number = allAssetFilter([
+  asset: IDecoratedAsset,
+  mixParams: IMixParams
+) => AssetPriorityType = allAssetFilter([
   // @ts-ignore
   anyAssetFilter([
     // @ts-ignore
@@ -298,6 +305,7 @@ export const roundwareDefaultFilterChain: (
     // @ts-ignore
     assetShapeFilter(), // if an asset has a shape and we AREN'T in it, reject entirely, or
     allAssetFilter([
+      // @ts-ignore
       distanceFixedFilter(), // if it has no shape, consider a fixed distance from it, or
       // @ts-ignore
       distanceRangesFilter(),
