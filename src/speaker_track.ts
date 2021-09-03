@@ -167,6 +167,7 @@ export class SpeakerTrack {
     this.buildAudio();
     const currentVolume = this.audio!.volume();
 
+    if (newVolume - currentVolume === 0) return newVolume; // no need to udpate
     if (this.audio!.playing()) {
       this.audio!.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
     } else
@@ -177,6 +178,7 @@ export class SpeakerTrack {
           FADE_DURATION_SECONDS * 1000
         );
       });
+
     return newVolume;
   }
 
