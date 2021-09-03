@@ -119,12 +119,12 @@ export class ApiClient {
 
     requestInit.headers = headers;
 
-    let response;
+    let response: Response;
 
     try {
       response = await fetch(url.toString(), requestInit);
     } catch (error) {
-      console.error("Roundware network error:", error.message);
+      console.error("Roundware network error:", error);
       throw new RoundwareConnectionError();
     }
 
