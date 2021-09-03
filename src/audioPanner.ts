@@ -48,10 +48,6 @@ export class AudioPanner {
 
     this.calculatePerSecondChange();
 
-    console.log(
-      `Ramping: ${this.initialPosition} => ${this.finalPosition} (${this.duration})`
-    );
-    console.log(`Per second change: ${this.panPositionChangePerSecond}`);
     function randomFromRange(min: number, max: number) {
       return Math.random() * (max - min) + min;
     }
@@ -66,12 +62,6 @@ export class AudioPanner {
     this.timerId = setTimeout(() => {
       this.sound!.stereo(this.currentPosition!);
       if (!this.sound?.playing()) return this.start();
-
-      console.log(
-        `Panning toward ${this.panningTowards} \n\t${
-          this.panningTowards === "left" ? `<-<-<-<-<-` : `->->->->->`
-        }`
-      );
 
       let isCompletelyPanned;
       // toward left means final position is lesser than initial
