@@ -9,6 +9,7 @@ import { MultiPolygon } from "@turf/helpers";
 import { Polygon } from "@turf/helpers";
 import { ISpeakerData } from "./types/speaker";
 import { Howl } from "howler";
+import { LOGGABLE_HOWL_EVENTS } from "./playlistAudioTrack";
 
 const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
   // @ts-ignore
@@ -95,19 +96,25 @@ export class SpeakerTrack {
   calculateVolume() {
     const { listenerPoint } = this;
 
+    let newVolume = this.currentVolume;
     if (!listenerPoint) {
-      return this.currentVolume;
+      newVolume = this.currentVolume;
     } else if (this.attenuationShapeContains(listenerPoint)) {
-      return this.maxVolume;
+      newVolume = this.maxVolume;
     } else if (this.outerBoundaryContains(listenerPoint)) {
       const range = this.maxVolume - this.minVolume;
       const volumeGradient =
         this.minVolume + range * this.attenuationRatio(listenerPoint);
 
-      return volumeGradient;
+      newVolume = volumeGradient;
     } else {
-      return this.minVolume;
+      newVolume = this.minVolume;
     }
+
+    // howler don't support values greater than 1.0
+    if (newVolume > 1) newVolume = 1;
+    console.log(`New Volume ${this.speakerId}: ${newVolume}`);
+    return newVolume;
   }
 
   // @see https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/createGain
@@ -127,6 +134,7 @@ export class SpeakerTrack {
     });
 
     this.audio = audio;
+
     return this.audio;
   }
 
@@ -135,22 +143,22 @@ export class SpeakerTrack {
       this.listenerPoint = opts.listenerPoint.geometry;
     }
 
-    const newVolume = this.calculateVolume();
-    console.info(`Speaker #${this.speakerId}: ${isPlaying}, ${newVolume}`);
+    const newVolume = this.updateVolume();
+
     if (isPlaying === false) this.pause();
-    else if (newVolume < 0.05 && this.audio?.playing()) {
-      this.updateVolume();
-      this.audio?.once("fade", () => {
-        this.audio?.pause();
+    if (newVolume === 0.05 && this.audio?.playing()) {
+      // allow to fade before pausing
+      this.audio.once("fade", () => {
+        this.pause();
       });
-    } else {
-      this.buildAudio();
+    }
+    if (isPlaying === true) {
       this.play();
     }
   }
 
   /**
-   * Updates volume to match speaker track configurations using the `fade()` function
+   * Updates / (Schedules a update to if not playing) volume to match speaker track configurations using the `fade()` function
    * @memberof SpeakerTrack
    */
   updateVolume() {
@@ -159,14 +167,11 @@ export class SpeakerTrack {
     this.buildAudio();
     const currentVolume = this.audio!.volume();
 
-    if (this.audio?.playing()) {
-      this.audio?.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
+    if (this.audio!.playing()) {
+      this.audio!.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
     } else
-      this.audio?.once("play", () => {
-        console.info(
-          `Speaker #${this.speakerId}: \n\tVolume: ${currentVolume} -> ${newVolume} (${FADE_DURATION_SECONDS}s)`
-        );
-        this.audio?.fade(
+      this.audio!.once("play", () => {
+        this.audio!.fade(
           currentVolume,
           newVolume,
           FADE_DURATION_SECONDS * 1000
@@ -180,15 +185,8 @@ export class SpeakerTrack {
   }
 
   play() {
-    const newVolume = this.updateVolume();
-
-    if (newVolume < 0.05 || this.audio?.playing()) {
-      return;
-    }
-
     try {
-      console.info(`Speaker ${this.speakerId}: Playing at volume ${newVolume}`);
-      this.audio!.play();
+      !this.audio?.playing() && this.audio!.play();
     } catch (err) {
       console.error("Unable to play", this.logline, err);
     }
@@ -197,7 +195,6 @@ export class SpeakerTrack {
   pause() {
     try {
       if (!this.audio?.playing()) return;
-      console.log(`Speaker ${this.speakerId}: Pausing`);
       this.audio?.pause();
     } catch (err) {
       console.error("Unable to pause", this.logline, err);
