@@ -130,6 +130,7 @@ export class SpeakerTrack {
       html5: true,
       autoplay: false,
       loop: true,
+      mute: false,
       volume: 0, // initially 0 and fade later
     });
 
@@ -143,18 +144,17 @@ export class SpeakerTrack {
       this.listenerPoint = opts.listenerPoint.geometry;
     }
 
-    const newVolume = this.updateVolume();
+    const newVolume = this.calculateVolume();
 
     if (isPlaying === false) this.pause();
-    if (newVolume === 0.05 && this.audio?.playing()) {
+    if (newVolume < 0.05 && this.audio?.playing()) {
       // allow to fade before pausing
-      this.audio.once("fade", () => {
-        this.pause();
-      });
-    }
-    if (isPlaying === true) {
+      this.audio.fade(this.audio.volume(), 0, FADE_DURATION_SECONDS * 1000);
+      this.audio.once("fade", () => this.audio?.pause());
+    } else if (isPlaying === true && newVolume > 0.05) {
+      this.updateVolume();
       this.play();
-    }
+    } else this.pause();
   }
 
   /**
