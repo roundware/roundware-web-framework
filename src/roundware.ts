@@ -377,7 +377,13 @@ export class Roundware {
       existingAssets = this.assets();
     }
 
-    this.assetData = existingAssets.concat(await this._asset.connect(filters));
+    const newAssets = existingAssets.concat(await this._asset.connect(filters));
+    if (newAssets.length !== this.assetData?.length) {
+      this.assetData = newAssets;
+      if (typeof this._onUpdateAssets == "function") {
+        this._onUpdateAssets(this.assetData);
+      }
+    }
 
     // also fetch timedAssetData if not available
     if (!Array.isArray(this.timedAssetData)) {
@@ -390,10 +396,6 @@ export class Roundware {
     const pool = this.assetPool;
     if (pool && Array.isArray(this.timedAssetData)) {
       pool.updateAssets(this.assetData, this.timedAssetData);
-    }
-
-    if (typeof this._onUpdateAssets == "function") {
-      this._onUpdateAssets(this.assetData);
     }
 
     Promise.resolve();
