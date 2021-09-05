@@ -149,8 +149,10 @@ export class SpeakerTrack {
     if (isPlaying === false) this.pause();
     if (newVolume < 0.05 && this.audio?.playing()) {
       // allow to fade before pausing
-      this.audio.fade(this.audio.volume(), 0, FADE_DURATION_SECONDS * 1000);
-      this.audio.once("fade", () => this.audio?.pause());
+      this.audio?.fade(this.audio.volume(), 0, FADE_DURATION_SECONDS * 1000);
+      setTimeout(() => {
+        this.audio?.pause();
+      }, FADE_DURATION_SECONDS * 1000);
     } else if (isPlaying === true && newVolume > 0.05) {
       this.updateVolume();
       this.play();
@@ -168,11 +170,11 @@ export class SpeakerTrack {
     const currentVolume = this.audio!.volume();
 
     if (newVolume - currentVolume === 0) return newVolume; // no need to udpate
-    if (this.audio!.playing()) {
-      this.audio!.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
+    if (this.audio?.playing()) {
+      this.audio?.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
     } else
-      this.audio!.once("play", () => {
-        this.audio!.fade(
+      this.audio?.once("play", () => {
+        this.audio?.fade(
           currentVolume,
           newVolume,
           FADE_DURATION_SECONDS * 1000
@@ -187,8 +189,10 @@ export class SpeakerTrack {
   }
 
   play() {
+    this.buildAudio();
     try {
-      !this.audio?.playing() && this.audio!.play();
+      if (this.audio?.playing()) return;
+      this.audio?.play();
     } catch (err) {
       console.error("Unable to play", this.logline, err);
     }
