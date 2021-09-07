@@ -15,7 +15,7 @@ const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
   // @ts-ignore
   lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
-const NEARLY_ZERO = 0.001;
+const NEARLY_ZERO = 0;
 
 /** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners.
  * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker’s defined zone.'
@@ -127,7 +127,7 @@ export class SpeakerTrack {
     const cleanURL = cleanAudioURL(uri);
 
     const audio = new Howl({
-      src: [cleanURL],
+      src: [cleanURL.slice(0, -3) + "mp3", cleanURL.slice(0, -3) + "wav"],
       preload: true,
       html5: true,
       autoplay: false,
@@ -139,9 +139,7 @@ export class SpeakerTrack {
     this.audio = audio;
 
     this.audio.volume(0);
-    // get the soundId and play only that to avoid multiple playbacks
-    this.soundId = this.audio.play();
-    this.audio.pause(this.soundId);
+
     return this.audio;
   }
 
@@ -153,19 +151,13 @@ export class SpeakerTrack {
     const newVolume = this.calculateVolume();
 
     if (isPlaying === false) this.pause();
-    if (newVolume < 0.05 && this.audio?.playing(this.soundId)) {
+    if (newVolume < 0.05 && this.audio?.playing()) {
       // allow to fade before pausing
-      this.audio?.fade(
-        this.audio.volume(),
-        0,
-        FADE_DURATION_SECONDS * 1000,
-        this.soundId
-      );
+      this.audio?.fade(this.audio.volume(), 0, FADE_DURATION_SECONDS * 1000);
       setTimeout(() => {
-        this.audio?.pause(this.soundId);
+        this.audio?.pause();
       }, FADE_DURATION_SECONDS * 1000);
     } else if (isPlaying === true && newVolume > 0.05) {
-      this.updateVolume();
       this.play();
     } else this.pause();
   }
@@ -182,26 +174,15 @@ export class SpeakerTrack {
 
     if (newVolume - currentVolume === 0) return newVolume; // no need to udpate
     if (this.audio?.playing()) {
-      this.audio?.fade(
-        currentVolume,
-        newVolume,
-        FADE_DURATION_SECONDS * 1000,
-        this.soundId
-      );
+      this.audio?.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
     } else
-      this.audio?.once(
-        "play",
-        () => {
-          this.audio?.fade(
-            currentVolume,
-            newVolume,
-            FADE_DURATION_SECONDS * 1000,
-            this.soundId
-          );
-        },
-        this.soundId
-      );
-
+      this.audio?.once("play", () => {
+        this.audio?.fade(
+          this.audio.volume(),
+          newVolume,
+          FADE_DURATION_SECONDS * 1000
+        );
+      });
     return newVolume;
   }
 
@@ -209,14 +190,21 @@ export class SpeakerTrack {
     return `${this} (${this.uri})`;
   }
 
+  _playScheduled = false;
   play() {
     this.buildAudio();
+    this.updateVolume();
     try {
-      if (typeof this.soundId !== "number") {
-        this.soundId = this.audio?.play();
-      }
-      if (this.audio?.playing(this.soundId)) return;
-      this.audio?.play(this.soundId);
+      if (this.audio?.playing()) return;
+      if (this.audio?.state() !== "loaded") {
+        if (this._playScheduled === true) return;
+        this.audio?.once("load", () => {
+          this.audio?.play();
+          this._playScheduled = false;
+        });
+        this._playScheduled = true;
+      } else this.audio?.play();
+      console.info(`Speaker ${this.speakerId}: Playing!`);
     } catch (err) {
       console.error("Unable to play", this.logline, err);
     }
@@ -224,8 +212,9 @@ export class SpeakerTrack {
 
   pause() {
     try {
-      if (!this.audio?.playing(this.soundId)) return;
-      this.audio?.pause(this.soundId);
+      if (!this.audio?.playing()) return;
+      this.audio?.pause();
+      console.log(`Speaker ${this.speakerId}: Paused!`);
     } catch (err) {
       console.error("Unable to pause", this.logline, err);
     }
