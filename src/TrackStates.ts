@@ -242,10 +242,8 @@ export class FadingInState
 
     //if (!fadeInSecondsRemaining) return;
 
-    if (fadeInDuration > fadeInUpperBound) fadeInDuration = fadeInUpperBound;
-    if (fadeInDuration < fadeInLowerBound) fadeInDuration = fadeInLowerBound;
     const success = track.fadeIn(fadeInDuration);
-    if (!success) this.setLoadingState();
+    if (!success) return this.setLoadingState();
     this.track.audio?.once("play", () => {
       this.track.listenEvents?.logAssetStart(this.assetEnvelope.assetId);
       super.play(fadeInDuration);
