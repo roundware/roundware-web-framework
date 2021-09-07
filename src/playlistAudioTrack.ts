@@ -146,7 +146,7 @@ export class PlaylistAudiotrack {
    * @memberof PlaylistAudiotrack
    */
   listenEvents?: RoundwareEvents;
-
+  soundId?: number;
   constructor({
     windowScope,
     audioData,
@@ -185,28 +185,34 @@ export class PlaylistAudiotrack {
 
   makeAudio(src: string) {
     const audio = new Howl({
-      src: [src],
+      src: [src.slice(0, -3) + "mp3", src.slice(0, -3) + "wav"],
       volume: 0, // as we are going to fadeIn,
       preload: true,
       html5: false,
       autoplay: false,
+      onend: () => {
+        // load new asset
+        setTimeout(() => {
+          if (this.playlist.playing) this.setInitialTrackState();
+        }, this.trackOptions.deadAirUpperBound);
+      },
     });
 
     LOGGABLE_HOWL_EVENTS.forEach((name) =>
-      audio.on(name, () => console.log(`\t[${this} audio ${name} event]`))
+      audio.on(name, () => console.info(`\t[${this} audio ${name} event]`))
     );
 
     audio.on("loaderror", () => this.onAudioError());
     audio.on("playerror", () => this.onAudioError());
     audio.on("end", () => this.onAudioEnded());
 
+    audio.volume(0);
     return audio;
     // this.audioContext = Howler.ctx;
     // this.gainNode = Howler.masterGain;
   }
 
   setInitialTrackState() {
-    this.clearEvents();
     this.state = makeInitialTrackState(this, this.trackOptions);
   }
 
@@ -216,13 +222,9 @@ export class PlaylistAudiotrack {
    * @memberof PlaylistAudiotrack
    */
   clearEvents() {
-    LOGGABLE_HOWL_EVENTS.forEach((e) => {
-      this.audio?.off(e);
-    });
-
+    this.audio?.off();
     this.audio?.on("loaderror", () => this.onAudioError());
     this.audio?.on("playerror", () => this.onAudioError());
-    this.audio?.on("end", () => this.onAudioEnded());
   }
   onAudioError(evt?: any) {
     console.warn(`\t[${this} audio error, skipping to next track]`, evt);
@@ -237,7 +239,10 @@ export class PlaylistAudiotrack {
     console.log(`${timestamp} ${this}: ${this.state}`);
     if (!this.state)
       console.warn(`No Initial track state. call \`setInitialTrackState()\``);
-    else this.state.play();
+    else {
+      this.state.play();
+    }
+    this.playing = false;
   }
 
   updateParams(params: IMixParams = {}) {
@@ -275,16 +280,21 @@ export class PlaylistAudiotrack {
 
     try {
       if (this.audio.playing()) {
-        this.audio!.fade(0, finalVolume, fadeInDurationSeconds * 1000);
+        this.audio!.fade(
+          this.audio.volume(),
+          finalVolume,
+          fadeInDurationSeconds * 1000
+        );
         return true;
       }
-      this.audio.volume(0);
+
       this.audio.play();
       this.audio.once("play", () => {
-        debugLogger(
-          `Fading In from ${0} to ${finalVolume} for ${fadeInDurationSeconds}`
+        this.audio!.fade(
+          this.audio?.volume() || 0,
+          finalVolume,
+          fadeInDurationSeconds * 1000
         );
-        this.audio!.fade(0, finalVolume, fadeInDurationSeconds * 1000);
       });
       return true;
     } catch (err) {
@@ -366,6 +376,8 @@ export class PlaylistAudiotrack {
     if (!this.state)
       return console.warn(`pause() was called on a undefined state!`);
     this.state.pause();
+    this.playing = false;
+    this.clearEvents();
   }
 
   playAudio() {
