@@ -37,6 +37,9 @@ export class SpeakerTrack {
   currentVolume: number;
   audio: Howl | undefined;
   speakerData: ISpeakerData;
+
+  soundId: number | undefined;
+
   constructor({
     listenerPoint,
     prefetchAudio,
@@ -72,7 +75,7 @@ export class SpeakerTrack {
 
     this.outerBoundary = convertLinesToPolygon(boundary);
     this.currentVolume = NEARLY_ZERO;
-    // this.buildAudio();
+    this.buildAudio();
   }
 
   outerBoundaryContains(point: Coord) {
@@ -113,7 +116,6 @@ export class SpeakerTrack {
 
     // howler don't support values greater than 1.0
     if (newVolume > 1) newVolume = 1;
-    console.log(`New Volume ${this.speakerId}: ${newVolume}`);
     return newVolume;
   }
 
@@ -136,6 +138,10 @@ export class SpeakerTrack {
 
     this.audio = audio;
 
+    this.audio.volume(0);
+    // get the soundId and play only that to avoid multiple playbacks
+    this.soundId = this.audio.play();
+    this.audio.pause(this.soundId);
     return this.audio;
   }
 
@@ -147,11 +153,16 @@ export class SpeakerTrack {
     const newVolume = this.calculateVolume();
 
     if (isPlaying === false) this.pause();
-    if (newVolume < 0.05 && this.audio?.playing()) {
+    if (newVolume < 0.05 && this.audio?.playing(this.soundId)) {
       // allow to fade before pausing
-      this.audio?.fade(this.audio.volume(), 0, FADE_DURATION_SECONDS * 1000);
+      this.audio?.fade(
+        this.audio.volume(),
+        0,
+        FADE_DURATION_SECONDS * 1000,
+        this.soundId
+      );
       setTimeout(() => {
-        this.audio?.pause();
+        this.audio?.pause(this.soundId);
       }, FADE_DURATION_SECONDS * 1000);
     } else if (isPlaying === true && newVolume > 0.05) {
       this.updateVolume();
@@ -171,15 +182,25 @@ export class SpeakerTrack {
 
     if (newVolume - currentVolume === 0) return newVolume; // no need to udpate
     if (this.audio?.playing()) {
-      this.audio?.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
+      this.audio?.fade(
+        currentVolume,
+        newVolume,
+        FADE_DURATION_SECONDS * 1000,
+        this.soundId
+      );
     } else
-      this.audio?.once("play", () => {
-        this.audio?.fade(
-          currentVolume,
-          newVolume,
-          FADE_DURATION_SECONDS * 1000
-        );
-      });
+      this.audio?.once(
+        "play",
+        () => {
+          this.audio?.fade(
+            currentVolume,
+            newVolume,
+            FADE_DURATION_SECONDS * 1000,
+            this.soundId
+          );
+        },
+        this.soundId
+      );
 
     return newVolume;
   }
@@ -191,8 +212,11 @@ export class SpeakerTrack {
   play() {
     this.buildAudio();
     try {
-      if (this.audio?.playing()) return;
-      this.audio?.play();
+      if (typeof this.soundId !== "number") {
+        this.soundId = this.audio?.play();
+      }
+      if (this.audio?.playing(this.soundId)) return;
+      this.audio?.play(this.soundId);
     } catch (err) {
       console.error("Unable to play", this.logline, err);
     }
@@ -200,8 +224,8 @@ export class SpeakerTrack {
 
   pause() {
     try {
-      if (!this.audio?.playing()) return;
-      this.audio?.pause();
+      if (!this.audio?.playing(this.soundId)) return;
+      this.audio?.pause(this.soundId);
     } catch (err) {
       console.error("Unable to pause", this.logline, err);
     }
