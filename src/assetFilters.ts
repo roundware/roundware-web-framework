@@ -139,7 +139,7 @@ export const distanceFixedFilter =
         return ASSET_PRIORITIES.DISCARD;
       }
     } catch (e) {
-      throw new RoundwareFrameworkError(e);
+      throw new RoundwareFrameworkError("Something went wrong!");
     }
   };
 
@@ -184,7 +184,7 @@ export const distanceRangesFilter =
       }
     } catch (e) {
       console.error(e);
-      throw new RoundwareFrameworkError(e);
+      throw new RoundwareFrameworkError("Something went wrong!");
     }
   };
 
