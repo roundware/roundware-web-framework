@@ -128,7 +128,7 @@ export class SpeakerTrack {
 
     const audio = new Howl({
       src: [cleanURL.slice(0, -3) + "mp3", cleanURL.slice(0, -3) + "wav"],
-      preload: true,
+      preload: this.prefetch,
       html5: true,
       autoplay: false,
       loop: true,
@@ -137,9 +137,6 @@ export class SpeakerTrack {
     });
 
     this.audio = audio;
-
-    this.audio.volume(0);
-
     return this.audio;
   }
 
@@ -151,15 +148,9 @@ export class SpeakerTrack {
     const newVolume = this.calculateVolume();
 
     if (isPlaying === false) this.pause();
-    if (newVolume < 0.05 && this.audio?.playing()) {
-      // allow to fade before pausing
-      this.audio?.fade(this.audio.volume(), 0, FADE_DURATION_SECONDS * 1000);
-      setTimeout(() => {
-        this.audio?.pause();
-      }, FADE_DURATION_SECONDS * 1000);
-    } else if (isPlaying === true && newVolume > 0.05) {
-      this.play();
-    } else this.pause();
+    if (newVolume === 0 && this.audio?.playing()) this.fadeOutAndPause();
+    else if (isPlaying === true && newVolume > 0) this.play();
+    else this.pause();
   }
 
   /**
@@ -172,41 +163,46 @@ export class SpeakerTrack {
     this.buildAudio();
     const currentVolume = this.audio!.volume();
 
-    if (newVolume - currentVolume === 0) return newVolume; // no need to udpate
-    if (this.audio?.playing()) {
-      this.audio?.fade(currentVolume, newVolume, FADE_DURATION_SECONDS * 1000);
-    } else
-      this.audio?.once("play", () => {
+    if (newVolume === 0) {
+      this.fadeOutAndPause();
+    } else if (newVolume - currentVolume !== 0) {
+      if (this.audio?.playing())
         this.audio?.fade(
-          this.audio.volume(),
+          currentVolume,
           newVolume,
           FADE_DURATION_SECONDS * 1000
         );
-      });
+      else this.audio?.once("play", () => this.updateVolume());
+    }
+
     return newVolume;
+  }
+
+  fadeOutAndPause() {
+    if (!this.audio?.playing()) return;
+    this.audio?.fade(this.audio.volume(), 0, FADE_DURATION_SECONDS * 1000);
+    setTimeout(() => {
+      this.pause();
+    }, FADE_DURATION_SECONDS * 1000);
   }
 
   get logline(): string {
     return `${this} (${this.uri})`;
   }
 
-  _playScheduled = false;
   play() {
-    this.buildAudio();
-    const newVolume = this.calculateVolume();
-    if (newVolume < 0.05) return;
-    this.updateVolume();
+    const newVolume = this.updateVolume();
+    // if new volume is 0 then no need to play it;
+    if (newVolume === 0) return;
+    // if audio not loaded yet, set it to play when loaded.
     try {
       if (this.audio?.playing()) return;
-      if (this.audio?.state() !== "loaded") {
-        if (this._playScheduled === true) return;
-        this.audio?.once("load", () => {
-          this.audio?.play();
-          this._playScheduled = false;
-        });
-        this._playScheduled = true;
-      } else this.audio?.play();
-      console.info(`Speaker ${this.speakerId}: Playing!`);
+      if (this.audio?.state() !== "loaded")
+        this.audio?.once("load", () => this.play());
+      else {
+        this.audio?.play();
+        console.info(`Speaker ${this.speakerId}: Playing!`);
+      }
     } catch (err) {
       console.error("Unable to play", this.logline, err);
     }
@@ -215,6 +211,9 @@ export class SpeakerTrack {
   pause() {
     try {
       if (!this.audio?.playing()) return;
+
+      // clear the scheduled play. else audio will unexpecteedly start playing after user pauses.
+      this.audio.off("load");
       this.audio?.pause();
       console.log(`Speaker ${this.speakerId}: Paused!`);
     } catch (err) {
