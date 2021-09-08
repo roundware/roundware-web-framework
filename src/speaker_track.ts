@@ -193,6 +193,8 @@ export class SpeakerTrack {
   _playScheduled = false;
   play() {
     this.buildAudio();
+    const newVolume = this.calculateVolume();
+    if (newVolume < 0.05) return;
     this.updateVolume();
     try {
       if (this.audio?.playing()) return;
