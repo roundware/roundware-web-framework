@@ -83,12 +83,19 @@ import { Roundware } from "./roundware";
 */
 
 //const LOGGABLE_AUDIO_ELEMENT_EVENTS = ['loadstart','playing','stalled','waiting']; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
-const LOGGABLE_AUDIO_ELEMENT_EVENTS = [
+export const LOGGABLE_AUDIO_ELEMENT_EVENTS = [
   "pause",
   "play",
   "playing",
   "waiting",
   "stalled",
+  "about",
+  "canplay",
+  "canplaythrough",
+  "ended",
+  "error",
+  "loadeddata",
+  "loadstart",
 ]; // see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement#Events
 
 export const LOGGABLE_HOWL_EVENTS = [
