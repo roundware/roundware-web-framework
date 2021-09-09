@@ -4,7 +4,7 @@
     "outDir": "./dist/",
     "allowJs": true,
     "target": "es5",
-    "sourceMap": true,
+    "sourceMap": false,
     "module": "commonjs",
     "strict": true,
 
