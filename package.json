@@ -15,7 +15,7 @@
   "scripts": {
     "test": "jest",
     "build": "NODE_ENV=production npm-run-all --parallel build:*",
-    "build:main": "babel src --out-dir dist --extensions '.ts' --copy-files src/types/*.d.ts && tsc --declaration --outDir dist/ --emitDeclarationOnly --declarationMap",
+    "build:main": "babel src --out-dir dist --extensions '.ts' --copy-files src/types/*.d.ts && tsc --declaration --outDir dist/ --emitDeclarationOnly",
     "build:umd": "webpack --mode=production --output-filename roundware.umd.js",
     "build:umd.min": "webpack --mode production --output-filename roundware.umd.min.js",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",

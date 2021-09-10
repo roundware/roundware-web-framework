@@ -15,7 +15,6 @@ module.exports = {
     globalObject: 'this'
   },
 
-  devtool: 'source-map',
   resolve: {
     // Add '.ts' and '.tsx' as resolvable extensions.
     extensions: [".webpack.js", ".web.js", ".ts", ".tsx", ".js"],
@@ -43,7 +42,7 @@ module.exports = {
       // All files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'.
       { test: /\.ts$/, exclude: /node_modules/, loader: "ts-loader" },
       // All output '.js' files will have any sourcemaps re-processed by 'source-map-loader'.
-      { test: /\.js$/, exclude: /node_modules/, loader: "source-map-loader" },
+      // { test: /\.js$/, exclude: /node_modules/, loader: "source-map-loader" },
     ]
   },
 
