@@ -1,4 +1,5 @@
 import { Howler } from "howler";
+import { LOGGABLE_AUDIO_ELEMENT_EVENTS } from "./playlistAudioTrack";
 import { cleanAudioURL, speakerLog } from "./utils";
 
 /**
@@ -30,10 +31,11 @@ export class SpeakerPlayer {
     Howler.mute(false);
     Howler.volume(1);
 
-    this._audio = new Audio(cleanAudioURL(url));
+    this._audio = new Audio();
     this._audio.crossOrigin = "anonymous";
+    this._audio.src = cleanAudioURL(url);
     this._audio.loop = true;
-    this._audio.preload = "none";
+    this._audio.preload = "auto";
 
     this._audioSrc = Howler.ctx.createMediaElementSource(this._audio);
     this._gainNode = Howler.ctx.createGain();
@@ -45,6 +47,11 @@ export class SpeakerPlayer {
 
     this._audio.addEventListener("play", () => (this.playing = true));
     this._audio.addEventListener("pause", () => (this.playing = false));
+
+    LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach((e) =>
+      this._audio.addEventListener(e, () => speakerLog(`'${e}' event`))
+    );
+
     this._prefetch = prefetch;
     this._fadeDuration = fadingDurationInSeconds;
   }
@@ -75,7 +82,7 @@ export class SpeakerPlayer {
     if (Math.abs(this.volume() - toVolume) < 0.01) return;
 
     if (!this.playing) {
-      // schedule to fade on it starts playing.
+      // schedule to fade when it starts playing.
       this._audio.addEventListener("play", () => this.fade(), { once: true });
       return;
     }
@@ -89,7 +96,7 @@ export class SpeakerPlayer {
       Howler.ctx.currentTime + durationInSeconds
     );
     setTimeout(() => {
-      speakerLog(`Speaker volume faded to ${this.volume()}`);
+      speakerLog(`volume faded to ${this.volume()}`);
       this.fading = false;
     }, durationInSeconds * 1000);
   }
