@@ -403,14 +403,17 @@ export class PlaylistAudiotrack {
    * @memberof PlaylistAudiotrack
    */
   skip(): void {
-    if (!this.audio?.playing) return;
+    if (!this.playlist.playing) {
+      makeInitialTrackState(this, this.trackOptions);
+      return;
+    }
     this.fadeOut(0.5);
     setTimeout(() => {
       this.clearEvents(); // remove scheduled plays, fades, etc.
       this.audio?.stop(); // make sure audio is stopped to avoid overlapping
       this.listenEvents?.logAssetEnd(this.currentAsset?.id!);
       const newState = makeInitialTrackState(this, this.trackOptions);
-      this.transition(newState);
+      if (this.playlist.playing) this.transition(newState);
     }, 500);
   }
 
