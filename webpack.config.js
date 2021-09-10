@@ -5,10 +5,10 @@ const path = require('path');
 const plugins = [];
 
 module.exports = {
+  mode: "production",
+  devtool: "source-map",
   entry: ['./src/roundware.ts'],
-
   output: {
-
     filename: "roundware.js",
     library: "RoundwareWebFramework",
     libraryTarget: "umd",
@@ -17,7 +17,7 @@ module.exports = {
 
   resolve: {
     // Add '.ts' and '.tsx' as resolvable extensions.
-    extensions: [".webpack.js", ".web.js", ".ts", ".tsx", ".js"],
+    extensions: [".ts", ".js"],
   },
 
   devServer: {
