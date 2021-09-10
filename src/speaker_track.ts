@@ -156,7 +156,7 @@ export class SpeakerTrack {
   }
 
   play() {
-    const newVolume = this.updateVolume();
+    const newVolume = this.calculateVolume();
     if (newVolume < 0.05) return; // no need to play
 
     try {
