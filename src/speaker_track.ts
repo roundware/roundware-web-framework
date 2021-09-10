@@ -2,20 +2,20 @@ import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
 import pointToLineDistance from "@turf/point-to-line-distance";
 import lineToPolygon from "@turf/line-to-polygon";
-import { cleanAudioURL } from "./utils";
+import { cleanAudioURL, speakerLog } from "./utils";
 
 import { Coord, Feature, LineString, Point, Properties } from "@turf/helpers";
 import { MultiPolygon } from "@turf/helpers";
 import { Polygon } from "@turf/helpers";
 import { ISpeakerData } from "./types/speaker";
 import { Howl } from "howler";
-import { LOGGABLE_HOWL_EVENTS } from "./playlistAudioTrack";
+import { SpeakerPlayer } from "./speaker_player";
 
 const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
   // @ts-ignore
   lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
-const NEARLY_ZERO = 0;
+const NEARLY_ZERO = 0.05;
 
 /** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners.
  * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker’s defined zone.'
@@ -35,10 +35,11 @@ export class SpeakerTrack {
   attenuationBorderLineString: LineString;
   outerBoundary: MultiPolygon | Polygon;
   currentVolume: number;
-  audio: Howl | undefined;
+
   speakerData: ISpeakerData;
 
   soundId: number | undefined;
+  player: SpeakerPlayer;
 
   constructor({
     listenerPoint,
@@ -68,6 +69,7 @@ export class SpeakerTrack {
     this.attenuationDistanceKm = attenuationDistance / 1000;
     this.uri = uri;
 
+    this.player = new SpeakerPlayer(uri);
     this.listenerPoint = listenerPoint.geometry;
 
     this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
@@ -75,7 +77,6 @@ export class SpeakerTrack {
 
     this.outerBoundary = convertLinesToPolygon(boundary);
     this.currentVolume = NEARLY_ZERO;
-    this.buildAudio();
   }
 
   outerBoundaryContains(point: Coord) {
@@ -114,30 +115,9 @@ export class SpeakerTrack {
       newVolume = this.minVolume;
     }
 
-    // howler don't support values greater than 1.0
+    // don't exceed values over 1.0
     if (newVolume > 1) newVolume = 1;
     return newVolume;
-  }
-
-  // @see https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/createGain
-  buildAudio() {
-    if (this.audio instanceof Howl) return this.audio;
-
-    const { uri } = this;
-    const cleanURL = cleanAudioURL(uri);
-
-    const audio = new Howl({
-      src: [cleanURL.slice(0, -3) + "mp3", cleanURL.slice(0, -3) + "wav"],
-      preload: this.prefetch,
-      html5: true,
-      autoplay: false,
-      loop: true,
-      mute: false,
-      volume: 0, // initially 0 and fade later
-    });
-
-    this.audio = audio;
-    return this.audio;
   }
 
   updateParams(isPlaying: boolean, opts: { listenerPoint?: Feature<Point> }) {
@@ -147,10 +127,14 @@ export class SpeakerTrack {
 
     const newVolume = this.calculateVolume();
 
-    if (isPlaying === false) this.pause();
-    if (newVolume === 0 && this.audio?.playing()) this.fadeOutAndPause();
-    else if (isPlaying === true && newVolume > 0) this.play();
-    else this.pause();
+    speakerLog(`${this.speakerId}: New Volume ${newVolume}`);
+    if (isPlaying === false) this.player.pause();
+    if (newVolume < 0.05 && this.player.playing) {
+      // allow to fade before pausing
+      this.player.fadeOutAndPause();
+    } else if (isPlaying === true && newVolume > 0.05) {
+      this.play();
+    } else this.pause();
   }
 
   /**
@@ -159,31 +143,10 @@ export class SpeakerTrack {
    */
   updateVolume() {
     const newVolume = this.calculateVolume();
+    if (newVolume < 0.05) this.player.fadeOutAndPause();
+    else this.player.fade(newVolume);
     this.currentVolume = newVolume;
-    this.buildAudio();
-    const currentVolume = this.audio!.volume();
-
-    if (newVolume === 0) {
-      this.fadeOutAndPause();
-    } else if (newVolume - currentVolume !== 0) {
-      if (this.audio?.playing())
-        this.audio?.fade(
-          currentVolume,
-          newVolume,
-          FADE_DURATION_SECONDS * 1000
-        );
-      else this.audio?.once("play", () => this.updateVolume());
-    }
-
     return newVolume;
-  }
-
-  fadeOutAndPause() {
-    if (!this.audio?.playing()) return;
-    this.audio?.fade(this.audio.volume(), 0, FADE_DURATION_SECONDS * 1000);
-    setTimeout(() => {
-      this.pause();
-    }, FADE_DURATION_SECONDS * 1000);
   }
 
   get logline(): string {
@@ -192,17 +155,12 @@ export class SpeakerTrack {
 
   play() {
     const newVolume = this.updateVolume();
-    // if new volume is 0 then no need to play it;
-    if (newVolume === 0) return;
-    // if audio not loaded yet, set it to play when loaded.
+    if (newVolume < 0.05) return; // no need to play
+
     try {
-      if (this.audio?.playing()) return;
-      if (this.audio?.state() !== "loaded")
-        this.audio?.once("load", () => this.play());
-      else {
-        this.audio?.play();
-        console.info(`Speaker ${this.speakerId}: Playing!`);
-      }
+      this.player.play();
+      this.updateVolume();
+      speakerLog(`${this.speakerId}: Playing!`);
     } catch (err) {
       console.error("Unable to play", this.logline, err);
     }
@@ -210,12 +168,10 @@ export class SpeakerTrack {
 
   pause() {
     try {
-      if (!this.audio?.playing()) return;
-
-      // clear the scheduled play. else audio will unexpecteedly start playing after user pauses.
-      this.audio.off("load");
-      this.audio?.pause();
-      console.log(`Speaker ${this.speakerId}: Paused!`);
+      if (this.player.playing) {
+        this.player?.pause();
+        speakerLog(`${this.speakerId}: Paused!`);
+      }
     } catch (err) {
       console.error("Unable to pause", this.logline, err);
     }
