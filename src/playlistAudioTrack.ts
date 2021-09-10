@@ -403,6 +403,7 @@ export class PlaylistAudiotrack {
    * @memberof PlaylistAudiotrack
    */
   skip(): void {
+    if (!this.audio?.playing) return;
     this.fadeOut(0.5);
     setTimeout(() => {
       this.clearEvents(); // remove scheduled plays, fades, etc.
