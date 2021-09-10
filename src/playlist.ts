@@ -2,7 +2,6 @@ import { PlaylistAudiotrack } from "./playlistAudioTrack";
 import { getUrlParam } from "./utils";
 import { Point, Feature } from "@turf/helpers";
 
-import { IAudioContext } from "standardized-audio-context";
 import { IAudioTrackData } from "./types/audioTrack";
 import { IMixParams, ITrackIdMap } from "./types";
 import { IDecoratedAsset } from "./types/asset";

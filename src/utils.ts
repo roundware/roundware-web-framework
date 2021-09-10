@@ -2,7 +2,6 @@
 
 const { point } = require("@turf/helpers");
 import { Point, Feature } from "@turf/helpers";
-import { AudioContext, IAudioContext } from "standardized-audio-context";
 
 const MATCHES_URI_SCHEME = new RegExp(/^https?:\/\//i);
 const MATCHES_WAV_FILE = new RegExp(/\.wav$/i);
@@ -63,7 +62,7 @@ const UNLOCK_AUDIO_EVENTS: ["touchstart", "touchend", "mousedown", "keydown"] =
  @thanks https://www.mattmontag.com/web/unlock-web-audio-in-safari-for-ios-and-macos */
 function unlockAudioContext(
   body: Window[`document`][`body`],
-  audioCtx: IAudioContext
+  audioCtx: AudioContext
 ) {
   if (audioCtx.state !== "suspended") return;
 
@@ -77,7 +76,7 @@ function unlockAudioContext(
   UNLOCK_AUDIO_EVENTS.forEach((e) => body.addEventListener(e, unlock, false));
 }
 
-export function buildAudioContext(windowScope: Window): IAudioContext {
+export function buildAudioContext(windowScope: Window): AudioContext {
   const audioContext = new AudioContext();
   const {
     document: { body },
