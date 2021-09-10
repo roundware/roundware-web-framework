@@ -83,13 +83,13 @@ export class SpeakerPlayer {
     if (this._audio.paused) return;
 
     this._gainNode.gain.cancelScheduledValues(0);
-    speakerLog(`fade started from ${this.volume()} to ${toVolume}`);
+
     this._gainNode.gain.linearRampToValueAtTime(
       toVolume,
       Howler.ctx.currentTime + durationInSeconds
     );
     setTimeout(() => {
-      speakerLog(`fade ended at ${this.volume()}`);
+      speakerLog(`Speaker volume faded to ${this.volume()}`);
       this.fading = false;
     }, durationInSeconds * 1000);
   }

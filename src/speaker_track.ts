@@ -1,15 +1,18 @@
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import {
+  Coord,
+  Feature,
+  LineString,
+  MultiPolygon,
+  Point,
+  Polygon,
+} from "@turf/helpers";
+import lineToPolygon from "@turf/line-to-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
 import pointToLineDistance from "@turf/point-to-line-distance";
-import lineToPolygon from "@turf/line-to-polygon";
-import { cleanAudioURL, speakerLog } from "./utils";
-
-import { Coord, Feature, LineString, Point, Properties } from "@turf/helpers";
-import { MultiPolygon } from "@turf/helpers";
-import { Polygon } from "@turf/helpers";
-import { ISpeakerData } from "./types/speaker";
-import { Howl } from "howler";
 import { SpeakerPlayer } from "./speaker_player";
+import { ISpeakerData } from "./types/speaker";
+import { speakerLog } from "./utils";
 
 const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
   // @ts-ignore
@@ -127,7 +130,6 @@ export class SpeakerTrack {
 
     const newVolume = this.calculateVolume();
 
-    speakerLog(`${this.speakerId}: New Volume ${newVolume}`);
     if (isPlaying === false) this.player.pause();
     if (newVolume < 0.05 && this.player.playing) {
       // allow to fade before pausing

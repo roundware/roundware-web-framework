@@ -112,8 +112,8 @@ export const debugLogger = (message: string) => {
 export const speakerLog = (message: string) =>
   console.log(
     `%c\t[Speaker: ${message}]`,
-    `color: #000000; background: #ffeb3b`
+    `color: #000000; background: #f6ff9a`
   );
 
 export const playlistTrackLog = (message: string) =>
-  console.log(`%c\t[Track: ${message}]`, `color: #ffffff; background: #673ab7`);
+  console.log(`%c\t[Track: ${message}]`, `color: #000000; background: #9cffff`);
