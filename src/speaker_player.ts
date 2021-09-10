@@ -8,7 +8,6 @@ import { cleanAudioURL, speakerLog } from "./utils";
  * @class SpeakerPlayer
  */
 export class SpeakerPlayer {
-  _url: string;
   _prefetch: boolean;
   _fadeDuration: number;
   _audio: HTMLAudioElement;
@@ -31,8 +30,7 @@ export class SpeakerPlayer {
     Howler.mute(false);
     Howler.volume(1);
 
-    this._url = url;
-    this._audio = new Audio(url);
+    this._audio = new Audio(cleanAudioURL(url));
     this._audio.crossOrigin = "anonymous";
     this._audio.loop = true;
     this._audio.preload = "none";
