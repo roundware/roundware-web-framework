@@ -108,3 +108,12 @@ export const NO_OP = () => {};
 export const debugLogger = (message: string) => {
   console.log(`%c\nDebug Info\n\t>${message}`, "color: red");
 };
+
+export const speakerLog = (message: string) =>
+  console.log(
+    `%c\t[Speaker: ${message}]`,
+    `color: #000000; background: #ffeb3b`
+  );
+
+export const playlistTrackLog = (message: string) =>
+  console.log(`%c\t[Track: ${message}]`, `color: #ffffff; background: #673ab7`);

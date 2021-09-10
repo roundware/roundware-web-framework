@@ -12,7 +12,7 @@ import {
 import { IMixParams } from "./types";
 import { IAudioTrackData } from "./types/audioTrack";
 import { ITrackStates } from "./types/track-states";
-import { debugLogger, getUrlParam, timestamp } from "./utils";
+import { debugLogger, getUrlParam, playlistTrackLog, timestamp } from "./utils";
 import { Howl, Howler } from "howler";
 import { AssetEnvelope } from "./mixer/AssetEnvelope";
 import { IDecoratedAsset } from "./types/asset";
@@ -206,7 +206,7 @@ export class PlaylistAudiotrack {
     });
 
     LOGGABLE_HOWL_EVENTS.forEach((name) =>
-      audio.on(name, () => console.info(`\t[${this} audio ${name} event]`))
+      audio.on(name, () => playlistTrackLog(`audio ${name} event`))
     );
 
     audio.on("loaderror", () => this.onAudioError());
@@ -234,18 +234,20 @@ export class PlaylistAudiotrack {
     this.audio?.on("playerror", () => this.onAudioError());
   }
   onAudioError(evt?: any) {
-    console.warn(`\t[${this} audio error, skipping to next track]`, evt);
+    playlistTrackLog(`${this} audio error, skipping to next track`);
     this.setInitialTrackState();
   }
 
   onAudioEnded() {
-    console.log(`\t[${this} audio ended event]`);
+    playlistTrackLog(`${this} audio ended event`);
   }
 
   play() {
-    console.log(`${timestamp} ${this}: ${this.state}`);
+    playlistTrackLog(`${timestamp} ${this}: ${this.state}`);
     if (!this.state)
-      console.warn(`No Initial track state. call \`setInitialTrackState()\``);
+      playlistTrackLog(
+        `No Initial track state. call \`setInitialTrackState()\``
+      );
     else {
       this.state.play();
     }
@@ -258,11 +260,10 @@ export class PlaylistAudiotrack {
     if (this.mixParams.listenerPoint && this.currentAsset?.locationPoint) {
       // if currently playing asset is far away then skip that asset;
       const priority = distanceFixedFilter()(this.currentAsset, this.mixParams);
-      console.info("Current Asset in Range: ", priority);
+
       if (priority === false) this.skip();
     }
     if (this.state) this.state.updateParams(this.mixParams);
-    else console.warn(`State is undefined!`);
   }
 
   setZeroGain() {
@@ -273,11 +274,9 @@ export class PlaylistAudiotrack {
   fadeIn(fadeInDurationSeconds: number): boolean {
     const currentAsset = this.currentAsset;
     if (!currentAsset || !currentAsset.volume) {
-      console.warn(`currentAsset is undefined!`);
       return false;
     }
     if (!this.audio) {
-      console.warn("Cannot fadeIn on empty audio instance!");
       return false;
     }
 
@@ -305,7 +304,7 @@ export class PlaylistAudiotrack {
       });
       return true;
     } catch (err) {
-      console.warn(`${this} unable to fadeIn`, currentAsset, err);
+      playlistTrackLog(`${this} unable to fadeIn`);
       return false;
     }
   }
@@ -358,7 +357,7 @@ export class PlaylistAudiotrack {
 
     if (newAsset) {
       const { file, start_time } = newAsset;
-      console.log(`\t[loading next asset ${this}: ${file}]`);
+      playlistTrackLog(`loading next asset ${this}: ${file}]`);
 
       this.assetEnvelope = new AssetEnvelope(trackOptions, newAsset);
       if (typeof file !== "string") {
@@ -379,9 +378,8 @@ export class PlaylistAudiotrack {
   }
 
   pause() {
-    console.log(`${timestamp} pausing ${this}`);
-    if (!this.state)
-      return console.warn(`pause() was called on a undefined state!`);
+    playlistTrackLog(`${timestamp} pausing ${this}`);
+    if (!this.state) return;
     this.state.pause();
     this.playing = false;
     this.clearEvents();
@@ -417,7 +415,7 @@ export class PlaylistAudiotrack {
 
   replay() {
     const { state } = this;
-    console.log(`Replaying ${this}`);
+    playlistTrackLog(`Replaying ${this}`);
     if (state) state.replay();
   }
 
@@ -427,13 +425,13 @@ export class PlaylistAudiotrack {
       playlist: { elapsedTimeMs },
     } = this;
 
-    console.log(
+    playlistTrackLog(
       `${timestamp} ${this}: '${state}' ➜  '${newState}' (${(
         elapsedTimeMs / 1000
       ).toFixed(1)}s elapsed)`
     );
 
-    if (!this.state) return console.warn(`Current state was undefined`);
+    if (!this.state) return;
     this.state.finish();
     this.state = newState;
     this.state.play();

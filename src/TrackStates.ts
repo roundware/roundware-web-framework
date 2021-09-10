@@ -4,7 +4,7 @@ import { PlaylistAudiotrack } from "./playlistAudioTrack";
 import { IMixParams } from "./types";
 import { IDecoratedAsset } from "./types/asset";
 import { ICommonStateProperties } from "./types/track-states";
-import { debugLogger } from "./utils";
+import { debugLogger, playlistTrackLog } from "./utils";
 
 /**
  Common sequence of states:
@@ -112,17 +112,15 @@ export class TimedTrackState implements ICommonStateProperties {
     if (timeRemainingMs) {
       // this means state was paused before
       const timeRemainingSecs = timeRemainingMs / 1000;
-      console.log(
-        `\t[Resuming track #${trackId} timer: next state in ${timeRemainingSecs.toFixed(
+      playlistTrackLog(
+        `Resuming track #${trackId} timer: next state in ${timeRemainingSecs.toFixed(
           1
-        )}s]`
+        )}s`
       );
 
       this.setNextStateTimer(timeRemainingMs);
       return timeRemainingSecs;
     }
-
-    //console.log(`Playing track state ${this}: ${nextStateSecs}s`);
 
     const nextStateMs = nextStateSecs * 1000;
     this.setNextStateTimer(nextStateMs);
@@ -133,10 +131,10 @@ export class TimedTrackState implements ICommonStateProperties {
    */
   pause(): void {
     this.timeRemainingMs = this.clearTimer();
-    console.log(
-      `\t[Pausing track #${this.track.trackId} timer: next state in ${(
+    playlistTrackLog(
+      `Pausing track #${this.track.trackId} timer: next state in ${(
         this.timeRemainingMs / 1000
-      ).toFixed(1)}s`
+      ).toFixed(1)}`
     );
   }
 
