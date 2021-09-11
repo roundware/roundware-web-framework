@@ -256,13 +256,6 @@ export class PlaylistAudiotrack {
 
   updateParams(params: IMixParams = {}) {
     this.mixParams = { ...this.mixParams, ...params };
-
-    if (this.mixParams.listenerPoint && this.currentAsset?.locationPoint) {
-      // if currently playing asset is far away then skip that asset;
-      const priority = distanceFixedFilter()(this.currentAsset, this.mixParams);
-
-      if (priority === false) this.skip();
-    }
     if (this.state) this.state.updateParams(this.mixParams);
   }
 
@@ -414,7 +407,7 @@ export class PlaylistAudiotrack {
       this.listenEvents?.logAssetEnd(this.currentAsset?.id!);
       const newState = makeInitialTrackState(this, this.trackOptions);
       if (this.playlist.playing) this.transition(newState);
-    }, 500);
+    }, 0.5 * 1000);
   }
 
   replay() {
