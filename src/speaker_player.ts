@@ -1,6 +1,11 @@
 import { Howler } from "howler";
+import {
+  IAudioContext,
+  IGainNode,
+  IMediaElementAudioSourceNode,
+} from "standardized-audio-context";
 import { LOGGABLE_AUDIO_ELEMENT_EVENTS } from "./playlistAudioTrack";
-import { cleanAudioURL, speakerLog } from "./utils";
+import { buildAudioContext, cleanAudioURL, speakerLog } from "./utils";
 
 /**
  *
@@ -12,9 +17,9 @@ export class SpeakerPlayer {
   private _prefetch: boolean;
   private _fadeDuration: number;
   private _audio: HTMLAudioElement;
-  private _audioSrc: MediaElementAudioSourceNode;
-  private _gainNode: GainNode;
-
+  private _audioSrc: IMediaElementAudioSourceNode<IAudioContext>;
+  private _gainNode: IGainNode<IAudioContext>;
+  private _context: IAudioContext;
   playing: boolean = false;
   fading: boolean = false;
   private _id: number;
@@ -29,23 +34,25 @@ export class SpeakerPlayer {
     prefetch: boolean = true,
     fadingDurationInSeconds: number = 3
   ) {
-    // activates howler context
-    Howler.mute(false);
-    Howler.volume(1);
+    this._context = buildAudioContext(window);
+    this._context.onstatechange = () => {
+      // alert(this._context.state);
+    };
     this._id = id;
     this._audio = new Audio();
     this._audio.crossOrigin = "anonymous";
-    this._audio.src = cleanAudioURL(url);
+    const cleanUrl = cleanAudioURL(url);
+    this._audio.src = cleanUrl;
     this._audio.loop = true;
     this._audio.preload = "auto";
 
-    this._audioSrc = Howler.ctx.createMediaElementSource(this._audio);
-    this._gainNode = Howler.ctx.createGain();
+    this._audioSrc = this._context.createMediaElementSource(this._audio);
+    this._gainNode = this._context.createGain();
 
     this._audioSrc.connect(this._gainNode);
-    this._gainNode.connect(Howler.ctx.destination);
+    this._gainNode.connect(this._context.destination);
 
-    this._gainNode.gain.value = 0; // initially 0 and fade later
+    this._gainNode.gain.setValueAtTime(0, 0); // initially 0 and fade later
 
     this._audio.addEventListener("play", () => (this.playing = true));
     this._audio.addEventListener("pause", () => (this.playing = false));
@@ -54,12 +61,17 @@ export class SpeakerPlayer {
     this._fadeDuration = fadingDurationInSeconds;
   }
 
-  play() {
+  async play() {
     // calling play() while already playing will cause distortion
     if (this.playing) return true;
     try {
-      this._audio.play().then(() => (this.playing = true));
+      if (this._context.state !== "running") {
+        await this._context.resume();
+      }
+      await this._audio.play();
+      this.playing = true;
     } catch (e) {
+      console.error(e);
       return false;
     }
     return true;
@@ -77,25 +89,24 @@ export class SpeakerPlayer {
 
     // assume it's already at the expected volume,
     // because there's always a small difference in decimals as gain.value is not accurate.
-    if (Math.abs(this.volume() - toVolume) < 0.01) return;
+    if (Math.abs(this.volume() - toVolume) < 0.05) return;
 
     if (!this.playing) {
       // schedule to fade when it starts playing.
       this._audio.addEventListener("play", () => this.fade(), { once: true });
+
       return;
     }
 
     if (this._audio.paused) return;
 
-    this._gainNode.gain.cancelScheduledValues(Howler.ctx.currentTime);
+    this._gainNode.gain.cancelScheduledValues(0);
 
-    speakerLog(
-      `${this._id}: ramping volume towards: "${toVolume}" for "${durationInSeconds}s"`
-    );
     this._gainNode.gain.linearRampToValueAtTime(
       toVolume,
-      Howler.ctx.currentTime + durationInSeconds
+      this._context.currentTime + durationInSeconds
     );
+
     setTimeout(() => {
       speakerLog(`${this._id}: volume faded to "${this.volume()}""`);
       this.fading = false;
@@ -113,7 +124,10 @@ export class SpeakerPlayer {
     if (this._audio.paused) return;
     if (this.volume() < 0.05) return this.pause();
 
-    this.fade(0);
+    this._gainNode.gain.linearRampToValueAtTime(
+      0,
+      this._context.currentTime + this._fadeDuration
+    );
     setTimeout(() => {
       // if audio was fading to something else
       // and couldn't managed to fade to 0 in 3 seconds, try again
