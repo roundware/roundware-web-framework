@@ -400,14 +400,14 @@ export class PlaylistAudiotrack {
       makeInitialTrackState(this, this.trackOptions);
       return;
     }
-    this.fadeOut(0.5);
+    this.fadeOut(this.trackOptions.fadeOutLowerBound);
     setTimeout(() => {
       this.clearEvents(); // remove scheduled plays, fades, etc.
       this.audio?.stop(); // make sure audio is stopped to avoid overlapping
       this.listenEvents?.logAssetEnd(this.currentAsset?.id!);
       const newState = makeInitialTrackState(this, this.trackOptions);
       if (this.playlist.playing) this.transition(newState);
-    }, 0.5 * 1000);
+    }, this.trackOptions.fadeOutLowerBound * 1000);
   }
 
   replay() {
