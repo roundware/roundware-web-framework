@@ -120,8 +120,6 @@ export class SpeakerTrack {
 
     // don't exceed values over 1.0
     if (newVolume > 1) newVolume = 1;
-    speakerLog(`${this.speakerId}: coordinates: ${listenerPoint.coordinates}`);
-    speakerLog(`${this.speakerId}: calculated volume: "${newVolume}"`);
     return newVolume;
   }
 
