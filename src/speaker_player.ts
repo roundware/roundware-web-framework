@@ -9,20 +9,22 @@ import { cleanAudioURL, speakerLog } from "./utils";
  * @class SpeakerPlayer
  */
 export class SpeakerPlayer {
-  _prefetch: boolean;
-  _fadeDuration: number;
-  _audio: HTMLAudioElement;
-  _audioSrc: MediaElementAudioSourceNode;
-  _gainNode: GainNode;
+  private _prefetch: boolean;
+  private _fadeDuration: number;
+  private _audio: HTMLAudioElement;
+  private _audioSrc: MediaElementAudioSourceNode;
+  private _gainNode: GainNode;
 
   playing: boolean = false;
   fading: boolean = false;
+  private _id: number;
   /**
    * Creates an instance of SpeakerPlayer.
    * @param {string} url URL of the audio
    * @memberof SpeakerPlayer
    */
   constructor(
+    id: number,
     url: string,
     prefetch: boolean = true,
     fadingDurationInSeconds: number = 3
@@ -30,7 +32,7 @@ export class SpeakerPlayer {
     // activates howler context
     Howler.mute(false);
     Howler.volume(1);
-
+    this._id = id;
     this._audio = new Audio();
     this._audio.crossOrigin = "anonymous";
     this._audio.src = cleanAudioURL(url);
@@ -47,10 +49,6 @@ export class SpeakerPlayer {
 
     this._audio.addEventListener("play", () => (this.playing = true));
     this._audio.addEventListener("pause", () => (this.playing = false));
-
-    LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach((e) =>
-      this._audio.addEventListener(e, () => speakerLog(`'${e}' event`))
-    );
 
     this._prefetch = prefetch;
     this._fadeDuration = fadingDurationInSeconds;
@@ -89,14 +87,17 @@ export class SpeakerPlayer {
 
     if (this._audio.paused) return;
 
-    this._gainNode.gain.cancelScheduledValues(0);
+    this._gainNode.gain.cancelScheduledValues(Howler.ctx.currentTime);
 
+    speakerLog(
+      `${this._id}: ramping volume towards: "${toVolume}" for "${durationInSeconds}s"`
+    );
     this._gainNode.gain.linearRampToValueAtTime(
       toVolume,
       Howler.ctx.currentTime + durationInSeconds
     );
     setTimeout(() => {
-      speakerLog(`volume faded to ${this.volume()}`);
+      speakerLog(`${this._id}: volume faded to "${this.volume()}""`);
       this.fading = false;
     }, durationInSeconds * 1000);
   }

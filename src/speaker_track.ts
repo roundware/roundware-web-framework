@@ -72,7 +72,7 @@ export class SpeakerTrack {
     this.attenuationDistanceKm = attenuationDistance / 1000;
     this.uri = uri;
 
-    this.player = new SpeakerPlayer(uri);
+    this.player = new SpeakerPlayer(speakerId, uri);
     this.listenerPoint = listenerPoint.geometry;
 
     this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
@@ -120,6 +120,8 @@ export class SpeakerTrack {
 
     // don't exceed values over 1.0
     if (newVolume > 1) newVolume = 1;
+    speakerLog(`${this.speakerId}: coordinates: ${listenerPoint.coordinates}`);
+    speakerLog(`${this.speakerId}: calculated volume: "${newVolume}"`);
     return newVolume;
   }
 
