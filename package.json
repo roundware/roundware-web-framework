@@ -66,7 +66,8 @@
     "@turf/point-to-line-distance": "^6.2.0",
     "core-js": "^3.17.3",
     "howler": "^2.2.3",
-    "loglevel": "^1.7.1"
+    "loglevel": "^1.7.1",
+    "standardized-audio-context": "^25.3.9"
   },
   "np": {
     "anyBranch": true,
