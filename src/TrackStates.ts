@@ -66,7 +66,9 @@ export class LoadingState implements ICommonStateProperties {
     this.track.transition(newState);
   }
 
-  pause() {}
+  pause() {
+    this.track.audio?.off("seek");
+  }
   finish() {}
   skip() {}
   replay() {}
@@ -105,8 +107,7 @@ export class TimedTrackState implements ICommonStateProperties {
       track: { trackId },
     } = this;
 
-    if (timerId || timeRemainingMs! > 1) {
-      debugLogger("State already active, next state in " + timeRemainingMs);
+    if (timerId) {
       return; // state is already active/playing
     }
     if (timeRemainingMs) {
@@ -251,6 +252,7 @@ export class FadingInState
 
   pause() {
     super.pause();
+    this.track.audio?.off("play");
     this.track.pauseAudio();
   }
 
