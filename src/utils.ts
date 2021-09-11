@@ -2,7 +2,7 @@
 
 const { point } = require("@turf/helpers");
 import { Point, Feature } from "@turf/helpers";
-
+import { AudioContext, IAudioContext } from "standardized-audio-context";
 const MATCHES_URI_SCHEME = new RegExp(/^https?:\/\//i);
 const MATCHES_WAV_FILE = new RegExp(/\.wav$/i);
 
@@ -76,7 +76,7 @@ function unlockAudioContext(
   UNLOCK_AUDIO_EVENTS.forEach((e) => body.addEventListener(e, unlock, false));
 }
 
-export function buildAudioContext(windowScope: Window): AudioContext {
+export function buildAudioContext(windowScope: Window): IAudioContext {
   const audioContext = new AudioContext();
   const {
     document: { body },
