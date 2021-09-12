@@ -168,17 +168,17 @@ export class PlaylistAudiotrack {
 
     const audioElement = new Audio();
     audioElement.crossOrigin = "anonymous";
-    audioElement.preload = "auto";
     audioElement.loop = false;
 
     const audioSrc = audioContext.createMediaElementSource(audioElement);
-    const gainNode = audioContext.createGain();
-    audioSrc.connect(gainNode);
-    gainNode.connect(audioContext.destination);
 
+    this.gainNode = audioContext.createGain();
     const panNode = audioContext.createStereoPanner();
-    audioSrc.connect(panNode);
-    panNode.connect(audioContext.destination);
+
+    audioSrc
+      .connect(panNode)
+      .connect(this.gainNode)
+      .connect(audioContext.destination);
 
     LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach((name) =>
       audioElement.addEventListener(name, () =>
@@ -211,8 +211,7 @@ export class PlaylistAudiotrack {
 
     this.audioContext = audioContext;
     this.audioElement = audioElement;
-    this.gainNode = gainNode;
-    console.log(this.gainNode);
+
     this.trackOptions = trackOptions;
     this.mixParams = { timedAssetPriority: audioData.timed_asset_priority };
 
@@ -272,7 +271,6 @@ export class PlaylistAudiotrack {
 
     try {
       this.setZeroGain();
-      this.playAudio();
       this.rampGain(finalVolume, fadeInDurationSeconds);
       return true;
     } catch (err) {
@@ -316,8 +314,11 @@ export class PlaylistAudiotrack {
     );
 
     try {
-      this.holdGain();
-      this.gainNode.gain.linearRampToValueAtTime(
+      this.gainNode.gain.setValueAtTime(
+        this.gainNode.gain.value,
+        this.audioContext.currentTime
+      );
+      this.gainNode.gain[rampMethod](
         finalVolume,
         this.audioContext.currentTime + durationSeconds
       );
@@ -355,10 +356,8 @@ export class PlaylistAudiotrack {
       if (typeof file !== "string") {
         return null;
       }
-      audioElement.crossOrigin = "anonymous";
-      audioElement.preload = "auto";
       audioElement.src = file;
-      audioElement.currentTime = start_time;
+      audioElement.currentTime = start_time || 0.01;
       this.audioElement = audioElement;
 
       return newAsset;
