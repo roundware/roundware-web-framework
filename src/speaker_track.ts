@@ -10,6 +10,7 @@ import {
 import lineToPolygon from "@turf/line-to-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
 import pointToLineDistance from "@turf/point-to-line-distance";
+import { IAudioContext } from "standardized-audio-context";
 import { SpeakerPlayer } from "./speaker_player";
 import { ISpeakerData } from "./types/speaker";
 import { speakerLog } from "./utils";
@@ -45,10 +46,12 @@ export class SpeakerTrack {
   player: SpeakerPlayer;
 
   constructor({
+    audioContext,
     listenerPoint,
     prefetchAudio,
     data,
   }: {
+    audioContext: IAudioContext;
     listenerPoint: Feature<Point>;
     prefetchAudio: boolean;
     data: ISpeakerData;
@@ -72,7 +75,7 @@ export class SpeakerTrack {
     this.attenuationDistanceKm = attenuationDistance / 1000;
     this.uri = uri;
 
-    this.player = new SpeakerPlayer(speakerId, uri);
+    this.player = new SpeakerPlayer(audioContext, speakerId, uri);
     this.listenerPoint = listenerPoint.geometry;
 
     this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
