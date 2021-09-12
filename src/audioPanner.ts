@@ -23,10 +23,10 @@ export class AudioPanner {
     panNode: IStereoPannerNode<IAudioContext>,
     audioContext: IAudioContext
   ) {
-    this.minpanpos = -1;
-    this.maxpanpos = 1;
-    this.minpanduration = 1;
-    this.maxpanduration = 3;
+    this.minpanpos = minpanpos;
+    this.maxpanpos = maxpanpos;
+    this.minpanduration = minpanduration;
+    this.maxpanduration = maxpanduration;
     this.panNode = panNode;
     this.audioContext = audioContext;
     this.updateParams();
