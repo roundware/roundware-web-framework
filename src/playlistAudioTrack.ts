@@ -289,11 +289,7 @@ export class PlaylistAudiotrack {
 
       this.audio.play();
       this.audio.once("play", () => {
-        this.audio!.fade(
-          this.audio?.volume() || 0,
-          finalVolume,
-          fadeInDurationSeconds * 1000
-        );
+        this.fadeIn(fadeInDurationSeconds);
       });
       return true;
     } catch (err) {
@@ -301,6 +297,8 @@ export class PlaylistAudiotrack {
       return false;
     }
   }
+
+  _fadingOut: boolean = false;
 
   /**
    * Schedules a Fade out and returns true if success
@@ -310,22 +308,26 @@ export class PlaylistAudiotrack {
    * @memberof PlaylistAudiotrack
    */
   fadeOut(fadeOutDurationSeconds: number): boolean {
+    if (this._fadingOut) return false;
+    if (!this.audio) return false;
+
     debugLogger(
       `Fading out from: ${this.audio?.volume()} for ${fadeOutDurationSeconds}`
     );
-    if (!this.audio) return false;
+
     if (!this.audio?.playing()) {
       this.audio?.play();
       this.audio?.once("play", () => {
-        this.audio?.fade(
-          this.audio?.volume(),
-          0,
-          fadeOutDurationSeconds * 1000
-        );
+        this.fadeOut(fadeOutDurationSeconds);
       });
       return true;
     }
-    this.audio?.fade(this.audio?.volume(), 0, fadeOutDurationSeconds * 1000);
+    this._fadingOut = true;
+    this.audio?.fade(this.audio.volume(), 0, fadeOutDurationSeconds * 1000);
+    setTimeout(() => {
+      this._fadingOut = false;
+    }, fadeOutDurationSeconds * 1000);
+
     return true;
   }
 
