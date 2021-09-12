@@ -27,15 +27,13 @@ export class SpeakerPlayer {
    * @memberof SpeakerPlayer
    */
   constructor(
+    audioContext: IAudioContext,
     id: number,
     url: string,
     prefetch: boolean = true,
     fadingDurationInSeconds: number = 3
   ) {
-    this._context = buildAudioContext(window);
-    this._context.onstatechange = () => {
-      // alert(this._context.state);
-    };
+    this._context = audioContext;
     this._id = id;
     this._audio = new Audio();
     this._audio.crossOrigin = "anonymous";
