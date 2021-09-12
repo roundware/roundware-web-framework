@@ -32,7 +32,6 @@ export class LoadingState implements ICommonStateProperties {
   trackOptions: TrackOptions;
   asset: IDecoratedAsset | null;
   constructor(track: PlaylistAudiotrack, trackOptions: TrackOptions) {
-    track.clearEvents(); // clean any scheduled tasks
     this.track = track;
     this.trackOptions = trackOptions;
     this.asset = null;
@@ -54,9 +53,17 @@ export class LoadingState implements ICommonStateProperties {
 
       // wait for audio to load and seek to start time before playing
 
-      this.track.audio?.once("seek", () => {
+      if (this.track.audioElement.readyState >= 1) {
         this.track.transition(newState);
-      });
+      }
+
+      this.track.pauseAudio();
+      this.track.audioElement.addEventListener(
+        "playing",
+        () => this.track.playlist.playing && this.track.transition(newState),
+        { once: true }
+      );
+      this.track.playAudio();
 
       return;
     } else {
@@ -66,9 +73,7 @@ export class LoadingState implements ICommonStateProperties {
     this.track.transition(newState);
   }
 
-  pause() {
-    this.track.audio?.off("seek");
-  }
+  pause() {}
   finish() {}
   skip() {}
   replay() {}
@@ -157,7 +162,6 @@ export class TimedTrackState implements ICommonStateProperties {
   finish() {
     this.clearTimer();
     delete this.timeRemainingMs;
-    this.track.clearEvents();
   }
 
   setNextStateTimer(timeMs: number) {
@@ -236,23 +240,16 @@ export class FadingInState
     let {
       track,
       assetEnvelope: { fadeInDuration },
-      trackOptions: { fadeInLowerBound, fadeInUpperBound },
     } = this;
 
-    //if (!fadeInSecondsRemaining) return;
-
-    const success = track.fadeIn(fadeInDuration);
+    const fadeInSecondsRemaining = super.play(fadeInDuration);
+    if (!fadeInSecondsRemaining) return;
+    const success = track.fadeIn(fadeInSecondsRemaining);
     if (!success) return this.setLoadingState();
-    this.track.audio?.once("play", () => {
-      this.track.listenEvents?.logAssetStart(this.assetEnvelope.assetId);
-      super.play(fadeInDuration);
-    });
-    // player failed to play audio
   }
 
   pause() {
     super.pause();
-    this.track.audio?.off("play");
     this.track.pauseAudio();
   }
 
