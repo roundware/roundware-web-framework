@@ -51,13 +51,8 @@ export class LoadingState implements ICommonStateProperties {
       const assetEnvelope = new AssetEnvelope(trackOptions, asset);
       newState = new FadingInState(track, trackOptions, { assetEnvelope });
 
-      // wait for audio to load and seek to start time before playing
-
-      if (this.track.audioElement.readyState >= 1) {
-        this.track.transition(newState);
-      }
-
       this.track.pauseAudio();
+      this.track.setZeroGain();
       this.track.audioElement.addEventListener(
         "playing",
         () => this.track.playlist.playing && this.track.transition(newState),
