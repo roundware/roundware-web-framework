@@ -1,10 +1,8 @@
-import { Howler } from "howler";
 import {
   IAudioContext,
   IGainNode,
   IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
-import { LOGGABLE_AUDIO_ELEMENT_EVENTS } from "./playlistAudioTrack";
 import { buildAudioContext, cleanAudioURL, speakerLog } from "./utils";
 
 /**
