@@ -119,6 +119,7 @@ export class Mixer {
    */
   initContext() {
     if (!this.playlist) {
+      const audioContext = buildAudioContext(this._windowScope);
       if (!this.mixParams.listenerPoint)
         throw new Error(`listenerPoint was missing in mixer!`);
       const listenerPoint = this.mixParams.listenerPoint;
@@ -141,12 +142,14 @@ export class Mixer {
         audioTracks,
         listenerPoint,
         assetPool: this.assetPool,
+        audioContext,
         windowScope: this._windowScope,
       });
 
       this.speakerTracks = speakers.map(
         (speakerData) =>
           new SpeakerTrack({
+            audioContext,
             listenerPoint,
             prefetchAudio: this._prefetchSpeakerAudio,
             data: speakerData,
