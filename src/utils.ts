@@ -82,7 +82,8 @@ export function buildAudioContext(windowScope: Window): IAudioContext {
     document: { body },
   } = windowScope;
   unlockAudioContext(body, audioContext);
-
+  audioContext.onstatechange = () =>
+    console.info(`[Audio Context]: ${audioContext.state}`);
   return audioContext;
 }
 
