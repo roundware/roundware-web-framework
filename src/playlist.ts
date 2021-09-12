@@ -7,6 +7,7 @@ import { IMixParams, ITrackIdMap } from "./types";
 import { IDecoratedAsset } from "./types/asset";
 import { Roundware } from "./roundware";
 import { AssetPool } from "./assetPool";
+import { IAudioContext } from "standardized-audio-context";
 
 export class Playlist {
   listenerPoint: Feature<Point>;
@@ -26,6 +27,7 @@ export class Playlist {
     listenerPoint,
     windowScope,
     assetPool,
+    audioContext,
     ...playlistTrackOptions
   }: {
     client: Roundware;
@@ -33,6 +35,7 @@ export class Playlist {
     listenerPoint: Feature<Point>;
     windowScope: Window;
     assetPool: AssetPool;
+    audioContext: IAudioContext;
   }) {
     this.listenerPoint = listenerPoint;
     this.playingTracks = {};
@@ -59,6 +62,7 @@ export class Playlist {
 
     audioTracks.forEach((audioData: IAudioTrackData) => {
       const track = new PlaylistAudiotrack({
+        audioContext,
         audioData,
         windowScope,
         playlist: this,
