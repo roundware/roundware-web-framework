@@ -16,6 +16,7 @@ Codebase has been converted to TypeScript!
 - [Audio Panning]() 
   Recordings will now pan around with given `minpanpos`, `maxpanpos`, `minpanduration`. `maxpanduration`
 - [Watch & Build]() `npm run watch` will watch and build the source which makes it easier to test as a dependency in another project.
+- Initial test suite using Jest, and Github Actions for CodeCov
 
  
 ### Changed
