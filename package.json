@@ -20,7 +20,11 @@
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
     "devstart": "NODE_ENV=development webpack server",
     "deploy": "np",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "watch:babel": "babel --watch src --out-dir dist --extensions '.ts'",
+    "watch:declarations": "tsc --declaration --outDir dist/ --emitDeclarationOnly --watch",
+    "watch:webpack": "webpack --mode=production --output-filename roundware.umd.js --watch",
+    "watch": "npm-run-all --parallel watch:*"
   },
   "watch": {
     "test": "{src,test}/*.js"
