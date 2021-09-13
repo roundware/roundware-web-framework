@@ -1,12 +1,13 @@
 // local development
 // var roundwareServerUrl = "http://localhost:8888/api/2";
 // deployment
+
 var roundwareServerUrl = "https://prod.roundware.com/api/2";
 var roundwareProjectId = 10; // corresponds to a project setup in the Roundware server developer seed script
 
 var roundware;
 var streamPlayer, audioSource, pauseButton, playButton, killButton,
-    skipButton, replayButton, tagIds, recordButton, setBrowserLocation;
+  skipButton, replayButton, tagIds, recordButton, setBrowserLocation;
 var assetMarkers = [];
 var listenMap, speakMap;
 var firstplay = false; // ultimately will be set to true initially to handle iOS playback properly
@@ -17,11 +18,11 @@ var listener_circle_max, listener_circle_min;
 
 function startListening(streamURL) {
   console.info("Loading " + streamURL);
-  audioSource.prop("src",streamURL);
+  audioSource.prop("src", streamURL);
   streamPlayer.trigger("load");
-  listenLatitude.prop("disabled",false);
-  listenLongitude.prop("disabled",false);
-  updateButton.prop("disabled",false);
+  listenLatitude.prop("disabled", false);
+  listenLongitude.prop("disabled", false);
+  updateButton.prop("disabled", false);
 }
 
 function play(streamURL) {
@@ -29,11 +30,11 @@ function play(streamURL) {
     then(function handleListening() {
       console.info("Playing audio");
       streamPlayer.trigger("play");
-      pauseButton.prop("disabled",false);
-      playButton.prop("disabled",true);
-      killButton.prop("disabled",false);
-      replayButton.prop("disabled",false);
-      skipButton.prop("disabled",false);
+      pauseButton.prop("disabled", false);
+      playButton.prop("disabled", true);
+      killButton.prop("disabled", false);
+      replayButton.prop("disabled", false);
+      skipButton.prop("disabled", false);
     }).
     catch(handleError);
 }
@@ -41,21 +42,21 @@ function play(streamURL) {
 function pause() {
   console.info("pausing");
   streamPlayer.trigger("pause");
-  pauseButton.prop("disabled",true);
-  playButton.prop("disabled",false);
-  replayButton.prop("disabled",true);
-  skipButton.prop("disabled",true);
+  pauseButton.prop("disabled", true);
+  playButton.prop("disabled", false);
+  replayButton.prop("disabled", true);
+  skipButton.prop("disabled", true);
   roundware.pause();
 }
 
 function kill() {
   console.info("killing");
   streamPlayer.trigger("pause");
-  pauseButton.prop("disabled",true);
-  playButton.prop("disabled",false);
-  killButton.prop("disabled",true);
-  replayButton.prop("disabled",true);
-  skipButton.prop("disabled",true);
+  pauseButton.prop("disabled", true);
+  playButton.prop("disabled", false);
+  killButton.prop("disabled", true);
+  replayButton.prop("disabled", true);
+  skipButton.prop("disabled", true);
   roundware.kill();
 }
 
@@ -69,10 +70,10 @@ function skip() {
   roundware.skip();
 }
 
-function update(data={}) {
+function update(data = {}) {
   console.info("updating stream");
   let updateData = {};
-  let listenTagIds = $("#uiListenDisplay input:checked").map(function() {
+  let listenTagIds = $("#uiListenDisplay input:checked").map(function () {
     return this.value;
   }).get().join();
 
@@ -80,7 +81,7 @@ function update(data={}) {
   updateData.longitude = listenLongitude.val();
   updateData.tagIds = listenTagIds;
   // handle any additional data params
-  Object.keys(data).forEach(function(key) {
+  Object.keys(data).forEach(function (key) {
     updateData[key] = data[key];
   });
   console.log(updateData);
@@ -90,7 +91,7 @@ function update(data={}) {
 function ready() {
   console.info(`Connected to Roundware Server. Ready to play.`);
 
-  playButton.prop("disabled",false);
+  playButton.prop("disabled", false);
   playButton.click(play);
   pauseButton.click(pause);
   killButton.click(kill);
@@ -105,7 +106,7 @@ function ready() {
 
   // setup range listening toggle listener
   $('#isrange input:checkbox').change(
-    function() {
+    function () {
       if ($(this).is(':checked')) {
         add_listener_range();
       } else {
@@ -120,12 +121,12 @@ function ready() {
 function displayListenTags() {
   console.log(roundware._uiConfig.listen);
   let listenUi = roundware._uiConfig.listen;
-  $.each(listenUi, function(index,element) {
+  $.each(listenUi, function (index, element) {
     console.log(index + ": " + element.header_display_text);
     let str = "";
     str += `<h4>${element.header_display_text}</h4>`;
     str += "<form>";
-    $.each(element.display_items, function(index,element) {
+    $.each(element.display_items, function (index, element) {
       let checked = "";
       if (element.default_state) {
         checked = "checked";
@@ -138,7 +139,7 @@ function displayListenTags() {
 
   // setup tag change listeners
   $('#uiListenDisplay input:checkbox').change(
-    function() {
+    function () {
       update();
       showHideMarkers();
     });
@@ -147,12 +148,12 @@ function displayListenTags() {
 function displaySpeakTags() {
   console.log(roundware._uiConfig.speak);
   let listenUi = roundware._uiConfig.speak;
-  $.each(listenUi, function(index,element) {
+  $.each(listenUi, function (index, element) {
     console.log(index + ": " + element.header_display_text);
     let str = "";
     str += `<h4>${element.header_display_text}</h4>`;
     str += "<form>";
-    $.each(element.display_items, function(index,element) {
+    $.each(element.display_items, function (index, element) {
       let checked = "";
       if (element.default_state) {
         checked = "checked";
@@ -165,8 +166,8 @@ function displaySpeakTags() {
 
   // setup tag change listeners
   $('#uiSpeakDisplay input:checkbox').change(
-    function() {
-      let speakTagIds = $("#uiSpeakDisplay input:checked").map(function() {
+    function () {
+      let speakTagIds = $("#uiSpeakDisplay input:checked").map(function () {
         return this.value;
       }).get().join();
       // update();
@@ -194,7 +195,7 @@ function mapSpeakers(map) {
         "name": "inner"
       }
     });
-    map.data.setStyle(function(feature) {
+    map.data.setStyle(function (feature) {
       if (feature.getProperty('name') == "outer") {
         return {
           fillColor: '#aaaaaa',
@@ -226,38 +227,38 @@ function mapAssets(map) {
     // console.log('tag_ids = ' + tag_ids);
 
     var marker = new google.maps.Marker({
-    position: point,
-    map: map,
-    icon: marker_img
+      position: point,
+      map: map,
+      icon: marker_img
     });
     marker.id = item.id;
     marker.rw_tags = [];
     if (item.tag_ids) {
-    marker.rw_tags = item.tag_ids;
+      marker.rw_tags = item.tag_ids;
     }
     // display asset shape if exists
     if (item.shape) {
-    console.log("map the asset's shape");
-    marker.shape = new google.maps.Data();
-    marker.shape.addGeoJson({
-      "type": "Feature",
-      "geometry": item.shape,
-      "properties": {
-        "asset_id": item.id,
-        "name": "assetRange"
-      }
-    });
-    marker.shape.setStyle(function(feature) {
-      if (feature.getProperty('name') == "assetRange") {
-        return {
-          fillColor: '#6292CF',
-          fillOpacity: .25,
-          strokeWeight: 1,
-          strokeOpacity: .8,
-          strokeColor: '#6292CF'
-        };
-      }
-    });
+      console.log("map the asset's shape");
+      marker.shape = new google.maps.Data();
+      marker.shape.addGeoJson({
+        "type": "Feature",
+        "geometry": item.shape,
+        "properties": {
+          "asset_id": item.id,
+          "name": "assetRange"
+        }
+      });
+      marker.shape.setStyle(function (feature) {
+        if (feature.getProperty('name') == "assetRange") {
+          return {
+            fillColor: '#6292CF',
+            fillOpacity: .25,
+            strokeWeight: 1,
+            strokeOpacity: .8,
+            strokeColor: '#6292CF'
+          };
+        }
+      });
     }
     // if no asset shape, display default circle range
     else {
@@ -272,26 +273,26 @@ function mapAssets(map) {
         radius: roundware._project.recordingRadius
       };
       marker.circle = new google.maps.Circle(circle);
-      }
-      assetMarkers.push(marker);
-    });
+    }
+    assetMarkers.push(marker);
+  });
 }
 
 function showHideMarkers() {
-  $.each(assetMarkers, function(i, item) {
+  $.each(assetMarkers, function (i, item) {
     // if any item tags are not included in selected tags, hide marker, otherwise show it
-    let selectedListenTagIds = $("#uiListenDisplay input:checked").map(function() {
+    let selectedListenTagIds = $("#uiListenDisplay input:checked").map(function () {
       return Number(this.value);
     }).get();
-	var is_visible = true;
-	$.each(item.rw_tags, function(j, tag_id) {
+    var is_visible = true;
+    $.each(item.rw_tags, function (j, tag_id) {
       // if tag_id isn't selected, set to false and return
       if (!(selectedListenTagIds.includes(tag_id))) {
         is_visible = false;
-	    return;
-	  }
-	});
-	item.setVisible(is_visible);
+        return;
+      }
+    });
+    item.setVisible(is_visible);
     if (item.circle) {
       item.circle.setVisible(is_visible);
     }
@@ -310,66 +311,70 @@ function showHideMarkers() {
  * every time either circle is edited, a PATCH streams/ is sent with lat/lon and listener_range_min/max
  */
 function add_listener_range() {
-    use_listener_range = true;
-    var mapCenter = new google.maps.LatLng(listenLatitude.val(),
-                                           listenLongitude.val());
-    listener_circle_max = new google.maps.Circle({
-        strokeColor: '#000000',
-        strokeOpacity: 0.4,
-        strokeWeight: 1,
-        fillColor: '#000000',
-        fillOpacity: 0.08,
-        map: listenMap,
-        center: mapCenter,
-        radius: roundware._project.recordingRadius * 100,
-        editable: true,
-        draggable: false,
-        geodesic: true
-    });
-    listener_circle_min = new google.maps.Circle({
-        strokeColor: '#000000',
-        strokeOpacity: 0.4,
-        strokeWeight: 1,
-        fillColor: '#000000',
-        fillOpacity: 0,
-        map: listenMap,
-        center: mapCenter,
-        radius: roundware._project.recordingRadius * 50,
-        editable: true,
-        draggable: false,
-        geodesic: true
-    });
-    listenMap.setCenter(mapCenter);
+  use_listener_range = true;
+  var mapCenter = new google.maps.LatLng(listenLatitude.val(),
+    listenLongitude.val());
+  listener_circle_max = new google.maps.Circle({
+    strokeColor: '#000000',
+    strokeOpacity: 0.4,
+    strokeWeight: 1,
+    fillColor: '#000000',
+    fillOpacity: 0.08,
+    map: listenMap,
+    center: mapCenter,
+    radius: roundware._project.recordingRadius * 100,
+    editable: true,
+    draggable: false,
+    geodesic: true
+  });
+  listener_circle_min = new google.maps.Circle({
+    strokeColor: '#000000',
+    strokeOpacity: 0.4,
+    strokeWeight: 1,
+    fillColor: '#000000',
+    fillOpacity: 0,
+    map: listenMap,
+    center: mapCenter,
+    radius: roundware._project.recordingRadius * 50,
+    editable: true,
+    draggable: false,
+    geodesic: true
+  });
+  listenMap.setCenter(mapCenter);
 
-    google.maps.event.addListener(listener_circle_max, "radius_changed", function (event) {
-        lr_max = Math.round(listener_circle_max.getRadius());
-        lr_min = Math.round(listener_circle_min.getRadius());
-        // ensure listener_range_max isn't smaller than listener_range_min
-        if (lr_max < lr_min) {
-            listener_circle_max.setRadius(lr_min);
-            console.log("maximum range can't be smaller than minimum range!")
-        }
-        if (!firstplay) {
-          var data = { "listener_range_max": lr_max,
-                       "listener_range_min": lr_min }
-          update(data);
-        }
-        console.log("max range = " + lr_max);
-    });
-    google.maps.event.addListener(listener_circle_min, "radius_changed", function (event) {
-        lr_min = Math.round(listener_circle_min.getRadius());
-        lr_max = Math.round(listener_circle_max.getRadius());
-        // ensure listener_range_min isn't larger than listener_range_max
-        if (lr_min > lr_max) {
-            listener_circle_min.setRadius(lr_max);
-            console.log("minimum range can't be bigger than maximum range!")
-        }
-        if (!firstplay) {
-          var data = { "listener_range_max": lr_max,
-                       "listener_range_min": lr_min }
-          update(data);
-        }
-    });
+  google.maps.event.addListener(listener_circle_max, "radius_changed", function (event) {
+    lr_max = Math.round(listener_circle_max.getRadius());
+    lr_min = Math.round(listener_circle_min.getRadius());
+    // ensure listener_range_max isn't smaller than listener_range_min
+    if (lr_max < lr_min) {
+      listener_circle_max.setRadius(lr_min);
+      console.log("maximum range can't be smaller than minimum range!")
+    }
+    if (!firstplay) {
+      var data = {
+        "listener_range_max": lr_max,
+        "listener_range_min": lr_min
+      }
+      update(data);
+    }
+    console.log("max range = " + lr_max);
+  });
+  google.maps.event.addListener(listener_circle_min, "radius_changed", function (event) {
+    lr_min = Math.round(listener_circle_min.getRadius());
+    lr_max = Math.round(listener_circle_max.getRadius());
+    // ensure listener_range_min isn't larger than listener_range_max
+    if (lr_min > lr_max) {
+      listener_circle_min.setRadius(lr_max);
+      console.log("minimum range can't be bigger than maximum range!")
+    }
+    if (!firstplay) {
+      var data = {
+        "listener_range_max": lr_max,
+        "listener_range_min": lr_min
+      }
+      update(data);
+    }
+  });
 }
 
 function remove_listener_range() {
@@ -383,33 +388,35 @@ function handleError(userErrMsg) {
 }
 
 $(function startApp() {
-  roundware = new Roundware(window,{
+  roundware = new Roundware(window, {
     serverUrl: roundwareServerUrl,
     projectId: roundwareProjectId,
     geoListenEnabled: true,
     // apply any speaker filters here
-    speakerFilters: {"activeyn": true},
+    speakerFilters: { "activeyn": true },
     // apply any asset filters here
-    assetFilters: {"submitted": true,
-                   "media_type": "audio"}
+    assetFilters: {
+      "submitted": true,
+      "media_type": "audio"
+    }
   });
 
   // Listen elements
-  streamPlayer    = $("#streamplayer");
-  audioSource     = $("#audiosource");
-  pauseButton     = $("#pause");
-  playButton      = $("#play");
-  killButton      = $("#kill");
-  replayButton    = $("#replay");
-  skipButton      = $("#skip");
-  listenLatitude  = $("#listenLatitude");
+  streamPlayer = $("#streamplayer");
+  audioSource = $("#audiosource");
+  pauseButton = $("#pause");
+  playButton = $("#play");
+  killButton = $("#kill");
+  replayButton = $("#replay");
+  skipButton = $("#skip");
+  listenLatitude = $("#listenLatitude");
   listenLongitude = $("#listenLongitude");
-  updateButton    = $("#update");
+  updateButton = $("#update");
 
   // Speak elements
   setBrowserLocation = $("#setBrowserLocation");
-  speakLatitude      = $("#speakLatitude");
-  speakLongitude     = $("#speakLongitude");
+  speakLatitude = $("#speakLatitude");
+  speakLongitude = $("#speakLongitude");
   // recordButton       = $("#record");
   // startRecordButton  = $("#startRecordButton");
 
@@ -417,7 +424,7 @@ $(function startApp() {
     then(ready).
     catch(handleError);
 
-  document.getElementById("initRecorder").addEventListener( "click", function(){
+  document.getElementById("initRecorder").addEventListener("click", function () {
     initRecording();
     startRecordButton.disabled = false;
     initRecorder.disabled = true;
@@ -428,8 +435,10 @@ $(function startApp() {
 // Google Maps
 
 function setupListenMap() {
-  var initialLocation = {lat: roundware._project.location.latitude,
-                         lng: roundware._project.location.longitude};
+  var initialLocation = {
+    lat: roundware._project.location.latitude,
+    lng: roundware._project.location.longitude
+  };
   listenMap = new google.maps.Map(document.getElementById('listenMap'), {
     zoom: 16,
     center: initialLocation
@@ -448,9 +457,11 @@ function setupListenMap() {
     console.log("geolocation available");
 
     // on initial geoposition
-    navigator.geolocation.getCurrentPosition(function(position) {
-      initialLocation = {lat: position.coords.latitude,
-                         lng: position.coords.longitude};
+    navigator.geolocation.getCurrentPosition(function (position) {
+      initialLocation = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      };
       console.log(`initial browser determined position = ${initialLocation}`);
       console.log(initialLocation);
       var data = {};
@@ -458,10 +469,10 @@ function setupListenMap() {
     });
 
     // on geoposition update
-    var watchID = navigator.geolocation.watchPosition(function(position) {
+    var watchID = navigator.geolocation.watchPosition(function (position) {
       var newPosition = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
       // // update listen map
-      listenMap.setCenter({lat:position.coords.latitude, lng:position.coords.longitude});
+      listenMap.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
       listener.setPosition(newPosition);
       document.getElementById("listenLatitude").value = listener.getPosition().lat();
       document.getElementById("listenLongitude").value = listener.getPosition().lng();
@@ -470,18 +481,20 @@ function setupListenMap() {
     });
   }
 
-  google.maps.event.addListener(listener, "dragend", function(event) {
+  google.maps.event.addListener(listener, "dragend", function (event) {
     document.getElementById("listenLatitude").value = listener.getPosition().lat();
     document.getElementById("listenLongitude").value = listener.getPosition().lng();
     listenMap.setCenter(listener.getPosition());
     var data = {};
     if (use_listener_range === true) {
       listener_circle_max.setCenter(new google.maps.LatLng(listener.getPosition().lat(),
-                                                           listener.getPosition().lng()));
+        listener.getPosition().lng()));
       listener_circle_min.setCenter(new google.maps.LatLng(listener.getPosition().lat(),
-                                                           listener.getPosition().lng()));
-      data = { "listener_range_max": Math.round(listener_circle_max.getRadius()),
-               "listener_range_min": Math.round(listener_circle_min.getRadius())}
+        listener.getPosition().lng()));
+      data = {
+        "listener_range_max": Math.round(listener_circle_max.getRadius()),
+        "listener_range_min": Math.round(listener_circle_min.getRadius())
+      }
     }
     update(data);
   });
@@ -492,31 +505,35 @@ function setupListenMap() {
 
 function setupSpeakMap() {
   // TODO: change to location sensed by browser
-  var initialLocation = {lat: roundware._project.location.latitude,
-                         lng: roundware._project.location.longitude};
-  if (!navigator.geolocation){
+  var initialLocation = {
+    lat: roundware._project.location.latitude,
+    lng: roundware._project.location.longitude
+  };
+  if (!navigator.geolocation) {
     console.log("no geolocation available for contributing");
   }
   else {
     console.log("geolocation available");
 
     // on initial geoposition
-    navigator.geolocation.getCurrentPosition(function(position) {
-      initialLocation = {lat: position.coords.latitude,
-                         lng: position.coords.longitude};
+    navigator.geolocation.getCurrentPosition(function (position) {
+      initialLocation = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      };
       console.log(`initial browser determined position = ${initialLocation}`);
       console.log(initialLocation);
-      speakMap.setCenter({lat:position.coords.latitude, lng:position.coords.longitude});
+      speakMap.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
       contributor.setPosition(initialLocation);
       document.getElementById("speakLatitude").value = contributor.getPosition().lat();
       document.getElementById("speakLongitude").value = contributor.getPosition().lng();
     });
 
     // on geoposition update
-    var watchID = navigator.geolocation.watchPosition(function(position) {
+    var watchID = navigator.geolocation.watchPosition(function (position) {
       var newPosition = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
       // update speak map
-      speakMap.setCenter({lat:position.coords.latitude, lng:position.coords.longitude});
+      speakMap.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
       contributor.setPosition(newPosition);
       document.getElementById("speakLatitude").value = contributor.getPosition().lat();
       document.getElementById("speakLongitude").value = contributor.getPosition().lng();
@@ -532,19 +549,19 @@ function setupSpeakMap() {
     map: speakMap,
     draggable: true
   });
-  google.maps.event.addListener(contributor, "dragend", function(event) {
+  google.maps.event.addListener(contributor, "dragend", function (event) {
     document.getElementById("speakLatitude").value = contributor.getPosition().lat();
     document.getElementById("speakLongitude").value = contributor.getPosition().lng();
     speakMap.setCenter(contributor.getPosition());
   });
 
   // element.addEventListener("click", function(){ alert("Hello World!"); });
-  document.getElementById("setBrowserLocation").addEventListener( "click", function(){
+  document.getElementById("setBrowserLocation").addEventListener("click", function () {
     console.log("setting browser location in map");
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(function(position) {
+      navigator.geolocation.getCurrentPosition(function (position) {
         console.log("current browser position determined");
-        speakMap.setCenter({lat:position.coords.latitude, lng:position.coords.longitude});
+        speakMap.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
         var newPosition = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
         contributor.setPosition(newPosition);
         document.getElementById("speakLatitude").value = contributor.getPosition().lat();

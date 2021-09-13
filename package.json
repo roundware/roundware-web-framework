@@ -5,23 +5,26 @@
     "type": "git",
     "url": "git+https://github.com/roundware/roundware-web-framework.git"
   },
-  "version": "0.11.0-alpha.30",
+  "version": "0.12.0",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "main": "dist/roundware.js",
   "files": [
     "dist"
   ],
+  "types": "dist/roundware.d.ts",
   "scripts": {
-    "test": "babel-node ./node_modules/jasmine/bin/jasmine.js",
-    "prebuild": "rimraf dist",
+    "test": "jest",
     "build": "NODE_ENV=production npm-run-all --parallel build:*",
-    "build:main": "babel --copy-files --out-dir dist src",
+    "build:main": "babel src --out-dir dist --extensions '.ts' --copy-files src/types/*.d.ts && tsc --declaration --outDir dist/ --emitDeclarationOnly",
     "build:umd": "webpack --mode=production --output-filename roundware.umd.js",
-    "build:umd.min": "webpack -p --output-filename roundware.umd.min.js",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
-    "devstart": "NODE_ENV=development webpack-dev-server",
+    "devstart": "NODE_ENV=development webpack server",
     "deploy": "np",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "watch:babel": "babel --watch src --out-dir dist --extensions '.ts'",
+    "watch:declarations": "tsc --declaration --outDir dist/ --emitDeclarationOnly --watch",
+    "watch:webpack": "webpack --mode=production --output-filename roundware.umd.js --watch",
+    "watch": "npm-run-all --parallel watch:*"
   },
   "watch": {
     "test": "{src,test}/*.js"
@@ -36,33 +39,34 @@
     "url": "https://github.com/roundware/roundware-web-framework/issues"
   },
   "devDependencies": {
-    "@babel/cli": "^7.12.10",
-    "@babel/core": "^7.12.10",
-    "@babel/node": "^7.12.10",
-    "@babel/preset-env": "^7.12.11",
-    "babel-loader": "~8.0.6",
-    "eslint": "6.1.0",
-    "eslint-loader": "2.2.1",
-    "eslint-plugin-compat": "3.3.0",
-    "jasmine": "^3.6.4",
-    "jsdoc": "^3.6.6",
-    "np": "^6.3.2",
+    "@babel/cli": "^7.15.4",
+    "@babel/core": "^7.15.5",
+    "@babel/preset-env": "^7.15.6",
+    "@babel/preset-typescript": "^7.15.0",
+    "@types/jest": "^27.0.1",
+    "babel-loader": "^8.2.2",
+    "eslint": "^7.32.0",
+    "eslint-loader": "^4.0.2",
+    "eslint-plugin-compat": "^3.13.0",
+    "jest": "^27.2.0",
+    "jsdoc": "^3.6.7",
+    "np": "^7.5.0",
     "npm-run-all": "^4.1.5",
-    "pryjs": "^1.0.3",
-    "rimraf": "~2.6.3",
-    "webpack": "^4.46.0",
-    "webpack-cli": "^3.3.12",
-    "webpack-dev-server": "^3.11.2"
+    "rimraf": "^3.0.2",
+    "ts-loader": "^9.2.5",
+    "ts-node": "^10.2.1",
+    "typescript": "^4.4.3",
+    "webpack": "^5.52.1",
+    "webpack-cli": "^4.8.0",
+    "webpack-dev-server": "^4.2.0"
   },
   "dependencies": {
-    "@turf/boolean-point-in-polygon": "^6.2.0",
-    "@turf/distance": "^6.2.0",
-    "@turf/line-to-polygon": "^6.2.0",
-    "@turf/point-to-line-distance": "^6.2.0",
-    "core-js": "3.2.0",
-    "deep-extend": ">=0.5.1",
+    "@turf/boolean-point-in-polygon": "^6.5.0",
+    "@turf/distance": "^6.5.0",
+    "@turf/line-to-polygon": "^6.5.0",
+    "@turf/point-to-line-distance": "^6.5.0",
     "loglevel": "^1.7.1",
-    "standardized-audio-context": "^25.1.8"
+    "standardized-audio-context": "^25.3.9"
   },
   "np": {
     "anyBranch": true,

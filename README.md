@@ -2,7 +2,7 @@
 
 ## Introduction
 
-[Roundware](http://roundware.org/) is a location-based contributory audio platform. This framework provides a JavaScript SDK for interacting with the [Roundware Server API](https://github.com/roundware/roundware-server). The goal is to enable the creation of browser-based contributory audio and audio augmented reality applications. The library is written in ES6 but is built to run in all modern browsers that support HTML5 audio. 
+[Roundware](http://roundware.org/) is a location-based contributory audio platform. This framework provides a JavaScript SDK for interacting with the [Roundware Server API](https://github.com/roundware/roundware-server). The goal is to enable the creation of browser-based contributory audio and audio augmented reality applications. The library is written in ES6 but is built to run in all modern browsers that support HTML5 audio.
 
 <aside class="warning">
 This is currently alpha software; the code is in flux!
@@ -51,17 +51,28 @@ This is currently alpha software; the code is in flux!
 </html>
 ```
 
+## TypeScript
+
+You can use TypeScript interfaces by prefixing the class name with `I`
+Example:
+
+```ts
+import { IRoundware } from "roundware-web-framework/types";
+
+const roundware: IRoundware = new Roundware(options);
+```
+
 ## Installation
 
 > Node
-  
+
 ```bash
 npm install roundware-web-framework
 ```
 
 > Browser
 
-* See [Roundware Web Demo](https://github.com/subelsky/roundware_web_demo) for an example of using Roundware inside of an application
+- See [Roundware Web Demo](https://github.com/subelsky/roundware_web_demo) for an example of using Roundware inside of an application
 
 ## Contributor Workflow
 
@@ -75,18 +86,18 @@ See [HOW_TO_CONTRIBUTE.md](HOW_TO_CONTRIBUTE.md) for further details.
 
 ## Resources
 
-* [Code of Conduct](https://github.com/roundware/roundware-web-framework/blob/master/CODE_OF_CONDIUCT.md)
-* [Documentation](https://roundware.github.io/roundware-web-framework/)
-* [Demo Site](https://github.com/subelsky/roundware_web_demo/) (and also check out [examples])
-* [Roundware Terminology](http://roundware.org/docs/terminology/index.html)
-* [Source Code](https://github.com/roundware/roundware-web-framework/)
-* [npm package](https://www.npmjs.com/package/roundware-web-framework)
-* [CI Build](https://travis-ci.org/roundware/roundware-web-framework)
-* TODO figure out how to display code coverage report
+- [Code of Conduct](https://github.com/roundware/roundware-web-framework/blob/master/CODE_OF_CONDIUCT.md)
+- [Documentation](https://roundware.github.io/roundware-web-framework/)
+- [Demo Site](https://github.com/subelsky/roundware_web_demo/) (and also check out [examples])
+- [Roundware Terminology](http://roundware.org/docs/terminology/index.html)
+- [Source Code](https://github.com/roundware/roundware-web-framework/)
+- [npm package](https://www.npmjs.com/package/roundware-web-framework)
+- [CI Build](https://travis-ci.org/roundware/roundware-web-framework)
+- TODO figure out how to display code coverage report
 
 ## References
 
-* [How to Write an Open Source JavaScript Library](https://github.com/sarbbottam/write-an-open-source-js-lib#creating-the-library-and-adding-dependencies): a lot of the initial project setup was adapted from this tutorial.
+- [How to Write an Open Source JavaScript Library](https://github.com/sarbbottam/write-an-open-source-js-lib#creating-the-library-and-adding-dependencies): a lot of the initial project setup was adapted from this tutorial.
 
 ## Development
 
