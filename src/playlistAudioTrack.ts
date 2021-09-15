@@ -429,7 +429,7 @@ export class PlaylistAudiotrack {
     if (!this.state) return;
     this.state.finish();
     this.state = newState;
-    this.state.play();
+    if (this.playlist.playing) this.state.play();
   }
 
   toString() {
