@@ -5,7 +5,7 @@
     "type": "git",
     "url": "git+https://github.com/roundware/roundware-web-framework.git"
   },
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "main": "dist/roundware.js",
   "files": [
@@ -61,7 +61,9 @@
     "webpack-dev-server": "^4.2.0"
   },
   "dependencies": {
+    "@turf/bbox": "^6.5.0",
     "@turf/boolean-point-in-polygon": "^6.5.0",
+    "@turf/buffer": "^6.5.0",
     "@turf/distance": "^6.5.0",
     "@turf/line-to-polygon": "^6.5.0",
     "@turf/point-to-line-distance": "^6.5.0",
