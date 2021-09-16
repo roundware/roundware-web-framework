@@ -40,6 +40,9 @@ import { User } from "./user";
 export * from "./assetFilters";
 export { GeoListenMode } from "./mixer";
 
+import { multiPolygon, featureCollection } from "@turf/helpers";
+import bbox from "@turf/bbox";
+import buffer from "@turf/buffer";
 /** This class is the primary integration point between Roundware's server and your application
 
    @example
@@ -584,5 +587,43 @@ export class Roundware {
     return this._apiClient.get<IEnvelopeData>(`/envelopes/${id}`, {
       session_id: this._sessionId,
     });
+  }
+
+  /**
+   *
+   * Calculates bounds for the map based on Speakers
+   * @memberof Roundware
+   */
+  getMapBounds(): {
+    southwest: Coordinates;
+    northeast: Coordinates;
+  } {
+    // get polygons from all speakers
+    const polygons = this.speakers().map((s) =>
+      multiPolygon(s.shape.coordinates)
+    );
+    let polygonCollection = featureCollection(polygons);
+
+    // add buffer
+    this.project.outOfRangeDistance &&
+      (polygonCollection = buffer(
+        polygonCollection,
+        this.project.outOfRangeDistance,
+        { units: "meters" }
+      ));
+
+    // order - [minX, minY, maxX, maxY]
+    const [swLng, swLat, neLng, neLat] = bbox(polygonCollection);
+
+    return {
+      southwest: {
+        latitude: swLat,
+        longitude: swLng,
+      },
+      northeast: {
+        latitude: neLat,
+        longitude: neLng,
+      },
+    };
   }
 }
