@@ -79,9 +79,8 @@ export class SpeakerPlayer {
     toVolume: number = this._fadingDestination,
     durationInSeconds: number = this._fadeDuration
   ) {
+    if (this._fadingDestination === toVolume) return;
     this._fadingDestination = toVolume;
-
-    if (this.fading) return;
 
     // assume it's already at the expected volume,
     // because there's always a small difference in decimals as gain.value is not accurate.
@@ -105,7 +104,6 @@ export class SpeakerPlayer {
 
     setTimeout(() => {
       speakerLog(`${this._id}: volume faded to "${this.volume()}""`);
-      this.fading = false;
     }, durationInSeconds * 1000);
   }
 

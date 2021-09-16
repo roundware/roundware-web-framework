@@ -326,9 +326,10 @@ export class FadingOutState
     const {
       track,
       assetEnvelope: { fadeOutDuration },
+      trackOptions: { fadeOutLowerBound },
     } = this;
     let remainingSeconds = super.play(fadeOutDuration);
-    track.fadeOut(remainingSeconds!);
+    track.fadeOut(remainingSeconds || fadeOutLowerBound);
   }
   pause() {
     super.pause();

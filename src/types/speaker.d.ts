@@ -6,6 +6,10 @@ export interface ISpeakerData {
   boundary: any;
   attenuation_distance: number;
   uri: string;
+  shape: {
+    type: string;
+    coordinates: number[][][][];
+  };
 }
 
 export interface ISpeakerFilters {}

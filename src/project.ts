@@ -10,6 +10,7 @@ export class Project {
   recordingRadius!: number;
   maxRecordingLength?: number;
   location: Coordinates = { latitude: 1, longitude: 1 };
+  outOfRangeDistance?: number;
   mixParams: {};
 
   constructor(newProjectId: number, { apiClient }: { apiClient: ApiClient }) {
@@ -41,6 +42,7 @@ export class Project {
         longitude: number;
         geo_listen_enabled: boolean;
         ordering: unknown;
+        out_of_range_distance: number;
       }>(path, requestData);
       //console.info({ PROJECTDATA: data });
 
@@ -49,7 +51,7 @@ export class Project {
       this.recordingRadius = data.recording_radius;
       this.maxRecordingLength = parseInt(data.max_recording_length.toString());
       this.location = { latitude: data.latitude, longitude: data.longitude };
-
+      this.outOfRangeDistance = data.out_of_range_distance;
       this.mixParams = {
         geoListenMode: data.geo_listen_enabled
           ? GeoListenMode.MANUAL

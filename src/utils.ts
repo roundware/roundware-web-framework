@@ -12,6 +12,21 @@ const MATCHES_WAV_FILE = new RegExp(/\.wav$/i);
  */
 export const cleanAudioURL = (url: string): string =>
   url.replace(MATCHES_URI_SCHEME, "//").replace(MATCHES_WAV_FILE, ".mp3");
+
+/**
+ *
+ * Makes sure coordinates are in range of +180 to -180.
+ * @param {number[]} coordinates
+ */
+const normalizeCoords = (coordinates: number[]) => {
+  for (let i = 0; i <= coordinates.length; i++) {
+    if (coordinates[i] > 180) coordinates[i] = (coordinates[i] % 180) - 180;
+    else if (coordinates[i] < -180)
+      coordinates[i] = (coordinates[i] % 180) + 180;
+  }
+  return coordinates;
+};
+
 /**
  * @param  {number} {latitude
  * @param  {number} longitude
@@ -24,8 +39,8 @@ export function coordsToPoints({
   latitude: number;
   longitude: number;
 }): Feature<Point> {
-  // NOTE we need to reverse the order here to make geolocations compatible with Roundware geometries, which have points listed w/ longitude first
-  return point([+longitude, +latitude]); // NOTE we need to reverse the order here to make geolocations compatible with Roundware geometries, which have points listed w/ longitude first
+  // shreyas - we need make sure coordinate lies within range of 180 to -180
+  return point(normalizeCoords([+longitude, +latitude])); // NOTE we need to reverse the order here to make geolocations compatible with Roundware geometries, which have points listed w/ longitude first
 }
 
 // @see https://stackoverflow.com/a/24403771/308448

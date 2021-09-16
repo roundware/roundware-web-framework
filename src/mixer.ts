@@ -121,7 +121,9 @@ export class Mixer {
     if (!this.playlist) {
       const audioContext = buildAudioContext(this._windowScope);
       if (!this.mixParams.listenerPoint)
-        throw new Error(`listenerPoint was missing in mixer!`);
+        return console.error(
+          `[mixer] listenerPoint was missing while initiating mixer!`
+        );
       const listenerPoint = this.mixParams.listenerPoint;
       const speakers = this._client.speakers();
 
