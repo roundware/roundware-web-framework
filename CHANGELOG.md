@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.12.1] - 2021-9-16
+
+Bug Fixes
+
+### Added
+
+- `getMapBounds()` - detemines bounds for a map by Speakers polygons and out of range buffer
+
+### Changed
+
+- Changed the behaviour of fading to not perform fading time if it's already in middle fading to that volume.
+
+### Fixed
+
+- Fixed playing of Audio Track even when playlist was paused
+
 ## [0.12.0] - 2021-9-13
 
 Codebase has been converted to TypeScript!
@@ -35,19 +51,3 @@ Codebase has been converted to TypeScript!
 - Speaker not pausing even after calling `pause()`
 - A check before play `play()` function to check if `AudioContext` is running and `resume()` if `suspended` or `closed`
 - Before upload envelope make sure to convert `tag_ids` array into comma seperated values
-
-## [0.12.1] - 2021-9-16
-
-Bug Fixes
-
-### Added
-
-- `getMapBounds()` - detemines bounds for a map by Speakers polygons and out of range buffer
-
-### Changed
-
-- Changed the behaviour of fading to not perform fading time if it's already in middle fading to that volume.
-
-### Fixed
-
-- Fixed playing of Audio Track even when playlist was paused
