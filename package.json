@@ -61,7 +61,9 @@
     "webpack-dev-server": "^4.2.0"
   },
   "dependencies": {
+    "@turf/bbox": "^6.5.0",
     "@turf/boolean-point-in-polygon": "^6.5.0",
+    "@turf/buffer": "^6.5.0",
     "@turf/distance": "^6.5.0",
     "@turf/line-to-polygon": "^6.5.0",
     "@turf/point-to-line-distance": "^6.5.0",
