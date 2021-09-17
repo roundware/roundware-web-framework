@@ -50,7 +50,7 @@ export class SpeakerPlayer {
 
     this._gainNode.gain.setValueAtTime(0, 0); // initially 0 and fade later
 
-    this._audio.addEventListener("play", () => (this.playing = true));
+    this._audio.addEventListener("playing", () => (this.playing = true));
     this._audio.addEventListener("pause", () => (this.playing = false));
 
     this._prefetch = prefetch;
@@ -74,17 +74,17 @@ export class SpeakerPlayer {
   }
 
   _fadingDestination: number = 0;
-
+  _fading: boolean = false;
   fade(
     toVolume: number = this._fadingDestination,
     durationInSeconds: number = this._fadeDuration
   ) {
-    if (this._fadingDestination === toVolume) return;
+    if (this._fadingDestination === toVolume && this._fading) return;
     this._fadingDestination = toVolume;
 
     // assume it's already at the expected volume,
     // because there's always a small difference in decimals as gain.value is not accurate.
-    if (Math.abs(this.volume() - toVolume) < 0.01) return;
+    if (Math.abs(this.volume() - this._fadingDestination) < 0.01) return;
 
     if (!this.playing) {
       // schedule to fade when it starts playing.
@@ -97,7 +97,7 @@ export class SpeakerPlayer {
     if (this._audio.paused) return;
 
     this._gainNode.gain.cancelScheduledValues(0);
-
+    this._fading = true;
     this._gainNode.gain.linearRampToValueAtTime(
       toVolume,
       this._context.currentTime + durationInSeconds
@@ -105,6 +105,7 @@ export class SpeakerPlayer {
 
     setTimeout(() => {
       speakerLog(`${this._id}: volume faded to "${this.volume()}""`);
+      this._fading = false;
     }, durationInSeconds * 1000);
   }
 
