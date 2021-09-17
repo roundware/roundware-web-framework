@@ -163,9 +163,9 @@ export class SpeakerTrack {
     if (newVolume < 0.05) return; // no need to play
 
     try {
-      this.player.play();
-      this.updateVolume();
-      speakerLog(`${this.speakerId}: Playing!`);
+      this.player.play().then((success) => {
+        success ? this.updateVolume() : this.play();
+      });
     } catch (err) {
       console.error("Unable to play", this.logline, err);
     }

@@ -67,7 +67,7 @@ export class SpeakerPlayer {
       await this._audio.play();
       this.playing = true;
     } catch (e) {
-      console.error(e);
+      console.error(`Error playing speaker: ${this._id}`, e);
       return false;
     }
     return true;
@@ -84,12 +84,13 @@ export class SpeakerPlayer {
 
     // assume it's already at the expected volume,
     // because there's always a small difference in decimals as gain.value is not accurate.
-    if (Math.abs(this.volume() - toVolume) < 0.05) return;
+    if (Math.abs(this.volume() - toVolume) < 0.01) return;
 
     if (!this.playing) {
       // schedule to fade when it starts playing.
-      this._audio.addEventListener("play", () => this.fade(), { once: true });
-
+      this._audio.addEventListener("playing", () => this.fade(), {
+        once: true,
+      });
       return;
     }
 
