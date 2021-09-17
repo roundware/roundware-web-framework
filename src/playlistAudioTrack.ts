@@ -180,11 +180,11 @@ export class PlaylistAudiotrack {
       .connect(this.gainNode)
       .connect(audioContext.destination);
 
-    LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach((name) =>
-      audioElement.addEventListener(name, () =>
-        console.log(`\t[${this} audio ${name} event]`)
-      )
-    );
+    // LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach((name) =>
+    //   audioElement.addEventListener(name, () =>
+    //     console.log(`\t[${this} audio ${name} event]`)
+    //   )
+    // );
 
     audioElement.addEventListener("error", () => this.onAudioError());
     audioElement.addEventListener("ended", () => this.onAudioEnded());
