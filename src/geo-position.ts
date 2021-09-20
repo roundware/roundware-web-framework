@@ -2,7 +2,7 @@ import { logger } from "./shims";
 import { GeoListenMode } from "./mixer";
 import { Coordinates, GeoPositionOptions } from "./types";
 
-const initialGeoTimeoutSeconds = 5;
+const initialGeoTimeoutSeconds = 6;
 
 const frameworkDefaultCoords: Coordinates = {
   latitude: 42.3140089,
@@ -12,7 +12,7 @@ const frameworkDefaultCoords: Coordinates = {
 // for an initial rapid, low-accuracy position
 const fastGeolocationPositionOptions = {
   enableHighAccuracy: false,
-  timeout: initialGeoTimeoutSeconds,
+  timeout: initialGeoTimeoutSeconds * 1000,
   maximumAge: Infinity,
 };
 
@@ -140,7 +140,7 @@ export class GeoPosition {
           reject({
             code: this._geoPositionStatus,
           });
-      }, fastGeolocationPositionOptions.timeout * 1000 + 1000);
+      }, fastGeolocationPositionOptions.timeout + 1000);
     });
 
     this._geoWatchID = geolocation.watchPosition(
