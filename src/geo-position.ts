@@ -42,6 +42,7 @@ export class GeoPosition {
   isEnabled: boolean;
   updateCallback: CallableFunction;
   private _geoWatchID?: number | null;
+  private _geoPositionStatus: true | number = 3;
 
   constructor(navigator: Window[`navigator`], options: GeoPositionOptions) {
     this._navigator = navigator;
@@ -106,40 +107,57 @@ export class GeoPosition {
       _navigator: { geolocation },
     } = this;
 
+    console.log("Initializing geolocation system");
     this.isEnabled = true;
-
-    logger.log("Initializing geolocation system");
-
-    this._initialGeolocationPromise = new Promise((resolve) => {
+    this._initialGeolocationPromise = new Promise((resolve, reject) => {
       geolocation.getCurrentPosition(
         (initialPosition) => {
           const { coords } = initialPosition;
+          this._geoPositionStatus = true;
           this._lastCoords = coords;
-          logger.info("Received initial geolocation:", coords);
+          console.info("Received initial geolocation:", coords);
           this.updateCallback(coords);
           resolve(coords);
         },
         (error) => {
+          this._geoPositionStatus = error.code;
           logger.warn(
             `Unable to get initial geolocation: ${error.message} (code #${error.code}), falling back to default coordinates for initial listener location`
           );
-          resolve(defaultCoords);
+          reject(error);
         },
         fastGeolocationPositionOptions
       );
+
+      /**
+       * Promise never rejected if we deny on Firefox.
+       * @see https://stackoverflow.com/questions/5947637/function-fail-never-called-if-user-declines-to-share-geolocation-in-firefox
+       * */
+
+      setTimeout(() => {
+        if (this._geoPositionStatus === true) resolve(this._lastCoords);
+        else
+          reject({
+            code: this._geoPositionStatus,
+          });
+      }, fastGeolocationPositionOptions.timeout * 1000 + 1000);
     });
 
     this._geoWatchID = geolocation.watchPosition(
       (updatedPosition) => {
         const { coords } = updatedPosition;
         this._lastCoords = coords;
+        this._geoPositionStatus = true;
         logger.info("Received updated geolocation:", coords);
         this.updateCallback(coords);
       },
-      (error) =>
+      (error) => {
         logger.warn(
           `Unable to watch geoposition changes: ${error.message} (code #${error.code})`
-        ),
+        );
+        this._geoPositionStatus = error.code;
+      },
+
       accurateGeolocationPositionOptions
     );
   }
