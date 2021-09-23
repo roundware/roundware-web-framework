@@ -194,7 +194,7 @@ export class TimedTrackState implements ICommonStateProperties {
     if (!track.currentAsset) return;
     // already fading out let it finish.
     if (track.state instanceof FadingOutState) return;
-    console.log("Received mix params", params);
+
     const prioriy = distanceRangesFilter()(track.currentAsset, params);
 
     if (prioriy === ASSET_PRIORITIES.DISCARD) {
@@ -206,6 +206,8 @@ export class TimedTrackState implements ICommonStateProperties {
           })
         );
         track.currentAsset.status = "paused";
+        track.currentAsset.pausedFromTrackId = track.trackId;
+        track.pausedAssetId = track.currentAsset.id;
         console.log(
           `Scheduled to resume when listener comes back: #${track.currentAsset.id}`
         );
