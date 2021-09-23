@@ -166,7 +166,7 @@ export class GeoPosition {
    * estimate of the user's position. Note that this promise will never fail - if we cannot get an
    * accurate estimate, we fall back to default coordinates (currently latitude 1, longitude 1)
    * @return {Promise} Represents the attempt to get an initial estimate of the user's position **/
-  waitForInitialGeolocation(): Promise<Coordinates> {
-    return this._initialGeolocationPromise;
+  async waitForInitialGeolocation(): Promise<Coordinates> {
+    return await this._initialGeolocationPromise;
   }
 }
