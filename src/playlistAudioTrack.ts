@@ -368,9 +368,15 @@ export class PlaylistAudiotrack {
         return null;
       }
       audioElement.src = file;
-      if (newAsset.status === "resumed")
-        audioElement.currentTime = newAsset.resume_time || start_time;
-      else audioElement.currentTime = start_time;
+      audioElement.addEventListener(
+        "loadedmetadata",
+        () => {
+          if (newAsset.status === "resumed")
+            audioElement.currentTime = newAsset.resume_time || start_time;
+          else audioElement.currentTime = start_time;
+        },
+        { once: true }
+      );
       this.audioElement = audioElement;
       this.played = false;
       return newAsset;
