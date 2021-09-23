@@ -17,6 +17,7 @@ export interface IAssetData {
   created: string | Date;
   updated: string | Date;
   weight: number;
+
   start_time: number;
   end_time: number;
 
@@ -65,7 +66,9 @@ export interface IDecoratedAsset extends IAssetData {
   listenerPoint?: Point;
   playCount: number;
   lastListenTime?: number | Date;
-
+  status?: "paused" | "resumed";
+  pausedFromTrackId?: number;
+  resume_time?: number | undefined;
   [index: string]:
     | number
     | Feature<Point>
