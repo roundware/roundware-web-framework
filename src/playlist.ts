@@ -96,7 +96,10 @@ export class Playlist {
     if (listenTagIds) {
       this.listenTagIds = listenTagIds.map((t) => Number(t));
     }
-    this.tracks.forEach((t) => t.updateParams(params));
+
+    this.tracks.forEach((t) =>
+      t.updateParams({ listenerPoint, listenTagIds, ...params })
+    );
   }
 
   play() {
