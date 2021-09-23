@@ -1,3 +1,4 @@
+import { ASSET_PRIORITIES, distanceRangesFilter } from "./assetFilters";
 import { AssetEnvelope } from "./mixer/AssetEnvelope";
 import { TrackOptions } from "./mixer/TrackOptions";
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
@@ -184,7 +185,33 @@ export class TimedTrackState implements ICommonStateProperties {
     track.transition(loadingState);
   }
 
-  updateParams(params: IMixParams) {}
+  // TODO:
+  // 1. Check priority by `distanceRangesFilter` with new location
+  // 2. If DISCARD && current asset is not finished then first fade out and pause
+  // 3. Add the asset to pausedAsset
+  updateParams(params: IMixParams) {
+    const { track } = this;
+    if (!track.currentAsset) return;
+    // already fading out let it finish.
+    if (track.state instanceof FadingOutState) return;
+    console.log("Received mix params", params);
+    const prioriy = distanceRangesFilter()(track.currentAsset, params);
+
+    if (prioriy === ASSET_PRIORITIES.DISCARD) {
+      // fade out and pause only if playing
+      if (track.playing) {
+        track.transition(
+          new FadingOutState(track, this.trackOptions, {
+            assetEnvelope: track.assetEnvelope!,
+          })
+        );
+        track.currentAsset.status = "paused";
+        console.log(
+          `Scheduled to resume when listener comes back: #${track.currentAsset.id}`
+        );
+      }
+    }
+  }
 }
 
 /**
@@ -262,7 +289,9 @@ export class FadingInState
 
   replay() {}
 
-  updateParams() {}
+  updateParams(mixParams: IMixParams) {
+    super.updateParams(mixParams);
+  }
 }
 
 export class PlayingState
@@ -306,6 +335,10 @@ export class PlayingState
       new FadingOutState(track, trackOptions, { assetEnvelope })
     );
   }
+
+  updateParams(mixParams: IMixParams) {
+    super.updateParams(mixParams);
+  }
 }
 
 export class FadingOutState
@@ -342,6 +375,9 @@ export class FadingOutState
 
   finish() {
     super.finish();
+    if (this.track.currentAsset?.status === "paused")
+      this.track.currentAsset!.resume_time =
+        this.track.audioElement.currentTime;
     this.track.listenEvents?.logAssetEnd(this.assetEnvelope.assetId);
   }
 
@@ -350,6 +386,10 @@ export class FadingOutState
       assetEnvelope: { assetId, fadeOutDuration },
     } = this;
     return `FadingOut asset #${assetId} (${fadeOutDuration.toFixed(1)}s)`;
+  }
+
+  updateParams(mixParams: IMixParams) {
+    super.updateParams(mixParams);
   }
 }
 
