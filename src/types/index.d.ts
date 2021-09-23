@@ -30,6 +30,7 @@ export type IMixParams = {
   startDate?: Date;
   endDate?: Date;
   sessionId?: number;
+  keepPausedAssets?: boolean;
 };
 
 export interface IInitialParams {}
