@@ -144,6 +144,10 @@ export class PlaylistAudiotrack {
   soundId?: number;
   audioContext: IAudioContext;
   audioElement: HTMLAudioElement;
+  played: boolean = false;
+
+  pausedAssetId: number | null = null;
+
   constructor({
     audioContext,
     windowScope,
@@ -196,8 +200,10 @@ export class PlaylistAudiotrack {
 
     audioElement.addEventListener("playing", () => {
       if (this.playlist.playing === false) return this.pauseAudio();
+      this.currentAsset!.status = undefined;
       this.listenEvents?.logAssetStart(this.currentAsset?.id!);
       this.playing = true;
+      this.played = true;
     });
 
     audioElement.addEventListener("pause", () => {
@@ -338,9 +344,10 @@ export class PlaylistAudiotrack {
   loadNextAsset(): IDecoratedAsset | null {
     let { audioElement, currentAsset, trackOptions } = this;
 
-    if (currentAsset) {
-      if (!currentAsset.playCount) currentAsset.playCount = 1;
-      else currentAsset.playCount++;
+    // if current asset was not played at all then don't increase playCount
+    if (currentAsset && this.played) {
+      if (!currentAsset.playCount) currentAsset.playCount = 0;
+      if (currentAsset.status !== "paused") currentAsset.playCount++;
       currentAsset.lastListenTime = new Date();
     }
 
@@ -350,16 +357,22 @@ export class PlaylistAudiotrack {
 
     if (newAsset) {
       const { file, start_time } = newAsset;
-      playlistTrackLog(`loading next asset ${this}: ${file}]`);
+      playlistTrackLog(
+        `#${this.trackId} Selected Asset: ${newAsset.id}, was paused: ${
+          newAsset.paused || false
+        }]`
+      );
 
       this.assetEnvelope = new AssetEnvelope(trackOptions, newAsset);
       if (typeof file !== "string") {
         return null;
       }
       audioElement.src = file;
-      audioElement.currentTime = start_time || 0.01;
+      if (newAsset.status === "resumed")
+        audioElement.currentTime = newAsset.resume_time || start_time;
+      else audioElement.currentTime = start_time;
       this.audioElement = audioElement;
-
+      this.played = false;
       return newAsset;
     }
 
