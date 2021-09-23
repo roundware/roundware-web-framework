@@ -186,13 +186,16 @@ export class AssetPool {
     const nextAsset = priorityAssets.pop();
     // if new asset is not an asset which was paused previously
     // then release all the paused assets
-    if (nextAsset?.status !== "resumed") {
-      this.assets.forEach((a) => {
-        if (a.status === "paused") {
-          a.status = undefined;
-          a.playCount++;
-        }
-      });
+    if (!mixParams.keepPausedAssets) {
+      if (nextAsset?.status !== "resumed") {
+        this.assets.forEach((a) => {
+          if (a.status === "paused" && a.pausedFromTrackId === track.trackId) {
+            track.pausedAssetId = null;
+            a.status = undefined;
+            a.playCount++;
+          }
+        });
+      }
     }
     return nextAsset;
   }
