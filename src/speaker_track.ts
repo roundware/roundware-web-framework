@@ -76,6 +76,7 @@ export class SpeakerTrack {
     this.uri = uri;
 
     this.player = new SpeakerPlayer(audioContext, speakerId, uri);
+    this.player.audio.addEventListener("playing", () => this.updateVolume());
     this.listenerPoint = listenerPoint.geometry;
 
     this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
@@ -164,7 +165,15 @@ export class SpeakerTrack {
 
     try {
       this.player.play().then((success) => {
-        success ? this.updateVolume() : this.play();
+        if (!success) {
+          window.addEventListener(
+            "touchstart",
+            () => {
+              this.play();
+            },
+            { once: true }
+          );
+        }
       });
     } catch (err) {
       console.error("Unable to play", this.logline, err);
