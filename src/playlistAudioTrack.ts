@@ -10,7 +10,13 @@ import { IMixParams } from "./types";
 import { IDecoratedAsset } from "./types/asset";
 import { IAudioTrackData } from "./types/audioTrack";
 import { ITrackStates } from "./types/track-states";
-import { debugLogger, getUrlParam, playlistTrackLog, timestamp } from "./utils";
+import {
+  debugLogger,
+  getUrlParam,
+  makeAudioSafeToPlay,
+  playlistTrackLog,
+  timestamp,
+} from "./utils";
 /*
 @see https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/AudioTrack.swift
 
@@ -104,6 +110,8 @@ export const LOGGABLE_HOWL_EVENTS = [
   "unlock",
 ];
 
+export const silenceAudioBase64 =
+  "data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
 export class PlaylistAudiotrack {
   /**
    * id of audiotrack
@@ -145,9 +153,8 @@ export class PlaylistAudiotrack {
   audioContext: IAudioContext;
   audioElement: HTMLAudioElement;
   played: boolean = false;
-
   pausedAssetId: number | null = null;
-
+  isSafeToPlay = false;
   constructor({
     audioContext,
     windowScope,
@@ -173,7 +180,7 @@ export class PlaylistAudiotrack {
     const audioElement = new Audio();
     audioElement.crossOrigin = "anonymous";
     audioElement.loop = false;
-
+    audioElement.src = silenceAudioBase64;
     const audioSrc = audioContext.createMediaElementSource(audioElement);
 
     this.gainNode = audioContext.createGain();
@@ -199,11 +206,14 @@ export class PlaylistAudiotrack {
     );
 
     audioElement.addEventListener("playing", () => {
+      if (!this.isSafeToPlay) return;
       if (this.playlist.playing === false) return this.pauseAudio();
       this.currentAsset!.status = undefined;
-      this.listenEvents?.logAssetStart(this.currentAsset?.id!);
-      this.playing = true;
-      this.played = true;
+      if (this.currentAsset) {
+        this.listenEvents?.logAssetStart(this.currentAsset.id);
+        this.playing = true;
+        this.played = true;
+      }
     });
 
     audioElement.addEventListener("pause", () => {
@@ -232,6 +242,9 @@ export class PlaylistAudiotrack {
     );
     this.audioPanner.start();
     this.setInitialTrackState();
+
+    // try to play silence audio to avoid NotAllowedError on iOS
+    makeAudioSafeToPlay(this.audioElement, () => (this.isSafeToPlay = true));
   }
 
   setInitialTrackState() {
@@ -395,6 +408,7 @@ export class PlaylistAudiotrack {
   playAudio() {
     try {
       if (this.audioContext.state !== "running") this.audioContext.resume();
+      if (!this.audioElement.src) this.audioElement.src = silenceAudioBase64;
       this.audioElement.play();
     } catch (e) {
       console.error(e);
