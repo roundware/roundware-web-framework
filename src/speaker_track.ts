@@ -166,13 +166,9 @@ export class SpeakerTrack {
     try {
       this.player.play().then((success) => {
         if (!success) {
-          window.addEventListener(
-            "touchstart",
-            () => {
-              this.play();
-            },
-            { once: true }
-          );
+          setTimeout(() => {
+            this.play();
+          }, 1000);
         }
       });
     } catch (err) {
