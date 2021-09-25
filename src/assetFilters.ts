@@ -14,7 +14,7 @@ export interface IAssetPriorities {
   readonly LOWEST: number;
   readonly NORMAL: number;
   readonly HIGHEST: number;
-  readonly [key: string]: boolean | number;
+  readonly [key: string]: false | number;
 }
 export type AssetPriorityType = false | 0 | 1 | 100 | 999 | number;
 export const ASSET_PRIORITIES: IAssetPriorities = Object.freeze({
@@ -55,7 +55,7 @@ export function anyAssetFilter(
         return rank;
       }
     }
-
+    if (asset.status === "paused") console.log(`Discarded from anyAssetFilter`);
     return ASSET_PRIORITIES.DISCARD;
   };
 }
@@ -111,7 +111,7 @@ export const distanceFixedFilter =
       IMixParams,
       "geoListenMode" | "listenerPoint" | "recordingRadius"
     >
-  ): number | boolean => {
+  ): number | false => {
     try {
       if (options.geoListenMode === GeoListenMode.DISABLED) {
         return ASSET_PRIORITIES.LOWEST;
@@ -135,7 +135,9 @@ export const distanceFixedFilter =
       if (distance < recordingRadius!) {
         return ASSET_PRIORITIES.NORMAL;
       } else {
-        // @ts-ignore
+        if (asset.status === "paused")
+          console.log(`Discarded from distanceFixedFilter`);
+
         return ASSET_PRIORITIES.DISCARD;
       }
     } catch (e) {
@@ -154,7 +156,7 @@ export const distanceRangesFilter =
       IMixParams,
       "getListenMode" | "listenerPoint" | "minDist" | "maxDist"
     >
-  ): number | boolean => {
+  ): number | false => {
     try {
       if (options.getListenMode === GeoListenMode.DISABLED) {
         return ASSET_PRIORITIES.LOWEST;
@@ -180,6 +182,8 @@ export const distanceRangesFilter =
       if (distance >= minDist && distance <= maxDist) {
         return ASSET_PRIORITIES.NORMAL;
       } else {
+        if (asset.status === "paused")
+          console.log(`Discarded from distanceRangesFilter`);
         return ASSET_PRIORITIES.DISCARD;
       }
     } catch (e) {
@@ -190,7 +194,7 @@ export const distanceRangesFilter =
 
 // Rank the asset if it is tagged with one of the currently-enabled tag IDs
 export function anyTagsFilter() {
-  return (asset: IDecoratedAsset, mixParams: IMixParams): number => {
+  return (asset: IDecoratedAsset, mixParams: IMixParams): number | false => {
     const { listenTagIds } = mixParams;
 
     if (!listenTagIds || isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
@@ -201,7 +205,7 @@ export function anyTagsFilter() {
       if (listenTagIds.includes(tagId)) return ASSET_PRIORITIES.LOWEST; // matching only by tag should be the least-important filter
     }
 
-    // @ts-ignore
+    if (asset.status === "paused") console.log(`Discarded from anyTagsFilter`);
     return ASSET_PRIORITIES.DISCARD;
   };
 }
@@ -211,7 +215,7 @@ export const timedAssetFilter = () => {
   return (
     asset: IDecoratedAsset,
     { elapsedSeconds = 0, timedAssetPriority = "normal" }
-  ): number | boolean => {
+  ): number | false => {
     const { timedAssetStart, timedAssetEnd, playCount } = asset;
 
     if (!timedAssetStart || !timedAssetEnd) return ASSET_PRIORITIES.DISCARD;
@@ -219,12 +223,17 @@ export const timedAssetFilter = () => {
       timedAssetStart >= elapsedSeconds ||
       timedAssetEnd <= elapsedSeconds ||
       playCount! > 0
-    )
+    ) {
+      if (asset.status === "paused")
+        console.log(`Discarded from timedAssetFilter`);
       return ASSET_PRIORITIES.DISCARD;
+    }
 
     const priorityEnumStr = timedAssetPriority.toUpperCase(); // "highest", "lowest", "normal", etc.
 
-    return ASSET_PRIORITIES[priorityEnumStr] || ASSET_PRIORITIES.NEUTRAL;
+    if (priorityEnumStr in ASSET_PRIORITIES)
+      return ASSET_PRIORITIES[priorityEnumStr];
+    return ASSET_PRIORITIES.NEUTRAL;
   };
 };
 
@@ -233,7 +242,7 @@ export const assetShapeFilter = () => {
   return (
     asset: IDecoratedAsset,
     options: Pick<IMixParams, "listenerPoint" | "geoListenMode">
-  ): number | boolean => {
+  ): number | false => {
     const { shape } = asset;
 
     if (!(shape && rankForGeofilteringEligibility(asset, options)))
@@ -245,6 +254,8 @@ export const assetShapeFilter = () => {
     if (booleanPointInPolygon(listenerPoint, shape)) {
       return ASSET_PRIORITIES.NORMAL;
     } else {
+      if (asset.status === "paused")
+        console.log(`Discarded from assetShapeFilter`);
       return ASSET_PRIORITIES.DISCARD;
     }
   };
@@ -253,10 +264,11 @@ export const assetShapeFilter = () => {
 // Prevents assets from repeating until a certain time threshold has passed
 export const timedRepeatFilter =
   () =>
-  (asset: IDecoratedAsset, { bannedDuration = 600 }): number | boolean => {
+  (asset: IDecoratedAsset, { bannedDuration = 600 }): number | false => {
     const { lastListenTime } = asset;
 
-    if (!lastListenTime) return ASSET_PRIORITIES.NORMAL; // e.g. asset has never been heard before
+    if (!lastListenTime || asset?.status === "paused")
+      return ASSET_PRIORITIES.NORMAL; // e.g. asset has never been heard before
 
     const durationSinceLastListen =
       (new Date().getTime() - new Date(lastListenTime).getTime()) / 1000;
@@ -287,6 +299,16 @@ export const dateRangeFilter =
     }
   };
 
+export const pausedAssetFilter =
+  () =>
+  (asset: IDecoratedAsset, mixParams?: IMixParams): number | false => {
+    if (asset.status === "paused") {
+      console.log(`Resuming asset ${asset.id}`);
+      asset.status = "resumed";
+      return ASSET_PRIORITIES.HIGHEST;
+    }
+    return ASSET_PRIORITIES.NORMAL;
+  };
 export const roundwareDefaultFilterChain: (
   asset: IDecoratedAsset,
   mixParams: IMixParams
@@ -300,7 +322,7 @@ export const roundwareDefaultFilterChain: (
     allAssetFilter([
       // @ts-ignore
       distanceFixedFilter(), // if it has no shape, consider a fixed distance from it, or
-      // @ts-ignore
+
       distanceRangesFilter(),
       //angleFilter() // if the listener is within a user-configured distance or angle range
     ]),
@@ -311,6 +333,8 @@ export const roundwareDefaultFilterChain: (
   anyTagsFilter(), // all the tags on an asset must be in our list of tags to listen for
   // @ts-ignore
   dateRangeFilter(),
+
+  pausedAssetFilter(), // if any asset was paused due to out of range it will be returned first
   //trackTagsFilter(),     // if any track-level tag filters exist, apply them
   //dynamicTagFilter("_ten_most_recent_days",mostRecentFilter({ days: 10 })) // Only pass assets created within the most recent 10 days
 ]);

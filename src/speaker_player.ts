@@ -3,7 +3,8 @@ import {
   IGainNode,
   IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
-import { buildAudioContext, cleanAudioURL, speakerLog } from "./utils";
+import { silenceAudioBase64 } from "./playlistAudioTrack";
+import { cleanAudioURL, makeAudioSafeToPlay, speakerLog } from "./utils";
 
 /**
  *
@@ -14,13 +15,14 @@ import { buildAudioContext, cleanAudioURL, speakerLog } from "./utils";
 export class SpeakerPlayer {
   private _prefetch: boolean;
   private _fadeDuration: number;
-  private _audio: HTMLAudioElement;
+  audio: HTMLAudioElement;
   private _audioSrc: IMediaElementAudioSourceNode<IAudioContext>;
   private _gainNode: IGainNode<IAudioContext>;
   private _context: IAudioContext;
   playing: boolean = false;
   fading: boolean = false;
   private _id: number;
+  private _isSafeToPlay = false;
   /**
    * Creates an instance of SpeakerPlayer.
    * @param {string} url URL of the audio
@@ -35,14 +37,15 @@ export class SpeakerPlayer {
   ) {
     this._context = audioContext;
     this._id = id;
-    this._audio = new Audio();
-    this._audio.crossOrigin = "anonymous";
+    this.audio = new Audio();
+    this.audio.crossOrigin = "anonymous";
     const cleanUrl = cleanAudioURL(url);
-    this._audio.src = cleanUrl;
-    this._audio.loop = true;
-    this._audio.preload = "auto";
+    this.audio.src = silenceAudioBase64;
+    this.audio.loop = true;
+    this.audio.preload = "auto";
+    this.audio.autoplay = false;
 
-    this._audioSrc = this._context.createMediaElementSource(this._audio);
+    this._audioSrc = this._context.createMediaElementSource(this.audio);
     this._gainNode = this._context.createGain();
 
     this._audioSrc.connect(this._gainNode);
@@ -50,22 +53,28 @@ export class SpeakerPlayer {
 
     this._gainNode.gain.setValueAtTime(0, 0); // initially 0 and fade later
 
-    this._audio.addEventListener("playing", () => (this.playing = true));
-    this._audio.addEventListener("pause", () => (this.playing = false));
+    makeAudioSafeToPlay(
+      this.audio,
+      () => (this._isSafeToPlay = true),
+      cleanUrl
+    );
 
+    this.audio.addEventListener("playing", () => (this.playing = true));
+    ["ended", "error", "pause"].forEach((e) => {
+      this.audio.addEventListener(e, () => (this.playing = false));
+    });
     this._prefetch = prefetch;
     this._fadeDuration = fadingDurationInSeconds;
   }
 
   async play() {
-    // calling play() while already playing will cause distortion
-    if (this.playing) return true;
+    if (!this._isSafeToPlay) if (this.playing) return true;
     try {
       if (this._context.state !== "running") {
         await this._context.resume();
       }
-      await this._audio.play();
-      this.playing = true;
+      await this.audio.play();
+      speakerLog(`${this._id}: Speaker started! ${this.audio.src}`);
     } catch (e) {
       console.error(`Error playing speaker: ${this._id}`, e);
       return false;
@@ -88,13 +97,11 @@ export class SpeakerPlayer {
 
     if (!this.playing) {
       // schedule to fade when it starts playing.
-      this._audio.addEventListener("playing", () => this.fade(), {
+      this.audio.addEventListener("playing", () => this.fade(), {
         once: true,
       });
       return;
     }
-
-    if (this._audio.paused) return;
 
     this._gainNode.gain.cancelScheduledValues(0);
     this._fading = true;
@@ -110,14 +117,14 @@ export class SpeakerPlayer {
   }
 
   pause() {
-    if (!this._audio.paused) {
-      this._audio.pause();
+    if (!this.audio.paused) {
+      this.audio.pause();
       this.playing = false;
     }
   }
 
   fadeOutAndPause() {
-    if (this._audio.paused) return;
+    if (this.audio.paused) return;
     if (this.volume() < 0.05) return this.pause();
 
     this._gainNode.gain.linearRampToValueAtTime(

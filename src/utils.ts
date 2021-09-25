@@ -3,6 +3,7 @@
 const { point } = require("@turf/helpers");
 import { Point, Feature } from "@turf/helpers";
 import { AudioContext, IAudioContext } from "standardized-audio-context";
+import { silenceAudioBase64 } from "./playlistAudioTrack";
 const MATCHES_URI_SCHEME = new RegExp(/^https?:\/\//i);
 const MATCHES_WAV_FILE = new RegExp(/\.wav$/i);
 
@@ -82,13 +83,12 @@ function unlockAudioContext(
   if (audioCtx.state !== "suspended") return;
 
   function unlock() {
-    audioCtx.resume().then(clean);
-  }
-  function clean() {
-    UNLOCK_AUDIO_EVENTS.forEach((e) => body.removeEventListener(e, unlock));
+    audioCtx.resume();
   }
 
-  UNLOCK_AUDIO_EVENTS.forEach((e) => body.addEventListener(e, unlock, false));
+  UNLOCK_AUDIO_EVENTS.forEach((e) =>
+    body.addEventListener(e, unlock, { once: true })
+  );
 }
 
 export function buildAudioContext(windowScope: Window): IAudioContext {
@@ -132,3 +132,31 @@ export const speakerLog = (message: string) =>
 
 export const playlistTrackLog = (message: string) =>
   console.log(`%c\t[Track: ${message}]`, `color: #000000; background: #9cffff`);
+
+export const makeAudioSafeToPlay = (
+  audioElement: HTMLAudioElement,
+  onSuccess: () => void = () => {},
+  expectedSourceAfter?: string
+) => {
+  UNLOCK_AUDIO_EVENTS.forEach((e) => {
+    window.addEventListener(
+      e,
+      () => {
+        audioElement.src = silenceAudioBase64;
+        audioElement
+          .play()
+          ?.then(() => {
+            setTimeout(() => {
+              audioElement.pause();
+              if (expectedSourceAfter) audioElement.src = expectedSourceAfter;
+              onSuccess();
+            }, 10);
+          })
+          .catch(
+            () => (audioElement.src = expectedSourceAfter || silenceAudioBase64)
+          );
+      },
+      { once: true }
+    );
+  });
+};

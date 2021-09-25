@@ -6,7 +6,7 @@ const plugins = [];
 
 module.exports = {
   mode: "production",
-  devtool: "source-map",
+
   entry: ['./src/roundware.ts'],
   output: {
     filename: "roundware.js",

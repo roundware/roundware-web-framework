@@ -146,10 +146,6 @@ export class AssetPool {
       ...stateParams,
     };
 
-    console.log(
-      `picking asset for ${track} from ${this.assets.length}, params = `,
-      mixParams
-    );
     interface IRankedAssets {
       [rank: number]: IDecoratedAsset[];
     }
@@ -188,10 +184,19 @@ export class AssetPool {
     priorityAssets.sort((a, b) => b.playCount - a.playCount);
 
     const nextAsset = priorityAssets.pop();
-    if (nextAsset && typeof nextAsset.playCount == "number") {
-      nextAsset.playCount++;
+    // if new asset is not an asset which was paused previously
+    // then release all the paused assets
+    if (!mixParams.keepPausedAssets) {
+      if (nextAsset?.status !== "resumed") {
+        this.assets.forEach((a) => {
+          if (a.status === "paused" && a.pausedFromTrackId === track.trackId) {
+            track.pausedAssetId = null;
+            a.status = undefined;
+            a.playCount++;
+          }
+        });
+      }
     }
-
     return nextAsset;
   }
 
