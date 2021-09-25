@@ -191,6 +191,7 @@ export class TimedTrackState implements ICommonStateProperties {
   // 3. Add the asset to pausedAsset
   updateParams(params: IMixParams) {
     const { track } = this;
+    if (!track.audioData.fadeout_when_filtered) return;
     if (!track.currentAsset) return;
     // already fading out let it finish.
     if (track.state instanceof FadingOutState) return;
