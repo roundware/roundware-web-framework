@@ -68,12 +68,13 @@ export class SpeakerPlayer {
   }
 
   async play() {
-    if (this.playing) return true;
+    if (!this._isSafeToPlay) if (this.playing) return true;
     try {
       if (this._context.state !== "running") {
         await this._context.resume();
       }
       await this.audio.play();
+      speakerLog(`${this._id}: Speaker started! ${this.audio.src}`);
     } catch (e) {
       console.error(`Error playing speaker: ${this._id}`, e);
       return false;
