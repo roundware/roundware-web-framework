@@ -83,13 +83,12 @@ function unlockAudioContext(
   if (audioCtx.state !== "suspended") return;
 
   function unlock() {
-    audioCtx.resume().then(clean);
-  }
-  function clean() {
-    UNLOCK_AUDIO_EVENTS.forEach((e) => body.removeEventListener(e, unlock));
+    audioCtx.resume();
   }
 
-  UNLOCK_AUDIO_EVENTS.forEach((e) => body.addEventListener(e, unlock, false));
+  UNLOCK_AUDIO_EVENTS.forEach((e) =>
+    body.addEventListener(e, unlock, { once: true })
+  );
 }
 
 export function buildAudioContext(windowScope: Window): IAudioContext {
@@ -139,23 +138,25 @@ export const makeAudioSafeToPlay = (
   onSuccess: () => void = () => {},
   expectedSourceAfter?: string
 ) => {
-  window.addEventListener(
-    "touchstart",
-    () => {
-      audioElement.src = silenceAudioBase64;
-      audioElement
-        .play()
-        ?.then(() => {
-          setTimeout(() => {
-            audioElement.pause();
-            if (expectedSourceAfter) audioElement.src = expectedSourceAfter;
-            onSuccess();
-          }, 10);
-        })
-        .catch(
-          () => (audioElement.src = expectedSourceAfter || silenceAudioBase64)
-        );
-    },
-    { once: true }
-  );
+  UNLOCK_AUDIO_EVENTS.forEach((e) => {
+    window.addEventListener(
+      e,
+      () => {
+        audioElement.src = silenceAudioBase64;
+        audioElement
+          .play()
+          ?.then(() => {
+            setTimeout(() => {
+              audioElement.pause();
+              if (expectedSourceAfter) audioElement.src = expectedSourceAfter;
+              onSuccess();
+            }, 10);
+          })
+          .catch(
+            () => (audioElement.src = expectedSourceAfter || silenceAudioBase64)
+          );
+      },
+      { once: true }
+    );
+  });
 };
