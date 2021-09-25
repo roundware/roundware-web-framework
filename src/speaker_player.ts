@@ -3,7 +3,8 @@ import {
   IGainNode,
   IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
-import { cleanAudioURL, speakerLog } from "./utils";
+import { silenceAudioBase64 } from "./playlistAudioTrack";
+import { cleanAudioURL, makeAudioSafeToPlay, speakerLog } from "./utils";
 
 /**
  *
@@ -21,6 +22,7 @@ export class SpeakerPlayer {
   playing: boolean = false;
   fading: boolean = false;
   private _id: number;
+  private _isSafeToPlay = false;
   /**
    * Creates an instance of SpeakerPlayer.
    * @param {string} url URL of the audio
@@ -38,7 +40,7 @@ export class SpeakerPlayer {
     this.audio = new Audio();
     this.audio.crossOrigin = "anonymous";
     const cleanUrl = cleanAudioURL(url);
-    this.audio.src = cleanUrl;
+    this.audio.src = silenceAudioBase64;
     this.audio.loop = true;
     this.audio.preload = "auto";
     this.audio.autoplay = false;
@@ -50,6 +52,12 @@ export class SpeakerPlayer {
     this._gainNode.connect(this._context.destination);
 
     this._gainNode.gain.setValueAtTime(0, 0); // initially 0 and fade later
+
+    makeAudioSafeToPlay(
+      this.audio,
+      () => (this._isSafeToPlay = true),
+      cleanUrl
+    );
 
     this.audio.addEventListener("playing", () => (this.playing = true));
     ["ended", "error", "pause"].forEach((e) => {
