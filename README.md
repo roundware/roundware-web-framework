@@ -8,6 +8,29 @@
 This is currently alpha software; the code is in flux!
 </aside>
 
+## Build & Install Locally
+
+```js
+//
+git clone git@github.com:roundware/roundware-web-framework.git
+npm run build && npm pack
+
+// isstall tarbal in your app
+cd roundware-web-template
+npm i ../roundware-web-framework/roundware-web-framework-0.12.4.tgz
+npm start
+
+```
+
+## Development with Framework & Web Template
+
+```ts
+npm watch
+
+// inside web project
+npm link ../roundware-web-framework
+```
+
 ## Code Samples
 
 ```html
