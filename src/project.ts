@@ -1,6 +1,7 @@
 import { GeoListenMode } from "./mixer";
 import { Coordinates, IUiConfig } from "./types";
 import { ApiClient } from "./api-client";
+import { IProjectData } from "./types/project";
 
 export class Project {
   projectId: number;
@@ -12,7 +13,9 @@ export class Project {
   location: Coordinates = { latitude: 1, longitude: 1 };
   outOfRangeDistance?: number;
   mixParams: {};
-
+  listenEnabled?: boolean;
+  speakerEnabled?: boolean;
+  data?: IProjectData;
   constructor(newProjectId: number, { apiClient }: { apiClient: ApiClient }) {
     this.projectId = newProjectId;
     this.projectName = "(unknown)";
@@ -33,19 +36,9 @@ export class Project {
     const requestData = { session_id: sessionId };
 
     try {
-      const data = await this.apiClient.get<{
-        name: string;
-        legal_agreement: string;
-        recording_radius: number;
-        max_recording_length: number | string;
-        latitude: number;
-        longitude: number;
-        geo_listen_enabled: boolean;
-        ordering: unknown;
-        out_of_range_distance: number;
-      }>(path, requestData);
+      const data = await this.apiClient.get<IProjectData>(path, requestData);
       //console.info({ PROJECTDATA: data });
-
+      this.data = data;
       this.projectName = data.name;
       this.legalAgreement = data.legal_agreement;
       this.recordingRadius = data.recording_radius;
