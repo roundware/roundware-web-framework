@@ -8,7 +8,7 @@
 This is currently alpha software; the code is in flux!
 </aside>
 
-## Testing Locally
+## Build & Install Locally
 
 ```js
 //
@@ -29,7 +29,6 @@ npm watch
 
 // inside web project
 npm link ../roundware-web-framework
-
 ```
 
 ## Code Samples
