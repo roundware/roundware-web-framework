@@ -59,7 +59,6 @@ export class SpeakerPlayer {
       cleanUrl
     );
 
-    this.audio.addEventListener("playing", () => (this.playing = true));
     ["ended", "error", "pause"].forEach((e) => {
       this.audio.addEventListener(e, () => (this.playing = false));
     });
@@ -75,7 +74,7 @@ export class SpeakerPlayer {
         await this._context.resume();
       }
       await this.audio.play();
-
+      this.playing = true;
       speakerLog(`${this._id}: Speaker started! ${this.audio.src}`);
     } catch (e) {
       console.error(`Error playing speaker: ${this._id}`, e);
@@ -121,7 +120,6 @@ export class SpeakerPlayer {
   pause() {
     if (!this.audio.paused) {
       this.audio.pause();
-      this.playing = false;
     }
   }
 
