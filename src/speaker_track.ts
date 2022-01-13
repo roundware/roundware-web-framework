@@ -164,6 +164,7 @@ export class SpeakerTrack {
     if (newVolume < 0.05) return; // no need to play
 
     try {
+      console.log(`im playing`);
       this.player.play().then((success) => {
         if (!success) {
           setTimeout(() => {
@@ -178,10 +179,7 @@ export class SpeakerTrack {
 
   pause() {
     try {
-      if (this.player.playing) {
-        this.player?.pause();
-        speakerLog(`${this.speakerId}: Paused!`);
-      }
+      this.player?.pause();
     } catch (err) {
       console.error("Unable to pause", this.logline, err);
     }

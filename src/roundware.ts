@@ -271,7 +271,7 @@ export class Roundware {
 
   get currentlyPlayingAssets(): IAssetData[] | undefined {
     if (!this.mixer.playlist) {
-      return;
+      return [];
     }
     return this.mixer.playlist.currentlyPlayingAssets;
   }
@@ -441,7 +441,6 @@ export class Roundware {
     this.mixer.initContext();
     this.mixer.updateParams(allMixParams);
 
-    console.info("Mixer activated!");
     return this.mixer;
   }
 

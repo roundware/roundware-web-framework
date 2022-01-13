@@ -88,6 +88,9 @@ export class TimedTrackState implements ICommonStateProperties {
   windowScope: Window;
   trackOptions: TrackOptions;
   timerId: null | number;
+
+  // for logging purpse;
+  intervalId: null | number;
   timeRemainingMs?: number;
   timerApproximateEndingAtMs?: number;
   constructor(track: PlaylistAudiotrack, trackOptions: TrackOptions) {
@@ -95,6 +98,7 @@ export class TimedTrackState implements ICommonStateProperties {
     this.windowScope = track.windowScope;
     this.trackOptions = trackOptions;
     this.timerId = null;
+    this.intervalId = null;
   }
   /**
    * This will set a timer for next state
@@ -146,11 +150,14 @@ export class TimedTrackState implements ICommonStateProperties {
 
     if (timerId) {
       windowScope.clearTimeout(timerId);
+      clearInterval(this.intervalId!);
       this.timerId = null;
       delete this.timerApproximateEndingAtMs;
       const timeRemainingMs = Math.max(timerApproximateEndingAtMs - now, 0);
       return timeRemainingMs;
     }
+
+    if (this.intervalId) clearInterval(this.intervalId);
 
     return 0;
   }
@@ -165,7 +172,21 @@ export class TimedTrackState implements ICommonStateProperties {
       () => this.setNextState(),
       timeMs
     );
+    this.intervalId = this.windowScope.setInterval(
+      () =>
+        this.log(
+          `${
+            (Number(this.timerApproximateEndingAtMs) - new Date().getTime()) /
+            1000
+          }s remaining`
+        ),
+      1
+    );
     this.timerApproximateEndingAtMs = new Date().getTime() + timeMs;
+  }
+
+  log(string: string) {
+    playlistTrackLog(`${this.toString()}: ${string}`);
   }
 
   setNextState() {

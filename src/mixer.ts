@@ -157,8 +157,8 @@ export class Mixer {
             data: speakerData,
           })
       );
-
       this.updateParams(this.mixParams);
+      console.info(`Mixer Activated`);
     }
   }
 
@@ -182,6 +182,7 @@ export class Mixer {
   }
 
   play() {
+    console.log(`playing`);
     this.playing = true;
     if (this.playlist) this.playlist.play();
     if (Array.isArray(this.speakerTracks))

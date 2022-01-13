@@ -359,8 +359,14 @@ export class PlaylistAudiotrack {
 
     // if current asset was not played at all then don't increase playCount
     if (currentAsset && this.played) {
-      if (!currentAsset.playCount) currentAsset.playCount = 0;
-      if (currentAsset.status !== "paused") currentAsset.playCount++;
+      // make sure its a number initialized to 0;
+      if (typeof currentAsset.playCount !== "number")
+        currentAsset.playCount = 0;
+
+      // dont increment play count if asset was paused / as it isn't finished yey
+      if (currentAsset.status != "paused") {
+        currentAsset.playCount++;
+      }
       currentAsset.lastListenTime = new Date();
     }
 

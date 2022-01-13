@@ -71,8 +71,13 @@ export const randomInt = (a = 1, b = 0) => {
   return Math.floor(lower + Math.random() * (upper - lower + 1));
 };
 
-const UNLOCK_AUDIO_EVENTS: ["touchstart", "touchend", "mousedown", "keydown"] =
-  ["touchstart", "touchend", "mousedown", "keydown"];
+export const UNLOCK_AUDIO_EVENTS = [
+  "touchend",
+  "mouseup",
+  "mousedown",
+  "keydown",
+  "keyup",
+];
 
 /** Helps stabilize WebAudio startup
  @thanks https://www.mattmontag.com/web/unlock-web-audio-in-safari-for-ios-and-macos */
@@ -141,20 +146,35 @@ export const makeAudioSafeToPlay = (
   UNLOCK_AUDIO_EVENTS.forEach((e) => {
     window.addEventListener(
       e,
-      () => {
+      async () => {
         audioElement.src = silenceAudioBase64;
-        audioElement
-          .play()
-          ?.then(() => {
-            setTimeout(() => {
+        try {
+          await audioElement.play();
+          audioElement.addEventListener(
+            "playing",
+            () => {
+              audioElement.addEventListener(
+                "pause",
+                () => {
+                  audioElement.currentTime = 0;
+                  if (expectedSourceAfter)
+                    audioElement.src = expectedSourceAfter;
+                  console.log(`safe to play later`, expectedSourceAfter);
+                  onSuccess();
+                },
+                {
+                  once: true,
+                }
+              );
               audioElement.pause();
-              if (expectedSourceAfter) audioElement.src = expectedSourceAfter;
-              onSuccess();
-            }, 10);
-          })
-          .catch(
-            () => (audioElement.src = expectedSourceAfter || silenceAudioBase64)
+            },
+            {
+              once: true,
+            }
           );
+        } catch {
+          audioElement.src = expectedSourceAfter || silenceAudioBase64;
+        }
       },
       { once: true }
     );

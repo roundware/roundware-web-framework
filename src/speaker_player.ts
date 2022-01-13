@@ -22,6 +22,7 @@ export class SpeakerPlayer {
   playing: boolean = false;
   fading: boolean = false;
   private _id: number;
+  private cleanUrl: string;
   private _isSafeToPlay = false;
   /**
    * Creates an instance of SpeakerPlayer.
@@ -39,7 +40,7 @@ export class SpeakerPlayer {
     this._id = id;
     this.audio = new Audio();
     this.audio.crossOrigin = "anonymous";
-    const cleanUrl = cleanAudioURL(url);
+    this.cleanUrl = cleanAudioURL(url);
     this.audio.src = silenceAudioBase64;
     this.audio.loop = true;
     this.audio.preload = "auto";
@@ -55,28 +56,71 @@ export class SpeakerPlayer {
 
     makeAudioSafeToPlay(
       this.audio,
-      () => (this._isSafeToPlay = true),
-      cleanUrl
+      () => {
+        this._isSafeToPlay = true;
+      },
+      this.cleanUrl
     );
 
-    ["ended", "error", "pause"].forEach((e) => {
-      this.audio.addEventListener(e, () => (this.playing = false));
+    this.audio.addEventListener("playing", () => {
+      if (!this._isSafeToPlay) return;
+      this.playing = true;
+      this.log(`Playing event`);
     });
+    ["ended", "error", "pause", "about"].forEach((e) => {
+      this.audio.addEventListener(e, () => {
+        if (!this._isSafeToPlay) return;
+        this.playing = false;
+        this.log(`Pause event`);
+      });
+    });
+
+    this.audio.addEventListener("load", () => {
+      this.log(`loading audio...`);
+    });
+    this.audio.addEventListener("waiting", () => {
+      this.log(`waiting to load...`);
+    });
+
     this._prefetch = prefetch;
     this._fadeDuration = fadingDurationInSeconds;
   }
 
+  log(string: string) {
+    this._isSafeToPlay && speakerLog(`${this._id}: ${string}`);
+  }
+
+  _alreadyTryingToPlay = false;
   async play() {
+    // if not yet safe to play must retry again
     if (!this._isSafeToPlay) return false;
-    if (this.playing) return true;
+    if (this.audio.src == silenceAudioBase64) {
+      this.audio.src = this.cleanUrl;
+    }
+    // previous promise wasn't resolved yet
+    // if we again try to play() we might get
+    // Play request was inturrupted by another play request error
+    if (this._alreadyTryingToPlay) {
+      this.log(`already trying to play`);
+      return true;
+    }
+    if (this.playing) {
+      speakerLog(`${this._id}: already playing at volume ${this.volume()}`);
+      return true;
+    }
     try {
       if (this._context.state !== "running") {
         await this._context.resume();
       }
+
+      this._alreadyTryingToPlay = true;
       await this.audio.play();
+      this._alreadyTryingToPlay = false;
+      this._isSafeToPlay = true;
       this.playing = true;
-      speakerLog(`${this._id}: Speaker started! ${this.audio.src}`);
+      this.log(`Playing! Volume: ${this.volume()} ${this.audio.src}`);
     } catch (e) {
+      this._alreadyTryingToPlay = false;
       console.error(`Error playing speaker: ${this._id}`, e);
       return false;
     }
@@ -94,20 +138,29 @@ export class SpeakerPlayer {
 
     // assume it's already at the expected volume,
     // because there's always a small difference in decimals as gain.value is not accurate.
-    if (Math.abs(this.volume() - this._fadingDestination) < 0.01) return;
+    if (Math.abs(this.volume() - this._fadingDestination) < 0.05) return;
 
     if (!this.playing) {
+      console.log(`scheduled to play`);
       // schedule to fade when it starts playing.
-      this.audio.addEventListener("playing", () => this.fade(), {
-        once: true,
-      });
+      this.audio.addEventListener(
+        "playing",
+        () => {
+          if (this._isSafeToPlay) this.fade();
+        },
+        {
+          once: true,
+        }
+      );
       return;
     }
-
+    speakerLog(
+      `${this._id}: Volume ${this.audio.volume} -> ${this._fadingDestination}`
+    );
     this._gainNode.gain.cancelScheduledValues(0);
     this._fading = true;
     this._gainNode.gain.linearRampToValueAtTime(
-      toVolume,
+      this._fadingDestination,
       this._context.currentTime + durationInSeconds
     );
 
@@ -118,13 +171,13 @@ export class SpeakerPlayer {
   }
 
   pause() {
-    if (!this.audio.paused) {
+    if (this.playing) {
       this.audio.pause();
     }
   }
 
   fadeOutAndPause() {
-    if (this.audio.paused) return;
+    if (!this.playing) return;
     if (this.volume() < 0.05) return this.pause();
 
     this._gainNode.gain.linearRampToValueAtTime(
