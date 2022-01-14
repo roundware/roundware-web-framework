@@ -175,10 +175,10 @@ export class TimedTrackState implements ICommonStateProperties {
     this.intervalId = this.windowScope.setInterval(
       () =>
         this.log(
-          `${
+          `${(
             (Number(this.timerApproximateEndingAtMs) - new Date().getTime()) /
             1000
-          }s remaining`
+          ).toFixed(1)}s remaining`
         ),
       1
     );
