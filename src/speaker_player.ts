@@ -119,12 +119,19 @@ export class SpeakerPlayer {
       this._isSafeToPlay = true;
       this.playing = true;
       this.log(`Playing! Volume: ${this.volume()} ${this.audio.src}`);
+      return true;
     } catch (e) {
       this._alreadyTryingToPlay = false;
       console.error(`Error playing speaker: ${this._id}`, e);
       return false;
     }
-    return true;
+  }
+
+  scheduleFade() {
+    if (!this._isSafeToPlay) {
+      this.fade();
+      this.audio.removeEventListener("playing", this.scheduleFade);
+    }
   }
 
   _fadingDestination: number = 0;
@@ -142,20 +149,12 @@ export class SpeakerPlayer {
 
     if (!this.playing) {
       console.log(`scheduled to play`);
+      this.scheduleFade();
       // schedule to fade when it starts playing.
-      this.audio.addEventListener(
-        "playing",
-        () => {
-          if (this._isSafeToPlay) this.fade();
-        },
-        {
-          once: true,
-        }
-      );
       return;
     }
     speakerLog(
-      `${this._id}: Volume ${this.audio.volume} -> ${this._fadingDestination}`
+      `${this._id}: startng fade ${this.audio.volume} -> ${this._fadingDestination}`
     );
     this._gainNode.gain.cancelScheduledValues(0);
     this._fading = true;
