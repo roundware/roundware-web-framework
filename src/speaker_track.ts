@@ -104,6 +104,9 @@ export class SpeakerTrack {
     return ratio;
   }
 
+  log(string: string) {
+    speakerLog(`${this.speakerId}] ` + string);
+  }
   calculateVolume() {
     const { listenerPoint } = this;
 
@@ -128,19 +131,29 @@ export class SpeakerTrack {
   }
 
   updateParams(isPlaying: boolean, opts: { listenerPoint?: Feature<Point> }) {
-    if (opts && opts.listenerPoint && opts.listenerPoint.geometry) {
+    if (
+      opts &&
+      opts.listenerPoint &&
+      opts.listenerPoint.geometry &&
+      opts.listenerPoint.geometry.coordinates
+    ) {
       this.listenerPoint = opts.listenerPoint.geometry;
     }
 
     const newVolume = this.calculateVolume();
 
-    if (isPlaying === false) this.player.pause();
-    if (newVolume < 0.05 && this.player.playing) {
+    if (isPlaying === false) {
+      this.player.log(`pausing because mixer is off`);
+      this.player.pause();
+    }
+    if (newVolume < 0.05) {
       // allow to fade before pausing
+      this.player.log(`pausing because new volume is lower than 0.05`);
       this.player.fadeOutAndPause();
-    } else if (isPlaying === true && newVolume > 0.05) {
+    } else {
+      this.player.log(`new volume ${newVolume}`);
       this.play();
-    } else this.pause();
+    }
   }
 
   /**
@@ -164,7 +177,7 @@ export class SpeakerTrack {
     if (newVolume < 0.05) return; // no need to play
 
     try {
-      console.log(`im playing`);
+      console.log(`speaker playing ${this.speakerId} volume ${newVolume}`);
       this.player.play().then((success) => {
         if (!success) {
           setTimeout(() => {

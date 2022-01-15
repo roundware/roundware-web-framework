@@ -41,9 +41,9 @@ export class SpeakerPlayer {
     this.audio = new Audio();
     this.audio.crossOrigin = "anonymous";
     this.cleanUrl = cleanAudioURL(url);
+    this.audio.preload = "none";
     this.audio.src = silenceAudioBase64;
     this.audio.loop = true;
-    this.audio.preload = "auto";
     this.audio.autoplay = false;
 
     this._audioSrc = this._context.createMediaElementSource(this.audio);
@@ -79,7 +79,7 @@ export class SpeakerPlayer {
       this.log(`loading audio...`);
     });
     this.audio.addEventListener("waiting", () => {
-      this.log(`waiting to load...`);
+      this.log(`waiting to load... ${this.audio.src}`);
     });
 
     this._prefetch = prefetch;
@@ -93,7 +93,11 @@ export class SpeakerPlayer {
   _alreadyTryingToPlay = false;
   async play() {
     // if not yet safe to play must retry again
-    if (!this._isSafeToPlay) return false;
+
+    if (!this._isSafeToPlay) {
+      this.log(`waiting for user iteraction`);
+      return false;
+    }
     if (this.audio.src == silenceAudioBase64) {
       this.audio.src = this.cleanUrl;
     }
@@ -122,15 +126,9 @@ export class SpeakerPlayer {
       return true;
     } catch (e) {
       this._alreadyTryingToPlay = false;
-      console.error(`Error playing speaker: ${this._id}`, e);
+      // @ts-ignore
+      this.log(`failed to play ${e?.message}`);
       return false;
-    }
-  }
-
-  scheduleFade() {
-    if (!this._isSafeToPlay) {
-      this.fade();
-      this.audio.removeEventListener("playing", this.scheduleFade);
     }
   }
 
@@ -147,9 +145,19 @@ export class SpeakerPlayer {
     // because there's always a small difference in decimals as gain.value is not accurate.
     if (Math.abs(this.volume() - this._fadingDestination) < 0.05) return;
 
-    if (!this.playing) {
-      console.log(`scheduled to play`);
-      this.scheduleFade();
+    if (!this.playing || !this._isSafeToPlay) {
+      console.log(`scheduled to fade on audio starts playing`);
+      this.audio.addEventListener(
+        "playing",
+        () => {
+          this.log(`fading...`);
+          this.fade();
+        },
+        {
+          once: true,
+        }
+      );
+
       // schedule to fade when it starts playing.
       return;
     }
@@ -171,6 +179,7 @@ export class SpeakerPlayer {
 
   pause() {
     if (this.playing) {
+      this.log(`pausing from track`);
       this.audio.pause();
     }
   }

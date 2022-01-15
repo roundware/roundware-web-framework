@@ -153,27 +153,24 @@ export const makeAudioSafeToPlay = (
           audioElement.addEventListener(
             "playing",
             () => {
-              audioElement.addEventListener(
-                "pause",
-                () => {
-                  audioElement.currentTime = 0;
-                  if (expectedSourceAfter)
-                    audioElement.src = expectedSourceAfter;
-                  console.log(`safe to play later`, expectedSourceAfter);
-                  onSuccess();
-                },
-                {
-                  once: true,
-                }
-              );
               audioElement.pause();
+              audioElement.currentTime = 0;
+              if (expectedSourceAfter) {
+                audioElement.src = expectedSourceAfter;
+                audioElement.load();
+              }
+              console.log(`safe to play later`, expectedSourceAfter);
+              onSuccess();
             },
             {
               once: true,
             }
           );
-        } catch {
+        } catch (e) {
           audioElement.src = expectedSourceAfter || silenceAudioBase64;
+          audioElement.load();
+          console.error(`failed to make safe`, e);
+          onSuccess();
         }
       },
       { once: true }
