@@ -180,7 +180,6 @@ export class TimedTrackState implements ICommonStateProperties {
             1000
           ).toFixed(1)}s remaining`
         ),
-      1,
       1000
     );
     this.timerApproximateEndingAtMs = new Date().getTime() + timeMs;

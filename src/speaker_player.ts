@@ -23,7 +23,7 @@ export class SpeakerPlayer {
   fading: boolean = false;
   private _id: number;
   private cleanUrl: string;
-  private _isSafeToPlay = false;
+  _isSafeToPlay = false;
   /**
    * Creates an instance of SpeakerPlayer.
    * @param {string} url URL of the audio
@@ -43,6 +43,7 @@ export class SpeakerPlayer {
     this.cleanUrl = cleanAudioURL(url);
     this.audio.preload = "none";
     this.audio.src = silenceAudioBase64;
+    this.audio.load();
     this.audio.loop = true;
     this.audio.autoplay = false;
 
@@ -52,7 +53,7 @@ export class SpeakerPlayer {
     this._audioSrc.connect(this._gainNode);
     this._gainNode.connect(this._context.destination);
 
-    this._gainNode.gain.setValueAtTime(0, 0); // initially 0 and fade later
+    this._gainNode.gain.value = 0; // initially 0 and fade later
 
     makeAudioSafeToPlay(
       this.audio,
@@ -62,6 +63,8 @@ export class SpeakerPlayer {
       this.cleanUrl
     );
 
+    // -------------------------------------------
+    // settings the play state
     this.audio.addEventListener("playing", () => {
       if (!this._isSafeToPlay) return;
       this.playing = true;
@@ -74,6 +77,7 @@ export class SpeakerPlayer {
         this.log(`Pause event`);
       });
     });
+    // -------------------------------------------
 
     this.audio.addEventListener("load", () => {
       this.log(`loading audio...`);
@@ -86,8 +90,8 @@ export class SpeakerPlayer {
     this._fadeDuration = fadingDurationInSeconds;
   }
 
-  log(string: string) {
-    this._isSafeToPlay && speakerLog(`${this._id}: ${string}`);
+  log(string: string, force = false) {
+    (this._isSafeToPlay || force) && speakerLog(`${this._id}: ${string}`);
   }
 
   _alreadyTryingToPlay = false;
@@ -95,7 +99,7 @@ export class SpeakerPlayer {
     // if not yet safe to play must retry again
 
     if (!this._isSafeToPlay) {
-      this.log(`waiting for user iteraction`);
+      this.log(`waiting for user iteraction`, true);
       return false;
     }
     if (this.audio.src == silenceAudioBase64) {
@@ -119,6 +123,7 @@ export class SpeakerPlayer {
 
       this._alreadyTryingToPlay = true;
       await this.audio.play();
+
       this._alreadyTryingToPlay = false;
       this._isSafeToPlay = true;
       this.playing = true;
@@ -128,6 +133,7 @@ export class SpeakerPlayer {
       this._alreadyTryingToPlay = false;
       // @ts-ignore
       this.log(`failed to play ${e?.message}`);
+
       return false;
     }
   }
@@ -182,6 +188,7 @@ export class SpeakerPlayer {
       this.log(`pausing from track`);
       this.audio.pause();
     }
+    this.playing = false;
   }
 
   fadeOutAndPause() {

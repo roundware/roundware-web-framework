@@ -77,6 +77,7 @@ export const UNLOCK_AUDIO_EVENTS = [
   "mousedown",
   "keydown",
   "keyup",
+  "touchstart",
 ];
 
 /** Helps stabilize WebAudio startup
@@ -146,10 +147,10 @@ export const makeAudioSafeToPlay = (
   UNLOCK_AUDIO_EVENTS.forEach((e) => {
     window.addEventListener(
       e,
-      async () => {
+      () => {
         audioElement.src = silenceAudioBase64;
         try {
-          await audioElement.play();
+          audioElement.play();
           audioElement.addEventListener(
             "playing",
             () => {
@@ -157,7 +158,6 @@ export const makeAudioSafeToPlay = (
               audioElement.currentTime = 0;
               if (expectedSourceAfter) {
                 audioElement.src = expectedSourceAfter;
-                audioElement.load();
               }
               console.log(`safe to play later`, expectedSourceAfter);
               onSuccess();
@@ -168,7 +168,6 @@ export const makeAudioSafeToPlay = (
           );
         } catch (e) {
           audioElement.src = expectedSourceAfter || silenceAudioBase64;
-          audioElement.load();
           console.error(`failed to make safe`, e);
           onSuccess();
         }

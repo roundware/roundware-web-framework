@@ -76,7 +76,9 @@ export class SpeakerTrack {
     this.uri = uri;
 
     this.player = new SpeakerPlayer(audioContext, speakerId, uri);
-    this.player.audio.addEventListener("playing", () => this.updateVolume());
+    this.player.audio.addEventListener("playing", () => {
+      if (this.player._isSafeToPlay) this.updateVolume();
+    });
     this.listenerPoint = listenerPoint.geometry;
 
     this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
@@ -140,12 +142,14 @@ export class SpeakerTrack {
       this.listenerPoint = opts.listenerPoint.geometry;
     }
 
+    if (isPlaying == false) {
+      this.player.log(`pausing because mixer is off`);
+      this.player.fadeOutAndPause();
+      return;
+    }
+
     const newVolume = this.calculateVolume();
 
-    if (isPlaying === false) {
-      this.player.log(`pausing because mixer is off`);
-      this.player.pause();
-    }
     if (newVolume < 0.05) {
       // allow to fade before pausing
       this.player.log(`pausing because new volume is lower than 0.05`);
@@ -153,6 +157,7 @@ export class SpeakerTrack {
     } else {
       this.player.log(`new volume ${newVolume}`);
       this.play();
+      this.updateVolume();
     }
   }
 
@@ -177,7 +182,6 @@ export class SpeakerTrack {
     if (newVolume < 0.05) return; // no need to play
 
     try {
-      console.log(`speaker playing ${this.speakerId} volume ${newVolume}`);
       this.player.play().then((success) => {
         if (!success) {
           setTimeout(() => {
