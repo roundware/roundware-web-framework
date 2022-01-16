@@ -31,6 +31,7 @@ export type IMixParams = {
   endDate?: Date;
   sessionId?: number;
   keepPausedAssets?: boolean;
+  syncSpeakers?: boolean;
 };
 
 export interface IInitialParams {}
