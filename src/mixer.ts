@@ -1,3 +1,4 @@
+import { IAudioContext } from "standardized-audio-context";
 import { AssetPool } from "./assetPool";
 import { Playlist } from "./playlist";
 import { Roundware } from "./roundware";
@@ -32,6 +33,7 @@ export class Mixer {
   playlist: Playlist | undefined;
   assetPool: AssetPool;
   speakerTracks: SpeakerTrack[] | undefined;
+  audioContext: IAudioContext;
 
   constructor({
     client,
@@ -74,6 +76,7 @@ export class Mixer {
       sortMethods,
       mixParams: this.mixParams,
     });
+    this.audioContext = buildAudioContext(this._windowScope);
   }
 
   updateParams({ listenerLocation, ...params }: IMixParams) {
@@ -119,7 +122,6 @@ export class Mixer {
    */
   initContext() {
     if (!this.playlist) {
-      const audioContext = buildAudioContext(this._windowScope);
       if (!this.mixParams.listenerPoint)
         return console.error(
           `[mixer] listenerPoint was missing while initiating mixer!`
@@ -144,14 +146,14 @@ export class Mixer {
         audioTracks,
         listenerPoint,
         assetPool: this.assetPool,
-        audioContext,
+        audioContext: this.audioContext,
         windowScope: this._windowScope,
       });
 
       this.speakerTracks = speakers.map(
         (speakerData) =>
           new SpeakerTrack({
-            audioContext,
+            audioContext: this.audioContext,
             listenerPoint,
             prefetchAudio: this._prefetchSpeakerAudio,
             data: speakerData,
@@ -167,9 +169,6 @@ export class Mixer {
    * @returns boolean
    */
   toggle(play?: boolean): boolean {
-    // Build the audio context and playlist if it doesn't exist yet.
-    this.initContext();
-
     if (typeof play == "boolean") {
       // do based on what asked..
       play ? this.play() : this.stop();
@@ -182,17 +181,28 @@ export class Mixer {
   }
 
   play() {
-    console.log(`playing`);
+    this.initContext();
+    // console.log(`playing`);
+    // consssole.log(this.audioContext.currentTime);
+
     this.playing = true;
     if (this.playlist) this.playlist.play();
-    if (Array.isArray(this.speakerTracks))
-      this.speakerTracks.forEach((s) => s.play());
+    if (Array.isArray(this.speakerTracks)) {
+      this.speakerTracks.forEach((s) => {
+        s.play();
+        s.player.timerStart();
+      });
+    }
   }
 
   stop() {
+    this.initContext();
     this.playing = false;
     if (this.playlist) this.playlist.pause();
     if (Array.isArray(this.speakerTracks))
-      this.speakerTracks.forEach((s) => s.pause());
+      this.speakerTracks.forEach((s) => {
+        s.pause();
+        s.player.timerStop();
+      });
   }
 }
