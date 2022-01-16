@@ -35,4 +35,5 @@ export interface IRoundwareConstructorOptions extends IOptions {
   assetUpdateInterval?: number;
   prefetchSpeakerAudio?: boolean;
   keepPausedAssets?: boolean;
+  syncSpeakers?: boolean;
 }
