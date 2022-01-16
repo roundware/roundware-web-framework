@@ -4,6 +4,7 @@ import {
   IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
 import { silenceAudioBase64 } from "./playlistAudioTrack";
+import { ISpeakerPlayer } from "./types/speaker";
 import { cleanAudioURL, makeAudioSafeToPlay, speakerLog } from "./utils";
 
 /**
@@ -12,7 +13,7 @@ import { cleanAudioURL, makeAudioSafeToPlay, speakerLog } from "./utils";
  * @export
  * @class SpeakerPlayer
  */
-export class SpeakerPlayer {
+export class SpeakerStreamer implements ISpeakerPlayer {
   private _prefetch: boolean;
   private _fadeDuration: number;
   audio: HTMLAudioElement;
@@ -23,7 +24,9 @@ export class SpeakerPlayer {
   fading: boolean = false;
   private _id: number;
   private cleanUrl: string;
-  _isSafeToPlay = false;
+  isSafeToPlay = false;
+  loaded: boolean = true;
+  loadedPercentage: number = 100;
   /**
    * Creates an instance of SpeakerPlayer.
    * @param {string} url URL of the audio
@@ -58,7 +61,7 @@ export class SpeakerPlayer {
     makeAudioSafeToPlay(
       this.audio,
       () => {
-        this._isSafeToPlay = true;
+        this.isSafeToPlay = true;
       },
       this.cleanUrl
     );
@@ -66,13 +69,13 @@ export class SpeakerPlayer {
     // -------------------------------------------
     // settings the play state
     this.audio.addEventListener("playing", () => {
-      if (!this._isSafeToPlay) return;
+      if (!this.isSafeToPlay) return;
       this.playing = true;
       this.log(`Playing event`);
     });
     ["ended", "error", "pause", "about"].forEach((e) => {
       this.audio.addEventListener(e, () => {
-        if (!this._isSafeToPlay) return;
+        if (!this.isSafeToPlay) return;
         this.playing = false;
         this.log(`Pause event`);
       });
@@ -91,14 +94,14 @@ export class SpeakerPlayer {
   }
 
   log(string: string, force = false) {
-    (this._isSafeToPlay || force) && speakerLog(`${this._id}: ${string}`);
+    (this.isSafeToPlay || force) && speakerLog(`${this._id}: ${string}`);
   }
 
   _alreadyTryingToPlay = false;
   async play() {
     // if not yet safe to play must retry again
 
-    if (!this._isSafeToPlay) {
+    if (!this.isSafeToPlay) {
       this.log(`waiting for user iteraction`, true);
       return false;
     }
@@ -125,7 +128,7 @@ export class SpeakerPlayer {
       await this.audio.play();
 
       this._alreadyTryingToPlay = false;
-      this._isSafeToPlay = true;
+      this.isSafeToPlay = true;
       this.playing = true;
       this.log(`Playing! Volume: ${this.volume()} ${this.audio.src}`);
       return true;
@@ -151,7 +154,7 @@ export class SpeakerPlayer {
     // because there's always a small difference in decimals as gain.value is not accurate.
     if (Math.abs(this.volume() - this._fadingDestination) < 0.05) return;
 
-    if (!this.playing || !this._isSafeToPlay) {
+    if (!this.playing || !this.isSafeToPlay) {
       console.log(`scheduled to fade on audio starts playing`);
       this.audio.addEventListener(
         "playing",
@@ -208,5 +211,10 @@ export class SpeakerPlayer {
   }
   volume() {
     return this._gainNode.gain.value;
+  }
+  timerStart(): void {}
+  timerStop(): void {}
+  onLoadingProgress(callback: (newPercent: number) => void): void {
+    callback(100);
   }
 }
