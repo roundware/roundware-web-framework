@@ -11,8 +11,9 @@ import lineToPolygon from "@turf/line-to-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
 import pointToLineDistance from "@turf/point-to-line-distance";
 import { IAudioContext } from "standardized-audio-context";
-import { SpeakerPlayer } from "./speaker_player";
-import { ISpeakerData } from "./types/speaker";
+import { SpeakerStreamer } from "./SpeakerStreamer";
+import { SpeakerPrefetchPlayer } from "./SpeakerPrefetchPlayer";
+import { ISpeakerData, ISpeakerPlayer } from "./types/speaker";
 import { speakerLog } from "./utils";
 
 const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
@@ -43,7 +44,7 @@ export class SpeakerTrack {
   speakerData: ISpeakerData;
 
   soundId: number | undefined;
-  player: SpeakerPlayer;
+  player: ISpeakerPlayer;
 
   constructor({
     audioContext,
@@ -75,9 +76,9 @@ export class SpeakerTrack {
     this.attenuationDistanceKm = attenuationDistance / 1000;
     this.uri = uri;
 
-    this.player = new SpeakerPlayer(audioContext, speakerId, uri);
+    this.player = new SpeakerPrefetchPlayer(audioContext, speakerId, uri);
     this.player.audio.addEventListener("playing", () => {
-      if (this.player._isSafeToPlay) this.updateVolume();
+      if (this.player.isSafeToPlay) this.updateVolume();
     });
     this.listenerPoint = listenerPoint.geometry;
 
@@ -186,7 +187,7 @@ export class SpeakerTrack {
         if (!success) {
           setTimeout(() => {
             this.play();
-          }, 1000);
+          }, 2000);
         }
       });
     } catch (err) {
