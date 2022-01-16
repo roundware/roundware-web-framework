@@ -13,3 +13,19 @@ export interface ISpeakerData {
 }
 
 export interface ISpeakerFilters {}
+
+export interface ISpeakerPlayer {
+  isSafeToPlay: boolean;
+  playing: boolean;
+  audio: HTMLAudioElement;
+  loaded: boolean;
+  loadedPercentage: number;
+  play(): Promise<boolean>;
+  pause(): void;
+  timerStart(): void;
+  timerStop(): void;
+  fade(destinationVolume?: number, duration?: number): void;
+  fadeOutAndPause(): void;
+  log(string: string): void;
+  onLoadingProgress(callback: (newPercent: number) => void): void;
+}
