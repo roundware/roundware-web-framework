@@ -189,8 +189,8 @@ export class Mixer {
     if (this.playlist) this.playlist.play();
     if (Array.isArray(this.speakerTracks)) {
       this.speakerTracks.forEach((s) => {
-        s.play();
         s.player.timerStart();
+        s.play();
       });
     }
   }
@@ -201,8 +201,8 @@ export class Mixer {
     if (this.playlist) this.playlist.pause();
     if (Array.isArray(this.speakerTracks))
       this.speakerTracks.forEach((s) => {
-        s.pause();
         s.player.timerStop();
+        s.pause();
       });
   }
 }
