@@ -20,6 +20,7 @@ export interface ISpeakerPlayer {
   audio: HTMLAudioElement;
   loaded: boolean;
   loadedPercentage: number;
+  id: number;
   play(): Promise<boolean>;
   pause(): void;
   timerStart(): void;

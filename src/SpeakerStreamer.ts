@@ -22,7 +22,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
   private _context: IAudioContext;
   playing: boolean = false;
   fading: boolean = false;
-  private _id: number;
+  id: number;
   private cleanUrl: string;
   isSafeToPlay = false;
   loaded: boolean = true;
@@ -40,7 +40,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
     fadingDurationInSeconds: number = 3
   ) {
     this._context = audioContext;
-    this._id = id;
+    this.id = id;
     this.audio = new Audio();
     this.audio.crossOrigin = "anonymous";
     this.cleanUrl = cleanAudioURL(url);
@@ -94,7 +94,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
   }
 
   log(string: string, force = false) {
-    (this.isSafeToPlay || force) && speakerLog(`${this._id}: ${string}`);
+    (this.isSafeToPlay || force) && speakerLog(`${this.id}: ${string}`);
   }
 
   _alreadyTryingToPlay = false;
@@ -116,7 +116,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
       return true;
     }
     if (this.playing) {
-      speakerLog(`${this._id}: already playing at volume ${this.volume()}`);
+      speakerLog(`${this.id}: already playing at volume ${this.volume()}`);
       return true;
     }
     try {
@@ -171,7 +171,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
       return;
     }
     speakerLog(
-      `${this._id}: startng fade ${this.audio.volume} -> ${this._fadingDestination}`
+      `${this.id}: startng fade ${this.audio.volume} -> ${this._fadingDestination}`
     );
     this._gainNode.gain.cancelScheduledValues(0);
     this._fading = true;
@@ -181,7 +181,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
     );
 
     setTimeout(() => {
-      speakerLog(`${this._id}: volume faded to "${this.volume()}""`);
+      speakerLog(`${this.id}: volume faded to "${this.volume()}""`);
       this._fading = false;
     }, durationInSeconds * 1000);
   }
