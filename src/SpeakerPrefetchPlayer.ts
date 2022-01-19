@@ -12,7 +12,7 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
   playing: boolean = false;
   loaded = false;
   audio: HTMLAudioElement;
-  source: IAudioBufferSourceNode<IAudioContext>;
+  source?: IAudioBufferSourceNode<IAudioContext>;
   id: number;
   gainNode: IGainNode<IAudioContext>;
   context: IAudioContext;
@@ -25,11 +25,11 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     this.audio = new Audio();
     this.id = id;
     this.context = audioContext;
-    const source = audioContext.createBufferSource();
+
     this.gainNode = audioContext.createGain();
     this.gainNode.gain.value = 0;
     var request = new XMLHttpRequest();
-    source.loop = true;
+
     request.open("GET", uri, true);
     request.timeout = Infinity;
     request.responseType = "arraybuffer";
@@ -46,11 +46,7 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
         audioData,
         function (buffer) {
           speakerContext.buffer = buffer;
-          source.buffer = buffer;
 
-          source.connect(speakerContext.gainNode);
-          speakerContext.gainNode.connect(audioContext.destination);
-          source.loop = true;
           speakerContext.loaded = true;
           speakerContext.log(`loaded successfully`);
         },
@@ -62,72 +58,101 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     };
 
     request.send();
-    this.source = source;
   }
 
   started = false;
   async play(): Promise<boolean> {
-    if (!this.loaded) {
-      this.log(`not loaded yet`);
+    if (!this.loaded || !this.started) {
+      this.log(`not loaded or started yet`);
       return false;
     }
 
     if (this.playing) return true;
-    this.playing = true;
-    if (this.started) {
+
+    if (this.gainNode.numberOfOutputs != 1) {
       this.gainNode.connect(this.context.destination);
+      this.playing = true;
+      this.log(`gain node connected`);
       return true;
     }
-    try {
-      return true;
-    } catch (e) {
-      // @ts-ignore
-      this.log(`error playing ${e.message}`);
-      this.playing = false;
-      return false;
-    }
+    return true;
   }
+
+  startedAt = 0;
+  pausedAt = 0;
   timerStart(): void {
-    if (this.started) return;
-    this.source.start();
+    if (this.started || !this.buffer) {
+      return;
+    }
+
+    // see timerStop() note
+    this.initializeSource();
+    if (!this.source) return;
+    // start now will so stay in sync with other speakers, from last paused time
+    this.source.start(this.context.currentTime, this.pausedAt);
+    this.fade();
+    this.startedAt = this.context.currentTime;
     this.started = true;
   }
+
   timerStop(): void {
-    // if (this.buffer) this.source.buffer = this.buffer;
+    /**
+     * note: we cant just stop the source and resume
+     * start() and stop() are allow to called only once
+     *
+     * so need to
+     * note the current time as paused time (incremented with previous paused times)
+     * destroy current source
+     * and next time needs to start, create new source
+     * we can pass the already downloaded buffer
+     * start with offset as last paused time
+     */
+    this.source?.stop();
+    this.pausedAt += this.context.currentTime - this.startedAt;
+    this.log(`next time will start from ${this.pausedAt}`);
+    this.source = undefined;
+    this.started = false;
   }
+
+  initializeSource() {
+    if (!this.buffer) return;
+    // disconnect previous ones as we are going to create new
+    this.gainNode.disconnect();
+    this.source?.disconnect();
+    // create new source
+    this.source = this.context.createBufferSource();
+
+    // buffer already downloaded from constructor
+    this.source.buffer = this.buffer;
+    // connect to audio context
+    this.source.connect(this.gainNode).connect(this.context.destination);
+    this.fade();
+  }
+
   pause(): void {
     if (!this.playing) return;
     this.gainNode.disconnect();
+    this.log(`gain node disconnected ` + JSON.stringify(this.gainNode));
     this.playing = false;
   }
   _fadingDestination = 0;
   _fading = false;
   fade(toVolume: number = this._fadingDestination, duration: number = 3): void {
+    if (toVolume > 0.05) {
+      // make sure souce connected to node
+      this.play();
+    }
     if (this._fadingDestination === toVolume && this._fading) return;
     this._fadingDestination = toVolume;
 
     // assume it's already at the expected volume,
     // because there's always a small difference in decimals as gain.value is not accurate.
-    if (Math.abs(this.volume - this._fadingDestination) < 0.05) return;
-
-    if (!this.playing || !this.isSafeToPlay) {
-      console.log(`scheduled to fade on audio starts playing`);
-      this.audio.addEventListener(
-        "playing",
-        () => {
-          this.log(`fading...`);
-          this.fade();
-        },
-        {
-          once: true,
-        }
-      );
-
-      // schedule to fade when it starts playing.
-      return;
+    if (this._fadingDestination > 0.05) {
+      // make sure souce connected to node
+      this.play();
     }
     this.log(`startng fade ${this.volume} -> ${this._fadingDestination}`);
-    this.gainNode.gain.cancelScheduledValues(this.context.currentTime);
+    this.gainNode.gain.cancelScheduledValues(0);
     this._fading = true;
     this.gainNode.gain.linearRampToValueAtTime(
       this._fadingDestination,
