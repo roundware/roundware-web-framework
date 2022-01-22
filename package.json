@@ -67,6 +67,7 @@
     "@turf/line-to-polygon": "^6.5.0",
     "@turf/point-to-line-distance": "^6.5.0",
     "loglevel": "^1.7.1",
+    "roundware-web-framework": "https://github.com/shreyas-jadhav/roundware-web-framework/raw/speaker-sync/roundware-web-framework-0.12.5.tgz",
     "standardized-audio-context": "^25.3.9"
   },
   "np": {
