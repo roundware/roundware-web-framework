@@ -39,7 +39,6 @@ export class Mixer {
     client,
     windowScope,
     listenerLocation,
-    prefetchSpeakerAudio,
     filters = [],
     sortMethods = [],
     mixParams = {},
@@ -47,7 +46,6 @@ export class Mixer {
     client: Roundware;
     windowScope: Window;
     listenerLocation: Coordinates;
-    prefetchSpeakerAudio: boolean | unknown;
     filters?: unknown[];
     sortMethods?: unknown[];
     mixParams: IMixParams;
@@ -56,7 +54,7 @@ export class Mixer {
 
     this._windowScope = windowScope;
     this._client = client;
-    this._prefetchSpeakerAudio = prefetchSpeakerAudio;
+
     const assets: IAssetData[] = client.assets();
     const timedAssets = client.timedAssets();
 
@@ -155,8 +153,14 @@ export class Mixer {
           new SpeakerTrack({
             audioContext: this.audioContext,
             listenerPoint,
-            prefetchAudio: this._prefetchSpeakerAudio,
+
             data: speakerData,
+            config: this.mixParams.speakerConfig || {
+              sync: false,
+              length: 600,
+              loop: false,
+              prefetch: false,
+            },
           })
       );
       this.updateParams(this.mixParams);
