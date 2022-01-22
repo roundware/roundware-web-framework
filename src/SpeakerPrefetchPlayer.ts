@@ -4,7 +4,8 @@ import {
   IAudioContext,
   IGainNode,
 } from "standardized-audio-context";
-import { ISpeakerPlayer } from "./types/speaker";
+import { SpeakerConfig } from "./types/roundware";
+import { ISpeakerPlayer, SpeakerConstructor } from "./types/speaker";
 import { speakerLog } from "./utils";
 
 export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
@@ -16,18 +17,19 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
   id: number;
   gainNode: IGainNode<IAudioContext>;
   context: IAudioContext;
-
+  config: SpeakerConfig;
   loadedPercentage = 0;
 
   buffer?: IAudioBuffer;
 
-  constructor(audioContext: IAudioContext, id: number, uri: string) {
+  constructor({ audioContext, id, uri, config }: SpeakerConstructor) {
     this.audio = new Audio();
     this.id = id;
     this.context = audioContext;
-
+    this.config = config;
     this.gainNode = audioContext.createGain();
     this.gainNode.gain.value = 0;
+
     var request = new XMLHttpRequest();
 
     request.open("GET", uri, true);
@@ -66,20 +68,16 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
       this.log(`not loaded or started yet`);
       return false;
     }
-
     if (this.playing) return true;
 
-    if (this.gainNode.numberOfOutputs != 1) {
-      this.gainNode.connect(this.context.destination);
-      this.playing = true;
-      this.log(`gain node connected`);
-      return true;
-    }
+    this.gainNode.connect(this.context.destination);
+    this.playing = true;
     return true;
   }
 
   startedAt = 0;
   pausedAt = 0;
+
   timerStart(): void {
     if (this.started || !this.buffer) {
       return;
@@ -124,6 +122,14 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
 
     // buffer already downloaded from constructor
     this.source.buffer = this.buffer;
+
+    if (this.config.loop) {
+      this.source.loop = true;
+      this.source.loopEnd = this.config.length || this.buffer.duration;
+    } else {
+      this.source.loop = false;
+    }
+
     // connect to audio context
     this.source.connect(this.gainNode).connect(this.context.destination);
     this.fade();
@@ -132,7 +138,6 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
   pause(): void {
     if (!this.playing) return;
     this.gainNode.disconnect();
-    this.log(`gain node disconnected ` + JSON.stringify(this.gainNode));
     this.playing = false;
   }
   _fadingDestination = 0;
