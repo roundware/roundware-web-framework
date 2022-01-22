@@ -68,15 +68,31 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
       this.log(`not loaded or started yet`);
       return false;
     }
-    if (this.playing) return true;
+    if (this.playing) {
+      this.fade();
+      return true;
+    }
 
     this.gainNode.connect(this.context.destination);
     this.playing = true;
     return true;
   }
 
+  replay() {
+    this.pausedAt = 0;
+    this.playing = false;
+    this.initializeSource();
+    this.timerStart();
+  }
   startedAt = 0;
   pausedAt = 0;
+
+  get remainingDuration() {
+    if (!this.buffer) return 0;
+    return (this.config.length || this.buffer?.duration) - this.pausedAt;
+  }
+
+  endTimeout: NodeJS.Timeout | null = null;
 
   timerStart(): void {
     if (this.started || !this.buffer) {
@@ -88,6 +104,15 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     if (!this.source) return;
     // start now will so stay in sync with other speakers, from last paused time
     this.source.start(this.context.currentTime, this.pausedAt);
+
+    if (this.endTimeout) {
+      clearTimeout(this.endTimeout);
+    }
+    this.endTimeout = setTimeout(() => {
+      this.endCallback();
+      this.log(`speaker end`);
+    }, this.remainingDuration * 1000);
+
     this.fade();
     this.startedAt = this.context.currentTime;
     this.started = true;
@@ -110,6 +135,9 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     this.log(`next time will start from ${this.pausedAt}`);
     this.source = undefined;
     this.started = false;
+    if (this.endTimeout) {
+      clearTimeout(this.endTimeout);
+    }
   }
 
   initializeSource() {
@@ -117,6 +145,7 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     // disconnect previous ones as we are going to create new
     this.gainNode.disconnect();
     this.source?.disconnect();
+
     // create new source
     this.source = this.context.createBufferSource();
 
@@ -133,8 +162,9 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     // connect to audio context
     this.source.connect(this.gainNode).connect(this.context.destination);
 
-    this.source.onended = this.endCallback;
+    this.started = false;
 
+    console.log(`init`);
     this.fade();
   }
 
@@ -145,35 +175,32 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
   }
   _fadingDestination = 0;
   _fading = false;
+  _fadingTimeout: NodeJS.Timeout | null = null;
   fade(toVolume: number = this._fadingDestination, duration: number = 3): void {
-    if (toVolume > 0.05) {
-      // make sure souce connected to node
-      this.play();
-    }
-    if (this._fadingDestination === toVolume && this._fading) return;
+    if (this._fadingDestination == toVolume && this._fading) return;
     this._fadingDestination = toVolume;
+    if (!this.playing) return;
 
-    // assume it's already at the expected volume,
-    // because there's always a small difference in decimals as gain.value is not accurate.
-    if (this._fadingDestination > 0.05) {
-      // make sure souce connected to node
-      this.play();
-    }
+    // already at that volume
+    if (Math.abs(this.volume - this._fadingDestination) < 0.05) return;
     this.log(`startng fade ${this.volume} -> ${this._fadingDestination}`);
     this.gainNode.gain.cancelScheduledValues(0);
-    this._fading = true;
+
     this.gainNode.gain.linearRampToValueAtTime(
       this._fadingDestination,
       this.context.currentTime + duration
     );
-
-    setTimeout(() => {
-      speakerLog(`volume faded to "${this.volume}""`);
+    if (this._fadingTimeout) {
+      clearTimeout(this._fadingTimeout);
+    }
+    this._fadingTimeout = setTimeout(() => {
       this._fading = false;
     }, duration * 1000);
   }
   fadeOutAndPause(): void {
+    if (!this.playing) return;
     this.fade(0);
+    this.log(`fading out and pausing`);
     setTimeout(() => {
       this.pause();
     }, 3000);
@@ -191,5 +218,6 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
   endCallback = () => {};
   onEnd(callback: () => void) {
     this.endCallback = callback;
+    console.log(`callback set`);
   }
 }
