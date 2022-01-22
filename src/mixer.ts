@@ -197,22 +197,39 @@ export class Mixer {
 
   endedSpeakersLength = 0;
   handleSpeakerEnd() {
-    this.endedSpeakersLength++;
+    this.endedSpeakersLength += 1;
+    console.log(
+      `some speaker ended`,
+      this.endedSpeakersLength,
+      this.speakerTracks?.length
+    );
     if (this.endedSpeakersLength == this.speakerTracks?.length) {
       this.allSpeakersEndCallback();
     }
   }
 
+  replay() {
+    this.endedSpeakersLength = 0;
+    const that = this;
+    this.speakerTracks?.forEach((s) => {
+      s.player.pause();
+      s.player.replay();
+      that.play();
+    });
+  }
+
   initializeSpeakers() {
     this.endedSpeakersLength = 0;
     const speakers = this._client.speakers();
+    const that = this;
+
     this.speakerTracks = speakers.map(
       (speakerData) =>
         new SpeakerTrack({
-          audioContext: this.audioContext,
-          listenerPoint: this.mixParams.listenerPoint!,
+          audioContext: that.audioContext,
+          listenerPoint: that.mixParams.listenerPoint!,
           data: speakerData,
-          config: this.mixParams.speakerConfig || {
+          config: that.mixParams.speakerConfig || {
             sync: false,
             length: 600,
             loop: false,
@@ -220,7 +237,11 @@ export class Mixer {
           },
         })
     );
-    this.speakerTracks.forEach((s) => s.player.onEnd(this.handleSpeakerEnd));
+
+    this.speakerTracks.forEach((s) =>
+      s.player.onEnd(() => that.handleSpeakerEnd())
+    );
+    this.updateParams(this.mixParams);
   }
 
   allSpeakersEndCallback = () => {};
