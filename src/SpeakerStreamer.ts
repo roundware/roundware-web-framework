@@ -216,4 +216,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
   onEnd(callback: () => void): void {
     this.audio.onended = callback;
   }
+  replay(): void {
+    this.audio.fastSeek(0);
+  }
 }
