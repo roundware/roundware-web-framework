@@ -4,7 +4,8 @@ import {
   IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
 import { silenceAudioBase64 } from "./playlistAudioTrack";
-import { ISpeakerPlayer } from "./types/speaker";
+import { SpeakerConfig } from "./types/roundware";
+import { ISpeakerPlayer, SpeakerConstructor } from "./types/speaker";
 import { cleanAudioURL, makeAudioSafeToPlay, speakerLog } from "./utils";
 
 /**
@@ -14,7 +15,6 @@ import { cleanAudioURL, makeAudioSafeToPlay, speakerLog } from "./utils";
  * @class SpeakerPlayer
  */
 export class SpeakerStreamer implements ISpeakerPlayer {
-  private _prefetch: boolean;
   private _fadeDuration: number;
   audio: HTMLAudioElement;
   private _audioSrc: IMediaElementAudioSourceNode<IAudioContext>;
@@ -27,23 +27,19 @@ export class SpeakerStreamer implements ISpeakerPlayer {
   isSafeToPlay = false;
   loaded: boolean = true;
   loadedPercentage: number = 100;
+  config: SpeakerConfig;
   /**
    * Creates an instance of SpeakerPlayer.
    * @param {string} url URL of the audio
    * @memberof SpeakerPlayer
    */
-  constructor(
-    audioContext: IAudioContext,
-    id: number,
-    url: string,
-    prefetch: boolean = true,
-    fadingDurationInSeconds: number = 3
-  ) {
+  constructor({ audioContext, uri, id, config }: SpeakerConstructor) {
     this._context = audioContext;
     this.id = id;
     this.audio = new Audio();
     this.audio.crossOrigin = "anonymous";
-    this.cleanUrl = cleanAudioURL(url);
+    this.cleanUrl = cleanAudioURL(uri);
+    this.config = config;
     this.audio.preload = "none";
     this.audio.src = silenceAudioBase64;
     this.audio.load();
@@ -89,8 +85,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
       this.log(`waiting to load... ${this.audio.src}`);
     });
 
-    this._prefetch = prefetch;
-    this._fadeDuration = fadingDurationInSeconds;
+    this._fadeDuration = 3;
   }
 
   log(string: string, force = false) {
