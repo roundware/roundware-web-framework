@@ -43,7 +43,9 @@ export class SpeakerTrack {
   speakerData: ISpeakerData;
 
   soundId: number | undefined;
-  player: ISpeakerPlayer;
+  player!: ISpeakerPlayer;
+  audioContext: IAudioContext;
+  config: SpeakerConfig;
 
   constructor({
     audioContext,
@@ -67,6 +69,8 @@ export class SpeakerTrack {
       uri,
     } = data;
 
+    this.audioContext = audioContext;
+    this.config = config;
     this.speakerData = data;
     this.speakerId = speakerId;
     this.maxVolume = maxVolume;
@@ -74,16 +78,6 @@ export class SpeakerTrack {
     this.attenuationDistanceKm = attenuationDistance / 1000;
     this.uri = uri;
 
-    const Player = config.sync ? SpeakerPrefetchPlayer : SpeakerStreamer;
-    this.player = new Player({
-      audioContext,
-      id: this.speakerId,
-      uri: this.uri,
-      config,
-    });
-    this.player.audio.addEventListener("playing", () => {
-      if (this.player.isSafeToPlay) this.updateVolume();
-    });
     this.listenerPoint = listenerPoint.geometry;
 
     this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
@@ -91,6 +85,7 @@ export class SpeakerTrack {
 
     this.outerBoundary = convertLinesToPolygon(boundary);
     this.currentVolume = NEARLY_ZERO;
+    this.initPlayer();
   }
 
   outerBoundaryContains(point: Coord) {
@@ -204,6 +199,21 @@ export class SpeakerTrack {
       this.player?.pause();
     } catch (err) {
       console.error("Unable to pause", this.logline, err);
+    }
+  }
+
+  initPlayer() {
+    const Player = this.config.sync ? SpeakerPrefetchPlayer : SpeakerStreamer;
+    this.player = new Player({
+      audioContext: this.audioContext,
+      id: this.speakerId,
+      uri: this.uri,
+      config: this.config,
+    });
+    if (!this.config.sync) {
+      this.player.audio.addEventListener("playing", () => {
+        if (this.player.isSafeToPlay) this.updateVolume();
+      });
     }
   }
 
