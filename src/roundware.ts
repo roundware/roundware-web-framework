@@ -148,7 +148,6 @@ export class Roundware {
       timedAsset,
       audiotrack,
       assetUpdateInterval,
-      prefetchSpeakerAudio,
     } = options;
 
     if (typeof serverUrl !== "string") {
@@ -231,7 +230,6 @@ export class Roundware {
       client: this,
       windowScope: this.windowScope,
       listenerLocation: this.listenerLocation,
-      prefetchSpeakerAudio: prefetchSpeakerAudio || false,
       mixParams,
     });
   }
