@@ -125,7 +125,6 @@ export class Mixer {
           `[mixer] listenerPoint was missing while initiating mixer!`
         );
       const listenerPoint = this.mixParams.listenerPoint;
-      const speakers = this._client.speakers();
 
       let selectTrackId: string | number | null = getUrlParam(
         this._windowScope.location.toString(),
@@ -148,21 +147,7 @@ export class Mixer {
         windowScope: this._windowScope,
       });
 
-      this.speakerTracks = speakers.map(
-        (speakerData) =>
-          new SpeakerTrack({
-            audioContext: this.audioContext,
-            listenerPoint,
-
-            data: speakerData,
-            config: this.mixParams.speakerConfig || {
-              sync: false,
-              length: 600,
-              loop: false,
-              prefetch: false,
-            },
-          })
-      );
+      this.initializeSpeakers();
       this.updateParams(this.mixParams);
       console.info(`Mixer Activated`);
     }
@@ -208,5 +193,38 @@ export class Mixer {
         s.player.timerStop();
         s.pause();
       });
+  }
+
+  endedSpeakersLength = 0;
+  handleSpeakerEnd() {
+    this.endedSpeakersLength++;
+    if (this.endedSpeakersLength == this.speakerTracks?.length) {
+      this.allSpeakersEndCallback();
+    }
+  }
+
+  initializeSpeakers() {
+    this.endedSpeakersLength = 0;
+    const speakers = this._client.speakers();
+    this.speakerTracks = speakers.map(
+      (speakerData) =>
+        new SpeakerTrack({
+          audioContext: this.audioContext,
+          listenerPoint: this.mixParams.listenerPoint!,
+          data: speakerData,
+          config: this.mixParams.speakerConfig || {
+            sync: false,
+            length: 600,
+            loop: false,
+            prefetch: false,
+          },
+        })
+    );
+    this.speakerTracks.forEach((s) => s.player.onEnd(this.handleSpeakerEnd));
+  }
+
+  allSpeakersEndCallback = () => {};
+  onAllSpeakersEnd(callback: () => void) {
+    this.allSpeakersEndCallback = callback;
   }
 }
