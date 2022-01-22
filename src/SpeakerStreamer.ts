@@ -212,4 +212,8 @@ export class SpeakerStreamer implements ISpeakerPlayer {
   onLoadingProgress(callback: (newPercent: number) => void): void {
     callback(100);
   }
+
+  onEnd(callback: () => void): void {
+    this.audio.onended = callback;
+  }
 }

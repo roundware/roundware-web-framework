@@ -132,6 +132,9 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
 
     // connect to audio context
     this.source.connect(this.gainNode).connect(this.context.destination);
+
+    this.source.onended = this.endCallback;
+
     this.fade();
   }
 
@@ -184,5 +187,9 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
   loadingCallback = (number: number) => {};
   onLoadingProgress(callback: (newPercent: number) => void): void {
     this.loadingCallback = callback;
+  }
+  endCallback = () => {};
+  onEnd(callback: () => void) {
+    this.endCallback = callback;
   }
 }

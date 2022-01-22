@@ -33,6 +33,7 @@ export interface ISpeakerPlayer {
   fadeOutAndPause(): void;
   log(string: string): void;
   onLoadingProgress(callback: (newPercent: number) => void): void;
+  onEnd(callback: () => void): void;
 }
 
 export type SpeakerConstructor = {
