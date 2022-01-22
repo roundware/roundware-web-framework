@@ -15,6 +15,7 @@ import { SpeakerStreamer } from "./SpeakerStreamer";
 import { SpeakerPrefetchPlayer } from "./SpeakerPrefetchPlayer";
 import { ISpeakerData, ISpeakerPlayer } from "./types/speaker";
 import { speakerLog } from "./utils";
+import { SpeakerConfig } from "./types/roundware";
 
 const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
   // @ts-ignore
@@ -27,8 +28,6 @@ const NEARLY_ZERO = 0.05;
  * (quoted from https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/Speaker.swift)
  * */
 export class SpeakerTrack {
-  prefetch: boolean;
-
   speakerId: number;
   maxVolume: number;
   minVolume: number;
@@ -49,13 +48,14 @@ export class SpeakerTrack {
   constructor({
     audioContext,
     listenerPoint,
-    prefetchAudio,
     data,
+    config,
   }: {
     audioContext: IAudioContext;
     listenerPoint: Feature<Point>;
-    prefetchAudio: boolean;
+
     data: ISpeakerData;
+    config: SpeakerConfig;
   }) {
     const {
       id: speakerId,
@@ -67,8 +67,6 @@ export class SpeakerTrack {
       uri,
     } = data;
 
-    this.prefetch = prefetchAudio;
-
     this.speakerData = data;
     this.speakerId = speakerId;
     this.maxVolume = maxVolume;
@@ -76,7 +74,13 @@ export class SpeakerTrack {
     this.attenuationDistanceKm = attenuationDistance / 1000;
     this.uri = uri;
 
-    this.player = new SpeakerPrefetchPlayer(audioContext, speakerId, uri);
+    const Player = config.sync ? SpeakerPrefetchPlayer : SpeakerStreamer;
+    this.player = new Player({
+      audioContext,
+      id: this.speakerId,
+      uri: this.uri,
+      config,
+    });
     this.player.audio.addEventListener("playing", () => {
       if (this.player.isSafeToPlay) this.updateVolume();
     });
