@@ -27,6 +27,7 @@ export interface ISpeakerPlayer {
   config: SpeakerConfig;
   play(): Promise<boolean>;
   pause(): void;
+  replay(): void;
   timerStart(): void;
   timerStop(): void;
   fade(destinationVolume?: number, duration?: number): void;
