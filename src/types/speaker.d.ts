@@ -1,3 +1,6 @@
+import { IAudioContext } from "standardized-audio-context";
+import { SpeakerConfig } from "./roundware";
+
 export interface ISpeakerData {
   id: number;
   maxvolume: number;
@@ -21,6 +24,7 @@ export interface ISpeakerPlayer {
   loaded: boolean;
   loadedPercentage: number;
   id: number;
+  config: SpeakerConfig;
   play(): Promise<boolean>;
   pause(): void;
   timerStart(): void;
@@ -30,3 +34,10 @@ export interface ISpeakerPlayer {
   log(string: string): void;
   onLoadingProgress(callback: (newPercent: number) => void): void;
 }
+
+export type SpeakerConstructor = {
+  audioContext: IAudioContext;
+  uri: string;
+  id: number;
+  config: SpeakerConfig;
+};
