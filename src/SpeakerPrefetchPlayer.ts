@@ -94,7 +94,7 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
 
   endTimeout: NodeJS.Timeout | null = null;
 
-  timerStart(): void {
+  async timerStart() {
     if (this.started || !this.buffer) {
       return;
     }
@@ -102,6 +102,11 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     // see timerStop() note
     this.initializeSource();
     if (!this.source) return;
+
+    // resume audio context if suspended
+    if (this.context.state !== "running") {
+      await this.context.resume();
+    }
     // start now will so stay in sync with other speakers, from last paused time
     this.source.start(this.context.currentTime, this.pausedAt);
 
