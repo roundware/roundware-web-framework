@@ -6,13 +6,37 @@ import { AudioContext, IAudioContext } from "standardized-audio-context";
 import { silenceAudioBase64 } from "./playlistAudioTrack";
 const MATCHES_URI_SCHEME = new RegExp(/^https?:\/\//i);
 const MATCHES_WAV_FILE = new RegExp(/\.wav$/i);
-
+export const isIos = () => {
+  return (
+    [
+      "iPad Simulator",
+      "iPhone Simulator",
+      "iPod Simulator",
+      "iPad",
+      "iPhone",
+      "iPod",
+    ].includes(navigator.platform) ||
+    // iPad on iOS 13 detection
+    (navigator.userAgent.includes("Mac") && "ontouchend" in document)
+  );
+};
 /**
  * @param  {string} url
  * @returns Cleaned URL
  */
-export const cleanAudioURL = (url: string): string =>
-  url.replace(MATCHES_URI_SCHEME, "//").replace(MATCHES_WAV_FILE, ".mp3");
+export const cleanAudioURL = (
+  url: string,
+  useM4AforIos: boolean = false
+): string => {
+  let cleanUrl = url.replace(MATCHES_URI_SCHEME, "//");
+
+  if (useM4AforIos) {
+    if (isIos()) {
+      return cleanUrl.substring(0, cleanUrl.lastIndexOf(".")) + ".m4a";
+    }
+  }
+  return cleanUrl.replace(MATCHES_WAV_FILE, ".mp3");
+};
 
 /**
  *

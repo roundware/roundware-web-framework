@@ -38,7 +38,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
     this.id = id;
     this.audio = new Audio();
     this.audio.crossOrigin = "anonymous";
-    this.cleanUrl = cleanAudioURL(uri);
+    this.cleanUrl = cleanAudioURL(uri, true);
     this.config = config;
     this.audio.preload = "none";
     this.audio.src = silenceAudioBase64;
