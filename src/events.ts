@@ -69,7 +69,7 @@ export class RoundwareEvents {
   }
 
   async logEvent(eventType: EventType, payload?: EventPayload) {
-    console.info(`event: ${eventType}`);
+    console.info(`event: ${eventType}`, payload);
     return this._apiClient.post<EventPayload>(EVENTS_PATH, {
       session_id: this._sessionId,
       event_type: eventType,
