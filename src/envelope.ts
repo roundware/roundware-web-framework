@@ -2,7 +2,7 @@ import { ApiClient } from "./api-client";
 import { GeoPosition } from "./geo-position";
 import { Roundware } from "./roundware";
 import { Coordinates, IAudioData } from "./types";
-
+import { join } from "lodash";
 export class Envelope {
   _envelopeId: string;
   _sessionId: number | string;
@@ -109,7 +109,9 @@ export class Envelope {
       envelope_ids: number[];
     }>(path, formData, options);
 
-    this._roundware.events?.logEvent(`upload_asset`);
+    this._roundware.events?.logEvent(`upload_asset`, {
+      data: `envelope_id:${join(res.envelope_ids, `,`)}`,
+    });
 
     if (res.detail) {
       throw new Error(res.detail);
