@@ -13,7 +13,7 @@ export type EventType =
 export type EventPayload = {
   latitude?: number;
   longitude?: number;
-  tag_ids?: string[];
+  tag_ids?: number[];
   session_id?: string;
   event_type?: EventType;
   client_time?: string;
