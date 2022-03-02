@@ -173,7 +173,9 @@ export class Mixer {
     this.initContext();
     // console.log(`playing`);
     // consssole.log(this.audioContext.currentTime);
-
+    if (this.playing === false) {
+      this._client.events?.logEvent(`play_stream`);
+    }
     this.playing = true;
     if (this.playlist) this.playlist.play();
     if (Array.isArray(this.speakerTracks)) {
@@ -186,6 +188,9 @@ export class Mixer {
 
   stop() {
     this.initContext();
+    if (this.playing === true) {
+      this._client.events?.logEvent(`pause_stream`);
+    }
     this.playing = false;
     if (this.playlist) this.playlist.pause();
     if (Array.isArray(this.speakerTracks))

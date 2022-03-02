@@ -1,7 +1,9 @@
 import { ApiClient } from "./api-client";
 import { IAssetData } from "./types/asset";
+import { EventPayload, EventType } from "./types/events";
 type ListenEventsTypes = "play";
-const PATH = "/listenevents/";
+const LISTEN_EVENTS = "/listenevents/";
+const EVENTS_PATH = `/events/`;
 /**
  *
  * Post events to roundware server
@@ -39,7 +41,7 @@ export class RoundwareEvents {
     startTime: Date = new Date()
   ): Promise<void> {
     this._apiClient
-      .post<{ id: number }>(PATH, {
+      .post<{ id: number }>(LISTEN_EVENTS, {
         starttime: startTime,
         session: this._sessionId,
         asset: assetId,
@@ -61,8 +63,17 @@ export class RoundwareEvents {
 
     const duration_in_seconds =
       (new Date().getTime() - startedAsset.startTime.getTime()) / 1000;
-    return this._apiClient.patch(PATH + startedAsset.id, {
+    return this._apiClient.patch(LISTEN_EVENTS + startedAsset.id, {
       duration_in_seconds,
+    });
+  }
+
+  async logEvent(eventType: EventType, payload?: EventPayload) {
+    return this._apiClient.post<EventPayload>(EVENTS_PATH, {
+      session_id: this._sessionId,
+      event_type: eventType,
+      client_time: new Date().toISOString(),
+      ...payload,
     });
   }
 }

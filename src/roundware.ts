@@ -239,6 +239,7 @@ export class Roundware {
 
     this.mixer.updateParams({ listenerLocation });
     if (this._onUpdateLocation) this._onUpdateLocation(listenerLocation);
+    this.events?.logEvent(`location_update`, listenerLocation);
   }
 
   set onUpdateLocation(callback: (lastCoords: Coordinates) => any) {
@@ -301,9 +302,13 @@ export class Roundware {
 
       await this._user.connect();
       const sessionId = await this._session.connect();
+
       this._sessionId = sessionId;
 
       this.events = new RoundwareEvents(this._sessionId, this._apiClient);
+
+      this.events.logEvent(`start_session`);
+
       const promises: [
         Promise<number | undefined>,
         Promise<IUiConfig>,

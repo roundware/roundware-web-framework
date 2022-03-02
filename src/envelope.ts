@@ -108,7 +108,9 @@ export class Envelope {
       detail: string;
       envelope_ids: number[];
     }>(path, formData, options);
-    console.info("UPLOADDATA", res);
+
+    this._roundware.events?.logEvent(`upload_asset`);
+
     if (res.detail) {
       throw new Error(res.detail);
     } else {
