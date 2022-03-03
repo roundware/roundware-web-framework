@@ -82,13 +82,9 @@ export class Playlist {
   }
 
   get currentlyPlayingAssets(): IDecoratedAsset[] {
-    const assets: IDecoratedAsset[] = [];
-    for (const a of Array.from(this.trackMap.values())) {
-      if (a) {
-        assets.push(a);
-      }
-    }
-    return assets;
+    return this.tracks
+      .filter((t) => t.currentAsset && t.playing)
+      .map((t) => t.currentAsset!);
   }
 
   updateParams({ listenerPoint, listenTagIds, ...params }: IMixParams) {

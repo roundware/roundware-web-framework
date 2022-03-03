@@ -148,7 +148,6 @@ export class Roundware {
       timedAsset,
       audiotrack,
       assetUpdateInterval,
-      prefetchSpeakerAudio,
     } = options;
 
     if (typeof serverUrl !== "string") {
@@ -231,15 +230,23 @@ export class Roundware {
       client: this,
       windowScope: this.windowScope,
       listenerLocation: this.listenerLocation,
-      prefetchSpeakerAudio: prefetchSpeakerAudio || false,
       mixParams,
     });
   }
 
   updateLocation(listenerLocation: Coordinates): void {
+    // when location is different log event
+    if (
+      this.listenerLocation.latitude != listenerLocation.latitude ||
+      this.listenerLocation.longitude != listenerLocation.longitude
+    ) {
+      this.events?.logEvent(`location_update`, listenerLocation);
+    }
+
     this.listenerLocation = listenerLocation;
 
     this.mixer.updateParams({ listenerLocation });
+
     if (this._onUpdateLocation) this._onUpdateLocation(listenerLocation);
   }
 
@@ -271,7 +278,7 @@ export class Roundware {
 
   get currentlyPlayingAssets(): IAssetData[] | undefined {
     if (!this.mixer.playlist) {
-      return;
+      return [];
     }
     return this.mixer.playlist.currentlyPlayingAssets;
   }
@@ -303,9 +310,13 @@ export class Roundware {
 
       await this._user.connect();
       const sessionId = await this._session.connect();
+
       this._sessionId = sessionId;
 
       this.events = new RoundwareEvents(this._sessionId, this._apiClient);
+
+      this.events.logEvent(`start_session`);
+
       const promises: [
         Promise<number | undefined>,
         Promise<IUiConfig>,
@@ -441,7 +452,6 @@ export class Roundware {
     this.mixer.initContext();
     this.mixer.updateParams(allMixParams);
 
-    console.info("Mixer activated!");
     return this.mixer;
   }
 

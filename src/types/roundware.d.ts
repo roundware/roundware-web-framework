@@ -33,6 +33,13 @@ export interface IRoundwareConstructorOptions extends IOptions {
   timedAsset?: TimedAsset;
   audiotrack?: Audiotrack;
   assetUpdateInterval?: number;
-  prefetchSpeakerAudio?: boolean;
   keepPausedAssets?: boolean;
+  speakerConfig: SpeakerConfig;
 }
+
+export type SpeakerConfig = {
+  prefetch?: boolean;
+  sync?: boolean;
+  loop?: boolean;
+  length?: number;
+};

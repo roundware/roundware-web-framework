@@ -11,9 +11,11 @@ import lineToPolygon from "@turf/line-to-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
 import pointToLineDistance from "@turf/point-to-line-distance";
 import { IAudioContext } from "standardized-audio-context";
-import { SpeakerPlayer } from "./speaker_player";
-import { ISpeakerData } from "./types/speaker";
+import { SpeakerStreamer } from "./SpeakerStreamer";
+import { SpeakerPrefetchPlayer } from "./SpeakerPrefetchPlayer";
+import { ISpeakerData, ISpeakerPlayer } from "./types/speaker";
 import { speakerLog } from "./utils";
+import { SpeakerConfig } from "./types/roundware";
 
 const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
   // @ts-ignore
@@ -26,8 +28,6 @@ const NEARLY_ZERO = 0.05;
  * (quoted from https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/Speaker.swift)
  * */
 export class SpeakerTrack {
-  prefetch: boolean;
-
   speakerId: number;
   maxVolume: number;
   minVolume: number;
@@ -43,18 +43,21 @@ export class SpeakerTrack {
   speakerData: ISpeakerData;
 
   soundId: number | undefined;
-  player: SpeakerPlayer;
+  player!: ISpeakerPlayer;
+  audioContext: IAudioContext;
+  config: SpeakerConfig;
 
   constructor({
     audioContext,
     listenerPoint,
-    prefetchAudio,
     data,
+    config,
   }: {
     audioContext: IAudioContext;
     listenerPoint: Feature<Point>;
-    prefetchAudio: boolean;
+
     data: ISpeakerData;
+    config: SpeakerConfig;
   }) {
     const {
       id: speakerId,
@@ -66,8 +69,8 @@ export class SpeakerTrack {
       uri,
     } = data;
 
-    this.prefetch = prefetchAudio;
-
+    this.audioContext = audioContext;
+    this.config = config;
     this.speakerData = data;
     this.speakerId = speakerId;
     this.maxVolume = maxVolume;
@@ -75,8 +78,6 @@ export class SpeakerTrack {
     this.attenuationDistanceKm = attenuationDistance / 1000;
     this.uri = uri;
 
-    this.player = new SpeakerPlayer(audioContext, speakerId, uri);
-    this.player.audio.addEventListener("playing", () => this.updateVolume());
     this.listenerPoint = listenerPoint.geometry;
 
     this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
@@ -84,6 +85,7 @@ export class SpeakerTrack {
 
     this.outerBoundary = convertLinesToPolygon(boundary);
     this.currentVolume = NEARLY_ZERO;
+    this.initPlayer();
   }
 
   outerBoundaryContains(point: Coord) {
@@ -104,6 +106,9 @@ export class SpeakerTrack {
     return ratio;
   }
 
+  log(string: string) {
+    speakerLog(`${this.speakerId}] ` + string);
+  }
   calculateVolume() {
     const { listenerPoint } = this;
 
@@ -128,19 +133,32 @@ export class SpeakerTrack {
   }
 
   updateParams(isPlaying: boolean, opts: { listenerPoint?: Feature<Point> }) {
-    if (opts && opts.listenerPoint && opts.listenerPoint.geometry) {
+    if (
+      opts &&
+      opts.listenerPoint &&
+      opts.listenerPoint.geometry &&
+      opts.listenerPoint.geometry.coordinates
+    ) {
       this.listenerPoint = opts.listenerPoint.geometry;
+    }
+
+    if (isPlaying == false) {
+      this.player.log(`pausing because mixer is off`);
+      this.player.fadeOutAndPause();
+      return;
     }
 
     const newVolume = this.calculateVolume();
 
-    if (isPlaying === false) this.player.pause();
-    if (newVolume < 0.05 && this.player.playing) {
+    if (newVolume < 0.05) {
       // allow to fade before pausing
+      this.player.log(`pausing because new volume is lower than 0.05`);
       this.player.fadeOutAndPause();
-    } else if (isPlaying === true && newVolume > 0.05) {
+    } else {
+      this.player.log(`new volume ${newVolume}`);
       this.play();
-    } else this.pause();
+      this.updateVolume();
+    }
   }
 
   /**
@@ -168,7 +186,7 @@ export class SpeakerTrack {
         if (!success) {
           setTimeout(() => {
             this.play();
-          }, 1000);
+          }, 2000);
         }
       });
     } catch (err) {
@@ -178,12 +196,24 @@ export class SpeakerTrack {
 
   pause() {
     try {
-      if (this.player.playing) {
-        this.player?.pause();
-        speakerLog(`${this.speakerId}: Paused!`);
-      }
+      this.player?.pause();
     } catch (err) {
       console.error("Unable to pause", this.logline, err);
+    }
+  }
+
+  initPlayer() {
+    const Player = this.config.sync ? SpeakerPrefetchPlayer : SpeakerStreamer;
+    this.player = new Player({
+      audioContext: this.audioContext,
+      id: this.speakerId,
+      uri: this.uri,
+      config: this.config,
+    });
+    if (!this.config.sync) {
+      this.player.audio.addEventListener("playing", () => {
+        if (this.player.isSafeToPlay) this.updateVolume();
+      });
     }
   }
 

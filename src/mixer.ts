@@ -1,3 +1,4 @@
+import { IAudioContext } from "standardized-audio-context";
 import { AssetPool } from "./assetPool";
 import { Playlist } from "./playlist";
 import { Roundware } from "./roundware";
@@ -32,12 +33,12 @@ export class Mixer {
   playlist: Playlist | undefined;
   assetPool: AssetPool;
   speakerTracks: SpeakerTrack[] | undefined;
+  audioContext: IAudioContext;
 
   constructor({
     client,
     windowScope,
     listenerLocation,
-    prefetchSpeakerAudio,
     filters = [],
     sortMethods = [],
     mixParams = {},
@@ -45,7 +46,6 @@ export class Mixer {
     client: Roundware;
     windowScope: Window;
     listenerLocation: Coordinates;
-    prefetchSpeakerAudio: boolean | unknown;
     filters?: unknown[];
     sortMethods?: unknown[];
     mixParams: IMixParams;
@@ -54,7 +54,7 @@ export class Mixer {
 
     this._windowScope = windowScope;
     this._client = client;
-    this._prefetchSpeakerAudio = prefetchSpeakerAudio;
+
     const assets: IAssetData[] = client.assets();
     const timedAssets = client.timedAssets();
 
@@ -74,6 +74,7 @@ export class Mixer {
       sortMethods,
       mixParams: this.mixParams,
     });
+    this.audioContext = buildAudioContext(this._windowScope);
   }
 
   updateParams({ listenerLocation, ...params }: IMixParams) {
@@ -119,13 +120,11 @@ export class Mixer {
    */
   initContext() {
     if (!this.playlist) {
-      const audioContext = buildAudioContext(this._windowScope);
       if (!this.mixParams.listenerPoint)
         return console.error(
           `[mixer] listenerPoint was missing while initiating mixer!`
         );
       const listenerPoint = this.mixParams.listenerPoint;
-      const speakers = this._client.speakers();
 
       let selectTrackId: string | number | null = getUrlParam(
         this._windowScope.location.toString(),
@@ -144,21 +143,13 @@ export class Mixer {
         audioTracks,
         listenerPoint,
         assetPool: this.assetPool,
-        audioContext,
+        audioContext: this.audioContext,
         windowScope: this._windowScope,
       });
 
-      this.speakerTracks = speakers.map(
-        (speakerData) =>
-          new SpeakerTrack({
-            audioContext,
-            listenerPoint,
-            prefetchAudio: this._prefetchSpeakerAudio,
-            data: speakerData,
-          })
-      );
-
+      this.initializeSpeakers();
       this.updateParams(this.mixParams);
+      console.info(`Mixer Activated`);
     }
   }
 
@@ -167,9 +158,6 @@ export class Mixer {
    * @returns boolean
    */
   toggle(play?: boolean): boolean {
-    // Build the audio context and playlist if it doesn't exist yet.
-    this.initContext();
-
     if (typeof play == "boolean") {
       // do based on what asked..
       play ? this.play() : this.stop();
@@ -182,16 +170,87 @@ export class Mixer {
   }
 
   play() {
+    this.initContext();
+    // console.log(`playing`);
+    // consssole.log(this.audioContext.currentTime);
+    if (this.playing === false) {
+      this._client.events?.logEvent(`play_stream`);
+    }
     this.playing = true;
     if (this.playlist) this.playlist.play();
-    if (Array.isArray(this.speakerTracks))
-      this.speakerTracks.forEach((s) => s.play());
+    if (Array.isArray(this.speakerTracks)) {
+      this.speakerTracks.forEach((s) => {
+        s.player.timerStart();
+        s.play();
+      });
+    }
   }
 
   stop() {
+    this.initContext();
+    if (this.playing === true) {
+      this._client.events?.logEvent(`pause_stream`);
+    }
     this.playing = false;
     if (this.playlist) this.playlist.pause();
     if (Array.isArray(this.speakerTracks))
-      this.speakerTracks.forEach((s) => s.pause());
+      this.speakerTracks.forEach((s) => {
+        s.player.timerStop();
+        s.pause();
+      });
+  }
+
+  endedSpeakersLength = 0;
+  handleSpeakerEnd() {
+    this.endedSpeakersLength += 1;
+    console.log(
+      `some speaker ended`,
+      this.endedSpeakersLength,
+      this.speakerTracks?.length
+    );
+    if (this.endedSpeakersLength == this.speakerTracks?.length) {
+      this.allSpeakersEndCallback();
+    }
+  }
+
+  replay() {
+    this.endedSpeakersLength = 0;
+    const that = this;
+    this.speakerTracks?.forEach((s) => {
+      s.player.pause();
+      s.player.replay();
+      that.play();
+    });
+  }
+
+  initializeSpeakers() {
+    this.endedSpeakersLength = 0;
+    const speakers = this._client.speakers();
+    const that = this;
+
+    this.speakerTracks = speakers.map(
+      (speakerData) =>
+        new SpeakerTrack({
+          audioContext: that.audioContext,
+          listenerPoint: that.mixParams.listenerPoint!,
+          data: speakerData,
+          config: that.mixParams.speakerConfig || {
+            sync: false,
+            length: 600,
+            loop: false,
+            prefetch: false,
+          },
+        })
+    );
+
+    this.speakerTracks.forEach((s) =>
+      s.player.onEnd(() => that.handleSpeakerEnd())
+    );
+    this.updateParams(this.mixParams);
+  }
+
+  allSpeakersEndCallback = () => {};
+  onAllSpeakersEnd(callback: () => void) {
+    this.allSpeakersEndCallback = callback;
   }
 }

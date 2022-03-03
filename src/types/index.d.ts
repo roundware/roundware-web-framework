@@ -1,7 +1,6 @@
-import { Point, Feature } from "@turf/helpers";
-import { Polygon } from "@turf/helpers";
-import { MultiPolygon } from "@turf/helpers";
+import { Feature, Point } from "@turf/helpers";
 import { PlaylistAudiotrack } from "../playlistAudioTrack";
+import { IRoundwareConstructorOptions } from "./roundware";
 export type Coordinates = {
   longitude?: number;
   latitude?: number;
@@ -31,7 +30,7 @@ export type IMixParams = {
   endDate?: Date;
   sessionId?: number;
   keepPausedAssets?: boolean;
-};
+} & Partial<IRoundwareConstructorOptions>;
 
 export interface IInitialParams {}
 

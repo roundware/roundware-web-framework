@@ -6,13 +6,37 @@ import { AudioContext, IAudioContext } from "standardized-audio-context";
 import { silenceAudioBase64 } from "./playlistAudioTrack";
 const MATCHES_URI_SCHEME = new RegExp(/^https?:\/\//i);
 const MATCHES_WAV_FILE = new RegExp(/\.wav$/i);
-
+export const isIos = () => {
+  return (
+    [
+      "iPad Simulator",
+      "iPhone Simulator",
+      "iPod Simulator",
+      "iPad",
+      "iPhone",
+      "iPod",
+    ].includes(navigator.platform) ||
+    // iPad on iOS 13 detection
+    (navigator.userAgent.includes("Mac") && "ontouchend" in document)
+  );
+};
 /**
  * @param  {string} url
  * @returns Cleaned URL
  */
-export const cleanAudioURL = (url: string): string =>
-  url.replace(MATCHES_URI_SCHEME, "//").replace(MATCHES_WAV_FILE, ".mp3");
+export const cleanAudioURL = (
+  url: string,
+  useM4AforIos: boolean = false
+): string => {
+  let cleanUrl = url.replace(MATCHES_URI_SCHEME, "//");
+
+  if (useM4AforIos) {
+    if (isIos()) {
+      return cleanUrl.substring(0, cleanUrl.lastIndexOf(".")) + ".m4a";
+    }
+  }
+  return cleanUrl.replace(MATCHES_WAV_FILE, ".mp3");
+};
 
 /**
  *
@@ -71,8 +95,14 @@ export const randomInt = (a = 1, b = 0) => {
   return Math.floor(lower + Math.random() * (upper - lower + 1));
 };
 
-const UNLOCK_AUDIO_EVENTS: ["touchstart", "touchend", "mousedown", "keydown"] =
-  ["touchstart", "touchend", "mousedown", "keydown"];
+export const UNLOCK_AUDIO_EVENTS = [
+  "touchend",
+  "mouseup",
+  "mousedown",
+  "keydown",
+  "keyup",
+  "touchstart",
+];
 
 /** Helps stabilize WebAudio startup
  @thanks https://www.mattmontag.com/web/unlock-web-audio-in-safari-for-ios-and-macos */
@@ -143,18 +173,32 @@ export const makeAudioSafeToPlay = (
       e,
       () => {
         audioElement.src = silenceAudioBase64;
-        audioElement
-          .play()
-          ?.then(() => {
-            setTimeout(() => {
+        try {
+          audioElement.play().catch((e) => {
+            audioElement.src = expectedSourceAfter || silenceAudioBase64;
+            console.error(`failed to make safe`, e, expectedSourceAfter);
+            onSuccess();
+          });
+          audioElement.addEventListener(
+            "playing",
+            () => {
               audioElement.pause();
-              if (expectedSourceAfter) audioElement.src = expectedSourceAfter;
+              audioElement.currentTime = 0;
+              if (expectedSourceAfter) {
+                audioElement.src = expectedSourceAfter;
+              }
+              console.log(`safe to play later`, expectedSourceAfter);
               onSuccess();
-            }, 10);
-          })
-          .catch(
-            () => (audioElement.src = expectedSourceAfter || silenceAudioBase64)
+            },
+            {
+              once: true,
+            }
           );
+        } catch (e) {
+          audioElement.src = expectedSourceAfter || silenceAudioBase64;
+          console.error(`failed to make safe`, e);
+          onSuccess();
+        }
       },
       { once: true }
     );

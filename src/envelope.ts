@@ -2,7 +2,7 @@ import { ApiClient } from "./api-client";
 import { GeoPosition } from "./geo-position";
 import { Roundware } from "./roundware";
 import { Coordinates, IAudioData } from "./types";
-
+import { join } from "lodash";
 export class Envelope {
   _envelopeId: string;
   _sessionId: number | string;
@@ -108,12 +108,24 @@ export class Envelope {
       detail: string;
       envelope_ids: number[];
     }>(path, formData, options);
-    console.info("UPLOADDATA", res);
+
     if (res.detail) {
       throw new Error(res.detail);
     } else {
       // Update the asset pool to include the newly uploaded asset
       await this._roundware.updateAssetPool();
+
+      // get the posted asset;
+      const asset = this._roundware.assetData?.find((a) =>
+        a.envelope_ids.some((e) => res.envelope_ids.includes(e))
+      );
+
+      if (asset) {
+        this._roundware.events?.logEvent(`upload_asset`, {
+          data: `asset_id:${asset.id}`,
+        });
+      }
+
       return res;
     }
   }
