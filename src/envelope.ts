@@ -109,15 +109,23 @@ export class Envelope {
       envelope_ids: number[];
     }>(path, formData, options);
 
-    this._roundware.events?.logEvent(`upload_asset`, {
-      data: `envelope_id:${join(res.envelope_ids, `,`)}`,
-    });
-
     if (res.detail) {
       throw new Error(res.detail);
     } else {
       // Update the asset pool to include the newly uploaded asset
       await this._roundware.updateAssetPool();
+
+      // get the posted asset;
+      const asset = this._roundware.assetData?.find((a) =>
+        a.envelope_ids.some((e) => res.envelope_ids.includes(e))
+      );
+
+      if (asset) {
+        this._roundware.events?.logEvent(`upload_asset`, {
+          data: `asset_id:${asset.id}`,
+        });
+      }
+
       return res;
     }
   }
