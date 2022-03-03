@@ -235,11 +235,19 @@ export class Roundware {
   }
 
   updateLocation(listenerLocation: Coordinates): void {
+    // when location is different log event
+    if (
+      this.listenerLocation.latitude != listenerLocation.latitude ||
+      this.listenerLocation.longitude != listenerLocation.longitude
+    ) {
+      this.events?.logEvent(`location_update`, listenerLocation);
+    }
+
     this.listenerLocation = listenerLocation;
 
     this.mixer.updateParams({ listenerLocation });
+
     if (this._onUpdateLocation) this._onUpdateLocation(listenerLocation);
-    this.events?.logEvent(`location_update`, listenerLocation);
   }
 
   set onUpdateLocation(callback: (lastCoords: Coordinates) => any) {
