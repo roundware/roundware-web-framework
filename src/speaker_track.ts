@@ -11,8 +11,8 @@ import lineToPolygon from "@turf/line-to-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
 import pointToLineDistance from "@turf/point-to-line-distance";
 import { IAudioContext } from "standardized-audio-context";
-import { SpeakerStreamer } from "./SpeakerStreamer";
-import { SpeakerPrefetchPlayer } from "./SpeakerPrefetchPlayer";
+import { SpeakerStreamer } from "./players/SpeakerStreamer";
+import { SpeakerPrefetchPlayer } from "./players/SpeakerPrefetchPlayer";
 import { ISpeakerData, ISpeakerPlayer } from "./types/speaker";
 import { speakerLog } from "./utils";
 import { SpeakerConfig } from "./types/roundware";
@@ -143,7 +143,6 @@ export class SpeakerTrack {
     }
 
     if (isPlaying == false) {
-      this.player.log(`pausing because mixer is off`);
       this.player.fadeOutAndPause();
       return;
     }
@@ -152,7 +151,6 @@ export class SpeakerTrack {
 
     if (newVolume < 0.05) {
       // allow to fade before pausing
-      this.player.log(`pausing because new volume is lower than 0.05`);
       this.player.fadeOutAndPause();
     } else {
       this.player.log(`new volume ${newVolume}`);
