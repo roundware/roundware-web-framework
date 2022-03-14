@@ -3,10 +3,10 @@ import {
   IGainNode,
   IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
-import { silenceAudioBase64 } from "./playlistAudioTrack";
-import { SpeakerConfig } from "./types/roundware";
-import { ISpeakerPlayer, SpeakerConstructor } from "./types/speaker";
-import { cleanAudioURL, makeAudioSafeToPlay, speakerLog } from "./utils";
+import { silenceAudioBase64 } from "../playlistAudioTrack";
+import { SpeakerConfig } from "../types/roundware";
+import { ISpeakerPlayer, SpeakerConstructor } from "../types/speaker";
+import { cleanAudioURL, speakerLog } from "../utils";
 
 /**
  *
@@ -38,7 +38,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
     this.id = id;
     this.audio = new Audio();
     this.audio.crossOrigin = "anonymous";
-    this.cleanUrl = cleanAudioURL(uri, true);
+    this.cleanUrl = cleanAudioURL(uri, false);
     this.config = config;
     this.audio.preload = "none";
     this.audio.src = silenceAudioBase64;
@@ -53,14 +53,6 @@ export class SpeakerStreamer implements ISpeakerPlayer {
     this._gainNode.connect(this._context.destination);
 
     this._gainNode.gain.value = 0; // initially 0 and fade later
-
-    makeAudioSafeToPlay(
-      this.audio,
-      () => {
-        this.isSafeToPlay = true;
-      },
-      this.cleanUrl
-    );
 
     // -------------------------------------------
     // settings the play state
@@ -97,21 +89,16 @@ export class SpeakerStreamer implements ISpeakerPlayer {
     // if not yet safe to play must retry again
 
     if (!this.isSafeToPlay) {
-      this.log(`waiting for user iteraction`, true);
       return false;
     }
-    if (this.audio.src == silenceAudioBase64) {
-      this.audio.src = this.cleanUrl;
-    }
+
     // previous promise wasn't resolved yet
     // if we again try to play() we might get
     // Play request was inturrupted by another play request error
     if (this._alreadyTryingToPlay) {
-      this.log(`already trying to play`);
-      return true;
+      return false;
     }
     if (this.playing) {
-      speakerLog(`${this.id}: already playing at volume ${this.volume()}`);
       return true;
     }
     try {
@@ -124,13 +111,13 @@ export class SpeakerStreamer implements ISpeakerPlayer {
 
       this._alreadyTryingToPlay = false;
       this.isSafeToPlay = true;
-      this.playing = true;
+
       this.log(`Playing! Volume: ${this.volume()} ${this.audio.src}`);
       return true;
     } catch (e) {
       this._alreadyTryingToPlay = false;
       // @ts-ignore
-      this.log(`failed to play ${e?.message}`);
+      this.log(`failed to play, trying again. ${e?.message}`);
 
       return false;
     }
@@ -207,7 +194,31 @@ export class SpeakerStreamer implements ISpeakerPlayer {
   volume() {
     return this._gainNode.gain.value;
   }
-  timerStart(): void {}
+
+  started = false;
+  timerStart(): void {
+    if (this.started || this._alreadyTryingToPlay) return;
+    const that = this;
+    this.audio.src = silenceAudioBase64;
+    this.started = true;
+
+    this._alreadyTryingToPlay = true;
+    this.audio.play().then(() => {
+      that.audio.src = that.cleanUrl;
+      this.audio.addEventListener(
+        "loadedmetadata",
+        () => {
+          that.audio.currentTime = 0;
+        },
+        { once: true }
+      );
+
+      that.audio.pause();
+      this._alreadyTryingToPlay = false;
+      this.isSafeToPlay = true;
+      that.log(`Safe to play`);
+    });
+  }
   timerStop(): void {}
   onLoadingProgress(callback: (newPercent: number) => void): void {
     callback(100);

@@ -4,9 +4,9 @@ import {
   IAudioContext,
   IGainNode,
 } from "standardized-audio-context";
-import { SpeakerConfig } from "./types/roundware";
-import { ISpeakerPlayer, SpeakerConstructor } from "./types/speaker";
-import { speakerLog } from "./utils";
+import { SpeakerConfig } from "../types/roundware";
+import { ISpeakerPlayer, SpeakerConstructor } from "../types/speaker";
+import { speakerLog } from "../utils";
 
 export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
   isSafeToPlay: boolean = true;

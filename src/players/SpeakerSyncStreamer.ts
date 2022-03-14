@@ -3,10 +3,10 @@ import {
   IGainNode,
   IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
-import { silenceAudioBase64 } from "./playlistAudioTrack";
-import { SpeakerConfig } from "./types/roundware";
-import { ISpeakerPlayer, SpeakerConstructor } from "./types/speaker";
-import { cleanAudioURL, makeAudioSafeToPlay, speakerLog } from "./utils";
+import { silenceAudioBase64 } from "../playlistAudioTrack";
+import { SpeakerConfig } from "../types/roundware";
+import { ISpeakerPlayer, SpeakerConstructor } from "../types/speaker";
+import { cleanAudioURL, makeAudioSafeToPlay, speakerLog } from "../utils";
 
 export type SpeakerState = "playing" | "waiting";
 export class SpeakerSyncStreamer implements ISpeakerPlayer {
