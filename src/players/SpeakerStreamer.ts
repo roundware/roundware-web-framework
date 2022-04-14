@@ -228,6 +228,6 @@ export class SpeakerStreamer implements ISpeakerPlayer {
     this.audio.onended = callback;
   }
   replay(): void {
-    this.audio.fastSeek(0);
+    this.audio.currentTime = 0;
   }
 }
