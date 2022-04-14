@@ -87,10 +87,6 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
       return;
     this.fadingDestination = destinationVolume;
 
-    if (this.gainNode.gain.value < 0.05 && destinationVolume > 0.05) {
-      this.log(`Connected ${this.gainNode.numberOfOutputs}`);
-      this.gainNode.connect(this.context.destination);
-    }
     this.fading = true;
     this.gainNode.gain.linearRampToValueAtTime(
       destinationVolume,
@@ -98,10 +94,6 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     );
     const that = this;
     setTimeout(() => {
-      if (that.gainNode.gain.value < 0.05) {
-        that.gainNode.disconnect();
-        that.log(`Disconnected`);
-      }
       that.fading = false;
     }, duration * 1000);
   }
