@@ -48,7 +48,9 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
         audioData,
         function (buffer) {
           speakerContext.buffer = buffer;
-
+          // @ts-ignore
+          global._roundwareTotalAudioBufferSize +=
+            buffer.length * buffer.numberOfChannels * 4;
           speakerContext.loaded = true;
           speakerContext.log(`loaded successfully`);
         },
