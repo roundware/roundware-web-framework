@@ -16,6 +16,7 @@ import { SpeakerPrefetchPlayer } from "./players/SpeakerPrefetchPlayer";
 import { ISpeakerData, ISpeakerPlayer } from "./types/speaker";
 import { speakerLog } from "./utils";
 import { SpeakerConfig } from "./types/roundware";
+import { SpeakerSyncStreamer } from "./players/SpeakerSyncStreamer";
 
 const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
   // @ts-ignore
@@ -201,7 +202,11 @@ export class SpeakerTrack {
   }
 
   initPlayer() {
-    const Player = this.config.sync ? SpeakerPrefetchPlayer : SpeakerStreamer;
+    const Player = this.config.sync
+      ? this.config.prefetch
+        ? SpeakerPrefetchPlayer
+        : SpeakerSyncStreamer
+      : SpeakerStreamer;
     this.player = new Player({
       audioContext: this.audioContext,
       id: this.speakerId,
