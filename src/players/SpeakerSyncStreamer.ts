@@ -33,6 +33,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     this.gainNode.gain.value = 0;
     this.audio.crossOrigin = "anonymous";
     this.audio.loop = false;
+
     this.mediaSource = audioContext.createMediaElementSource(this.audio);
     this.mediaSource.connect(this.gainNode).connect(audioContext.destination);
     this.audio.preload = "auto";
@@ -48,6 +49,8 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     try {
       await this.audio.play();
       this.playing = true;
+      // @ts-ignore
+      global._roundwareSpeakerStartedAt = new Date();
       this.log(`Playing...`);
     } catch (e) {
       console.error(e);
@@ -62,9 +65,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     this.audio.currentTime = 0;
   }
 
-  startedAt: Date | null = null;
   timerStart(): void {
-    this.startedAt = new Date();
     this.syncTracker = Number(
       setInterval(() => {
         this.trackSync();
@@ -111,10 +112,12 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
 
   syncTracker?: number;
   trackSync() {
-    if (!(this.startedAt instanceof Date)) return;
+    // @ts-ignore
+    const startedAt: Date = global._roundwareSpeakerStartedAt;
+    if (!(startedAt instanceof Date)) return;
     if (!this.playing) return;
 
-    const currentTime = new Date().getTime() - this.startedAt.getTime();
+    const currentTime = new Date().getTime() - startedAt.getTime();
     if (currentTime > this.audio.duration * 1000) return;
 
     const audioTime = this.audio.currentTime * 1000;
