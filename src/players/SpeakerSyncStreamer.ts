@@ -3,10 +3,9 @@ import {
   IGainNode,
   IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
-import { silenceAudioBase64 } from "../playlistAudioTrack";
 import { SpeakerConfig } from "../types/roundware";
 import { ISpeakerPlayer, SpeakerConstructor } from "../types/speaker";
-import { cleanAudioURL, makeAudioSafeToPlay, speakerLog } from "../utils";
+import { cleanAudioURL, speakerLog } from "../utils";
 
 export class SpeakerSyncStreamer implements ISpeakerPlayer {
   isSafeToPlay: boolean = true;
@@ -24,7 +23,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
   constructor({ audioContext, config, uri, id }: SpeakerConstructor) {
     this.id = id;
     this.config = config;
-    this.uri = cleanAudioURL(uri, true);
+    this.uri = cleanAudioURL(uri);
     this.loaded = true;
     this.loadedPercentage = 100;
     this.context = audioContext;
