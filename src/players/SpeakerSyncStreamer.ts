@@ -125,9 +125,9 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     if (Math.abs(difference) < (this.config.acceptableDelayMs || 50)) {
       // within acceptable range;
       this.audio.playbackRate = 1;
-    } else if (Math.abs(difference) > 1000) {
-      // difference is too much; try to seek instead;
-      this.audio.currentTime = currentTime / 1000;
+    } else if (Math.abs(difference) > (this.config.syncCheckInterval || 2500)) {
+      // difference is too much; try to seek instead; seek bit ahead to compensate buffering time
+      this.audio.currentTime = currentTime + 500 / 1000;
       this.audio.playbackRate = 1;
     } else {
       this.audio.playbackRate =
