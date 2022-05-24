@@ -66,6 +66,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     return true;
   }
   pause(): void {
+    this.playing = false;
     this.audio.pause();
   }
   replay(): void {
