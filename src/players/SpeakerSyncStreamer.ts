@@ -56,8 +56,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
       await this.audio.play();
 
       this.playing = true;
-      // @ts-ignore
-      global._roundwareSpeakerStartedAt = new Date();
+
       this.log(`Playing...`);
     } catch (e) {
       console.error(e);
@@ -79,6 +78,8 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
         this.trackSync();
       }, this.config.syncCheckInterval || 2500)
     );
+    // @ts-ignore
+    global._roundwareSpeakerStartedAt = new Date();
     this.play();
   }
   timerStop(): void {
