@@ -19,6 +19,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
   gainNode: IGainNode<IAudioContext>;
   mediaSource: IMediaElementAudioSourceNode<IAudioContext>;
   context: IAudioContext;
+  private _fadingTimeout?: NodeJS.Timeout;
 
   constructor({ audioContext, config, uri, id }: SpeakerConstructor) {
     this.id = id;
@@ -83,24 +84,31 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
   }
   fadingDestination = 0;
   fading = false;
-  fade(destinationVolume?: number, duration: number = 3): void {
-    if (
-      typeof destinationVolume != "number" ||
-      (destinationVolume == this.fadingDestination && this.fading)
-    )
-      return;
-    this.fadingDestination = destinationVolume;
 
-    this.fading = true;
+  fade(toVolume: number = this.fadingDestination, duration: number = 3): void {
+    if (this.fadingDestination == toVolume && this.fading) return;
+    this.fadingDestination = toVolume;
+
+    // already at that volume
+    if (Math.abs(this.gainNode.gain.value - this.fadingDestination) < 0.05)
+      return;
+    this.log(
+      `startng fade ${this.gainNode.gain.value} -> ${this.fadingDestination}`
+    );
+    this.gainNode.gain.cancelScheduledValues(0);
+
     this.gainNode.gain.linearRampToValueAtTime(
-      destinationVolume,
+      this.fadingDestination,
       this.context.currentTime + duration
     );
-    const that = this;
-    setTimeout(() => {
-      that.fading = false;
+    if (this._fadingTimeout) {
+      clearTimeout(this._fadingTimeout);
+    }
+    this._fadingTimeout = setTimeout(() => {
+      this.fading = false;
     }, duration * 1000);
   }
+
   fadeOutAndPause(): void {
     this.fade(0);
   }
@@ -128,7 +136,9 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
 
     const difference = elapsedTime - audioTime;
 
-    this.log(`Difference: ${difference} ms`);
+    this.log(
+      `Difference: ${difference} ms; Volume: ${this.gainNode.gain.value}`
+    );
     if (Math.abs(difference) < (this.config.acceptableDelayMs || 50)) {
       // within acceptable range;
       this.audio.playbackRate = 1;
