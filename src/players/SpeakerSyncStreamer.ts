@@ -121,12 +121,12 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     if (!(startedAt instanceof Date)) return;
     if (!this.playing) return;
 
-    const currentTime = new Date().getTime() - startedAt.getTime();
-    if (currentTime > this.audio.duration * 1000) return;
+    const elapsedTime = new Date().getTime() - startedAt.getTime();
+    if (elapsedTime > this.audio.duration * 1000) return;
 
     const audioTime = this.audio.currentTime * 1000;
 
-    const difference = currentTime - audioTime;
+    const difference = elapsedTime - audioTime;
 
     this.log(`Difference: ${difference} ms`);
     if (Math.abs(difference) < (this.config.acceptableDelayMs || 50)) {
@@ -134,7 +134,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
       this.audio.playbackRate = 1;
     } else if (Math.abs(difference) > (this.config.syncCheckInterval || 2500)) {
       // difference is too much; try to seek instead; seek bit ahead to compensate buffering time
-      this.audio.currentTime = currentTime + 500 / 1000;
+      this.audio.currentTime = (elapsedTime + 500) / 1000;
       this.audio.playbackRate = 1;
     } else {
       this.audio.playbackRate =
