@@ -56,11 +56,22 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
       await this.audio.play();
 
       this.playing = true;
+
       if (!this.started) {
-        // @ts-ignore
         global._roundwareSpeakerStartedAt = new Date();
         this.started = true;
+      } else if (
+        global._roundwareSpeakerPausedAt instanceof Date &&
+        global._roundwareSpeakerStartedAt instanceof Date
+      ) {
+        const pausedTime =
+          new Date().getTime() - global._roundwareSpeakerPausedAt.getTime();
+        global._roundwareSpeakerStartedAt = new Date(
+          global._roundwareSpeakerStartedAt.getTime() + pausedTime
+        );
+        global._roundwareSpeakerPausedAt = null;
       }
+
       this.log(`Playing...`);
     } catch (e) {
       console.error(e);
@@ -68,9 +79,12 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     }
     return true;
   }
+
   pause(): void {
     this.playing = false;
     this.audio.pause();
+
+    global._roundwareSpeakerPausedAt = new Date();
   }
   replay(): void {
     this.audio.currentTime = 0;
@@ -131,8 +145,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
 
   syncTracker?: number;
   trackSync() {
-    // @ts-ignore
-    const startedAt: Date = global._roundwareSpeakerStartedAt;
+    const startedAt: Date = global._roundwareSpeakerStartedAt || new Date();
     if (!(startedAt instanceof Date)) return;
     if (!this.playing) return;
 

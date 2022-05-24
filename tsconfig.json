@@ -1,5 +1,5 @@
 {
-  "include": ["./src/**/*"],
+  "include": ["./src/**/*", "./index.d.ts"],
   "compilerOptions": {
     "outDir": "./dist/",
     "target": "es5",
