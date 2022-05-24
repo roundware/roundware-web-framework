@@ -47,6 +47,10 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
 
   async play(): Promise<boolean> {
     try {
+      if (this.context.state !== "running") {
+        await this.context.resume();
+      }
+
       await this.audio.play();
       this.playing = true;
       // @ts-ignore
