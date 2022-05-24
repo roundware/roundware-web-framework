@@ -42,4 +42,6 @@ export type SpeakerConfig = {
   sync?: boolean;
   loop?: boolean;
   length?: number;
+  acceptableDelayMs?: number;
+  syncCheckInterval?: number;
 };
