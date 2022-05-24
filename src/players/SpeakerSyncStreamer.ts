@@ -47,12 +47,14 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
   started = false;
 
   async play(): Promise<boolean> {
+    if (this.playing) return true;
     try {
       if (this.context.state !== "running") {
         await this.context.resume();
       }
 
       await this.audio.play();
+
       this.playing = true;
       // @ts-ignore
       global._roundwareSpeakerStartedAt = new Date();
@@ -144,7 +146,9 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
       this.audio.playbackRate = 1;
     } else if (Math.abs(difference) > (this.config.syncCheckInterval || 2500)) {
       // difference is too much; try to seek instead; seek bit ahead to compensate buffering time
+      this.log(`Seeking to ${(elapsedTime + 500) / 1000}s`);
       this.audio.currentTime = (elapsedTime + 500) / 1000;
+
       this.audio.playbackRate = 1;
     } else {
       this.audio.playbackRate =
