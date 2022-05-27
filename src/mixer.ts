@@ -240,6 +240,7 @@ export class Mixer {
             loop: false,
             prefetch: false,
           },
+          mixer: that,
         })
     );
 

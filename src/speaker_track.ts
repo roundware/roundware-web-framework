@@ -17,7 +17,7 @@ import { ISpeakerData, ISpeakerPlayer } from "./types/speaker";
 import { speakerLog } from "./utils";
 import { SpeakerConfig } from "./types/roundware";
 import { SpeakerSyncStreamer } from "./players/SpeakerSyncStreamer";
-
+import { Mixer } from "./mixer";
 const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
   // @ts-ignore
   lineToPolygon(shape);
@@ -47,16 +47,18 @@ export class SpeakerTrack {
   player!: ISpeakerPlayer;
   audioContext: IAudioContext;
   config: SpeakerConfig;
+  mixer: Mixer;
 
   constructor({
     audioContext,
     listenerPoint,
     data,
     config,
+    mixer,
   }: {
     audioContext: IAudioContext;
     listenerPoint: Feature<Point>;
-
+    mixer: Mixer;
     data: ISpeakerData;
     config: SpeakerConfig;
   }) {
@@ -69,7 +71,7 @@ export class SpeakerTrack {
       attenuation_distance: attenuationDistance,
       uri,
     } = data;
-
+    this.mixer = mixer;
     this.audioContext = audioContext;
     this.config = config;
     this.speakerData = data;
@@ -178,9 +180,10 @@ export class SpeakerTrack {
   play() {
     const newVolume = this.calculateVolume();
     if (newVolume < 0.05) return; // no need to play
+
     try {
       this.player.play().then((success) => {
-        this.updateVolume();
+        if (this.mixer.playing) this.updateVolume();
         if (!success) {
           setTimeout(() => {
             this.play();
