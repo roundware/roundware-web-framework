@@ -45,9 +45,10 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
   }
 
   started = false;
-
+  alreadyTrying = false;
   async play(): Promise<boolean> {
-    if (this.playing) return true;
+    if (this.playing || this.alreadyTrying) return true;
+
     try {
       if (this.context.state !== "running") {
         await this.context.resume();
@@ -78,6 +79,8 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     } catch (e) {
       console.error(e);
       this.playing = false;
+    } finally {
+      this.alreadyTrying = false;
     }
     return true;
   }
@@ -123,7 +126,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
       `startng fade ${this.gainNode.gain.value} -> ${this.fadingDestination}`
     );
 
-    if (toVolume == 0) this.alert(`Fade to ${toVolume}`);
+    this.alert(`Fade to ${toVolume}`);
 
     this.gainNode.gain.cancelScheduledValues(this.context.currentTime);
 
