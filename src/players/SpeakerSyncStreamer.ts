@@ -141,18 +141,16 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
 
     this.alert(`Fade to ${toVolume}`);
 
-    this.gainNode.gain.cancelScheduledValues(this.context.currentTime);
-
     this.fading = true;
     const endTime = this.context.currentTime + duration;
-    this.log(`fade time ${this.context.currentTime} to ${endTime}`);
+
     this.gainNode.gain.linearRampToValueAtTime(this.fadingDestination, endTime);
     if (this._fadingTimeout) {
       clearTimeout(this._fadingTimeout);
     }
     this._fadingTimeout = setTimeout(() => {
       this.fading = false;
-      this.log(`fading ended to ${this.gainNode.gain.value}`);
+      this.log(`fading ended at volume ${this.gainNode.gain.value}`);
     }, duration * 1000);
   }
 
