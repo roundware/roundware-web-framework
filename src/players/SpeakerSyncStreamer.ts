@@ -41,6 +41,12 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
 
     const that = this;
 
+    ["abort", "ended", "error", "waiting", "stalled", "playing"].forEach(
+      (e) => {
+        this.audio.addEventListener(e, () => that.log(e + " event"));
+      }
+    );
+
     this.log(`sync streamer initiaed`);
   }
 
