@@ -143,7 +143,6 @@ export class SpeakerTrack {
       this.listenerPoint = opts.listenerPoint.geometry;
     }
 
-    this.updateVolume();
     if (isPlaying == false) {
       this.player.fadeOutAndPause();
       return;
@@ -179,9 +178,9 @@ export class SpeakerTrack {
   play() {
     const newVolume = this.calculateVolume();
     if (newVolume < 0.05) return; // no need to play
-
     try {
       this.player.play().then((success) => {
+        this.updateVolume();
         if (!success) {
           setTimeout(() => {
             this.play();
