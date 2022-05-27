@@ -143,6 +143,7 @@ export class SpeakerTrack {
       this.listenerPoint = opts.listenerPoint.geometry;
     }
 
+    this.updateVolume();
     if (isPlaying == false) {
       this.player.fadeOutAndPause();
       return;
@@ -156,7 +157,6 @@ export class SpeakerTrack {
     } else {
       this.player.log(`new volume ${newVolume}`);
       this.play();
-      this.updateVolume();
     }
   }
 

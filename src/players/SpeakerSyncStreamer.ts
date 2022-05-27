@@ -43,7 +43,12 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
 
     ["abort", "ended", "error", "waiting", "stalled", "playing"].forEach(
       (e) => {
-        this.audio.addEventListener(e, () => that.log(e + " event"));
+        this.audio.addEventListener(e, () => {
+          that.log(e + " event");
+          if ([`abort`, `ended`, `error`].includes(e)) {
+            that.playing = false;
+          }
+        });
       }
     );
 
