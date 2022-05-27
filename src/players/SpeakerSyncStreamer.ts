@@ -48,7 +48,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
   alreadyTrying = false;
   async play(): Promise<boolean> {
     if (this.playing || this.alreadyTrying) return true;
-
+    this.alreadyTrying = true;
     try {
       if (this.context.state !== "running") {
         await this.context.resume();
@@ -87,7 +87,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
 
   alert(...params: any) {
     if (this.id != 255) return;
-    alert(params);
+    // alert(params);
   }
   pause(): void {
     this.playing = false;
