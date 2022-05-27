@@ -155,7 +155,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
     speakerLog(
       `${this.id}: startng fade ${this.audio.volume} -> ${this._fadingDestination}`
     );
-
+    this._gainNode.gain.cancelScheduledValues(0);
     this._fading = true;
     this._gainNode.gain.linearRampToValueAtTime(
       this._fadingDestination,
