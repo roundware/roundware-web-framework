@@ -85,9 +85,10 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     return true;
   }
 
+  // for debugging
   alert(...params: any) {
-    if (this.id != 255) return;
-    alert(params);
+    // if (this.id != 255) return;
+    // alert(params);
   }
   pause(): void {
     this.playing = false;
