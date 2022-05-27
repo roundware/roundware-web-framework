@@ -73,7 +73,8 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
       }
 
       this.log(`Playing...`);
-      this.fade();
+
+      this.alert(`Started playing`);
     } catch (e) {
       console.error(e);
       this.playing = false;
@@ -81,6 +82,10 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     return true;
   }
 
+  alert(...params: any) {
+    if (this.id != 255) return;
+    alert(params);
+  }
   pause(): void {
     this.playing = false;
     this.audio.pause();
@@ -117,7 +122,10 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     this.log(
       `startng fade ${this.gainNode.gain.value} -> ${this.fadingDestination}`
     );
-    this.gainNode.gain.cancelScheduledValues(0);
+
+    if (toVolume == 0) this.alert(`Fade to ${toVolume}`);
+
+    this.gainNode.gain.cancelScheduledValues(this.context.currentTime);
 
     this.fading = true;
 
@@ -141,10 +149,6 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
   }
   onLoadingProgress(callback: (newPercent: number) => void): void {}
   onEnd(callback: () => void): void {}
-
-  updateTime(newTime: number): void {
-    this.audio.currentTime = newTime;
-  }
 
   syncTracker?: number;
   trackSync() {
@@ -176,7 +180,5 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
         1 + difference / (this.config.syncCheckInterval || 2500);
       this.log(`Changing Playback rate to ${this.audio.playbackRate}`);
     }
-
-    this.fade();
   }
 }
