@@ -183,12 +183,11 @@ export class SpeakerTrack {
 
     try {
       this.player.play().then((success) => {
-        if (this.mixer.playing) this.updateVolume();
         if (!success) {
           setTimeout(() => {
             this.play();
-          }, 2000);
-        }
+          }, 1000);
+        } else if (this.mixer.playing) this.updateVolume();
       });
     } catch (err) {
       console.error("Unable to play", this.logline, err);
