@@ -128,7 +128,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
   fadingDestination = 0;
   fading = false;
 
-  fade(toVolume: number = this.fadingDestination, duration: number = 3): void {
+  fade(toVolume: number = this.fadingDestination, duration: number = 8): void {
     if (this.fadingDestination == toVolume && this.fading) return;
     this.fadingDestination = toVolume;
 
