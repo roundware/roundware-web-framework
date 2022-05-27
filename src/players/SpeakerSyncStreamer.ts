@@ -73,6 +73,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
       }
 
       this.log(`Playing...`);
+      this.fade();
     } catch (e) {
       console.error(e);
       this.playing = false;
@@ -117,6 +118,8 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
       `startng fade ${this.gainNode.gain.value} -> ${this.fadingDestination}`
     );
     this.gainNode.gain.cancelScheduledValues(0);
+
+    this.fading = true;
 
     this.gainNode.gain.linearRampToValueAtTime(
       this.fadingDestination,
@@ -173,5 +176,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
         1 + difference / (this.config.syncCheckInterval || 2500);
       this.log(`Changing Playback rate to ${this.audio.playbackRate}`);
     }
+
+    this.fade();
   }
 }
