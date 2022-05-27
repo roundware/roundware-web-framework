@@ -158,6 +158,7 @@ export class SpeakerTrack {
     } else {
       this.player.log(`new volume ${newVolume}`);
       this.play();
+      if (this.player.playing) this.updateVolume();
     }
   }
 
@@ -186,8 +187,8 @@ export class SpeakerTrack {
         if (!success) {
           setTimeout(() => {
             this.play();
-          }, 1000);
-        } else if (this.mixer.playing) this.updateVolume();
+          }, 2000);
+        }
       });
     } catch (err) {
       console.error("Unable to play", this.logline, err);
@@ -214,11 +215,10 @@ export class SpeakerTrack {
       uri: this.uri,
       config: this.config,
     });
-    if (!this.config.sync) {
-      this.player.audio.addEventListener("playing", () => {
-        if (this.player.isSafeToPlay) this.updateVolume();
-      });
-    }
+
+    this.player.audio.addEventListener("playing", () => {
+      if (this.player.isSafeToPlay && this.mixer.playing) this.updateVolume();
+    });
   }
 
   toString() {
