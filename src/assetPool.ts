@@ -1,4 +1,5 @@
 import distance from "@turf/distance";
+import { union } from "lodash";
 import { AssetPriorityType, roundwareDefaultFilterChain } from "./assetFilters";
 import { AssetSorter } from "./assetSorter";
 import {
@@ -130,8 +131,9 @@ export class AssetPool {
   nextForTrack(
     track: PlaylistAudiotrack,
     {
-      elapsedSeconds: number,
+      elapsedSeconds,
       filterOutAssets = [],
+      listenTagIds = [],
       ...stateParams
     }: {
       elapsedSeconds: number;
@@ -144,6 +146,11 @@ export class AssetPool {
       ...this.mixParams,
       ...track.mixParams,
       ...stateParams,
+      listenTagIds: union(
+        this.mixParams.listenTagIds,
+        track.mixParams?.listenTagIds,
+        listenTagIds
+      ),
     };
 
     interface IRankedAssets {
