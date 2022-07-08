@@ -229,7 +229,10 @@ export class PlaylistAudiotrack {
     this.audioElement = audioElement;
 
     this.trackOptions = trackOptions;
-    this.mixParams = { timedAssetPriority: audioData.timed_asset_priority };
+    this.mixParams = {
+      timedAssetPriority: audioData.timed_asset_priority,
+      listenTagIds: audioData.tag_filters,
+    };
 
     const { minpanpos, maxpanpos, minpanduration, maxpanduration } = audioData;
     this.audioPanner = new AudioPanner(
@@ -265,7 +268,8 @@ export class PlaylistAudiotrack {
     this.state.play();
   }
 
-  updateParams(params: IMixParams = {}) {
+  updateParams({ listenTagIds = [], ...params }: IMixParams = {}) {
+    this.mixParams?.listenTagIds?.concat(...listenTagIds);
     this.mixParams = { ...this.mixParams, ...params };
     if (this.state) this.state.updateParams(this.mixParams);
   }
