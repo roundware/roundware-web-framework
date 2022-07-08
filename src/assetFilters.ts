@@ -201,11 +201,9 @@ export function anyTagsFilter() {
 
     const { tag_ids: assetTagIds = [] } = asset;
 
-    for (const tagId of assetTagIds) {
-      if (listenTagIds.includes(tagId)) return ASSET_PRIORITIES.LOWEST; // matching only by tag should be the least-important filter
+    if (assetTagIds.some((t) => listenTagIds.includes(t))) {
+      return ASSET_PRIORITIES.LOWEST;
     }
-
-    if (asset.status === "paused") console.log(`Discarded from anyTagsFilter`);
     return ASSET_PRIORITIES.DISCARD;
   };
 }
