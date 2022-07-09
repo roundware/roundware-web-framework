@@ -267,6 +267,7 @@ export const timedRepeatFilter =
     if (!lastListenTime || asset?.status === "paused")
       return ASSET_PRIORITIES.NORMAL; // e.g. asset has never been heard before
 
+    // repeat recordings check
     if (playCount > 0 && repeatRecordings == false) {
       console.debug(
         `discarded from timedRepeatFilter, repeatRecordings`,
@@ -278,7 +279,7 @@ export const timedRepeatFilter =
     const durationSinceLastListen =
       (new Date().getTime() - new Date(lastListenTime).getTime()) / 1000;
 
-    if (durationSinceLastListen <= bannedDuration) {
+    if (durationSinceLastListen < bannedDuration) {
       console.debug(
         `discarded from timedRepeatFilter`,
         durationSinceLastListen,
