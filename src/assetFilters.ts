@@ -55,7 +55,7 @@ export function anyAssetFilter(
         return rank;
       }
     }
-    if (asset.status === "paused") console.log(`Discarded from anyAssetFilter`);
+    console.debug(`Discarded from anyAssetFilter`);
     return ASSET_PRIORITIES.DISCARD;
   };
 }
@@ -135,8 +135,7 @@ export const distanceFixedFilter =
       if (distance < recordingRadius!) {
         return ASSET_PRIORITIES.NORMAL;
       } else {
-        if (asset.status === "paused")
-          console.log(`Discarded from distanceFixedFilter`);
+        console.debug(`Discarded from distanceFixedFilter`);
 
         return ASSET_PRIORITIES.DISCARD;
       }
@@ -182,8 +181,7 @@ export const distanceRangesFilter =
       if (distance >= minDist && distance <= maxDist) {
         return ASSET_PRIORITIES.NORMAL;
       } else {
-        if (asset.status === "paused")
-          console.log(`Discarded from distanceRangesFilter`);
+        console.debug(`Discarded from distanceRangesFilter`);
         return ASSET_PRIORITIES.DISCARD;
       }
     } catch (e) {
@@ -222,8 +220,7 @@ export const timedAssetFilter = () => {
       timedAssetEnd <= elapsedSeconds ||
       playCount! > 0
     ) {
-      if (asset.status === "paused")
-        console.log(`Discarded from timedAssetFilter`);
+      console.debug(`Discarded from timedAssetFilter`);
       return ASSET_PRIORITIES.DISCARD;
     }
 
@@ -252,8 +249,7 @@ export const assetShapeFilter = () => {
     if (booleanPointInPolygon(listenerPoint, shape)) {
       return ASSET_PRIORITIES.NORMAL;
     } else {
-      if (asset.status === "paused")
-        console.log(`Discarded from assetShapeFilter`);
+      console.debug(`Discarded from assetShapeFilter`);
       return ASSET_PRIORITIES.DISCARD;
     }
   };
@@ -262,16 +258,32 @@ export const assetShapeFilter = () => {
 // Prevents assets from repeating until a certain time threshold has passed
 export const timedRepeatFilter =
   () =>
-  (asset: IDecoratedAsset, { bannedDuration = 600 }): number | false => {
-    const { lastListenTime } = asset;
+  (
+    asset: IDecoratedAsset,
+    { bannedDuration = 600, repeatRecordings }: IMixParams
+  ): number | false => {
+    const { lastListenTime, playCount } = asset;
 
     if (!lastListenTime || asset?.status === "paused")
       return ASSET_PRIORITIES.NORMAL; // e.g. asset has never been heard before
+
+    if (playCount > 0 && repeatRecordings == false) {
+      console.debug(
+        `discarded from timedRepeatFilter, repeatRecordings`,
+        repeatRecordings
+      );
+      return ASSET_PRIORITIES.DISCARD;
+    }
 
     const durationSinceLastListen =
       (new Date().getTime() - new Date(lastListenTime).getTime()) / 1000;
 
     if (durationSinceLastListen <= bannedDuration) {
+      console.debug(
+        `discarded from timedRepeatFilter`,
+        durationSinceLastListen,
+        bannedDuration
+      );
       return ASSET_PRIORITIES.DISCARD;
     } else {
       return ASSET_PRIORITIES.LOWEST;
@@ -301,7 +313,7 @@ export const pausedAssetFilter =
   () =>
   (asset: IDecoratedAsset, mixParams?: IMixParams): number | false => {
     if (asset.status === "paused") {
-      console.log(`Resuming asset ${asset.id}`);
+      console.debug(`Resuming asset ${asset.id}`);
       asset.status = "resumed";
       return ASSET_PRIORITIES.HIGHEST;
     }
