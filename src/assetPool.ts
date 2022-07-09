@@ -151,6 +151,7 @@ export class AssetPool {
         track.mixParams?.listenTagIds,
         listenTagIds
       ),
+      ...track.trackOptions,
     };
 
     interface IRankedAssets {
