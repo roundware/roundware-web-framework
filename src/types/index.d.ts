@@ -1,4 +1,5 @@
 import { Feature, Point } from "@turf/helpers";
+import { TrackOptions } from "../mixer/TrackOptions";
 import { PlaylistAudiotrack } from "../playlistAudioTrack";
 import { IRoundwareConstructorOptions } from "./roundware";
 export type Coordinates = {
@@ -30,7 +31,9 @@ export type IMixParams = {
   endDate?: Date;
   sessionId?: number;
   keepPausedAssets?: boolean;
-} & Partial<IRoundwareConstructorOptions>;
+  bannedDuration?: number;
+} & Partial<IRoundwareConstructorOptions> &
+  Partial<TrackOptions>;
 
 export interface IInitialParams {}
 
