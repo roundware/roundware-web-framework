@@ -208,3 +208,5 @@ export const makeAudioSafeToPlay = (
     );
   });
 };
+
+export const NEARLY_ZERO = 0.0001;

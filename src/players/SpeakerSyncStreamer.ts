@@ -5,7 +5,7 @@ import {
 } from "standardized-audio-context";
 import { SpeakerConfig } from "../types/roundware";
 import { ISpeakerPlayer, SpeakerConstructor } from "../types/speaker";
-import { cleanAudioURL, speakerLog } from "../utils";
+import { cleanAudioURL, NEARLY_ZERO, speakerLog } from "../utils";
 
 export class SpeakerSyncStreamer implements ISpeakerPlayer {
   isSafeToPlay: boolean = true;
@@ -31,7 +31,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     this.audio = new Audio(this.uri);
     this.audio.loop = config.loop || false;
     this.gainNode = audioContext.createGain();
-    this.gainNode.gain.value = 0;
+    this.gainNode.gain.value = NEARLY_ZERO;
     this.audio.crossOrigin = "anonymous";
     this.audio.loop = false;
 
@@ -144,7 +144,10 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     this.fading = true;
     const endTime = this.context.currentTime + duration;
     this.gainNode.gain.cancelScheduledValues(0);
-    this.gainNode.gain.linearRampToValueAtTime(this.fadingDestination, endTime);
+    this.gainNode.gain.exponentialRampToValueAtTime(
+      this.fadingDestination || NEARLY_ZERO,
+      endTime
+    );
     if (this._fadingTimeout) {
       clearTimeout(this._fadingTimeout);
     }
