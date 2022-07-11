@@ -326,7 +326,7 @@ export class PlaylistAudiotrack {
     durationSeconds: number,
     rampMethod:
       | "exponentialRampToValueAtTime"
-      | "linearRampToValueAtTime" = "linearRampToValueAtTime"
+      | "linearRampToValueAtTime" = "exponentialRampToValueAtTime"
   ) {
     console.log(
       `\t[ramping gain from ${
