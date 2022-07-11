@@ -112,6 +112,8 @@ export const LOGGABLE_HOWL_EVENTS = [
 
 export const silenceAudioBase64 =
   "data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+
+const NEARLY_ZERO = 0.0001;
 export class PlaylistAudiotrack {
   /**
    * id of audiotrack
@@ -281,7 +283,7 @@ export class PlaylistAudiotrack {
   }
 
   setZeroGain() {
-    this.gainNode.gain.value = 0;
+    this.gainNode.gain.value = NEARLY_ZERO;
   }
 
   fadeIn(fadeInDurationSeconds: number): boolean {
@@ -294,7 +296,7 @@ export class PlaylistAudiotrack {
 
     try {
       this.setZeroGain();
-      this.rampGain(finalVolume, fadeInDurationSeconds);
+      this.rampGain(finalVolume || NEARLY_ZERO, fadeInDurationSeconds);
       return true;
     } catch (err) {
       playlistTrackLog(`${this} unable to fadeIn`);
@@ -321,19 +323,11 @@ export class PlaylistAudiotrack {
     return this.rampGain(0, fadeOutDurationSeconds);
   }
 
-  rampGain(
-    finalVolume: number,
-    durationSeconds: number,
-    rampMethod:
-      | "exponentialRampToValueAtTime"
-      | "linearRampToValueAtTime" = "exponentialRampToValueAtTime"
-  ) {
+  rampGain(finalVolume: number, durationSeconds: number) {
     console.log(
       `\t[ramping gain from ${
         this.gainNode.gain.value
-      } to ${finalVolume.toFixed(2)} (${durationSeconds.toFixed(
-        1
-      )}s - ${rampMethod})]`
+      } to ${finalVolume.toFixed(2)} (${durationSeconds.toFixed(1)}s)]`
     );
 
     try {
@@ -341,8 +335,8 @@ export class PlaylistAudiotrack {
         this.gainNode.gain.value,
         this.audioContext.currentTime
       );
-      this.gainNode.gain[rampMethod](
-        finalVolume,
+      this.gainNode.gain.exponentialRampToValueAtTime(
+        finalVolume || NEARLY_ZERO,
         this.audioContext.currentTime + durationSeconds
       );
       return true;
@@ -420,7 +414,9 @@ export class PlaylistAudiotrack {
       if (this.audioContext.state !== "running")
         await this.audioContext.resume();
       if (!this.audioElement.src) this.audioElement.src = silenceAudioBase64;
-      while (!this.isSafeToPlay) {}
+      while (!this.isSafeToPlay) {
+        console.log(`waiting for touch interaction`);
+      }
       await this.audioElement.play();
     } catch (e) {
       console.error(e);
