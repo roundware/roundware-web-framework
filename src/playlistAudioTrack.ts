@@ -415,11 +415,13 @@ export class PlaylistAudiotrack {
     this.pauseAudio();
   }
 
-  playAudio() {
+  async playAudio() {
     try {
-      if (this.audioContext.state !== "running") this.audioContext.resume();
+      if (this.audioContext.state !== "running")
+        await this.audioContext.resume();
       if (!this.audioElement.src) this.audioElement.src = silenceAudioBase64;
-      this.audioElement.play();
+      while (!this.isSafeToPlay) {}
+      await this.audioElement.play();
     } catch (e) {
       console.error(e);
       this.setInitialTrackState();
