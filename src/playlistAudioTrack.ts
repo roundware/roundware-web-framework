@@ -11,7 +11,6 @@ import { IDecoratedAsset } from "./types/asset";
 import { IAudioTrackData } from "./types/audioTrack";
 import { ITrackStates } from "./types/track-states";
 import {
-  debugLogger,
   getUrlParam,
   makeAudioSafeToPlay,
   playlistTrackLog,
@@ -210,7 +209,7 @@ export class PlaylistAudiotrack {
     audioElement.addEventListener("playing", () => {
       if (!this.isSafeToPlay) return;
       if (this.playlist.playing === false) return this.pauseAudio();
-      this.currentAsset!.status = undefined;
+      if (this.currentAsset) this.currentAsset.status = undefined;
       if (this.currentAsset) {
         this.listenEvents?.logAssetStart(this.currentAsset.id);
         this.playing = true;
@@ -248,8 +247,12 @@ export class PlaylistAudiotrack {
     this.audioPanner.start();
     this.setInitialTrackState();
 
+    const that = this;
     // try to play silence audio to avoid NotAllowedError on iOS
-    makeAudioSafeToPlay(this.audioElement, () => (this.isSafeToPlay = true));
+    makeAudioSafeToPlay(this.audioElement, this.audioContext, () => {
+      that.isSafeToPlay = true;
+      console.log(`successfully ${that.audioData.id} ${that.isSafeToPlay}`);
+    });
   }
 
   setInitialTrackState() {
@@ -384,6 +387,7 @@ export class PlaylistAudiotrack {
       if (typeof file !== "string") {
         return null;
       }
+
       audioElement.src = file;
       audioElement.addEventListener(
         "loadedmetadata",
@@ -394,7 +398,6 @@ export class PlaylistAudiotrack {
         },
         { once: true }
       );
-      this.audioElement = audioElement;
       this.played = false;
       return newAsset;
     }
@@ -414,19 +417,18 @@ export class PlaylistAudiotrack {
       if (this.audioContext.state !== "running")
         await this.audioContext.resume();
       if (!this.audioElement.src) this.audioElement.src = silenceAudioBase64;
-      while (!this.isSafeToPlay) {
-        console.log(`waiting for touch interaction`);
-      }
+
       await this.audioElement.play();
+      console.log(`${this.audioData.id} works`);
     } catch (e) {
-      console.error(e);
+      console.error(`${this.audioData.id}`, e);
       this.setInitialTrackState();
       this.transition(this.state!);
     }
   }
 
   pauseAudio() {
-    this.audioElement.pause();
+    if (!this.audioElement.paused) this.audioElement.pause();
   }
 
   /**
