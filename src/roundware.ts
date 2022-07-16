@@ -187,7 +187,8 @@ export class Roundware {
 
     this._apiClient = new ApiClient(this._serverUrl);
 
-    options.apiClient = this._apiClient;
+    const newOptions: Required<IOptions> = options as Required<IOptions>;
+    newOptions.apiClient = this._apiClient;
 
     let navigator = window.navigator;
 
@@ -195,14 +196,14 @@ export class Roundware {
     this._user =
       user ||
       new User({
-        apiClient: options.apiClient,
-        clientType: options.clientType,
-        deviceId: options.deviceId,
+        apiClient: newOptions.apiClient,
+        clientType: newOptions.clientType,
+        deviceId: newOptions.deviceId,
       });
     this.geoPosition =
       geoPosition ||
       new GeoPosition(navigator, {
-        geoListenMode: options.geoListenMode,
+        geoListenMode: newOptions.geoListenMode,
         defaultCoords: listenerLocation,
       });
     this._session =
@@ -211,15 +212,17 @@ export class Roundware {
         apiClient: this._apiClient,
       });
 
-    this.project = project || new Project(this._projectId, options);
-    this._speaker = speaker || new Speaker(this._projectId, options);
-    this._asset = asset || new Asset(this._projectId, options);
+    this.project = project || new Project(this._projectId, newOptions);
+    this._speaker = speaker || new Speaker(this._projectId, newOptions);
+    this._asset = asset || new Asset(this._projectId, newOptions);
     if (!this._asset)
       throw new RoundwareFrameworkError(
         "Failed to connect to assets! Please try again."
       );
-    this._timed_asset = timedAsset || new TimedAsset(this._projectId, options);
-    this._audiotrack = audiotrack || new Audiotrack(this._projectId, options);
+    this._timed_asset =
+      timedAsset || new TimedAsset(this._projectId, newOptions);
+    this._audiotrack =
+      audiotrack || new Audiotrack(this._projectId, newOptions);
     this.uiConfig = {};
 
     const mixParams: IMixParams = {

@@ -68,7 +68,7 @@ export class AssetPool {
     asset: IDecoratedAsset,
     mixParams: IMixParams
   ) => AssetPriorityType;
-  assets!: IDecoratedAsset[];
+  assets: IDecoratedAsset[] = [];
 
   constructor({
     assets = [],
@@ -217,3 +217,5 @@ export class AssetPool {
     this.sortAssets();
   }
 }
+
+export default AssetPool;

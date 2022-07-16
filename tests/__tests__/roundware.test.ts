@@ -14,7 +14,13 @@ import {
   MOCK_PROJECT_UICONFIG_DATA,
   MOCK_TIMED_ASSET_DATA,
 } from "../__mocks__/mock_api_responses";
-
+import IAudioContext from "standardized-audio-context";
+import AssetPool from "../../src/assetPool";
+import { Asset } from "../../src/asset";
+import { randomAssetData } from "../__mocks__/assetData";
+const MockedAssetPool = AssetPool as jest.MockedClass<typeof AssetPool>;
+jest.mock(`standardized-audio-context`);
+jest.mock("../../src/assetPool");
 describe("Roundware", () => {
   describe("Instantiation", () => {
     it("throw error if windowScope not passed", () => {
@@ -76,8 +82,16 @@ describe("Roundware", () => {
           longitude: 155,
         },
         deviceId: "",
-        apiClient: undefined,
+
         geoListenMode: GeoListenMode.DISABLED,
+        speakerConfig: {
+          prefetch: false,
+          sync: true,
+          loop: false,
+          length: 10,
+          acceptableDelayMs: 200,
+          syncCheckInterval: 200,
+        },
       };
       const roundware = new Roundware(global.window, options);
       expect(roundware).toBeInstanceOf(Roundware);
@@ -94,16 +108,27 @@ describe("Roundware", () => {
         longitude: 155,
       },
       deviceId: "",
-      apiClient: undefined,
       geoListenMode: GeoListenMode.DISABLED,
+      speakerConfig: {
+        prefetch: false,
+        sync: true,
+        loop: false,
+        length: 10,
+        acceptableDelayMs: 200,
+        syncCheckInterval: 200,
+      },
     };
     const roundware = new Roundware(global.window, options);
 
     beforeEach(() => setupFetchMock());
     it("Return array of assets", () => {
       const assets = roundware.assets();
-      console.log(assets);
-      expect(Array.isArray(assets)).toBe(true);
+      expect(roundware.assetData).toBeNull();
+      expect(assets).toEqual([]);
+      const randomNewAssets = randomAssetData();
+      roundware.assetData = randomNewAssets;
+      expect(roundware.assetData).toEqual(randomNewAssets);
+      expect(roundware.assets()).toEqual(randomNewAssets);
     });
 
     it(".connect() - should successfully connect return promise of uiConfig", async () => {
@@ -161,10 +186,10 @@ describe("Roundware", () => {
     it("onUpdateAssets() - called when assets are updated", async () => {
       const onUpdateAssetsCallback = jest.fn();
       roundware.onUpdateAssets = onUpdateAssetsCallback;
-      expect(onUpdateAssetsCallback).toHaveBeenCalledTimes(0);
+      expect(onUpdateAssetsCallback).toHaveBeenCalledTimes(1);
       await roundware.updateAssetPool();
 
-      expect(onUpdateAssetsCallback).toHaveBeenCalledTimes(1);
+      expect(onUpdateAssetsCallback).toHaveBeenCalledTimes(2);
       expect(onUpdateAssetsCallback).toHaveBeenLastCalledWith(
         roundware.assets()
       );
@@ -193,13 +218,9 @@ describe("Roundware", () => {
       );
     });
 
-    it(".currentlyPlayingAssets should return currently playing assets or warn", async () => {
+    it(".currentlyPlayingAssets should return empty when no playlist", async () => {
       let cpa = roundware.currentlyPlayingAssets;
-      expect(cpa).toBeUndefined();
-
-      // await roundware.activateMixer();
-      // cpa = roundware.currentlyPlayingAssets;
-      // expect(cpa).not.toBeUndefined();
+      expect(cpa).toEqual([]);
     });
 
     it("getAssets() return already existing assets when no filter passed", async () => {
@@ -228,8 +249,16 @@ describe("Roundware", () => {
             longitude: 155,
           },
           deviceId: "",
-          apiClient: undefined,
+
           geoListenMode: GeoListenMode.DISABLED,
+          speakerConfig: {
+            prefetch: false,
+            sync: true,
+            loop: false,
+            length: 10,
+            acceptableDelayMs: 200,
+            syncCheckInterval: 200,
+          },
         };
         roundware = new Roundware(global.window, options);
       });
@@ -268,11 +297,9 @@ describe("Roundware", () => {
       });
 
       it("update assetPool assets with decoration", async () => {
-        expect(roundware.assetPool.assets).toEqual([]);
+        MockedAssetPool.prototype.updateAssets.mockClear();
         await roundware.updateAssetPool();
-        expect(roundware.assetPool.assets).toEqual(
-          MOCK_ASSET_DATA.map(assetDecorationMapper(MOCK_TIMED_ASSET_DATA))
-        );
+        expect(MockedAssetPool.prototype.updateAssets).toHaveBeenCalledTimes(1);
       });
     });
 
@@ -328,6 +355,14 @@ describe("Roundware", () => {
           deviceId: "",
           apiClient: undefined,
           geoListenMode: GeoListenMode.DISABLED,
+          speakerConfig: {
+            prefetch: false,
+            sync: true,
+            loop: false,
+            length: 10,
+            acceptableDelayMs: 200,
+            syncCheckInterval: 200,
+          },
         };
         roundware = new Roundware(global.window, options);
       });
@@ -343,15 +378,6 @@ describe("Roundware", () => {
         expect(roundware.timedAssetData).toBeNull();
         await roundware.loadAssetPool();
         expect(roundware.timedAssetData).toEqual(MOCK_TIMED_ASSET_DATA);
-      });
-
-      it("loads asset pool with decorated assets", async () => {
-        expect(roundware.assetPool.assets).toEqual([]);
-        await roundware.loadAssetPool();
-
-        expect(roundware.assetPool.assets).toEqual(
-          MOCK_ASSET_DATA.map(assetDecorationMapper(MOCK_TIMED_ASSET_DATA))
-        );
       });
 
       it("sets _assetDataTimer after first call", async () => {

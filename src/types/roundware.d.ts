@@ -13,7 +13,7 @@ import { IAssetFilters } from "./asset";
 import { ISpeakerFilters } from "./speaker";
 
 export interface IOptions {
-  apiClient: ApiClient;
+  apiClient?: ApiClient;
   deviceId: string;
   clientType?: string;
   geoListenMode: GeoListenModeType;
