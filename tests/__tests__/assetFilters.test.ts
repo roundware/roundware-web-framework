@@ -1,81 +1,68 @@
-import {
-  roundwareDefaultFilterChain,
-  dateRangeFilter,
-} from "../../src/assetFilters";
+import { rankForGeofilteringEligibility } from "../../src/assetFilters";
 import { assetDecorationMapper } from "../../src/assetPool";
-import { ASSET_PRIORITIES, GeoListenMode } from "../../src/roundware";
-import { coordsToPoints } from "../../src/utils";
-import {
-  MOCK_DECORATED_ASSET_DATA,
-  MOCK_FULL_ASSETDATA,
-  MOCK_TIMED_ASSET_DATA,
-} from "../__mocks__/mock_api_responses";
-describe("assetFilters", () => {
-  // test("#anyAssetFilter", () => {
-  //   anyAssetFilter();
-  // });
-
-  describe("#roundwareDefaultFilterChain", () => {
-    MOCK_DECORATED_ASSET_DATA.forEach((asset) => {
-      const priority = roundwareDefaultFilterChain(asset, {
-        getListenMode: GeoListenMode.MANUAL,
-
-        listenerPoint: coordsToPoints({
-          latitude: 40.7683525085449,
-          longitude: -73.9643249511719,
-        }),
-        recordingRadius: 134,
-        maxDist: 134.02141359705166,
-      });
-      console.log(priority);
-    });
+import { calculateDistanceInMeters, GeoListenMode } from "../../src/roundware";
+import { getRandomAssetData } from "../__mocks__/assetData";
+import { point } from "@turf/helpers";
+import { faker } from "@faker-js/faker";
+describe("rankForGeofilteringEligibility", () => {
+  test("should return false if geo listen mode is disabled", () => {
+    expect(
+      rankForGeofilteringEligibility(
+        getRandomAssetData(1).map(assetDecorationMapper([]))[0],
+        {
+          geoListenMode: GeoListenMode.DISABLED,
+        }
+      )
+    ).toBe(false);
   });
 
-  describe("#dateRangeFilter", () => {
-    const dateFilter = dateRangeFilter();
-
-    const mockStartDate = new Date(
-      "Fri Aug 06 2021 13:46:00 GMT+0530 (India Standard Time)"
-    );
-    const decoratedAssets = MOCK_FULL_ASSETDATA.map(
-      assetDecorationMapper(MOCK_TIMED_ASSET_DATA)
-    );
-
-    test("should discard assets older than start date", () => {
-      expect.assertions(MOCK_FULL_ASSETDATA.length);
-      const newAssets = decoratedAssets.map((asset) => {
-        const priority = dateFilter(asset, {
-          startDate: mockStartDate,
-        });
-        if (asset.created < mockStartDate) {
-          expect(priority).toBe(ASSET_PRIORITIES.DISCARD);
-        } else expect(priority).toBe(ASSET_PRIORITIES.NORMAL);
-      });
-    });
+  test("should false if asset is undefined", () => {
+    expect(
+      rankForGeofilteringEligibility(undefined, {
+        geoListenMode: GeoListenMode.AUTOMATIC,
+        listenerPoint: point([
+          +faker.address.latitude(),
+          +faker.address.longitude(),
+        ]),
+      })
+    ).toBe(false);
   });
 
-  // describe("#distanceFixedFilter", () => {
-  //   test("#distanceFixedFilter", () => {
-  //     const filter = distanceFixedFilter();
-  //     // @ts-ignore
-  //     const MOCK_ASSET: IDecoratedAsset = {
-  //       locationPoint: coordsToPoints({
-  //         latitude: 40,
-  //         longitude: 20,
-  //       }),
-  //     };
+  test("should should return true if asset and geo listen mode not disabled and wiith listener point", () => {
+    expect(
+      rankForGeofilteringEligibility(
+        getRandomAssetData(1).map(assetDecorationMapper([]))[0],
+        {
+          geoListenMode: GeoListenMode.AUTOMATIC,
+          listenerPoint: point([
+            +faker.address.latitude(),
+            +faker.address.longitude(),
+          ]),
+        }
+      )
+    ).toBe(true);
+  });
 
-  //     const MOCK_MIX_PARAM: IMixParams = {
-  //       listenerPoint: coordsToPoints({
-  //         latitude: 20,
-  //         longitude: 10,
-  //       }),
-  //       recordingRadius: 3000,
-  //     };
+  test("should return false listenerPoint is not passed", () => {
+    expect(
+      rankForGeofilteringEligibility(
+        getRandomAssetData(1).map(assetDecorationMapper([]))[0],
+        {
+          geoListenMode: GeoListenMode.AUTOMATIC,
+        }
+      )
+    ).toBe(false);
+  });
+});
 
-  //     const priority = filter(MOCK_ASSET, MOCK_MIX_PARAM);
+describe("calculateDistanceInMeters()", () => {
+  test("should return correct approximate correct in meters", () => {
+    expect(
+      +calculateDistanceInMeters(point([0, 1]), point([0, 2])).toFixed(0)
+    ).toEqual(111195);
+  });
+});
 
-  //     expect(priority).toBe(false);
-  //   });
-  // });
+describe("distanceFixedFilter()", () => {
+  test("should be lowest if GeoListenMode is disabled", () => {});
 });
