@@ -1,6 +1,6 @@
 import { IAssetData } from "../../src/types/asset";
 import { faker } from "@faker-js/faker";
-export const randomAssetData = (amount = 5) => {
+export const getRandomAssetData = (amount = 5) => {
   const data: IAssetData[] = [];
   for (let i = 0; i < amount; i++) {
     data.push({
@@ -9,7 +9,7 @@ export const randomAssetData = (amount = 5) => {
       latitude: +faker.address.latitude(),
       longitude: +faker.address.longitude(),
       filename: faker.word.noun(),
-      file: null,
+      file: faker.internet.url(),
       volume: faker.datatype.number({
         min: 0,
         max: 1,
