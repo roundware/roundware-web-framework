@@ -32,8 +32,8 @@ export const assetDecorationMapper = (timedAssets: ITimedAssetData[]) => {
     const activeRegionLength = activeRegionUpperBound - activeRegionLowerBound;
 
     // per Halsey we should always use mp3s; also we avoid specifying http/https to avoid mixed-content warnings
-    if (!assetUrl) throw new Error(`assetUrl was undefined!`);
-    const mp3Url = cleanAudioURL(assetUrl);
+    if (!assetUrl) console.warn(`assetUrl was undefined!`);
+    const mp3Url = cleanAudioURL(assetUrl!);
 
     const decoratedAsset: IDecoratedAsset = {
       locationPoint: coordsToPoints({
