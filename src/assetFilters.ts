@@ -93,7 +93,12 @@ export const rankForGeofilteringEligibility = (
     geoListenMode,
   }: Pick<IMixParams, "listenerPoint" | "geoListenMode">
 ): boolean => {
-  return !!(geoListenMode !== GeoListenMode.DISABLED && listenerPoint && asset);
+  return !!(
+    geoListenMode !== GeoListenMode.DISABLED &&
+    listenerPoint &&
+    asset &&
+    asset.locationPoint
+  );
 };
 
 export const calculateDistanceInMeters = (loc1: Coord, loc2: Coord) =>
