@@ -36,7 +36,7 @@ export const getRandomAssetData = (amount = 5, decorate = false) => {
   }
 
   if (decorate) {
-    data.map(assetDecorationMapper([]));
+    return data.map(assetDecorationMapper([]));
   }
   return data;
 };
