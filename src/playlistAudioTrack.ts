@@ -379,7 +379,7 @@ export class PlaylistAudiotrack {
       const { file, start_time } = newAsset;
       playlistTrackLog(
         `#${this.trackId} Selected Asset: ${newAsset.id}, was paused: ${
-          newAsset.paused || false
+          newAsset.status == "paused"
         }]`
       );
 
