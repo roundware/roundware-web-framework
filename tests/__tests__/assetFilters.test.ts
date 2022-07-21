@@ -10,6 +10,10 @@ import { getRandomAssetData } from "../__mocks__/assetData";
 import { point } from "@turf/helpers";
 import { faker } from "@faker-js/faker";
 import { IDecoratedAsset } from "../../src/types/asset";
+import {
+  InvalidArgumentError,
+  RoundwareFrameworkError,
+} from "../../src/errors/app.errors";
 describe("rankForGeofilteringEligibility", () => {
   test("should return false if geo listen mode is disabled", () => {
     expect(
@@ -86,6 +90,7 @@ describe("calculateDistanceInMeters()", () => {
 
 describe("distanceFixedFilter()", () => {
   const testAsset = getRandomAssetData(1, true)[0] as IDecoratedAsset;
+
   test("should be lowest if GeoListenMode is disabled", () => {
     expect(
       distanceFixedFilter()(testAsset, {
@@ -100,5 +105,25 @@ describe("distanceFixedFilter()", () => {
         geoListenMode: GeoListenMode.AUTOMATIC,
       })
     ).toEqual(ASSET_PRIORITIES.NEUTRAL);
+  });
+
+  test("testAsset has location point", () => {
+    expect(testAsset.locationPoint).not.toBeFalsy();
+  });
+
+  test("should throw error if recording radius is not there", () => {
+    expect.assertions(2);
+    try {
+      distanceFixedFilter()(testAsset, {
+        geoListenMode: GeoListenMode.AUTOMATIC,
+        listenerPoint: (getRandomAssetData(1, true)[0] as IDecoratedAsset)
+          .locationPoint,
+      });
+    } catch (e) {
+      expect(e).toBeInstanceOf(RoundwareFrameworkError);
+      expect(e.message).toEqual(
+        'Expected argument "recordingRadius" to be "number" while distanceFixedFilter'
+      );
+    }
   });
 });
