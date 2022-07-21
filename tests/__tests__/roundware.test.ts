@@ -17,7 +17,7 @@ import {
 import IAudioContext from "standardized-audio-context";
 import AssetPool from "../../src/assetPool";
 import { Asset } from "../../src/asset";
-import { randomAssetData } from "../__mocks__/assetData";
+import { getRandomAssetData } from "../__mocks__/assetData";
 const MockedAssetPool = AssetPool as jest.MockedClass<typeof AssetPool>;
 jest.mock(`standardized-audio-context`);
 jest.mock("../../src/assetPool");
@@ -125,7 +125,7 @@ describe("Roundware", () => {
       const assets = roundware.assets();
       expect(roundware.assetData).toBeNull();
       expect(assets).toEqual([]);
-      const randomNewAssets = randomAssetData();
+      const randomNewAssets = getRandomAssetData(10);
       roundware.assetData = randomNewAssets;
       expect(roundware.assetData).toEqual(randomNewAssets);
       expect(roundware.assets()).toEqual(randomNewAssets);
