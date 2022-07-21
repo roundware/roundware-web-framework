@@ -5,7 +5,10 @@ import { isEmpty } from "./utils";
 import { GeoListenMode } from "./mixer";
 import { GeoListenModeType, IMixParams } from "./types";
 import { IDecoratedAsset } from "./types/asset";
-import { RoundwareFrameworkError } from "./errors/app.errors";
+import {
+  InvalidArgumentError,
+  RoundwareFrameworkError,
+} from "./errors/app.errors";
 
 export interface IAssetPriorities {
   readonly DISCARD: false;
@@ -113,7 +116,7 @@ export const distanceFixedFilter =
       IMixParams,
       "geoListenMode" | "listenerPoint" | "recordingRadius"
     >
-  ): number | false => {
+  ): AssetPriorityType => {
     try {
       if (options.geoListenMode === GeoListenMode.DISABLED) {
         return ASSET_PRIORITIES.LOWEST;
@@ -123,18 +126,19 @@ export const distanceFixedFilter =
 
       const { locationPoint: assetLocationPoint } = asset;
       const { listenerPoint, recordingRadius } = options;
-
-      if (typeof listenerPoint == "undefined")
-        throw new RoundwareFrameworkError(`listenerPoint was undefined`);
-      if (typeof assetLocationPoint == "undefined")
-        throw new RoundwareFrameworkError(`assetLocationPoint was undefined`);
+      if (!recordingRadius)
+        throw new InvalidArgumentError(
+          "recordingRadius",
+          "number",
+          "distanceFixedFilter"
+        );
 
       const distance = calculateDistanceInMeters(
-        listenerPoint,
+        listenerPoint!,
         assetLocationPoint
       );
 
-      if (distance < recordingRadius!) {
+      if (distance < recordingRadius) {
         return ASSET_PRIORITIES.NORMAL;
       } else {
         console.debug(`Discarded from distanceFixedFilter`);
@@ -142,7 +146,9 @@ export const distanceFixedFilter =
         return ASSET_PRIORITIES.DISCARD;
       }
     } catch (e) {
-      throw new RoundwareFrameworkError("Something went wrong!");
+      throw new RoundwareFrameworkError(
+        (e as { message: string }).message || "Something went wrong!"
+      );
     }
   };
 
