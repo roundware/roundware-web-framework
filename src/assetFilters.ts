@@ -270,15 +270,18 @@ export const timedRepeatFilter =
     asset: IDecoratedAsset,
     { bannedDuration = 600, repeatRecordings }: IMixParams
   ): number | false => {
-    const { lastListenTime, playCount } = asset;
-
-    if (!lastListenTime || asset?.status === "paused")
-      return ASSET_PRIORITIES.NORMAL; // e.g. asset has never been heard before
+    let { lastListenTime, playCount = 0 } = asset;
+    lastListenTime =
+      lastListenTime instanceof Date
+        ? lastListenTime.getTime()
+        : lastListenTime;
 
     // repeat recordings check
-    if (playCount > 0 && repeatRecordings == false) {
+    if (playCount > 0 && !repeatRecordings) {
       return ASSET_PRIORITIES.DISCARD;
     }
+    if (!lastListenTime || asset?.status === "paused")
+      return ASSET_PRIORITIES.NORMAL; // e.g. asset has never been heard before
 
     const durationSinceLastListen =
       (new Date().getTime() - new Date(lastListenTime).getTime()) / 1000;
