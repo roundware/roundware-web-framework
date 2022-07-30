@@ -20,10 +20,15 @@ export interface IAssetPriorities {
 }
 export type AssetPriorityType = false | 0 | 1 | 100 | 999 | number;
 export const ASSET_PRIORITIES: IAssetPriorities = Object.freeze({
+  // don't select this
   DISCARD: false,
+  // don't know what to do, allow other filters to take decision if possible
   NEUTRAL: 0,
+  // should be selected immediately
   LOWEST: 1,
+  //  normal
   NORMAL: 100,
+  // should be selected if no other choice
   HIGHEST: 999,
 });
 
@@ -252,9 +257,8 @@ export const assetShapeFilter = () => {
       return ASSET_PRIORITIES.NEUTRAL;
 
     const { listenerPoint } = options;
-    if (!listenerPoint)
-      throw new RoundwareFrameworkError(`listenerPoint was undefined`);
-    if (booleanPointInPolygon(listenerPoint, shape)) {
+
+    if (booleanPointInPolygon(listenerPoint!, shape)) {
       return ASSET_PRIORITIES.NORMAL;
     } else {
       console.debug(`Discarded from assetShapeFilter`);
