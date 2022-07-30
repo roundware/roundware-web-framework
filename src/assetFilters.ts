@@ -225,13 +225,13 @@ export const timedAssetFilter = () => {
     asset: IDecoratedAsset,
     { elapsedSeconds = 0, timedAssetPriority = "normal" }
   ): number | false => {
-    const { timedAssetStart, timedAssetEnd, playCount } = asset;
+    const { timedAssetStart, timedAssetEnd, playCount = 0 } = asset;
 
-    if (!timedAssetStart || !timedAssetEnd) return ASSET_PRIORITIES.DISCARD;
+    if (!timedAssetStart || !timedAssetEnd) return ASSET_PRIORITIES.NEUTRAL;
     if (
-      timedAssetStart >= elapsedSeconds ||
-      timedAssetEnd <= elapsedSeconds ||
-      playCount! > 0
+      timedAssetStart > elapsedSeconds ||
+      elapsedSeconds >= timedAssetEnd ||
+      playCount > 0
     ) {
       console.debug(`Discarded from timedAssetFilter`);
       return ASSET_PRIORITIES.DISCARD;
