@@ -1,6 +1,7 @@
 import { rankForGeofilteringEligibility } from "../../src/assetFilters";
 import { assetDecorationMapper } from "../../src/assetPool";
 import {
+  assetShapeFilter,
   ASSET_PRIORITIES,
   calculateDistanceInMeters,
   dateRangeFilter,
@@ -9,7 +10,10 @@ import {
   pausedAssetFilter,
   timedRepeatFilter,
 } from "../../src/roundware";
-import { getRandomAssetData } from "../__mocks__/assetData";
+import {
+  getRandomAssetData,
+  getRandomDecoratedAssetData,
+} from "../__mocks__/assetData";
 import { point } from "@turf/helpers";
 import { faker } from "@faker-js/faker";
 import { IDecoratedAsset } from "../../src/types/asset";
@@ -19,6 +23,8 @@ import {
 } from "../../src/errors/app.errors";
 import { addDays, subDays } from "date-fns";
 import { omit } from "lodash";
+import lineToPolygon from "@turf/line-to-polygon";
+import { lineString } from "@turf/helpers";
 describe("rankForGeofilteringEligibility", () => {
   test("should return false if geo listen mode is disabled", () => {
     expect(
@@ -94,7 +100,7 @@ describe("calculateDistanceInMeters()", () => {
 });
 
 describe("distanceFixedFilter()", () => {
-  const testAsset = getRandomAssetData(1, true)[0] as IDecoratedAsset;
+  const testAsset = getRandomDecoratedAssetData(1)[0] as IDecoratedAsset;
 
   test("should be lowest if GeoListenMode is disabled", () => {
     expect(
@@ -121,8 +127,7 @@ describe("distanceFixedFilter()", () => {
     try {
       distanceFixedFilter()(testAsset, {
         geoListenMode: GeoListenMode.AUTOMATIC,
-        listenerPoint: (getRandomAssetData(1, true)[0] as IDecoratedAsset)
-          .locationPoint,
+        listenerPoint: getRandomDecoratedAssetData(1)[0].locationPoint,
       });
     } catch (e) {
       expect(e).toBeInstanceOf(RoundwareFrameworkError);
@@ -133,14 +138,84 @@ describe("distanceFixedFilter()", () => {
   });
 });
 
+describe("assetShapeFilter", () => {
+  test("should neutral if no shape", () => {
+    expect(
+      assetShapeFilter()(
+        {
+          ...omit(getRandomDecoratedAssetData(1)[0], ["shape"]),
+        },
+        {}
+      )
+    ).toBe(ASSET_PRIORITIES.NEUTRAL);
+  });
+
+  const testShape = lineToPolygon(
+    lineString(
+      [
+        [-74.07582533398437, 40.75286252052272],
+        [-74.20628798046874, 40.69935160542775],
+        [-74.0387464765625, 40.63950204556616],
+        [-73.9570356611328, 40.755116481932895],
+        [-74.07582533398437, 40.75286252052272],
+      ],
+      { name: "line 1" }
+    )
+  ).geometry;
+
+  const testInsideLocation = point([-74.0387464765625, 40.71249480933102]);
+  const testOutsideLocation = point([-74.22482740917968, 40.63598491125724]);
+  test("should neutral if current location", () => {
+    expect(
+      assetShapeFilter()(
+        {
+          ...omit(getRandomDecoratedAssetData(1)[0], ["shape"]),
+          shape: testShape,
+        },
+        {
+          geoListenMode: GeoListenMode.DISABLED,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.NEUTRAL);
+  });
+
+  test("should normal if listenerLocation within polygon", () => {
+    expect(
+      assetShapeFilter()(
+        {
+          ...omit(getRandomDecoratedAssetData(1)[0], ["shape"]),
+          shape: testShape,
+        },
+        {
+          geoListenMode: GeoListenMode.AUTOMATIC,
+          listenerPoint: testInsideLocation,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.NORMAL);
+  });
+
+  test("should discard if listenerLocation outisde polygon", () => {
+    expect(
+      assetShapeFilter()(
+        {
+          ...omit(getRandomDecoratedAssetData(1)[0], ["shape"]),
+          shape: testShape,
+        },
+        {
+          geoListenMode: GeoListenMode.AUTOMATIC,
+          listenerPoint: testOutsideLocation,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+});
+
 describe("timedRepeatFilter", () => {
   test("should normal if not listened before", () => {
     expect(
       timedRepeatFilter()(
         {
-          ...omit(getRandomAssetData(1, true)[0] as IDecoratedAsset, [
-            "lastListenTime",
-          ]),
+          ...omit(getRandomDecoratedAssetData(1)[0], ["lastListenTime"]),
         },
         {}
       )
@@ -151,7 +226,7 @@ describe("timedRepeatFilter", () => {
     expect(
       timedRepeatFilter()(
         {
-          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          ...getRandomDecoratedAssetData(1)[0],
           lastListenTime: Date.now(),
           status: "paused",
         },
@@ -164,7 +239,7 @@ describe("timedRepeatFilter", () => {
     expect(
       timedRepeatFilter()(
         {
-          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          ...getRandomDecoratedAssetData(1)[0],
           playCount: 2,
         },
         {
@@ -178,7 +253,7 @@ describe("timedRepeatFilter", () => {
     expect(
       timedRepeatFilter()(
         {
-          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          ...getRandomDecoratedAssetData(1)[0],
           lastListenTime: Date.now() - 200,
         },
         {
@@ -193,7 +268,7 @@ describe("timedRepeatFilter", () => {
     expect(
       timedRepeatFilter()(
         {
-          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          ...getRandomDecoratedAssetData(1)[0],
           lastListenTime: Date.now() - 600,
         },
         {
@@ -211,7 +286,7 @@ describe("dateRangeFilter", () => {
     expect(
       dateRangeFilter()(
         {
-          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          ...getRandomDecoratedAssetData(1)[0],
           created: testDate,
         },
         {
@@ -226,7 +301,7 @@ describe("dateRangeFilter", () => {
     expect(
       dateRangeFilter()(
         {
-          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          ...getRandomDecoratedAssetData(1)[0],
           created: new Date(),
         },
         {
@@ -241,7 +316,7 @@ describe("dateRangeFilter", () => {
     expect(
       dateRangeFilter()(
         {
-          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          ...getRandomDecoratedAssetData(1)[0],
           created: new Date(),
         },
         {
@@ -256,7 +331,7 @@ describe("dateRangeFilter", () => {
     expect(
       dateRangeFilter()(
         {
-          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          ...getRandomDecoratedAssetData(1)[0],
           created: new Date(),
         },
         {}
@@ -269,7 +344,7 @@ describe("dateRangeFilter", () => {
     expect(
       dateRangeFilter()(
         {
-          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          ...getRandomDecoratedAssetData(1)[0],
           created: testDate.toISOString(),
         },
         {
@@ -284,7 +359,7 @@ describe("pausedAssetFilter", () => {
   test("should be lowest if asset is paused", () => {
     expect(
       pausedAssetFilter()({
-        ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+        ...getRandomDecoratedAssetData(1)[0],
         status: "paused",
       })
     ).toEqual(ASSET_PRIORITIES.LOWEST);
@@ -293,7 +368,7 @@ describe("pausedAssetFilter", () => {
   test("should return normal if not paused", () => {
     expect(
       pausedAssetFilter()({
-        ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+        ...getRandomDecoratedAssetData(1)[0],
         status: "resumed",
       })
     ).toEqual(ASSET_PRIORITIES.NORMAL);
