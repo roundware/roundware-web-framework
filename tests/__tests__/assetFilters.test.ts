@@ -3,8 +3,10 @@ import { assetDecorationMapper } from "../../src/assetPool";
 import {
   ASSET_PRIORITIES,
   calculateDistanceInMeters,
+  dateRangeFilter,
   distanceFixedFilter,
   GeoListenMode,
+  pausedAssetFilter,
 } from "../../src/roundware";
 import { getRandomAssetData } from "../__mocks__/assetData";
 import { point } from "@turf/helpers";
@@ -14,6 +16,7 @@ import {
   InvalidArgumentError,
   RoundwareFrameworkError,
 } from "../../src/errors/app.errors";
+import { addDays, subDays } from "date-fns";
 describe("rankForGeofilteringEligibility", () => {
   test("should return false if geo listen mode is disabled", () => {
     expect(
@@ -111,7 +114,7 @@ describe("distanceFixedFilter()", () => {
     expect(testAsset.locationPoint).not.toBeFalsy();
   });
 
-  test("should throw error if recording radius is not there", () => {
+  test("should throw error if recording Oradius is not there", () => {
     expect.assertions(2);
     try {
       distanceFixedFilter()(testAsset, {
@@ -125,5 +128,100 @@ describe("distanceFixedFilter()", () => {
         'Expected argument "recordingRadius" to be "number" while distanceFixedFilter'
       );
     }
+  });
+});
+
+describe("dateRangeFilter", () => {
+  test("should normal if within range", () => {
+    const testDate = new Date();
+    expect(
+      dateRangeFilter()(
+        {
+          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          created: testDate,
+        },
+        {
+          startDate: subDays(testDate, 1),
+          endDate: addDays(testDate, 1),
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.NORMAL);
+  });
+
+  test("should discard if in filter future range", () => {
+    expect(
+      dateRangeFilter()(
+        {
+          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          created: new Date(),
+        },
+        {
+          startDate: addDays(new Date(), 1),
+          endDate: addDays(new Date(), 2),
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+
+  test("should discard if in filter past range", () => {
+    expect(
+      dateRangeFilter()(
+        {
+          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          created: new Date(),
+        },
+        {
+          startDate: subDays(new Date(), 2),
+          endDate: subDays(new Date(), 1),
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+
+  test("should be lowest if not date filters", () => {
+    expect(
+      dateRangeFilter()(
+        {
+          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          created: new Date(),
+        },
+        {}
+      )
+    ).toBe(ASSET_PRIORITIES.LOWEST);
+  });
+
+  test("should convert ISO string to date obejct", () => {
+    const testDate = new Date();
+    expect(
+      dateRangeFilter()(
+        {
+          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          created: testDate.toISOString(),
+        },
+        {
+          startDate: subDays(testDate, 1),
+          endDate: addDays(testDate, 1),
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.NORMAL);
+  });
+});
+describe("pausedAssetFilter", () => {
+  test("should be lowest if asset is paused", () => {
+    expect(
+      pausedAssetFilter()({
+        ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+        status: "paused",
+      })
+    ).toEqual(ASSET_PRIORITIES.LOWEST);
+  });
+
+  test("should return normal if not paused", () => {
+    expect(
+      pausedAssetFilter()({
+        ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+        status: "resumed",
+      })
+    ).toEqual(ASSET_PRIORITIES.NORMAL);
   });
 });
