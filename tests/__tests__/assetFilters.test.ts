@@ -7,6 +7,7 @@ import {
   distanceFixedFilter,
   GeoListenMode,
   pausedAssetFilter,
+  timedRepeatFilter,
 } from "../../src/roundware";
 import { getRandomAssetData } from "../__mocks__/assetData";
 import { point } from "@turf/helpers";
@@ -17,6 +18,7 @@ import {
   RoundwareFrameworkError,
 } from "../../src/errors/app.errors";
 import { addDays, subDays } from "date-fns";
+import { omit } from "lodash";
 describe("rankForGeofilteringEligibility", () => {
   test("should return false if geo listen mode is disabled", () => {
     expect(
@@ -128,6 +130,78 @@ describe("distanceFixedFilter()", () => {
         'Expected argument "recordingRadius" to be "number" while distanceFixedFilter'
       );
     }
+  });
+});
+
+describe("timedRepeatFilter", () => {
+  test("should normal if not listened before", () => {
+    expect(
+      timedRepeatFilter()(
+        {
+          ...omit(getRandomAssetData(1, true)[0] as IDecoratedAsset, [
+            "lastListenTime",
+          ]),
+        },
+        {}
+      )
+    ).toBe(ASSET_PRIORITIES.NORMAL);
+  });
+
+  test("should normal if asset is paused", () => {
+    expect(
+      timedRepeatFilter()(
+        {
+          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          lastListenTime: Date.now(),
+          status: "paused",
+        },
+        {}
+      )
+    ).toBe(ASSET_PRIORITIES.NORMAL);
+  });
+
+  test("should discard if played and not asked to repeat", () => {
+    expect(
+      timedRepeatFilter()(
+        {
+          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          playCount: 2,
+        },
+        {
+          repeatRecordings: false,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+
+  test("should discard if last listen is less than banned duration", () => {
+    expect(
+      timedRepeatFilter()(
+        {
+          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          lastListenTime: Date.now() - 200,
+        },
+        {
+          repeatRecordings: true,
+          bannedDuration: 600 / 1000,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+
+  test("should lowest if last listen is more than banned duration", () => {
+    expect(
+      timedRepeatFilter()(
+        {
+          ...(getRandomAssetData(1, true)[0] as IDecoratedAsset),
+          lastListenTime: Date.now() - 600,
+        },
+        {
+          repeatRecordings: true,
+          bannedDuration: 600 / 1000,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.LOWEST);
   });
 });
 
