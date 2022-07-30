@@ -1,8 +1,8 @@
 import { IAssetData, IDecoratedAsset } from "../../src/types/asset";
 import { faker } from "@faker-js/faker";
 import { assetDecorationMapper } from "../../src/assetPool";
-export const getRandomAssetData = (amount = 5, decorate = false) => {
-  const data: (IAssetData | IDecoratedAsset)[] = [];
+export const getRandomAssetData = (amount = 5) => {
+  const data: IAssetData[] = [];
   for (let i = 0; i < amount; i++) {
     data.push({
       id: faker.datatype.number(),
@@ -35,8 +35,9 @@ export const getRandomAssetData = (amount = 5, decorate = false) => {
     });
   }
 
-  if (decorate) {
-    return data.map(assetDecorationMapper([]));
-  }
   return data;
 };
+
+export function getRandomDecoratedAssetData(amount = 5) {
+  return getRandomAssetData(amount).map(assetDecorationMapper([]));
+}
