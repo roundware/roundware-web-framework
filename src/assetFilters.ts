@@ -277,10 +277,6 @@ export const timedRepeatFilter =
 
     // repeat recordings check
     if (playCount > 0 && repeatRecordings == false) {
-      console.debug(
-        `discarded from timedRepeatFilter, repeatRecordings`,
-        repeatRecordings
-      );
       return ASSET_PRIORITIES.DISCARD;
     }
 
@@ -308,14 +304,20 @@ export const dateRangeFilter =
       endDate,
     }: { startDate?: string | Date; endDate?: string | Date }
   ): number | false => {
-    if (startDate || endDate) {
-      return (!startDate || asset.created >= startDate) &&
-        (!endDate || asset.created <= endDate)
-        ? ASSET_PRIORITIES.NORMAL
-        : ASSET_PRIORITIES.DISCARD;
-    } else {
+    if (!(startDate instanceof Date) && !(endDate instanceof Date))
       return ASSET_PRIORITIES.LOWEST;
+    if (!asset.created) return ASSET_PRIORITIES.LOWEST;
+    if (!(asset.created instanceof Date))
+      asset.created = new Date(asset.created);
+    if (startDate instanceof Date) {
+      if (asset.created.getTime() <= startDate.getTime())
+        return ASSET_PRIORITIES.DISCARD;
     }
+    if (endDate instanceof Date) {
+      if (asset.created.getTime() >= endDate.getTime())
+        return ASSET_PRIORITIES.DISCARD;
+    }
+    return ASSET_PRIORITIES.NORMAL;
   };
 
 export const pausedAssetFilter =
@@ -324,7 +326,7 @@ export const pausedAssetFilter =
     if (asset.status === "paused") {
       console.debug(`Resuming asset ${asset.id}`);
       asset.status = "resumed";
-      return ASSET_PRIORITIES.HIGHEST;
+      return ASSET_PRIORITIES.LOWEST;
     }
     return ASSET_PRIORITIES.NORMAL;
   };
