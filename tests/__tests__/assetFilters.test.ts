@@ -8,6 +8,7 @@ import {
   distanceFixedFilter,
   GeoListenMode,
   pausedAssetFilter,
+  timedAssetFilter,
   timedRepeatFilter,
 } from "../../src/roundware";
 import {
@@ -135,6 +136,118 @@ describe("distanceFixedFilter()", () => {
         'Expected argument "recordingRadius" to be "number" while distanceFixedFilter'
       );
     }
+  });
+});
+
+describe("timedAssetFilter", () => {
+  test("should neutral if no timed asset criteria", () => {
+    expect(
+      timedAssetFilter()(
+        omit(getRandomDecoratedAssetData(1)[0], [
+          "timedAssetStart",
+          "timedAssetEnd",
+        ]),
+        {}
+      )
+    ).toBe(ASSET_PRIORITIES.NEUTRAL);
+  });
+  test("should discard if played more than once", () => {
+    expect(
+      timedAssetFilter()(
+        {
+          ...omit(getRandomDecoratedAssetData(1)[0]),
+          playCount: 1,
+          timedAssetStart: 10,
+          timedAssetEnd: 20,
+        },
+        {
+          elapsedSeconds: 15,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+
+  test("should discard if start is exceeded", () => {
+    expect(
+      timedAssetFilter()(
+        {
+          ...omit(getRandomDecoratedAssetData(1)[0]),
+          playCount: 0,
+          timedAssetStart: 16,
+          timedAssetEnd: 20,
+        },
+        {
+          elapsedSeconds: 15,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+
+  test("should discard if end is exceeded", () => {
+    expect(
+      timedAssetFilter()(
+        {
+          ...omit(getRandomDecoratedAssetData(1)[0]),
+          playCount: 0,
+          timedAssetStart: 15,
+          timedAssetEnd: 20,
+        },
+        {
+          elapsedSeconds: 21,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+
+  test("should accept if within range", () => {
+    expect(
+      timedAssetFilter()(
+        {
+          ...omit(getRandomDecoratedAssetData(1)[0]),
+          playCount: 0,
+          timedAssetStart: 15,
+          timedAssetEnd: 20,
+        },
+        {
+          elapsedSeconds: 15,
+          timedAssetPriority: "normal",
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.NORMAL);
+  });
+
+  test("should get prority based on passed mix param", () => {
+    expect(
+      timedAssetFilter()(
+        {
+          ...omit(getRandomDecoratedAssetData(1)[0]),
+          playCount: 0,
+          timedAssetStart: 15,
+          timedAssetEnd: 20,
+        },
+        {
+          elapsedSeconds: 15,
+          timedAssetPriority: "lowest",
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.LOWEST);
+  });
+
+  test("should get neutral if not a valid priority", () => {
+    expect(
+      timedAssetFilter()(
+        {
+          ...omit(getRandomDecoratedAssetData(1)[0]),
+          playCount: 0,
+          timedAssetStart: 15,
+          timedAssetEnd: 20,
+        },
+        {
+          elapsedSeconds: 15,
+          timedAssetPriority: "sdfasdf",
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.NEUTRAL);
   });
 });
 
