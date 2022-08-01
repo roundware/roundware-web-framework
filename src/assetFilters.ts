@@ -123,21 +123,13 @@ export const distanceFixedFilter =
     >
   ): AssetPriorityType => {
     try {
-      if (options.geoListenMode === GeoListenMode.DISABLED) {
-        return ASSET_PRIORITIES.LOWEST;
-      }
       if (!rankForGeofilteringEligibility(asset, options))
         return ASSET_PRIORITIES.NEUTRAL;
 
       const { locationPoint: assetLocationPoint } = asset;
       const { listenerPoint, recordingRadius } = options;
-      if (!recordingRadius)
-        throw new InvalidArgumentError(
-          "recordingRadius",
-          "number",
-          "distanceFixedFilter"
-        );
 
+      if (!recordingRadius) return ASSET_PRIORITIES.NEUTRAL;
       const distance = calculateDistanceInMeters(
         listenerPoint!,
         assetLocationPoint
@@ -169,37 +161,23 @@ export const distanceRangesFilter =
       "getListenMode" | "listenerPoint" | "minDist" | "maxDist"
     >
   ): number | false => {
-    try {
-      if (options.getListenMode === GeoListenMode.DISABLED) {
-        return ASSET_PRIORITIES.LOWEST;
-      }
+    if (!rankForGeofilteringEligibility(asset, options)) {
+      return ASSET_PRIORITIES.NEUTRAL;
+    }
+    const { listenerPoint, minDist = 0, maxDist } = options;
 
-      if (!rankForGeofilteringEligibility(asset, options)) {
-        return ASSET_PRIORITIES.NEUTRAL;
-      }
-      const { listenerPoint, minDist = 0, maxDist } = options;
+    if (minDist == undefined || maxDist == undefined) {
+      return ASSET_PRIORITIES.NEUTRAL;
+    }
+    const { locationPoint } = asset;
 
-      if (minDist === undefined || maxDist === undefined) {
-        return ASSET_PRIORITIES.NEUTRAL;
-      }
-      const { locationPoint } = asset;
-
-      if (
-        typeof locationPoint == "undefined" ||
-        typeof listenerPoint == "undefined"
-      )
-        throw new RoundwareFrameworkError(`locationPoint is undefined!`);
-      const distance = calculateDistanceInMeters(listenerPoint, locationPoint);
-
-      if (distance >= minDist && distance <= maxDist) {
-        return ASSET_PRIORITIES.NORMAL;
-      } else {
-        console.debug(`Discarded from distanceRangesFilter`);
-        return ASSET_PRIORITIES.DISCARD;
-      }
-    } catch (e) {
-      console.error(e);
-      throw new RoundwareFrameworkError("Something went wrong!");
+    const distance = calculateDistanceInMeters(listenerPoint!, locationPoint);
+    console.log(distance);
+    if (distance >= minDist && distance <= maxDist) {
+      return ASSET_PRIORITIES.NORMAL;
+    } else {
+      console.debug(`Discarded from distanceRangesFilter`);
+      return ASSET_PRIORITIES.DISCARD;
     }
   };
 
@@ -208,7 +186,7 @@ export function anyTagsFilter() {
   return (asset: IDecoratedAsset, mixParams: IMixParams): number | false => {
     const { listenTagIds } = mixParams;
 
-    if (!listenTagIds || isEmpty(listenTagIds)) return ASSET_PRIORITIES.LOWEST;
+    if (!listenTagIds || isEmpty(listenTagIds)) return ASSET_PRIORITIES.NEUTRAL;
 
     const { tag_ids: assetTagIds = [] } = asset;
 

@@ -1,11 +1,13 @@
 import { rankForGeofilteringEligibility } from "../../src/assetFilters";
 import { assetDecorationMapper } from "../../src/assetPool";
 import {
+  anyTagsFilter,
   assetShapeFilter,
   ASSET_PRIORITIES,
   calculateDistanceInMeters,
   dateRangeFilter,
   distanceFixedFilter,
+  distanceRangesFilter,
   GeoListenMode,
   pausedAssetFilter,
   timedAssetFilter,
@@ -26,6 +28,7 @@ import { addDays, subDays } from "date-fns";
 import { omit } from "lodash";
 import lineToPolygon from "@turf/line-to-polygon";
 import { lineString } from "@turf/helpers";
+import distance from "@turf/distance";
 describe("rankForGeofilteringEligibility", () => {
   test("should return false if geo listen mode is disabled", () => {
     expect(
@@ -103,12 +106,12 @@ describe("calculateDistanceInMeters()", () => {
 describe("distanceFixedFilter()", () => {
   const testAsset = getRandomDecoratedAssetData(1)[0] as IDecoratedAsset;
 
-  test("should be lowest if GeoListenMode is disabled", () => {
+  test("should be neutral if GeoListenMode is disabled", () => {
     expect(
       distanceFixedFilter()(testAsset, {
         geoListenMode: GeoListenMode.DISABLED,
       })
-    ).toEqual(ASSET_PRIORITIES.LOWEST);
+    ).toEqual(ASSET_PRIORITIES.NEUTRAL);
   });
 
   test("should return neutral when not eligible for geo filtering", () => {
@@ -123,19 +126,131 @@ describe("distanceFixedFilter()", () => {
     expect(testAsset.locationPoint).not.toBeFalsy();
   });
 
-  test("should throw error if recording Oradius is not there", () => {
-    expect.assertions(2);
-    try {
+  test("should neutral if recording radius is not there", () => {
+    expect(
       distanceFixedFilter()(testAsset, {
         geoListenMode: GeoListenMode.AUTOMATIC,
         listenerPoint: getRandomDecoratedAssetData(1)[0].locationPoint,
-      });
-    } catch (e) {
-      expect(e).toBeInstanceOf(RoundwareFrameworkError);
-      expect(e.message).toEqual(
-        'Expected argument "recordingRadius" to be "number" while distanceFixedFilter'
-      );
-    }
+      })
+    ).toEqual(ASSET_PRIORITIES.NEUTRAL);
+  });
+});
+
+describe("distanceRangesFilter()", () => {
+  test("should netural if disabled", () => {
+    expect(
+      distanceRangesFilter()(getRandomDecoratedAssetData(1)[0], {
+        getListenMode: GeoListenMode.DISABLED,
+      })
+    ).toBe(ASSET_PRIORITIES.NEUTRAL);
+  });
+
+  test("should neutral if no listenerPoint", () => {
+    expect(
+      distanceRangesFilter()(getRandomDecoratedAssetData(1)[0], {
+        getListenMode: GeoListenMode.AUTOMATIC,
+      })
+    ).toBe(ASSET_PRIORITIES.NEUTRAL);
+  });
+
+  test("should neutral if no locationPoint", () => {
+    expect(
+      distanceRangesFilter()(
+        // @ts-expect-error
+        omit(getRandomDecoratedAssetData(1)[0], ["locationPoint"]),
+        {
+          getListenMode: GeoListenMode.AUTOMATIC,
+          listenerPoint: getRandomDecoratedAssetData(1)[0].locationPoint,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.NEUTRAL);
+  });
+
+  test("should neutral if no minDist maxDist", () => {
+    expect(
+      distanceRangesFilter()(getRandomDecoratedAssetData(1)[0], {
+        getListenMode: GeoListenMode.AUTOMATIC,
+        listenerPoint: getRandomDecoratedAssetData(1)[0].locationPoint,
+      })
+    ).toBe(ASSET_PRIORITIES.NEUTRAL);
+  });
+
+  const testListenerPoint = point([0, 0]);
+  const testLocationPoint = point([7.743786, -0.593251]);
+  test("should lowest if within minDist maxDist", () => {
+    expect(
+      distanceRangesFilter()(
+        {
+          ...getRandomDecoratedAssetData(1)[0],
+          locationPoint: testLocationPoint,
+        },
+        {
+          getListenMode: GeoListenMode.AUTOMATIC,
+          listenerPoint: testListenerPoint,
+          minDist: 0,
+          maxDist: 864.51 * 1000 + 1000,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.NORMAL);
+  });
+
+  test("should discard if not within minDist maxDist", () => {
+    expect(
+      distanceRangesFilter()(
+        {
+          ...getRandomDecoratedAssetData(1)[0],
+          locationPoint: testLocationPoint,
+        },
+        {
+          getListenMode: GeoListenMode.AUTOMATIC,
+          listenerPoint: testListenerPoint,
+          minDist: 0,
+          maxDist: 864.51 * 1000 - 1000,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+});
+
+describe("anyTagsFilter()", () => {
+  test("should return neutral if no tags", () => {
+    expect(anyTagsFilter()(getRandomDecoratedAssetData(1)[0], {})).toBe(
+      ASSET_PRIORITIES.NEUTRAL
+    );
+  });
+
+  test("should return neutral if empty listen tag ids", () => {
+    expect(
+      anyTagsFilter()(getRandomDecoratedAssetData(1)[0], { listenTagIds: [] })
+    ).toBe(ASSET_PRIORITIES.NEUTRAL);
+  });
+
+  test("should return lowest if asset includes tag id", () => {
+    expect(
+      anyTagsFilter()(
+        {
+          ...getRandomDecoratedAssetData(1)[0],
+          tag_ids: [1],
+        },
+        {
+          listenTagIds: [1],
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.LOWEST);
+  });
+
+  test("should discard if doesnt incclude tag id from listen tag ids", () => {
+    expect(
+      anyTagsFilter()(
+        {
+          ...getRandomDecoratedAssetData(1)[0],
+          tag_ids: [2],
+        },
+        {
+          listenTagIds: [1],
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
   });
 });
 
