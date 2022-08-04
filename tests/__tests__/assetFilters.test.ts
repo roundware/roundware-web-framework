@@ -1,6 +1,8 @@
 import { rankForGeofilteringEligibility } from "../../src/assetFilters";
 import { assetDecorationMapper } from "../../src/assetPool";
 import {
+  allAssetFilter,
+  anyAssetFilter,
   anyTagsFilter,
   assetShapeFilter,
   ASSET_PRIORITIES,
@@ -103,6 +105,82 @@ describe("calculateDistanceInMeters()", () => {
   });
 });
 
+describe("anyAssetsFilter", () => {
+  const testDecoratedAsset = getRandomDecoratedAssetData(1)[0];
+  test("should return lowest if no filters passed", () => {
+    expect(anyAssetFilter([])(testDecoratedAsset, {})).toBe(
+      ASSET_PRIORITIES.LOWEST
+    );
+  });
+
+  test("should discard if all are discarded", () => {
+    expect(
+      anyAssetFilter([
+        () => ASSET_PRIORITIES.DISCARD,
+        () => ASSET_PRIORITIES.DISCARD,
+        () => ASSET_PRIORITIES.DISCARD,
+      ])(testDecoratedAsset, {})
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+
+  test("should return first non neutral and non discarded", () => {
+    expect(
+      anyAssetFilter([
+        () => ASSET_PRIORITIES.DISCARD,
+        () => ASSET_PRIORITIES.NEUTRAL,
+        () => ASSET_PRIORITIES.HIGHEST,
+      ])(testDecoratedAsset, {})
+    ).toBe(ASSET_PRIORITIES.HIGHEST);
+  });
+});
+
+describe("allAssetsFilter", () => {
+  const testDecoratedAsset = getRandomDecoratedAssetData(1)[0];
+  test("should return lowest if not filters", () => {
+    expect(allAssetFilter([])(testDecoratedAsset, {})).toBe(
+      ASSET_PRIORITIES.LOWEST
+    );
+  });
+
+  test("should discard if any one of the filter discards", () => {
+    expect(
+      allAssetFilter([
+        () => ASSET_PRIORITIES.LOWEST,
+        () => ASSET_PRIORITIES.DISCARD,
+        () => ASSET_PRIORITIES.NEUTRAL,
+      ])(testDecoratedAsset, {})
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+
+  test("should not discard if none discards", () => {
+    expect(
+      allAssetFilter([
+        () => ASSET_PRIORITIES.LOWEST,
+        () => ASSET_PRIORITIES.NEUTRAL,
+      ])(testDecoratedAsset, {})
+    ).not.toBe(ASSET_PRIORITIES.DISCARD);
+  });
+
+  test("should return first non neutral rank", () => {
+    expect(
+      allAssetFilter([
+        () => ASSET_PRIORITIES.NEUTRAL,
+        () => ASSET_PRIORITIES.NEUTRAL,
+        () => ASSET_PRIORITIES.HIGHEST,
+      ])(testDecoratedAsset, {})
+    ).toBe(ASSET_PRIORITIES.HIGHEST);
+  });
+
+  test("should return neutral if all are neutral", () => {
+    expect(
+      allAssetFilter([
+        () => ASSET_PRIORITIES.NEUTRAL,
+        () => ASSET_PRIORITIES.NEUTRAL,
+      ])(testDecoratedAsset, {})
+    ).toBe(ASSET_PRIORITIES.NEUTRAL);
+  });
+});
+
 describe("distanceFixedFilter()", () => {
   const testAsset = getRandomDecoratedAssetData(1)[0] as IDecoratedAsset;
 
@@ -133,6 +211,40 @@ describe("distanceFixedFilter()", () => {
         listenerPoint: getRandomDecoratedAssetData(1)[0].locationPoint,
       })
     ).toEqual(ASSET_PRIORITIES.NEUTRAL);
+  });
+
+  const testListenerPoint = point([0, 0]);
+  const testLocationPoint = point([7.743786, -0.593251]);
+
+  test("should lowest if within recordingRadius", () => {
+    expect(
+      distanceFixedFilter()(
+        {
+          ...getRandomDecoratedAssetData(1)[0],
+          locationPoint: testLocationPoint,
+        },
+        {
+          listenerPoint: testListenerPoint,
+          recordingRadius: 864.51 * 1000 + 1000,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.NORMAL);
+  });
+
+  test("should discard if not within recordingRadius", () => {
+    expect(
+      distanceFixedFilter()(
+        {
+          ...getRandomDecoratedAssetData(1)[0],
+          locationPoint: testLocationPoint,
+        },
+        {
+          listenerPoint: testListenerPoint,
+
+          recordingRadius: 864.51 * 1000 - 1000,
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
   });
 });
 
@@ -364,6 +476,23 @@ describe("timedAssetFilter", () => {
       )
     ).toBe(ASSET_PRIORITIES.NEUTRAL);
   });
+
+  test("should not discard play count undefined", () => {
+    expect(
+      timedAssetFilter()(
+        {
+          ...omit(getRandomDecoratedAssetData(1)[0]),
+          playCount: undefined!,
+          timedAssetStart: 15,
+          timedAssetEnd: 20,
+        },
+        {
+          elapsedSeconds: 15,
+          timedAssetPriority: "sdfasdf",
+        }
+      )
+    ).not.toBe(ASSET_PRIORITIES.DISCARD);
+  });
 });
 
 describe("assetShapeFilter", () => {
@@ -506,6 +635,22 @@ describe("timedRepeatFilter", () => {
       )
     ).toBe(ASSET_PRIORITIES.LOWEST);
   });
+
+  test("should not discard if playCount not passed", () => {
+    expect(
+      timedRepeatFilter()(
+        {
+          ...getRandomDecoratedAssetData(1)[0],
+          lastListenTime: Date.now() - 600,
+          playCount: undefined!,
+        },
+        {
+          repeatRecordings: true,
+          bannedDuration: 600 / 1000,
+        }
+      )
+    ).not.toBe(ASSET_PRIORITIES.DISCARD);
+  });
 });
 
 describe("dateRangeFilter", () => {
@@ -567,7 +712,7 @@ describe("dateRangeFilter", () => {
     ).toBe(ASSET_PRIORITIES.LOWEST);
   });
 
-  test("should convert ISO string to date obejct", () => {
+  test("should convert created ISO string to date obejct", () => {
     const testDate = new Date();
     expect(
       dateRangeFilter()(
@@ -581,6 +726,22 @@ describe("dateRangeFilter", () => {
         }
       )
     ).toBe(ASSET_PRIORITIES.NORMAL);
+  });
+
+  test("should return lowest if no created", () => {
+    const testDate = new Date();
+    expect(
+      dateRangeFilter()(
+        {
+          ...getRandomDecoratedAssetData(1)[0],
+          created: undefined!,
+        },
+        {
+          startDate: subDays(testDate, 1),
+          endDate: addDays(testDate, 1),
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.LOWEST);
   });
 });
 describe("pausedAssetFilter", () => {

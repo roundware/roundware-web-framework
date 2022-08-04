@@ -33,8 +33,6 @@ export const ASSET_PRIORITIES: IAssetPriorities = Object.freeze({
 });
 
 const alwaysLowest = (): IAssetPriorities[`LOWEST`] => ASSET_PRIORITIES.LOWEST;
-const alwaysNeutral = (): IAssetPriorities[`NEUTRAL`] =>
-  ASSET_PRIORITIES.NEUTRAL; // eslint-disable-line no-unused-vars
 
 /**
  *Accept an asset if any one of the provided filters passes, returns the first non-discarded and non-neutral rank
@@ -45,9 +43,7 @@ const alwaysNeutral = (): IAssetPriorities[`NEUTRAL`] =>
  * @return {*}
  */
 export const anyAssetFilter = (
-  filters: Array<
-    (asset: IDecoratedAsset, param: IMixParams) => AssetPriorityType
-  > = []
+  filters: ((asset: IDecoratedAsset, param: IMixParams) => AssetPriorityType)[]
 ) => {
   if (isEmpty(filters)) return alwaysLowest;
 
@@ -61,16 +57,13 @@ export const anyAssetFilter = (
         return rank;
       }
     }
-    console.debug(`Discarded from anyAssetFilter`);
     return ASSET_PRIORITIES.DISCARD;
   };
 };
 
 /** Filter composed of multiple inner filters that accepts assets which pass every inner filter. */
 export function allAssetFilter(
-  filters: Array<
-    (asset: IDecoratedAsset, param: IMixParams) => AssetPriorityType
-  > = [],
+  filters: ((asset: IDecoratedAsset, param: IMixParams) => AssetPriorityType)[],
   mixParams?: IMixParams
 ): (asset: IDecoratedAsset, stateParams: IMixParams) => AssetPriorityType {
   if (isEmpty(filters)) return alwaysLowest;
@@ -122,30 +115,22 @@ export const distanceFixedFilter =
       "geoListenMode" | "listenerPoint" | "recordingRadius"
     >
   ): AssetPriorityType => {
-    try {
-      if (!rankForGeofilteringEligibility(asset, options))
-        return ASSET_PRIORITIES.NEUTRAL;
+    if (!rankForGeofilteringEligibility(asset, options))
+      return ASSET_PRIORITIES.NEUTRAL;
 
-      const { locationPoint: assetLocationPoint } = asset;
-      const { listenerPoint, recordingRadius } = options;
+    const { locationPoint: assetLocationPoint } = asset;
+    const { listenerPoint, recordingRadius } = options;
 
-      if (!recordingRadius) return ASSET_PRIORITIES.NEUTRAL;
-      const distance = calculateDistanceInMeters(
-        listenerPoint!,
-        assetLocationPoint
-      );
+    if (!recordingRadius) return ASSET_PRIORITIES.NEUTRAL;
+    const distance = calculateDistanceInMeters(
+      listenerPoint!,
+      assetLocationPoint
+    );
 
-      if (distance < recordingRadius) {
-        return ASSET_PRIORITIES.NORMAL;
-      } else {
-        console.debug(`Discarded from distanceFixedFilter`);
-
-        return ASSET_PRIORITIES.DISCARD;
-      }
-    } catch (e) {
-      throw new RoundwareFrameworkError(
-        (e as { message: string }).message || "Something went wrong!"
-      );
+    if (distance < recordingRadius) {
+      return ASSET_PRIORITIES.NORMAL;
+    } else {
+      return ASSET_PRIORITIES.DISCARD;
     }
   };
 
@@ -172,11 +157,9 @@ export const distanceRangesFilter =
     const { locationPoint } = asset;
 
     const distance = calculateDistanceInMeters(listenerPoint!, locationPoint);
-    console.log(distance);
     if (distance >= minDist && distance <= maxDist) {
       return ASSET_PRIORITIES.NORMAL;
     } else {
-      console.debug(`Discarded from distanceRangesFilter`);
       return ASSET_PRIORITIES.DISCARD;
     }
   };
@@ -188,7 +171,7 @@ export function anyTagsFilter() {
 
     if (!listenTagIds || isEmpty(listenTagIds)) return ASSET_PRIORITIES.NEUTRAL;
 
-    const { tag_ids: assetTagIds = [] } = asset;
+    const { tag_ids: assetTagIds } = asset;
 
     if (assetTagIds.some((t) => listenTagIds.includes(t))) {
       return ASSET_PRIORITIES.LOWEST;
@@ -211,7 +194,6 @@ export const timedAssetFilter = () => {
       elapsedSeconds >= timedAssetEnd ||
       playCount > 0
     ) {
-      console.debug(`Discarded from timedAssetFilter`);
       return ASSET_PRIORITIES.DISCARD;
     }
 
@@ -239,7 +221,6 @@ export const assetShapeFilter = () => {
     if (booleanPointInPolygon(listenerPoint!, shape)) {
       return ASSET_PRIORITIES.NORMAL;
     } else {
-      console.debug(`Discarded from assetShapeFilter`);
       return ASSET_PRIORITIES.DISCARD;
     }
   };
@@ -253,10 +234,6 @@ export const timedRepeatFilter =
     { bannedDuration = 600, repeatRecordings }: IMixParams
   ): number | false => {
     let { lastListenTime, playCount = 0 } = asset;
-    lastListenTime =
-      lastListenTime instanceof Date
-        ? lastListenTime.getTime()
-        : lastListenTime;
 
     // repeat recordings check
     if (playCount > 0 && !repeatRecordings) {
@@ -269,11 +246,6 @@ export const timedRepeatFilter =
       (new Date().getTime() - new Date(lastListenTime).getTime()) / 1000;
 
     if (durationSinceLastListen < bannedDuration) {
-      console.debug(
-        `discarded from timedRepeatFilter`,
-        durationSinceLastListen,
-        bannedDuration
-      );
       return ASSET_PRIORITIES.DISCARD;
     } else {
       return ASSET_PRIORITIES.LOWEST;
@@ -284,24 +256,20 @@ export const dateRangeFilter =
   () =>
   (
     asset: IDecoratedAsset,
-    {
-      startDate,
-      endDate,
-    }: { startDate?: string | Date; endDate?: string | Date }
+    { startDate, endDate }: { startDate?: Date; endDate?: Date }
   ): number | false => {
-    if (!(startDate instanceof Date) && !(endDate instanceof Date))
-      return ASSET_PRIORITIES.LOWEST;
+    if (!startDate || !endDate) return ASSET_PRIORITIES.LOWEST;
+
     if (!asset.created) return ASSET_PRIORITIES.LOWEST;
     if (!(asset.created instanceof Date))
       asset.created = new Date(asset.created);
-    if (startDate instanceof Date) {
-      if (asset.created.getTime() <= startDate.getTime())
-        return ASSET_PRIORITIES.DISCARD;
-    }
-    if (endDate instanceof Date) {
-      if (asset.created.getTime() >= endDate.getTime())
-        return ASSET_PRIORITIES.DISCARD;
-    }
+
+    if (asset.created.getTime() <= startDate.getTime())
+      return ASSET_PRIORITIES.DISCARD;
+
+    if (asset.created.getTime() >= endDate.getTime())
+      return ASSET_PRIORITIES.DISCARD;
+
     return ASSET_PRIORITIES.NORMAL;
   };
 
@@ -309,7 +277,6 @@ export const pausedAssetFilter =
   () =>
   (asset: IDecoratedAsset, mixParams?: IMixParams): number | false => {
     if (asset.status === "paused") {
-      console.debug(`Resuming asset ${asset.id}`);
       asset.status = "resumed";
       return ASSET_PRIORITIES.LOWEST;
     }

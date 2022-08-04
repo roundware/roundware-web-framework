@@ -50,7 +50,7 @@ export interface IDecoratedAsset extends IAssetData {
   locationPoint: Feature<Point>;
   listenerPoint?: Point;
   playCount: number;
-  lastListenTime?: number | Date;
+  lastListenTime?: number;
   status?: "paused" | "resumed";
   pausedFromTrackId?: number;
   resume_time?: number | undefined;
