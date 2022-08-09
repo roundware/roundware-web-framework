@@ -148,3 +148,5 @@ export class ApiClient {
     this._authToken = `token ${tokenStr}`;
   }
 }
+
+export default ApiClient;

@@ -1,38 +1,44 @@
-import { Asset } from "../../src/asset";
+import ApiClient from "../../src/api-client";
+import { Asset, PATH } from "../../src/asset";
 import {
   InvalidArgumentError,
   MissingArgumentError,
 } from "../../src/errors/app.errors";
+import { IAssetFilters } from "../../src/types/asset";
 import { setupFetchMock } from "../fetch.setup";
-
+import config from "../__mocks__/roundware.config";
+jest.mock(`../../src/api-client`);
 describe("Asset ", () => {
-  setupFetchMock();
-  it("should throw error is params not passed", () => {
-    expect.assertions(1);
-    try {
-      // @ts-expect-error
-      const asset = new Asset();
-    } catch (e) {
-      expect(e).toBeInstanceOf(MissingArgumentError);
-    }
-  });
-  it("should throw invalid if projectId is not number", () => {
-    expect.assertions(1);
-    try {
-      // @ts-expect-error
-      const asset = new Asset("10");
-    } catch (e) {
-      expect(e).toBeInstanceOf(InvalidArgumentError);
-    }
-  });
+  test(`should instantiate with given projectId and apiClient`, () => {
+    const apiClient = new ApiClient(config.baseServerUrl);
+    const asset = new Asset(config.projectId, { apiClient });
+    expect(asset).toBeInstanceOf(Asset);
+    // @ts-ignore
+    expect(asset._apiClient).toBeInstanceOf(ApiClient);
+    // @ts-ignore
+    expect(asset._projectId).toBe(config.projectId);
+  }),
+    test(`connect should call api client with projectId and filters`, async () => {
+      const projectId = 10;
+      const filters: IAssetFilters = {
+        created__gte: "2019-08-15T18:06:39",
+      };
+      const mockApiClient = new ApiClient(config.baseServerUrl);
+      const asset = new Asset(projectId, { apiClient: mockApiClient });
+      await asset.connect(filters);
+      expect(mockApiClient.get).toBeCalledWith(PATH, {
+        ...filters,
+        project_id: projectId,
+      });
+    });
 
-  it("should throw invalid if apiClient is not instance of apiClient", () => {
-    expect.assertions(1);
-    try {
-      // @ts-expect-error
-      const asset = new Asset(10, { apiClient: new Date() });
-    } catch (e) {
-      expect(e).toBeInstanceOf(InvalidArgumentError);
-    }
+  test(`should default filters to {}`, async () => {
+    const projectId = 10;
+    const mockApiClient = new ApiClient(config.baseServerUrl);
+    const asset = new Asset(projectId, { apiClient: mockApiClient });
+    await asset.connect();
+    expect(mockApiClient.get).toBeCalledWith(PATH, {
+      project_id: projectId,
+    });
   });
 });
