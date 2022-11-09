@@ -1,7 +1,7 @@
 import { IAudioContext } from "standardized-audio-context";
 import { AssetPool } from "./assetPool";
 import { Playlist } from "./playlist";
-import { Roundware } from "./roundware";
+import { AssetPriorityType, Roundware } from "./roundware";
 import { SpeakerTrack } from "./speaker_track";
 import {
   Coordinates,
@@ -9,7 +9,7 @@ import {
   IMixParams,
   ITimedAssetData,
 } from "./types";
-import { IAssetData } from "./types/asset";
+import { IAssetData, IDecoratedAsset } from "./types/asset";
 
 import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 
@@ -39,15 +39,18 @@ export class Mixer {
     client,
     windowScope,
     listenerLocation,
-    filters = [],
+    filters,
     sortMethods = [],
     mixParams = {},
   }: {
     client: Roundware;
     windowScope: Window;
     listenerLocation: Coordinates;
-    filters?: unknown[];
-    sortMethods?: unknown[];
+    filters?: (
+      asset: IDecoratedAsset,
+      mixParams: IMixParams
+    ) => AssetPriorityType;
+    sortMethods?: string[];
     mixParams: IMixParams;
   }) {
     this.playing = false;
@@ -69,8 +72,7 @@ export class Mixer {
     this.assetPool = new AssetPool({
       assets,
       timedAssets,
-      // @ts-ignore here it asks for a function
-      filters,
+      filterChain: filters,
       sortMethods,
       mixParams: this.mixParams,
     });

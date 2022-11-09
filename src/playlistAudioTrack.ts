@@ -368,7 +368,7 @@ export class PlaylistAudiotrack {
       if (currentAsset.status != "paused") {
         currentAsset.playCount++;
       }
-      currentAsset.lastListenTime = new Date();
+      currentAsset.lastListenTime = new Date().getTime();
     }
 
     const newAsset = this.playlist.next(this);

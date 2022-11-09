@@ -611,8 +611,11 @@ export class Roundware {
     southwest: Coordinates;
     northeast: Coordinates;
   } {
+    const speakersHavingShape = this.speakers().filter(
+      (speaker) => !!speaker.shape
+    ) as (ISpeakerData & Required<Pick<ISpeakerData, `shape`>>)[];
     // get polygons from all speakers
-    const polygons = this.speakers().map((s) =>
+    const polygons = speakersHavingShape.map((s) =>
       multiPolygon(s.shape.coordinates)
     );
     let polygonCollection = featureCollection(polygons);
