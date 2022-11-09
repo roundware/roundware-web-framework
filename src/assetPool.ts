@@ -83,7 +83,7 @@ export class AssetPool {
       asset: IDecoratedAsset,
       mixParams: IMixParams
     ) => AssetPriorityType;
-    sortMethods?: unknown[];
+    sortMethods?: string[];
     mixParams?: IMixParams;
   }) {
     if (!Array.isArray(assets))

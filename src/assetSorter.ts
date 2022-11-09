@@ -2,9 +2,11 @@ import { sortByProjectDefault } from "./sortMethods";
 import { IAssetData } from "./types/asset";
 
 function mapSortMethods(
-  sortMethodNames: ("random" | "by_weight" | "by_likes")[]
+  sortMethodNames: ("random" | "by_weight" | "by_likes" | string)[]
 ): ((assetData: IAssetData[]) => unknown)[] {
-  return sortMethodNames.map((name) => sortByProjectDefault(name));
+  return sortMethodNames.map((name) =>
+    sortByProjectDefault(name as "random" | "by_weight" | "by_likes")
+  );
 }
 
 export class AssetSorter {
@@ -13,7 +15,7 @@ export class AssetSorter {
     sortMethods,
     ordering = "random",
   }: {
-    sortMethods?: ("random" | "by_weight" | "by_likes")[];
+    sortMethods?: ("random" | "by_weight" | "by_likes" | string)[];
     ordering?: "random" | "by_weight" | "by_likes";
   }) {
     if (!sortMethods?.length) {

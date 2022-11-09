@@ -14,7 +14,7 @@ export type Coordinates = {
 export type GeoListenModeType = 0 | 1 | 2;
 
 export type IMixParams = {
-  ordering?: "by_like" | "by_weight" | "random";
+  ordering?: "by_likes" | "by_weight" | "random";
   listenerPoint?: Feature<Point>;
   timedAssetPriority?: IAudioData[`timed_asset_priority`];
   listenerLocation?: Coordinates;
