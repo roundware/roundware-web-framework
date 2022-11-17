@@ -49,7 +49,7 @@ export interface ITagGroup {
   display_items: ITag[];
   group_short_name?: string;
   header_display_text?: string;
-  selection_method?: "user" | "random_single" | "random_double";
+  uiitem_filter?: "none" | `random-${number}`;
 }
 export interface IUiConfig {
   speak?: ITagGroup[];
