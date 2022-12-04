@@ -85,9 +85,9 @@ export class Roundware {
   listenerLocation: Coordinates;
   private _initialOptions: IOptions;
   private _assetUpdateInterval: number;
-  private _apiClient: ApiClient;
+  apiClient: ApiClient;
 
-  private _user: User;
+  user: User;
   geoPosition: GeoPosition;
   private _session: Session;
   project: Project;
@@ -185,15 +185,15 @@ export class Roundware {
     // By default, update the asset pool every 5 minutes.
     this._assetUpdateInterval = assetUpdateInterval || 300000;
 
-    this._apiClient = new ApiClient(this._serverUrl);
+    this.apiClient = new ApiClient(this._serverUrl);
 
     const newOptions: Required<IOptions> = options as Required<IOptions>;
-    newOptions.apiClient = this._apiClient;
+    newOptions.apiClient = this.apiClient;
 
     let navigator = window.navigator;
 
     // TODO need to reorganize/refactor these classes
-    this._user =
+    this.user =
       user ||
       new User({
         apiClient: newOptions.apiClient,
@@ -209,7 +209,7 @@ export class Roundware {
     this._session =
       session ||
       new Session(navigator, this._projectId, this.geoPosition.isEnabled, {
-        apiClient: this._apiClient,
+        apiClient: this.apiClient,
       });
 
     this.project = project || new Project(this._projectId, newOptions);
@@ -311,12 +311,12 @@ export class Roundware {
 
       logger.info(`Initializing Roundware for project ID ${this._projectId}`);
 
-      await this._user.connect();
+      await this.user?.connect();
       const sessionId = await this._session.connect();
 
       this._sessionId = sessionId;
 
-      this.events = new RoundwareEvents(this._sessionId, this._apiClient);
+      this.events = new RoundwareEvents(this._sessionId, this.apiClient);
 
       this.events.logEvent(`start_session`);
 
@@ -356,7 +356,7 @@ export class Roundware {
     if (!options && this.assetData) {
       return this.assetData;
     } else {
-      return await this._apiClient.get<IAssetData[]>(`/assets/`, {
+      return await this.apiClient.get<IAssetData[]>(`/assets/`, {
         project_id: this._projectId,
         // Override default filters with unknown passed in options.
         ...this._assetFilters,
@@ -546,7 +546,7 @@ export class Roundware {
 
     let envelope = new Envelope(
       this._sessionId,
-      this._apiClient,
+      this.apiClient,
       this.geoPosition,
       this
     );
@@ -572,7 +572,7 @@ export class Roundware {
     voteType: string,
     value?: unknown
   ): Promise<void> {
-    return this._apiClient.post(`/assets/${assetId}/votes/`, {
+    return this.apiClient.post(`/assets/${assetId}/votes/`, {
       session_id: this._sessionId,
       vote_type: voteType,
       value,
@@ -590,14 +590,14 @@ export class Roundware {
       }
     }
     // Otherwise, ask the server for the asset details.
-    return this._apiClient.get<IAssetData>(`/assets/${id}/`, {
+    return this.apiClient.get<IAssetData>(`/assets/${id}/`, {
       session_id: this._sessionId,
     });
   }
 
   /// @return Details about a particular envelope (which may contain multiple assets).
   async getEnvelope(id: number): Promise<IEnvelopeData> {
-    return this._apiClient.get<IEnvelopeData>(`/envelopes/${id}`, {
+    return this.apiClient.get<IEnvelopeData>(`/envelopes/${id}`, {
       session_id: this._sessionId,
     });
   }
