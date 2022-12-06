@@ -1,5 +1,5 @@
 import { IAssetData } from "./types/asset";
-import { getItem, setItem } from "localforage";
+import localforage from "localforage";
 
 type IAssetHistory = IAssetData & {
   addedAt?: number;
@@ -10,7 +10,7 @@ export class ListenHistory {
 
   constructor() {
     // load earlier history from indexedDB
-    getItem<IAssetData>(`listenHistory`).then((assets) => {
+    localforage.getItem<IAssetData>(`listenHistory`).then((assets) => {
       if (Array.isArray(assets)) this.assets = [...assets, this.assets];
     });
   }
@@ -21,11 +21,11 @@ export class ListenHistory {
 
     this.assets.push(historyItem);
     // add to indexedDB
-    setItem(`listenHistory`, this.assets);
+    localforage.setItem(`listenHistory`, this.assets);
   }
 
   clear() {
     this.assets = [];
-    setItem(`listenHistory`, this.assets);
+    localforage.setItem(`listenHistory`, this.assets);
   }
 }
