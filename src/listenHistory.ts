@@ -11,7 +11,10 @@ export class ListenHistory {
   constructor() {
     // load earlier history from indexedDB
     localforage.getItem<IAssetData>(`listenHistory`).then((assets) => {
-      if (Array.isArray(assets)) this.assets = [...assets, this.assets];
+      if (Array.isArray(assets))
+        this.assets = [...assets, ...this.assets].sort(
+          (a, b) => b.addedAt! - a.addedAt!
+        );
     });
   }
 
