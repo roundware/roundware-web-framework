@@ -60,7 +60,7 @@ export class LoadingState implements ICommonStateProperties {
         { once: true }
       );
       this.track.playAudio();
-
+      this.track.playlist._client.listenHistory.addAsset(asset);
       return;
     } else {
       newState = new WaitingForAssetState(track, trackOptions);

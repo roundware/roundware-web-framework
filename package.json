@@ -5,7 +5,7 @@
     "type": "git",
     "url": "git+https://github.com/roundware/roundware-web-framework.git"
   },
-  "version": "0.12.8-alpha.11",
+  "version": "0.12.8-alpha.12",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "main": "dist/roundware.js",
   "files": [
@@ -69,6 +69,7 @@
     "@turf/line-to-polygon": "^6.5.0",
     "@turf/point-to-line-distance": "^6.5.0",
     "@types/lodash": "^4.14.182",
+    "localforage": "^1.10.0",
     "lodash": "^4.17.21",
     "loglevel": "^1.8.0",
     "standardized-audio-context": "^25.3.28"
