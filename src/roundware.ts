@@ -43,6 +43,7 @@ export { GeoListenMode } from "./mixer";
 import { multiPolygon, featureCollection } from "@turf/helpers";
 import bbox from "@turf/bbox";
 import buffer from "@turf/buffer";
+import { ListenHistory } from "./listenHistory";
 /** This class is the primary integration point between Roundware's server and your application
 
    @example
@@ -107,7 +108,7 @@ export class Roundware {
   private _lastAssetUpdate: Date | undefined;
   timedAssetData: ITimedAssetData[] | null = null;
   private _assetDataTimer: NodeJS.Timeout | undefined;
-
+  listenHistory: ListenHistory;
   events?: RoundwareEvents;
   /** Initialize a new Roundware instance
    * @param {Object} windowScope - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
@@ -235,6 +236,7 @@ export class Roundware {
       listenerLocation: this.listenerLocation,
       mixParams,
     });
+    this.listenHistory = new ListenHistory();
   }
 
   updateLocation(listenerLocation: Coordinates): void {
