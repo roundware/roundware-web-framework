@@ -78,7 +78,6 @@ import { ListenHistory } from "./listenHistory";
 **/
 
 export class Roundware {
-  readonly windowScope: Window;
   private _serverUrl: string;
   private _projectId: number;
   private _speakerFilters: ISpeakerFilters = {};
@@ -119,14 +118,7 @@ export class Roundware {
    * @throws Will throw an error if serveUrl or projectId are missing
     TODO need to provide a more modern/ES6-aware architecture here vs burdening the constructor with all of these details **/
 
-  constructor(windowScope: Window, options: IRoundwareConstructorOptions) {
-    if (!windowScope)
-      throw new MissingArgumentError(
-        `windowScope`,
-        `instantiating Roundware`,
-        `window`
-      );
-
+  constructor(options: IRoundwareConstructorOptions) {
     if (typeof options !== "object")
       throw new MissingArgumentError(
         `options`,
@@ -167,7 +159,6 @@ export class Roundware {
       );
     }
 
-    this.windowScope = windowScope;
     this._serverUrl = serverUrl;
     this._projectId = projectId;
     if (speakerFilters) this._speakerFilters = speakerFilters;
@@ -232,7 +223,7 @@ export class Roundware {
     };
     this.mixer = new Mixer({
       client: this,
-      windowScope: this.windowScope,
+
       listenerLocation: this.listenerLocation,
       mixParams,
     });

@@ -129,7 +129,7 @@ export class PlaylistAudiotrack {
    */
   playlist: Playlist;
   playing: boolean;
-  windowScope: Window;
+
   currentAsset: IDecoratedAsset | null;
 
   gainNode: IGainNode<IAudioContext>;
@@ -158,13 +158,13 @@ export class PlaylistAudiotrack {
   isSafeToPlay = false;
   constructor({
     audioContext,
-    windowScope,
+
     audioData,
     playlist,
     client,
   }: {
     audioContext: IAudioContext;
-    windowScope: Window;
+
     audioData: IAudioTrackData;
     playlist: Playlist;
     client: Roundware;
@@ -173,7 +173,7 @@ export class PlaylistAudiotrack {
     this.timedAssetPriority = audioData.timed_asset_priority;
     this.playlist = playlist;
     this.playing = false;
-    this.windowScope = windowScope;
+
     this.listenEvents = client.events;
     this.currentAsset = null;
     this.audioData = audioData;
@@ -202,7 +202,7 @@ export class PlaylistAudiotrack {
     audioElement.addEventListener("ended", () => this.onAudioEnded());
 
     const trackOptions = new TrackOptions(
-      (param) => getUrlParam(windowScope.location.toString(), param),
+      (param) => getUrlParam(window.location.toString(), param),
       audioData
     );
 

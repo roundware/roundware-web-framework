@@ -25,7 +25,7 @@ export const GeoListenMode: {
 
 export class Mixer {
   playing: boolean;
-  private _windowScope: Window;
+
   private _client: Roundware;
   private _prefetchSpeakerAudio: any | boolean;
 
@@ -37,14 +37,12 @@ export class Mixer {
 
   constructor({
     client,
-    windowScope,
     listenerLocation,
     filters,
     sortMethods = [],
     mixParams = {},
   }: {
     client: Roundware;
-    windowScope: Window;
     listenerLocation: Coordinates;
     filters?: (
       asset: IDecoratedAsset,
@@ -55,7 +53,6 @@ export class Mixer {
   }) {
     this.playing = false;
 
-    this._windowScope = windowScope;
     this._client = client;
 
     const assets: IAssetData[] = client.assets();
@@ -76,7 +73,7 @@ export class Mixer {
       sortMethods,
       mixParams: this.mixParams,
     });
-    this.audioContext = buildAudioContext(this._windowScope);
+    this.audioContext = buildAudioContext();
   }
 
   updateParams({ listenerLocation, ...params }: IMixParams) {
@@ -129,7 +126,7 @@ export class Mixer {
       const listenerPoint = this.mixParams.listenerPoint;
 
       let selectTrackId: string | number | null = getUrlParam(
-        this._windowScope.location.toString(),
+        window.location.toString(),
         "rwfSelectTrackId"
       );
       let audioTracks = this._client.audiotracks();
@@ -146,7 +143,6 @@ export class Mixer {
         listenerPoint,
         assetPool: this.assetPool,
         audioContext: this.audioContext,
-        windowScope: this._windowScope,
       });
 
       this.initializeSpeakers();
