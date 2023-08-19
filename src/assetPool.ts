@@ -1,63 +1,11 @@
-import distance from "@turf/distance";
+import { union } from "lodash";
 import { AssetPriorityType, roundwareDefaultFilterChain } from "./assetFilters";
 import { AssetSorter } from "./assetSorter";
-import {
-  InvalidArgumentError,
-  RoundwareFrameworkError,
-} from "./errors/app.errors";
+import { InvalidArgumentError } from "./errors/app.errors";
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
 import { ILookupTable, IMixParams, ITimedAssetData } from "./types";
-import { IDecoratedAsset, IAssetData } from "./types/asset";
-import { cleanAudioURL, coordsToPoints, debugLogger } from "./utils";
-
-// add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
-// also rewrite .wav as .mp3
-export const assetDecorationMapper = (timedAssets: ITimedAssetData[]) => {
-  const timedAssetLookup = timedAssets.reduce(
-    (lookupTable: ILookupTable, timedAsset: ITimedAssetData) => ({
-      ...lookupTable,
-      [timedAsset.asset_id]: timedAsset,
-    }),
-    {}
-  );
-
-  return (asset: IAssetData): IDecoratedAsset => {
-    const {
-      start_time: activeRegionLowerBound = 0,
-      end_time: activeRegionUpperBound = 0,
-      file: assetUrl,
-    } = asset;
-
-    const activeRegionLength = activeRegionUpperBound - activeRegionLowerBound;
-
-    // per Halsey we should always use mp3s; also we avoid specifying http/https to avoid mixed-content warnings
-    if (!assetUrl) throw new Error(`assetUrl was undefined!`);
-    const mp3Url = cleanAudioURL(assetUrl);
-
-    const decoratedAsset: IDecoratedAsset = {
-      locationPoint: coordsToPoints({
-        latitude: asset.latitude!,
-        longitude: asset.longitude!,
-      }),
-      playCount: 0,
-      activeRegionLength,
-      activeRegionUpperBound,
-      activeRegionLowerBound,
-      ...asset,
-      created: asset.created ? new Date(asset.created) : new Date(),
-      file: mp3Url,
-    };
-
-    const timedAsset = timedAssetLookup[asset.id!];
-
-    if (timedAsset) {
-      decoratedAsset.timedAssetStart = timedAsset.start!;
-      decoratedAsset.timedAssetEnd = timedAsset.end!;
-    }
-
-    return decoratedAsset;
-  };
-};
+import { IAssetData, IDecoratedAsset } from "./types/asset";
+import { cleanAudioURL, coordsToPoints } from "./utils";
 
 export class AssetPool {
   assetSorter: AssetSorter;
@@ -67,7 +15,7 @@ export class AssetPool {
     asset: IDecoratedAsset,
     mixParams: IMixParams
   ) => AssetPriorityType;
-  assets!: IDecoratedAsset[];
+  assets: IDecoratedAsset[] = [];
 
   constructor({
     assets = [],
@@ -82,23 +30,9 @@ export class AssetPool {
       asset: IDecoratedAsset,
       mixParams: IMixParams
     ) => AssetPriorityType;
-    sortMethods?: unknown[];
+    sortMethods?: string[];
     mixParams?: IMixParams;
   }) {
-    if (!Array.isArray(assets))
-      throw new InvalidArgumentError(
-        "assets",
-        "array of IAssetData",
-        "instantiation assetPool"
-      );
-    if (!Array.isArray(timedAssets))
-      throw new InvalidArgumentError(
-        "timedAssets",
-        "array of ITimedAssetData",
-        "instantiation assetPool"
-      );
-    this.updateAssets(assets, timedAssets);
-
     this.assetSorter = new AssetSorter({
       sortMethods,
       ...mixParams,
@@ -106,6 +40,7 @@ export class AssetPool {
     this.playingTracks = {};
     this.mixParams = mixParams;
     this.filterChain = filterChain;
+    this.updateAssets(assets, timedAssets);
     this.sortAssets();
   }
 
@@ -120,18 +55,18 @@ export class AssetPool {
 
     let newAssets = assets.map(assetDecorationMapper(timedAssets));
     // preserve the existing properties of assets, add instead of replacing...
-    if (Array.isArray(this.assets)) {
-      newAssets.forEach((asset) => {
-        if (!this.assets.some((a) => a.id === asset.id)) this.add(asset);
-      });
-    } else this.assets = newAssets;
+
+    newAssets.forEach((asset) => {
+      if (!this.assets.some((a) => a.id === asset.id)) this.add(asset);
+    });
   }
 
   nextForTrack(
     track: PlaylistAudiotrack,
     {
-      elapsedSeconds: number,
+      elapsedSeconds,
       filterOutAssets = [],
+      listenTagIds = [],
       ...stateParams
     }: {
       elapsedSeconds: number;
@@ -144,6 +79,12 @@ export class AssetPool {
       ...this.mixParams,
       ...track.mixParams,
       ...stateParams,
+      listenTagIds: union(
+        this.mixParams.listenTagIds,
+        track.mixParams?.listenTagIds,
+        listenTagIds
+      ),
+      ...track.trackOptions,
     };
 
     interface IRankedAssets {
@@ -208,4 +149,55 @@ export class AssetPool {
     this.assets.push(asset);
     this.sortAssets();
   }
+}
+
+export default AssetPool;
+
+// add new fields to assets after they have been downloaded from the API to be used by rest of the mixing code
+// also rewrite .wav as .mp3
+export function assetDecorationMapper(timedAssets: ITimedAssetData[]) {
+  const timedAssetLookup = timedAssets.reduce(
+    (lookupTable: ILookupTable, timedAsset: ITimedAssetData) => ({
+      ...lookupTable,
+      [timedAsset.asset_id]: timedAsset,
+    }),
+    {}
+  );
+
+  return (asset: IAssetData): IDecoratedAsset => {
+    const {
+      start_time: activeRegionLowerBound = 0,
+      end_time: activeRegionUpperBound = 0,
+      file: assetUrl,
+    } = asset;
+
+    const activeRegionLength = activeRegionUpperBound - activeRegionLowerBound;
+
+    // per Halsey we should always use mp3s; also we avoid specifying http/https to avoid mixed-content warnings
+    if (!assetUrl) console.warn(`assetUrl was undefined!`);
+    const mp3Url = cleanAudioURL(assetUrl!);
+
+    const decoratedAsset: IDecoratedAsset = {
+      locationPoint: coordsToPoints({
+        latitude: asset.latitude!,
+        longitude: asset.longitude!,
+      }),
+      playCount: 0,
+      activeRegionLength,
+      activeRegionUpperBound,
+      activeRegionLowerBound,
+      ...asset,
+      created: asset.created ? new Date(asset.created) : new Date(),
+      file: mp3Url,
+    };
+
+    const timedAsset = timedAssetLookup[asset.id!];
+
+    if (timedAsset) {
+      decoratedAsset.timedAssetStart = timedAsset.start!;
+      decoratedAsset.timedAssetEnd = timedAsset.end!;
+    }
+
+    return decoratedAsset;
+  };
 }

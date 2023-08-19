@@ -138,7 +138,7 @@ export default {
 
   // The test environment that will be used for testing
   testEnvironment: "jsdom",
-  silent: true,
+  silent: false,
   // Options that will be passed to the testEnvironment
   // testEnvironmentOptions: {},
 

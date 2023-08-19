@@ -6,7 +6,7 @@ import {
 } from "standardized-audio-context";
 import { SpeakerConfig } from "../types/roundware";
 import { ISpeakerPlayer, SpeakerConstructor } from "../types/speaker";
-import { speakerLog } from "../utils";
+import { NEARLY_ZERO, speakerLog } from "../utils";
 
 export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
   isSafeToPlay: boolean = true;
@@ -28,7 +28,7 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     this.context = audioContext;
     this.config = config;
     this.gainNode = audioContext.createGain();
-    this.gainNode.gain.value = 0;
+    this.gainNode.gain.value = NEARLY_ZERO;
 
     var request = new XMLHttpRequest();
 
@@ -193,8 +193,8 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     this.log(`startng fade ${this.volume} -> ${this._fadingDestination}`);
     this.gainNode.gain.cancelScheduledValues(0);
 
-    this.gainNode.gain.linearRampToValueAtTime(
-      this._fadingDestination,
+    this.gainNode.gain.exponentialRampToValueAtTime(
+      this._fadingDestination || NEARLY_ZERO,
       this.context.currentTime + duration
     );
     if (this._fadingTimeout) {

@@ -1,30 +1,28 @@
-import * as sortMethodCollection from "./sortMethods";
+import { sortByProjectDefault } from "./sortMethods";
 import { IAssetData } from "./types/asset";
-import { isEmpty } from "./utils";
 
-function mapSortMethods(sortMethodNames: string[]): unknown[] {
-  // @ts-ignore
-  return sortMethodNames.map((name) => sortMethodCollection[name]);
+function mapSortMethods(
+  sortMethodNames: ("random" | "by_weight" | "by_likes" | string)[]
+): ((assetData: IAssetData[]) => unknown)[] {
+  return sortMethodNames.map((name) =>
+    sortByProjectDefault(name as "random" | "by_weight" | "by_likes")
+  );
 }
 
 export class AssetSorter {
-  sortMethods: ((assetsArray: any) => void)[];
-
+  sortMethods: ((assetsArray: IAssetData[]) => void)[];
   constructor({
-    sortMethods = [],
+    sortMethods,
     ordering = "random",
   }: {
-    sortMethods: any[];
-    ordering?: string;
+    sortMethods?: ("random" | "by_weight" | "by_likes" | string)[];
+    ordering?: "random" | "by_weight" | "by_likes";
   }) {
-    if (isEmpty(sortMethods)) {
-      this.sortMethods = [sortMethodCollection.sortByProjectDefault(ordering)];
+    if (!sortMethods?.length) {
+      this.sortMethods = [sortByProjectDefault(ordering)];
     } else {
-      // @ts-ignore
       this.sortMethods = mapSortMethods(sortMethods);
     }
-
-    //console.info({ ordering, sortMethods, thisSortMethods: this.sortMethods });
   }
 
   sort(assets: IAssetData[]): void {

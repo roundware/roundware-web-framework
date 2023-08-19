@@ -121,11 +121,11 @@ function unlockAudioContext(
   );
 }
 
-export function buildAudioContext(windowScope: Window): IAudioContext {
+export function buildAudioContext(): IAudioContext {
   const audioContext = new AudioContext();
   const {
     document: { body },
-  } = windowScope;
+  } = window;
   unlockAudioContext(body, audioContext);
   audioContext.onstatechange = () =>
     console.info(`[Audio Context]: ${audioContext.state}`);
@@ -165,13 +165,18 @@ export const playlistTrackLog = (message: string) =>
 
 export const makeAudioSafeToPlay = (
   audioElement: HTMLAudioElement,
+  audioContext: IAudioContext,
   onSuccess: () => void = () => {},
   expectedSourceAfter?: string
 ) => {
+  let isAlreadyPlaying = false;
   UNLOCK_AUDIO_EVENTS.forEach((e) => {
     window.addEventListener(
       e,
-      () => {
+      async () => {
+        if (isAlreadyPlaying) return;
+        isAlreadyPlaying = true;
+        await audioContext.resume().catch();
         audioElement.src = silenceAudioBase64;
         try {
           audioElement.play().catch((e) => {
@@ -182,7 +187,6 @@ export const makeAudioSafeToPlay = (
           audioElement.addEventListener(
             "playing",
             () => {
-              audioElement.pause();
               audioElement.currentTime = 0;
               if (expectedSourceAfter) {
                 audioElement.src = expectedSourceAfter;
@@ -204,3 +208,5 @@ export const makeAudioSafeToPlay = (
     );
   });
 };
+
+export const NEARLY_ZERO = 0.0001;

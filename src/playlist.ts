@@ -25,7 +25,7 @@ export class Playlist {
     client,
     audioTracks = [],
     listenerPoint,
-    windowScope,
+
     assetPool,
     audioContext,
     ...playlistTrackOptions
@@ -33,7 +33,7 @@ export class Playlist {
     client: Roundware;
     audioTracks?: IAudioTrackData[];
     listenerPoint: Feature<Point>;
-    windowScope: Window;
+
     assetPool: AssetPool;
     audioContext: IAudioContext;
   }) {
@@ -46,7 +46,7 @@ export class Playlist {
 
     let elapsedTimeMs = 0;
     const timerSecs = getUrlParam(
-      windowScope.location.toString(),
+      window.location.toString(),
       "rwfTimerSeconds"
     );
 
@@ -64,7 +64,6 @@ export class Playlist {
       const track = new PlaylistAudiotrack({
         audioContext,
         audioData,
-        windowScope,
         playlist: this,
         client: this._client,
       });

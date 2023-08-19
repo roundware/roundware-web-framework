@@ -9,11 +9,10 @@ import { IAssetData } from "./types/asset";
  @see http://sedition.com/perl/javascript-fy.html
  */
 export function sortRandomly(assetsArray: IAssetData[]) {
-  if (Array.isArray(assetsArray))
-    for (let i = assetsArray.length - 1; i > 0; i--) {
-      const rand = Math.floor(Math.random() * (i + 1));
-      [assetsArray[i], assetsArray[rand]] = [assetsArray[rand], assetsArray[i]];
-    }
+  for (let i = assetsArray.length - 1; i > 0; i--) {
+    const rand = Math.floor(Math.random() * (i + 1));
+    [assetsArray[i], assetsArray[rand]] = [assetsArray[rand], assetsArray[i]];
+  }
 }
 
 /**
@@ -21,8 +20,14 @@ export function sortRandomly(assetsArray: IAssetData[]) {
  */
 
 export function sortByWeight(assetsArray: IAssetData[]) {
-  if (Array.isArray(assetsArray))
-    assetsArray.sort((assetA, assetB) => assetA.weight! - assetB.weight!);
+  assetsArray
+    .sort((assetA, assetB) => (assetA.weight || 0) - (assetB.weight || 0))
+    // sort undefined weights to the end
+    .sort(
+      (assetA, assetB) =>
+        (assetA.weight == undefined ? 1 : 0) -
+        (assetB.weight == undefined ? 1 : 0)
+    );
 }
 
 /**
@@ -36,12 +41,12 @@ export function sortByLikes(assetsArray: IAssetData[]) {
 }
 
 export function sortByProjectDefault(
-  ordering: string
+  ordering: "by_weight" | "by_likes" | "random"
 ): (assetArray: IAssetData[]) => void {
   switch (ordering) {
     case "by_weight":
       return sortByWeight;
-    case "by_like":
+    case "by_likes":
       return sortByLikes;
     case "random":
     default:

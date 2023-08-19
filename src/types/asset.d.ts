@@ -38,26 +38,11 @@ export interface IAssetData {
   description_loc_ids: number[];
   alt_text_loc_ids: number[];
   project?: number;
-
-  [index: string]:
-    | number
-    | string
-    | number[]
-    | Polygon
-    | Date
-    | MultiPolygon
-    | {
-        username: string;
-        email: string;
-      }
-    | undefined
-    | null
-    | boolean
-    | Point
-    | Feature<Point>;
 }
 
-export interface IAssetFilters extends Partial<IAssetData> {}
+export interface IAssetFilters extends Partial<IAssetData> {
+  created__gte?: string;
+}
 export interface IDecoratedAsset extends IAssetData {
   activeRegionLowerBound: number;
   timedAssetStart?: number;
@@ -65,24 +50,10 @@ export interface IDecoratedAsset extends IAssetData {
   locationPoint: Feature<Point>;
   listenerPoint?: Point;
   playCount: number;
-  lastListenTime?: number | Date;
+  lastListenTime?: number;
   status?: "paused" | "resumed";
   pausedFromTrackId?: number;
   resume_time?: number | undefined;
-  [index: string]:
-    | number
-    | Feature<Point>
-    | Point
-    | Date
-    | string
-    | undefined
-    | number[]
-    | null
-    | Polygon
-    | MultiPolygon
-    | boolean
-    | {
-        username: string;
-        email: string;
-      };
+  activeRegionLength: number;
+  activeRegionUpperBound: number;
 }

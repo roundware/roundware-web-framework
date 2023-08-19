@@ -21,5 +21,5 @@ export interface IAudioTrackData {
   banned_duration: number;
   tag_filters: any[];
   project_id: number;
-  timed_asset_priority: number;
+  timed_asset_priority: string;
 }

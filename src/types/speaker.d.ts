@@ -1,18 +1,15 @@
 import { IAudioContext } from "standardized-audio-context";
 import { SpeakerConfig } from "./roundware";
-
+import { LineString, MultiLineString, MultiPolygon } from "@turf/helpers";
 export interface ISpeakerData {
   id: number;
   maxvolume: number;
   minvolume: number;
-  attenuation_border: any;
-  boundary: any;
+  attenuation_border?: LineString;
+  boundary?: MultiLineString;
   attenuation_distance: number;
   uri: string;
-  shape: {
-    type: string;
-    coordinates: number[][][][];
-  };
+  shape?: MultiPolygon;
 }
 
 export interface ISpeakerFilters {}

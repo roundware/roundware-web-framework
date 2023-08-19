@@ -14,6 +14,8 @@ export class User {
   deviceId: string;
   clientType: string;
   userName: string;
+  id?: number;
+
   constructor({
     apiClient,
     deviceId = "00000000000000",
@@ -52,10 +54,17 @@ export class User {
         await this.apiClient.post<IUserResponse>("/users/", data);
       this.userName = responseData.username;
       this.apiClient.authToken = responseData.token;
+      this.id = responseData.id;
       return responseData;
     } catch (err) {
       console.error("Auth failure", err);
       return {};
     }
+  }
+
+  async updateUser(user: Partial<IUserResponse>): Promise<IUserResponse> {
+    const responseData: IUserResponse =
+      await this.apiClient.patch<IUserResponse>(`/users/${this.id}`, user);
+    return responseData;
   }
 }
