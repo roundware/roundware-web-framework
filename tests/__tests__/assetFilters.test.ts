@@ -1,3 +1,8 @@
+import { faker } from "@faker-js/faker";
+import { lineString, point } from "@turf/helpers";
+import lineToPolygon from "@turf/line-to-polygon";
+import { addDays, subDays } from "date-fns";
+import { omit } from "lodash";
 import { rankForGeofilteringEligibility } from "../../src/assetFilters";
 import { assetDecorationMapper } from "../../src/assetPool";
 import {
@@ -15,22 +20,12 @@ import {
   timedAssetFilter,
   timedRepeatFilter,
 } from "../../src/roundware";
+import { IDecoratedAsset } from "../../src/types/asset";
 import {
   getRandomAssetData,
   getRandomDecoratedAssetData,
 } from "../__mocks__/assetData";
-import { point } from "@turf/helpers";
-import { faker } from "@faker-js/faker";
-import { IDecoratedAsset } from "../../src/types/asset";
-import {
-  InvalidArgumentError,
-  RoundwareFrameworkError,
-} from "../../src/errors/app.errors";
-import { addDays, subDays } from "date-fns";
-import { omit } from "lodash";
-import lineToPolygon from "@turf/line-to-polygon";
-import { lineString } from "@turf/helpers";
-import distance from "@turf/distance";
+
 describe("rankForGeofilteringEligibility", () => {
   test("should return false if geo listen mode is disabled", () => {
     expect(

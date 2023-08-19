@@ -164,7 +164,6 @@ export class PlaylistAudiotrack {
     client,
   }: {
     audioContext: IAudioContext;
-
     audioData: IAudioTrackData;
     playlist: Playlist;
     client: Roundware;
