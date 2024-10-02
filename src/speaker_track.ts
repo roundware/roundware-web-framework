@@ -13,12 +13,13 @@ import lineToPolygon from "@turf/line-to-polygon";
 import pointToLineDistance from "@turf/point-to-line-distance";
 import { IAudioContext } from "standardized-audio-context";
 import { SpeakerStreamer } from "./players/SpeakerStreamer";
-import { SpeakerPrefetchPlayer } from "./players/SpeakerPrefetchPlayer";
+import { SpeakerPrefetchSyncPlayer } from "./players/SpeakerPrefetchSyncPlayer";
 import { ISpeakerData, ISpeakerPlayer } from "./types/speaker";
 import { speakerLog } from "./utils";
 import { SpeakerConfig } from "./types/roundware";
 import { SpeakerSyncStreamer } from "./players/SpeakerSyncStreamer";
 import { Mixer } from "./mixer";
+import { SpeakerPrefetchPlayer } from "./players/SpeakerPrefetchPlayer";
 const convertLinesToPolygon = (shape: LineString | MultiLineString) =>
   lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
@@ -126,16 +127,20 @@ export class SpeakerTrack {
 
     let newVolume = this.currentVolume;
     if (!listenerPoint) {
+      this.log("No listener point");
       newVolume = this.currentVolume;
     } else if (this.attenuationShapeContains(listenerPoint)) {
+      this.log("In attenuation shape");
       newVolume = this.maxVolume;
     } else if (this.outerBoundaryContains(listenerPoint)) {
+      this.log("In outer boundary");
       const range = this.maxVolume - this.minVolume;
       const volumeGradient =
         this.minVolume + range * this.attenuationRatio(listenerPoint);
 
       newVolume = volumeGradient;
     } else {
+      this.log("Outside outer boundary");
       newVolume = this.minVolume;
     }
 
@@ -213,11 +218,15 @@ export class SpeakerTrack {
   }
 
   initPlayer() {
-    const Player = this.config.sync
-      ? this.config.prefetch
-        ? SpeakerPrefetchPlayer
-        : SpeakerSyncStreamer
-      : SpeakerStreamer;
+    const Player = (() => {
+      if (this.config.sync && this.config.prefetch)
+        return SpeakerPrefetchSyncPlayer;
+      if (this.config.sync) return SpeakerSyncStreamer;
+      if (this.config.prefetch) return SpeakerPrefetchPlayer;
+      return SpeakerStreamer;
+    })();
+
+    console.log(`init player ${this.speakerId}: ${Player.name}`);
     this.player = new Player({
       audioContext: this.audioContext,
       id: this.speakerId,
