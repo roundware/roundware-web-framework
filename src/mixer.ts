@@ -1,7 +1,7 @@
 import { IAudioContext } from "standardized-audio-context";
 import { AssetPool } from "./assetPool";
 import { Playlist } from "./playlist";
-import { Roundware } from "./roundware";
+import { AssetPriorityType, Roundware } from "./roundware";
 import { SpeakerTrack } from "./speaker_track";
 import {
   Coordinates,
@@ -9,7 +9,7 @@ import {
   IMixParams,
   ITimedAssetData,
 } from "./types";
-import { IAssetData } from "./types/asset";
+import { IAssetData, IDecoratedAsset } from "./types/asset";
 
 import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 
@@ -25,7 +25,7 @@ export const GeoListenMode: {
 
 export class Mixer {
   playing: boolean;
-  private _windowScope: Window;
+
   private _client: Roundware;
   private _prefetchSpeakerAudio: any | boolean;
 
@@ -37,22 +37,22 @@ export class Mixer {
 
   constructor({
     client,
-    windowScope,
     listenerLocation,
-    filters = [],
+    filters,
     sortMethods = [],
     mixParams = {},
   }: {
     client: Roundware;
-    windowScope: Window;
     listenerLocation: Coordinates;
-    filters?: unknown[];
-    sortMethods?: unknown[];
+    filters?: (
+      asset: IDecoratedAsset,
+      mixParams: IMixParams
+    ) => AssetPriorityType;
+    sortMethods?: string[];
     mixParams: IMixParams;
   }) {
     this.playing = false;
 
-    this._windowScope = windowScope;
     this._client = client;
 
     const assets: IAssetData[] = client.assets();
@@ -69,12 +69,11 @@ export class Mixer {
     this.assetPool = new AssetPool({
       assets,
       timedAssets,
-      // @ts-ignore here it asks for a function
-      filters,
+      filterChain: filters,
       sortMethods,
       mixParams: this.mixParams,
     });
-    this.audioContext = buildAudioContext(this._windowScope);
+    this.audioContext = buildAudioContext();
   }
 
   updateParams({ listenerLocation, ...params }: IMixParams) {
@@ -127,7 +126,7 @@ export class Mixer {
       const listenerPoint = this.mixParams.listenerPoint;
 
       let selectTrackId: string | number | null = getUrlParam(
-        this._windowScope.location.toString(),
+        window.location.toString(),
         "rwfSelectTrackId"
       );
       let audioTracks = this._client.audiotracks();
@@ -144,7 +143,6 @@ export class Mixer {
         listenerPoint,
         assetPool: this.assetPool,
         audioContext: this.audioContext,
-        windowScope: this._windowScope,
       });
 
       this.initializeSpeakers();
@@ -240,6 +238,7 @@ export class Mixer {
             loop: false,
             prefetch: false,
           },
+          mixer: that,
         })
     );
 

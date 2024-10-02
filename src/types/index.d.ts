@@ -1,4 +1,5 @@
 import { Feature, Point } from "@turf/helpers";
+import { TrackOptions } from "../mixer/TrackOptions";
 import { PlaylistAudiotrack } from "../playlistAudioTrack";
 import { IRoundwareConstructorOptions } from "./roundware";
 export type Coordinates = {
@@ -13,7 +14,7 @@ export type Coordinates = {
 export type GeoListenModeType = 0 | 1 | 2;
 
 export type IMixParams = {
-  ordering?: "by_like" | "by_weight" | "random";
+  ordering?: "by_likes" | "by_weight" | "random";
   listenerPoint?: Feature<Point>;
   timedAssetPriority?: IAudioData[`timed_asset_priority`];
   listenerLocation?: Coordinates;
@@ -30,7 +31,9 @@ export type IMixParams = {
   endDate?: Date;
   sessionId?: number;
   keepPausedAssets?: boolean;
-} & Partial<IRoundwareConstructorOptions>;
+  bannedDuration?: number;
+} & Partial<IRoundwareConstructorOptions> &
+  Partial<TrackOptions>;
 
 export interface IInitialParams {}
 
@@ -46,6 +49,7 @@ export interface ITagGroup {
   display_items: ITag[];
   group_short_name?: string;
   header_display_text?: string;
+  uiitem_filter?: "none" | `random-${number}`;
 }
 export interface IUiConfig {
   speak?: ITagGroup[];

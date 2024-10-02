@@ -3,25 +3,12 @@ import {
   IAudioBufferSourceNode,
   IAudioContext,
   IGainNode,
-  IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
-
 import { SpeakerConfig } from "../types/roundware";
 import { ISpeakerPlayer, SpeakerConstructor } from "../types/speaker";
-import {
-  cleanAudioURL,
-  NEARLY_ZERO,
-  silenceAudioBase64,
-  speakerLog,
-} from "../utils";
+import { NEARLY_ZERO, speakerLog } from "../utils";
 
-/**
- *
- * Basic audio utilities for playing speakers audio
- * @export
- * @class SpeakerPrefetchPlayer
- */
-export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
+export class SpeakerPrefetchSyncPlayer implements ISpeakerPlayer {
   isSafeToPlay: boolean = true;
   playing: boolean = false;
   loaded = false;
@@ -36,8 +23,6 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
   buffer?: IAudioBuffer;
 
   constructor({ audioContext, id, uri, config }: SpeakerConstructor) {
-    this.log("SpeakerPrefetchPlayer constructor");
-
     this.audio = new Audio();
     this.id = id;
     this.context = audioContext;
@@ -52,10 +37,10 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     request.responseType = "arraybuffer";
     request.onprogress = (ev) => {
       this.loadedPercentage = Number(((ev.loaded / ev.total) * 100).toFixed(2));
+
       this.loadingCallback(this.loadedPercentage);
     };
     const speakerContext = this;
-
     request.onload = function () {
       var audioData = request.response;
 
@@ -79,12 +64,10 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     request.send();
   }
 
-  lastStartedAtSeconds = 0;
-  lastStartedAtTime = 0;
+  started = false;
   async play(): Promise<boolean> {
-    if (!this.loaded || !this.source) {
+    if (!this.loaded || !this.started) {
       this.log(`not loaded or started yet`);
-      this.initializeSource();
       return false;
     }
     if (this.playing) {
@@ -92,35 +75,77 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
       return true;
     }
 
-    this.source.start(0, this.pausedAtSeconds);
-    this.lastStartedAtSeconds = this.pausedAtSeconds;
-    this.lastStartedAtTime = this.context.currentTime;
-    this.log("playing...");
-
     this.gainNode.connect(this.context.destination);
     this.playing = true;
     return true;
   }
 
   replay() {
+    this.pausedAt = 0;
     this.playing = false;
     this.initializeSource();
     this.timerStart();
   }
+  startedAt = 0;
+  pausedAt = 0;
+
+  get remainingDuration() {
+    if (!this.buffer) return 0;
+    return (this.config.length || this.buffer?.duration) - this.pausedAt;
+  }
+
+  endTimeout: NodeJS.Timeout | null = null;
 
   async timerStart() {
+    if (this.started || !this.buffer) {
+      return;
+    }
+
+    // see timerStop() note
+    this.initializeSource();
+    if (!this.source) return;
+
     // resume audio context if suspended
     if (this.context.state !== "running") {
       await this.context.resume();
     }
+    // start now will so stay in sync with other speakers, from last paused time
+    this.source.start(this.context.currentTime, this.pausedAt);
 
-    if (!this.source) return;
-    this.initializeSource();
+    if (this.endTimeout) {
+      clearTimeout(this.endTimeout);
+    }
+    this.endTimeout = setTimeout(() => {
+      this.endCallback();
+      this.log(`speaker end`);
+    }, this.remainingDuration * 1000);
 
     this.fade();
+    this.startedAt = this.context.currentTime;
+    this.started = true;
   }
 
-  timerStop(): void {}
+  timerStop(): void {
+    /**
+     * note: we cant just stop the source and resume
+     * start() and stop() are allow to called only once
+     *
+     * so need to
+     * note the current time as paused time (incremented with previous paused times)
+     * destroy current source
+     * and next time needs to start, create new source
+     * we can pass the already downloaded buffer
+     * start with offset as last paused time
+     */
+    this.source?.stop();
+    this.pausedAt += this.context.currentTime - this.startedAt;
+    this.log(`next time will start from ${this.pausedAt}`);
+    this.source = undefined;
+    this.started = false;
+    if (this.endTimeout) {
+      clearTimeout(this.endTimeout);
+    }
+  }
 
   initializeSource() {
     if (!this.buffer) return;
@@ -144,21 +169,16 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
     // connect to audio context
     this.source.connect(this.gainNode).connect(this.context.destination);
 
+    this.started = false;
+
+    console.log(`init`);
     this.fade();
   }
 
-  pausedAtSeconds = 0;
   pause(): void {
     if (!this.playing) return;
     this.gainNode.disconnect();
-    this.source?.stop();
-
     this.playing = false;
-
-    const elapsedSeconds = this.context.currentTime - this.lastStartedAtTime;
-    this.pausedAtSeconds = this.lastStartedAtSeconds + elapsedSeconds;
-
-    this.source = undefined;
   }
   _fadingDestination = 0;
   _fading = false;
@@ -166,9 +186,7 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
   fade(toVolume: number = this._fadingDestination, duration: number = 3): void {
     if (this._fadingDestination == toVolume && this._fading) return;
     this._fadingDestination = toVolume;
-    if (!this.playing) {
-      this.play();
-    }
+    if (!this.playing) return;
 
     // already at that volume
     if (Math.abs(this.volume - this._fadingDestination) < 0.05) return;

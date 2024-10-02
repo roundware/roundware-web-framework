@@ -3,10 +3,10 @@ import {
   IGainNode,
   IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
-import { silenceAudioBase64 } from "../playlistAudioTrack";
+
 import { SpeakerConfig } from "../types/roundware";
 import { ISpeakerPlayer, SpeakerConstructor } from "../types/speaker";
-import { cleanAudioURL, speakerLog } from "../utils";
+import { cleanAudioURL, silenceAudioBase64, speakerLog } from "../utils";
 
 /**
  *

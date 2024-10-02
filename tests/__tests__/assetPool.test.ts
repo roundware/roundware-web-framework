@@ -1,56 +1,55 @@
-import { AssetPool } from "../../src/assetPool";
-import { GeoListenMode } from "../../src/roundware";
-import { coordsToPoints } from "../../src/utils";
-import {
-  MOCK_ASSET_DATA,
-  MOCK_FULL_ASSETDATA,
-  MOCK_TIMED_ASSET_DATA,
-} from "../__mocks__/mock_api_responses";
+import AssetPool, { assetDecorationMapper } from "../../src/assetPool";
+import { ITimedAssetData } from "../../src/types/index";
+import { getRandomAssetData } from "../__mocks__/assetData";
 
-describe("assetPool", () => {
-  const MOCK_MIX_PARAM = {
-    getListenMode: GeoListenMode.MANUAL,
+import { AssetSorter } from "../../src/assetSorter";
+import { silenceAudioBase64 } from "../../src/playlistAudioTrack";
+import { InvalidArgumentError } from "../../src/errors/app.errors";
+jest.mock(`../../src/assetSorter`);
+const mockAssetSorter = AssetSorter as jest.MockedClass<typeof AssetSorter>;
 
-    listenerPoint: coordsToPoints({
-      latitude: 40.7683525085449,
-      longitude: -73.9643249511719,
-    }),
-    recordingRadius: 134,
-    maxDist: 134.02141359705166,
-  };
-  const assetPool = new AssetPool({
-    assets: MOCK_FULL_ASSETDATA,
-    timedAssets: MOCK_TIMED_ASSET_DATA,
-    mixParams: MOCK_MIX_PARAM,
-  });
-  describe("#nextForTrack", () => {
-    test("MANHATTAN LOCATION ", () => {
-      const nextAsset = assetPool.nextForTrack(
-        // @ts-ignore
-        {
-          mixParams: MOCK_MIX_PARAM,
-        },
-        {
-          // elapsedSeconds: 0,
-          // filterOutAssets: [],
-          listenerPoint: MOCK_MIX_PARAM.listenerPoint,
-          // deviceId: "kMuWJ7PDqYB3ej3Z0gT4g",
-          //   speakerFilters: {
-          //     activeyn: true,
-          //   },
-          //   assetFilters: {
-          //     submitted: true,
-          //     media_type: "audio",
-          //   },
-          timedAssetPriority: "discard",
-          listenTagIds: [91, 92, 218, 281, 282],
-
-          ...MOCK_MIX_PARAM,
-        }
-      );
-
-      console.log(nextAsset);
-      expect(nextAsset).not.toBeFalsy();
+describe("AssetPool", () => {
+  // instantiation;
+  test("should instantiate asset pool", () => {
+    const assetPool = new AssetPool({
+      assets: getRandomAssetData(10),
     });
+
+    expect(mockAssetSorter).toHaveBeenCalledTimes(1);
+    console.log(mockAssetSorter.mock.calls);
+
+    expect(assetPool).toBeInstanceOf(AssetPool);
+    silenceAudioBase64;
+  });
+
+  test("should throw error if arguments of updateAssets() is not array", () => {
+    const assetPool = new AssetPool({
+      assets: getRandomAssetData(10),
+      timedAssets: [],
+    });
+
+    expect(() => {
+      // @ts-expect-error
+      assetPool.updateAssets(1, 2);
+    }).toThrowError(InvalidArgumentError);
+  });
+
+  test("should decorate assets", () => {
+    const testAssetData = getRandomAssetData(10);
+    const timedAssets: ITimedAssetData[] = [
+      {
+        asset_id: testAssetData[0].id,
+
+        start: 23,
+        end: 10,
+      },
+    ];
+    const decoratedAssets = testAssetData.map(
+      assetDecorationMapper(timedAssets)
+    );
+
+    expect(decoratedAssets[0].timedAssetStart).toBe(23);
+
+    expect(decoratedAssets[0].timedAssetEnd).toBe(10);
   });
 });

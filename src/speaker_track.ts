@@ -6,20 +6,21 @@ import {
   MultiPolygon,
   Point,
   Polygon,
+  MultiLineString,
 } from "@turf/helpers";
 import lineToPolygon from "@turf/line-to-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
 import pointToLineDistance from "@turf/point-to-line-distance";
 import { IAudioContext } from "standardized-audio-context";
 import { SpeakerStreamer } from "./players/SpeakerStreamer";
-import { SpeakerPrefetchPlayer } from "./players/SpeakerPrefetchPlayer";
+import { SpeakerPrefetchSyncPlayer } from "./players/SpeakerPrefetchSyncPlayer";
 import { ISpeakerData, ISpeakerPlayer } from "./types/speaker";
 import { speakerLog } from "./utils";
 import { SpeakerConfig } from "./types/roundware";
 import { SpeakerSyncStreamer } from "./players/SpeakerSyncStreamer";
-
-const convertLinesToPolygon = (shape: any): Polygon | MultiPolygon =>
-  // @ts-ignore
+import { Mixer } from "./mixer";
+import { SpeakerPrefetchPlayer } from "./players/SpeakerPrefetchPlayer";
+const convertLinesToPolygon = (shape: LineString | MultiLineString) =>
   lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
 const NEARLY_ZERO = 0.05;
@@ -34,11 +35,12 @@ export class SpeakerTrack {
   minVolume: number;
   attenuationDistanceKm: number;
   uri: string;
-  listenerPoint: Point;
 
-  attenuationBorderPolygon: MultiPolygon | Polygon;
-  attenuationBorderLineString: LineString;
-  outerBoundary: MultiPolygon | Polygon;
+  listenerPoint: Point;
+  attenuationBorderPolygon?: Feature<MultiPolygon | Polygon>;
+  attenuationBorderLineString?: LineString;
+  outerBoundary?: Feature<MultiPolygon | Polygon>;
+
   currentVolume: number;
 
   speakerData: ISpeakerData;
@@ -47,16 +49,18 @@ export class SpeakerTrack {
   player!: ISpeakerPlayer;
   audioContext: IAudioContext;
   config: SpeakerConfig;
+  mixer: Mixer;
 
   constructor({
     audioContext,
     listenerPoint,
     data,
     config,
+    mixer,
   }: {
     audioContext: IAudioContext;
     listenerPoint: Feature<Point>;
-
+    mixer: Mixer;
     data: ISpeakerData;
     config: SpeakerConfig;
   }) {
@@ -69,7 +73,7 @@ export class SpeakerTrack {
       attenuation_distance: attenuationDistance,
       uri,
     } = data;
-
+    this.mixer = mixer;
     this.audioContext = audioContext;
     this.config = config;
     this.speakerData = data;
@@ -81,23 +85,31 @@ export class SpeakerTrack {
 
     this.listenerPoint = listenerPoint.geometry;
 
-    this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
-    this.attenuationBorderLineString = attenuation_border;
-
-    this.outerBoundary = convertLinesToPolygon(boundary);
+    if (attenuation_border) {
+      this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
+      this.attenuationBorderLineString = attenuation_border;
+    }
+    if (boundary) this.outerBoundary = convertLinesToPolygon(boundary);
     this.currentVolume = NEARLY_ZERO;
     this.initPlayer();
   }
 
   outerBoundaryContains(point: Coord) {
-    return booleanPointInPolygon(point, this.outerBoundary);
+    return (
+      this.outerBoundary && booleanPointInPolygon(point, this.outerBoundary)
+    );
   }
 
   attenuationShapeContains(point: Coord) {
-    return booleanPointInPolygon(point, this.attenuationBorderPolygon);
+    return (
+      this.attenuationBorderPolygon &&
+      booleanPointInPolygon(point, this.attenuationBorderPolygon)
+    );
   }
 
   attenuationRatio(atPoint: Coord) {
+    if (!this.attenuationBorderLineString) return 0;
+
     const distToInnerShapeKm = pointToLineDistance(
       atPoint,
       this.attenuationBorderLineString,
@@ -115,16 +127,20 @@ export class SpeakerTrack {
 
     let newVolume = this.currentVolume;
     if (!listenerPoint) {
+      this.log("No listener point");
       newVolume = this.currentVolume;
     } else if (this.attenuationShapeContains(listenerPoint)) {
+      this.log("In attenuation shape");
       newVolume = this.maxVolume;
     } else if (this.outerBoundaryContains(listenerPoint)) {
+      this.log("In outer boundary");
       const range = this.maxVolume - this.minVolume;
       const volumeGradient =
         this.minVolume + range * this.attenuationRatio(listenerPoint);
 
       newVolume = volumeGradient;
     } else {
+      this.log("Outside outer boundary");
       newVolume = this.minVolume;
     }
 
@@ -156,7 +172,7 @@ export class SpeakerTrack {
     } else {
       this.player.log(`new volume ${newVolume}`);
       this.play();
-      this.updateVolume();
+      if (this.player.playing) this.updateVolume();
     }
   }
 
@@ -202,22 +218,25 @@ export class SpeakerTrack {
   }
 
   initPlayer() {
-    const Player = this.config.sync
-      ? this.config.prefetch
-        ? SpeakerPrefetchPlayer
-        : SpeakerSyncStreamer
-      : SpeakerStreamer;
+    const Player = (() => {
+      if (this.config.sync && this.config.prefetch)
+        return SpeakerPrefetchSyncPlayer;
+      if (this.config.sync) return SpeakerSyncStreamer;
+      if (this.config.prefetch) return SpeakerPrefetchPlayer;
+      return SpeakerStreamer;
+    })();
+
+    console.log(`init player ${this.speakerId}: ${Player.name}`);
     this.player = new Player({
       audioContext: this.audioContext,
       id: this.speakerId,
       uri: this.uri,
       config: this.config,
     });
-    if (!this.config.sync) {
-      this.player.audio.addEventListener("playing", () => {
-        if (this.player.isSafeToPlay) this.updateVolume();
-      });
-    }
+
+    this.player.audio.addEventListener("playing", () => {
+      if (this.player.isSafeToPlay && this.mixer.playing) this.updateVolume();
+    });
   }
 
   toString() {
