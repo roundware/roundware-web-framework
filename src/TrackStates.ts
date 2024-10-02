@@ -85,17 +85,17 @@ export class LoadingState implements ICommonStateProperties {
  */
 export class TimedTrackState implements ICommonStateProperties {
   track: PlaylistAudiotrack;
-  windowScope: Window;
+
   trackOptions: TrackOptions;
-  timerId: null | number;
+  timerId: null | NodeJS.Timeout;
 
   // for logging purpse;
-  intervalId: null | number;
+  intervalId: null | NodeJS.Timeout;
   timeRemainingMs?: number;
   timerApproximateEndingAtMs?: number;
   constructor(track: PlaylistAudiotrack, trackOptions: TrackOptions) {
     this.track = track;
-    this.windowScope = track.windowScope;
+
     this.trackOptions = trackOptions;
     this.timerId = null;
     this.intervalId = null;
@@ -146,10 +146,10 @@ export class TimedTrackState implements ICommonStateProperties {
 
   clearTimer() {
     const now = new Date().getTime();
-    const { timerId, timerApproximateEndingAtMs = now, windowScope } = this;
+    const { timerId, timerApproximateEndingAtMs = now } = this;
 
     if (timerId) {
-      windowScope.clearTimeout(timerId);
+      clearTimeout(timerId);
       clearInterval(this.intervalId!);
       this.timerId = null;
       delete this.timerApproximateEndingAtMs;
@@ -168,11 +168,8 @@ export class TimedTrackState implements ICommonStateProperties {
   }
 
   setNextStateTimer(timeMs: number) {
-    this.timerId = this.windowScope.setTimeout(
-      () => this.setNextState(),
-      timeMs
-    );
-    this.intervalId = this.windowScope.setInterval(
+    this.timerId = setTimeout(() => this.setNextState(), timeMs);
+    this.intervalId = setInterval(
       () =>
         this.log(
           `${(

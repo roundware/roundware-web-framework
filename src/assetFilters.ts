@@ -1,14 +1,10 @@
-import distance from "@turf/distance";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import distance from "@turf/distance";
 import { Coord } from "@turf/helpers";
-import { isEmpty } from "./utils";
 import { GeoListenMode } from "./mixer";
-import { GeoListenModeType, IMixParams } from "./types";
+import { IMixParams } from "./types";
 import { IDecoratedAsset } from "./types/asset";
-import {
-  InvalidArgumentError,
-  RoundwareFrameworkError,
-} from "./errors/app.errors";
+import { isEmpty } from "./utils";
 
 export interface IAssetPriorities {
   readonly DISCARD: false;

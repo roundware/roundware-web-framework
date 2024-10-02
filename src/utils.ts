@@ -3,9 +3,12 @@
 const { point } = require("@turf/helpers");
 import { Point, Feature } from "@turf/helpers";
 import { AudioContext, IAudioContext } from "standardized-audio-context";
-import { silenceAudioBase64 } from "./playlistAudioTrack";
+
 const MATCHES_URI_SCHEME = new RegExp(/^https?:\/\//i);
 const MATCHES_WAV_FILE = new RegExp(/\.wav$/i);
+export const silenceAudioBase64 =
+  "data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+
 export const isIos = () => {
   return (
     [
@@ -43,8 +46,8 @@ export const cleanAudioURL = (
  * Makes sure coordinates are in range of +180 to -180.
  * @param {number[]} coordinates
  */
-const normalizeCoords = (coordinates: number[]) => {
-  for (let i = 0; i <= coordinates.length; i++) {
+export const normalizeCoords = (coordinates: number[]) => {
+  for (let i = 0; i < coordinates.length; i++) {
     if (coordinates[i] > 180) coordinates[i] = (coordinates[i] % 180) - 180;
     else if (coordinates[i] < -180)
       coordinates[i] = (coordinates[i] % 180) + 180;
@@ -106,9 +109,9 @@ export const UNLOCK_AUDIO_EVENTS = [
 
 /** Helps stabilize WebAudio startup
  @thanks https://www.mattmontag.com/web/unlock-web-audio-in-safari-for-ios-and-macos */
-function unlockAudioContext(
-  body: Window[`document`][`body`],
-  audioCtx: AudioContext
+export function unlockAudioContext(
+  body: Pick<Window[`document`][`body`], "addEventListener">,
+  audioCtx: Pick<AudioContext, "state" | "resume">
 ) {
   if (audioCtx.state !== "suspended") return;
 
