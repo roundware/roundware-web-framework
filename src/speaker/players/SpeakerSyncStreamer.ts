@@ -3,9 +3,9 @@ import {
   IGainNode,
   IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
-import { SpeakerConfig } from "../types/roundware";
-import { ISpeakerPlayer, SpeakerConstructor } from "../types/speaker";
-import { cleanAudioURL, NEARLY_ZERO, speakerLog } from "../utils";
+import { SpeakerConfig } from "../../types/roundware";
+import { ISpeakerPlayer, SpeakerConstructor } from "../../types/speaker";
+import { cleanAudioURL, NEARLY_ZERO, speakerLog } from "../../utils";
 
 export class SpeakerSyncStreamer implements ISpeakerPlayer {
   isSafeToPlay: boolean = true;
