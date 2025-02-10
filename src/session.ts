@@ -7,7 +7,7 @@ let apiClient: ApiClient;
 /** Responsible for establishing a session with the Roundware server **/
 
 export class Session {
-  sessionId: number | undefined;
+  sessionId: number | null = null;
 
   /** Create a new Session
    * @param {object} navigator - provides access to the userAgent string
@@ -39,7 +39,7 @@ export class Session {
 
   /** @returns {String} human-readable representation of this session **/
   toString(): string {
-    return "Roundware Session #" + sessionId;
+    return "Roundware Session #" + (this.sessionId || "not yet established");
   }
 
   /** Make an asynchronous API call to establish a session with the Roundware server
