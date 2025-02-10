@@ -14,7 +14,7 @@ import { cleanAudioURL, silenceAudioBase64, speakerLog } from "../../utils";
  * @export
  * @class SpeakerPlayer
  */
-export class SpeakerStreamer implements ISpeakerPlayer {
+export class SpeakerStreamer extends EventTarget implements ISpeakerPlayer {
   private _fadeDuration: number;
   audio: HTMLAudioElement;
   private _audioSrc: IMediaElementAudioSourceNode<IAudioContext>;
@@ -34,6 +34,7 @@ export class SpeakerStreamer implements ISpeakerPlayer {
    * @memberof SpeakerPlayer
    */
   constructor({ audioContext, uri, id, config }: SpeakerConstructor) {
+    super();
     this._context = audioContext;
     this.id = id;
     this.audio = new Audio();

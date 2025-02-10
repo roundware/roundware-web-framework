@@ -21,7 +21,10 @@ import {
  * @export
  * @class SpeakerPrefetchPlayer
  */
-export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
+export class SpeakerPrefetchPlayer
+  extends EventTarget
+  implements ISpeakerPlayer
+{
   isSafeToPlay: boolean = true;
   playing: boolean = false;
   loaded = false;
@@ -36,6 +39,7 @@ export class SpeakerPrefetchPlayer implements ISpeakerPlayer {
   buffer?: IAudioBuffer;
 
   constructor({ audioContext, id, uri, config }: SpeakerConstructor) {
+    super();
     this.log("SpeakerPrefetchPlayer constructor");
 
     this.audio = new Audio();

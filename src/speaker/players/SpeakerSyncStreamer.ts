@@ -7,7 +7,7 @@ import { SpeakerConfig } from "../../types/roundware";
 import { ISpeakerPlayer, SpeakerConstructor } from "../../types/speaker";
 import { cleanAudioURL, NEARLY_ZERO, speakerLog } from "../../utils";
 
-export class SpeakerSyncStreamer implements ISpeakerPlayer {
+export class SpeakerSyncStreamer extends EventTarget implements ISpeakerPlayer {
   isSafeToPlay: boolean = true;
   playing: boolean = false;
   audio: HTMLAudioElement;
@@ -22,6 +22,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
   private _fadingTimeout?: NodeJS.Timeout;
 
   constructor({ audioContext, config, uri, id }: SpeakerConstructor) {
+    super();
     this.id = id;
     this.config = config;
     this.uri = cleanAudioURL(uri);
