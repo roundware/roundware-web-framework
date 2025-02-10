@@ -1,4 +1,4 @@
-import { AudioContext } from "standardized-audio-context-mock";
+import { AudioContext } from "standardized-audio-context";
 import { Playlist } from "../../src/playlist";
 import { coordsToPoints } from "../../src/utils";
 import { mockAssetPool } from "./assetPool";

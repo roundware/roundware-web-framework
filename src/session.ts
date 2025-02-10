@@ -1,14 +1,13 @@
 import { ApiClient } from "./api-client";
 
-let clientSystem: string = "Unknown";
-let projectId: number | undefined, sessionId: string, geoListenEnabled: boolean;
-let apiClient: ApiClient;
-
 /** Responsible for establishing a session with the Roundware server **/
 
 export class Session {
   sessionId: number | null = null;
-
+  clientSystem: string = "Unknown";
+  projectId: number | undefined;
+  geoListenEnabled: boolean;
+  apiClient: ApiClient;
   /** Create a new Session
    * @param {object} navigator - provides access to the userAgent string
    * @param {Number} newProjectId - identifies the Roundware project to associate with this session
@@ -24,17 +23,17 @@ export class Session {
       apiClient: ApiClient;
     }
   ) {
-    clientSystem = navigator.userAgent;
+    this.clientSystem = navigator.userAgent;
 
-    if (clientSystem.length > 127) {
+    if (this.clientSystem.length > 127) {
       // on mobile browsers, this string is longer than the server wants
-      clientSystem = clientSystem.slice(0, 127);
+      this.clientSystem = this.clientSystem.slice(0, 127);
     }
 
-    projectId = newProjectId;
-    geoListenEnabled = geoListenEnablement;
+    this.projectId = newProjectId;
+    this.geoListenEnabled = geoListenEnablement;
 
-    apiClient = options.apiClient;
+    this.apiClient = options.apiClient;
   }
 
   /** @returns {String} human-readable representation of this session **/
@@ -47,12 +46,12 @@ export class Session {
    **/
   async connect(): Promise<number> {
     const requestData = {
-      project_id: projectId,
-      geo_listen_enabled: geoListenEnabled,
-      client_system: clientSystem,
+      project_id: this.projectId,
+      geo_listen_enabled: this.geoListenEnabled,
+      client_system: this.clientSystem,
     };
 
-    const data = await apiClient.post<{ id: number }>(
+    const data = await this.apiClient.post<{ id: number }>(
       "/sessions/",
       requestData
     );

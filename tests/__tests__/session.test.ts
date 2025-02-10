@@ -43,7 +43,7 @@ describe("Session", () => {
   describe("toString", () => {
     it("should return a human-readable representation of the session", () => {
       const result = session.toString();
-      expect(result).toEqual("Roundware Session #undefined");
+      expect(result).toEqual("Roundware Session #not yet established");
     });
   });
 
