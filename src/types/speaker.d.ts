@@ -10,11 +10,13 @@ export interface ISpeakerData {
   attenuation_distance: number;
   uri: string;
   shape?: MultiPolygon;
+  parents?: number[];
+  children?: number[];
 }
 
 export interface ISpeakerFilters {}
 
-export interface ISpeakerPlayer {
+export interface ISpeakerPlayer extends EventTarget {
   isSafeToPlay: boolean;
   playing: boolean;
   audio: HTMLAudioElement;
