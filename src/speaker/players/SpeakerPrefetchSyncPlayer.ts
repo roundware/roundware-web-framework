@@ -8,7 +8,10 @@ import { SpeakerConfig } from "../../types/roundware";
 import { ISpeakerPlayer, SpeakerConstructor } from "../../types/speaker";
 import { NEARLY_ZERO, speakerLog } from "../../utils";
 
-export class SpeakerPrefetchSyncPlayer implements ISpeakerPlayer {
+export class SpeakerPrefetchSyncPlayer
+  extends EventTarget
+  implements ISpeakerPlayer
+{
   isSafeToPlay: boolean = true;
   playing: boolean = false;
   loaded = false;
@@ -23,6 +26,7 @@ export class SpeakerPrefetchSyncPlayer implements ISpeakerPlayer {
   buffer?: IAudioBuffer;
 
   constructor({ audioContext, id, uri, config }: SpeakerConstructor) {
+    super();
     this.audio = new Audio();
     this.id = id;
     this.context = audioContext;
@@ -95,6 +99,7 @@ export class SpeakerPrefetchSyncPlayer implements ISpeakerPlayer {
   }
 
   endTimeout: NodeJS.Timeout | null = null;
+  loopInterval: NodeJS.Timeout[] = [];
 
   async timerStart() {
     if (this.started || !this.buffer) {
@@ -109,8 +114,42 @@ export class SpeakerPrefetchSyncPlayer implements ISpeakerPlayer {
     if (this.context.state !== "running") {
       await this.context.resume();
     }
+
+    if (this.loopInterval?.length) {
+      this.loopInterval.forEach((i) => clearInterval(i));
+      this.loopInterval = [];
+    }
+
     // start now will so stay in sync with other speakers, from last paused time
     this.source.start(this.context.currentTime, this.pausedAt);
+
+    if (this.config.loop) {
+      const finalDuration = this.config.length || this.buffer.duration;
+      this.log(`looping every ${finalDuration} seconds`);
+      const that = this;
+      if (this.pausedAt == 0) {
+        this.loopInterval?.push(
+          setInterval(() => {
+            that.log(`looping`);
+            that.dispatchEvent(new Event("loop"));
+          }, finalDuration * 1000)
+        );
+      } else {
+        this.log(`looping after ${finalDuration - this.pausedAt} seconds`);
+        this.loopInterval?.push(
+          setTimeout(() => {
+            that.log(`looping`);
+            that.dispatchEvent(new Event("loop"));
+            that.loopInterval.push(
+              setInterval(() => {
+                that.log(`looping`);
+                that.dispatchEvent(new Event("loop"));
+              }, finalDuration * 1000)
+            );
+          }, finalDuration * 1000 - this.pausedAt * 1000)
+        );
+      }
+    }
 
     if (this.endTimeout) {
       clearTimeout(this.endTimeout);
@@ -138,6 +177,7 @@ export class SpeakerPrefetchSyncPlayer implements ISpeakerPlayer {
      * start with offset as last paused time
      */
     this.source?.stop();
+
     this.pausedAt += this.context.currentTime - this.startedAt;
     this.log(`next time will start from ${this.pausedAt}`);
     this.source = undefined;
@@ -145,6 +185,8 @@ export class SpeakerPrefetchSyncPlayer implements ISpeakerPlayer {
     if (this.endTimeout) {
       clearTimeout(this.endTimeout);
     }
+    this.loopInterval?.forEach((i) => clearInterval(i));
+    this.loopInterval = [];
   }
 
   initializeSource() {
@@ -226,18 +268,5 @@ export class SpeakerPrefetchSyncPlayer implements ISpeakerPlayer {
   onEnd(callback: () => void) {
     this.endCallback = callback;
     console.log(`callback set`);
-  }
-
-  get nextLoopPointInMs(): number {
-    if (!this.source || !this.buffer) return 0;
-
-    const startedAt = this.startedAt - this.pausedAt;
-    const duration = this.buffer.duration || this.config.length || 0;
-
-    const elapsedTime = this.context.currentTime - startedAt;
-
-    const cycleElapsedTime = (elapsedTime - startedAt) % duration;
-
-    return (duration - cycleElapsedTime) * 1000;
   }
 }
