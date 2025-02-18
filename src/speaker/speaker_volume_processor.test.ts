@@ -1,13 +1,14 @@
 import { before, range, shuffle, xor } from "lodash";
 import { SpeakerVolumeProcessor, VPTrack } from "./speaker_volume_processor";
 import { coordsToPoints } from "../utils";
+import { Logger } from "../helpers/Logger";
 
 describe("Volume Processor", () => {
   const holdedTracks: VPTrack[] = range(0, 10).map((index) => ({
     calculatedVolume: Math.random(),
     minVolume: 0,
     speakerData: {
-      parents: [],
+      parents: index === 0 ? [] : [index - 1],
     },
     speakerId: index,
     volumeByLocation() {
@@ -19,7 +20,7 @@ describe("Volume Processor", () => {
     calculatedVolume: Math.random(),
     minVolume: 0,
     speakerData: {
-      parents: [],
+      parents: [index - 1],
     },
     speakerId: index,
     volumeByLocation() {
@@ -40,7 +41,7 @@ describe("Volume Processor", () => {
     expect(vP.holdList).toEqual(holdedTracks);
   });
 
-  describe("maxNRandom", () => {
+  describe("maxNRandom()", () => {
     const listenerPoint = coordsToPoints({
       latitude: 45,
       longitude: 45,
@@ -193,6 +194,91 @@ describe("Volume Processor", () => {
       const processor = new SpeakerVolumeProcessor(tracks);
       const root = processor.findRoot(shuffle(tracks));
       expect(root?.speakerId).toBe(0);
+    });
+  });
+  describe("holdMinVolumes()", () => {
+    const listenerPoint = coordsToPoints({
+      latitude: 45,
+      longitude: 45,
+    }).geometry;
+
+    beforeEach(() => {
+      // Reset the processor state before each test
+      vP.clearHolds();
+      allTracks.forEach((track) => {
+        track.calculatedVolume = Math.random();
+      });
+    });
+
+    test("should hold tracks with minimum volume", () => {
+      // Set some tracks to have calculatedVolume equal to minVolume
+      allTracks[0].calculatedVolume = allTracks[0].minVolume;
+      allTracks[1].calculatedVolume = allTracks[1].minVolume;
+
+      vP.holdMinVolumes();
+
+      // Check that holdList contains tracks with minVolume
+      expect(vP.holdList).toContain(allTracks[0]);
+      expect(vP.holdList).toContain(allTracks[1]);
+    });
+
+    test("should not hold tracks without minimum volume", () => {
+      // Ensure no tracks have calculatedVolume equal to minVolume
+      allTracks.forEach((track) => {
+        track.calculatedVolume = track.minVolume + 0.1;
+      });
+
+      vP.holdMinVolumes();
+
+      // Check that holdList is empty
+      expect(vP.holdList).toHaveLength(0);
+    });
+  });
+  describe("holdTrack()", () => {
+    beforeEach(() => {
+      // Reset the processor state before each test
+      vP.clearHolds();
+      allTracks.forEach((track) => {
+        track.calculatedVolume = Math.random();
+      });
+    });
+
+    test("should add null to holdList if track is null", () => {
+      vP.holdTrack(null);
+      expect(vP.holdList[vP.holdList.length - 1]).toEqual(null);
+    });
+
+    test("should add track to holdList if track is available", () => {
+      const track = availableTracks[0];
+      vP.holdTrack(track);
+      expect(vP.holdList[vP.holdList.length - 1]).toEqual(track);
+    });
+
+    test("should not add track to holdList if track is not available", () => {
+      vP.holdTrack(holdedTracks[0]);
+      vP.holdTrack(holdedTracks[1]);
+      vP.holdTrack(holdedTracks[2]);
+      vP.holdTrack(holdedTracks[0]);
+      expect(vP.holdList[vP.holdList.length - 1]).not.toEqual(holdedTracks[0]);
+    });
+
+    test("should not add duplicate tracks to holdList", () => {
+      const track = availableTracks[0];
+      vP.holdTrack(track);
+      vP.holdTrack(track);
+      const occurrences = vP.holdList.filter((t) => t === track).length;
+      expect(occurrences).toBe(1);
+    });
+
+    test("should log a warning if track is already in holdList", () => {
+      const track = holdedTracks[0];
+      const warnSpy = jest.spyOn(vP, "warn");
+      vP.holdTrack(track);
+      vP.holdTrack(track);
+      expect(warnSpy).toHaveBeenCalledWith(
+        "Track was already holded",
+        track.speakerId
+      );
     });
   });
 });

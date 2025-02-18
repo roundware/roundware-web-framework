@@ -73,23 +73,6 @@ export class SpeakerVolumeProcessor extends Logger {
     return this;
   }
 
-  holdRandom() {
-    // from this.availableTracks
-    if (this.getAvailableTracks().length === 0) return this;
-
-    const available = this.getAvailableTracks();
-
-    const randomIndex = Math.floor(Math.random() * available.length);
-
-    const random = available[randomIndex];
-
-    this.log("Hold Random:", random.speakerId);
-
-    this.holdList.push(random);
-
-    return this;
-  }
-
   holdTrack(track: VPTrack | null) {
     if (!track) {
       this.holdList.push(null);
@@ -99,6 +82,12 @@ export class SpeakerVolumeProcessor extends Logger {
       );
       if (available) {
         this.holdList.push(available);
+      } else {
+        // check if it's already in holdList
+        if (this.holdList.some((t) => t?.speakerId === track.speakerId)) {
+          this.warn("Track was already holded", track.speakerId);
+          return this;
+        }
       }
     }
     return this;
