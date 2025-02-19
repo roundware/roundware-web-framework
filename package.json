@@ -44,6 +44,7 @@
     "@babel/preset-typescript": "^7.26.0",
     "@faker-js/faker": "^7.6.0",
     "@types/jest": "^28.1.8",
+    "@types/sinon": "^17.0.3",
     "@types/ws": "^8.5.4",
     "babel-loader": "^9.2.1",
     "date-fns": "^2.30.0",
