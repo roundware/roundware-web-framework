@@ -38,12 +38,12 @@ import { ISpeakerData, ISpeakerFilters } from "./types/speaker";
 import { User } from "./user";
 
 export * from "./assetFilters";
-export { GeoListenMode } from "./mixer";
 
 import { multiPolygon, featureCollection } from "@turf/helpers";
 import bbox from "@turf/bbox";
 import buffer from "@turf/buffer";
 import { ListenHistory } from "./listenHistory";
+
 /** This class is the primary integration point between Roundware's server and your application
 
    @example
@@ -77,7 +77,7 @@ import { ListenHistory } from "./listenHistory";
   roundware.play(startListening).catch(handleError);
 **/
 
-export class Roundware {
+class Roundware {
   private _serverUrl: string;
   private _projectId: number;
   private _speakerFilters: ISpeakerFilters = {};
@@ -636,3 +636,4 @@ export class Roundware {
     };
   }
 }
+export { GeoListenMode, Roundware };

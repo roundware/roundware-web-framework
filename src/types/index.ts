@@ -103,3 +103,15 @@ export interface ISession {
 export type ITrackIdMap = {
   [trackId in string | number]: PlaylistAudiotrack;
 };
+
+export * from "./api-client";
+export * from "./asset";
+export * from "./audioTrack";
+export * from "./envelope";
+export * from "./events";
+export * from "./mixer";
+export * from "./project";
+export * from "./roundware";
+export * from "./speaker";
+export * from "./track-states";
+export * from "./user";

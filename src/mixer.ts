@@ -1,18 +1,12 @@
 import { IAudioContext } from "standardized-audio-context";
 import { AssetPool } from "./assetPool";
 import { Playlist } from "./playlist";
-import { AssetPriorityType, Roundware } from "./roundware";
-import { SpeakerTrack } from "./speaker/speaker_track";
-import {
-  Coordinates,
-  GeoListenModeType,
-  IMixParams,
-  ITimedAssetData,
-} from "./types";
+import { Roundware, AssetPriorityType } from "./roundware";
+import { Coordinates, GeoListenModeType, IMixParams } from "./types";
 import { IAssetData, IDecoratedAsset } from "./types/asset";
 
-import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 import { SpeakerEngine } from "./speaker/speaker_engine";
+import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 
 export const GeoListenMode: {
   DISABLED: GeoListenModeType;
