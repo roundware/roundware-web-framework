@@ -141,10 +141,14 @@ export class Mixer {
         audioContext: this.audioContext,
       });
 
-      this.speakerEngine = new SpeakerEngine(this._client, this.audioContext, {
-        listenerPoint,
-        ...this.mixParams,
-      });
+      this.speakerEngine = new SpeakerEngine(
+        this._client.speakers(),
+        this.audioContext,
+        {
+          listenerPoint,
+          ...this.mixParams,
+        }
+      );
 
       this.updateParams(this.mixParams);
       console.info(`Mixer Activated`);

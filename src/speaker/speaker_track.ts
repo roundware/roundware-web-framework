@@ -87,7 +87,28 @@ export class SpeakerTrack {
     }
     if (boundary) this.outerBoundary = convertLinesToPolygon(boundary);
     this.calculatedVolume = NEARLY_ZERO;
-    this.initPlayer();
+
+    const Player = (() => {
+      if (this.config.mode.startsWith("prefetch-sync"))
+        return SpeakerPrefetchSyncPlayer;
+      if (this.config.mode.startsWith("stream-sync"))
+        return SpeakerSyncStreamer;
+      if (this.config.mode.startsWith("prefetch")) return SpeakerPrefetchPlayer;
+      return SpeakerStreamer;
+    })();
+
+    console.log(`init player ${this.speakerId}: ${Player.name}`);
+    this.player = new Player({
+      audioContext: this.audioContext,
+      id: this.speakerId,
+      uri: this.uri,
+      config: this.config,
+    });
+
+    this.player.audio.addEventListener("playing", () => {
+      if (this.player.isSafeToPlay && this.speakerEngine.playing)
+        this.updateVolume();
+    });
   }
 
   outerBoundaryContains(point: Coord) {
@@ -175,30 +196,6 @@ export class SpeakerTrack {
     } catch (err) {
       console.error("Unable to pause", this.logline, err);
     }
-  }
-
-  initPlayer() {
-    const Player = (() => {
-      if (this.config.mode.startsWith("prefetch-sync"))
-        return SpeakerPrefetchSyncPlayer;
-      if (this.config.mode.startsWith("stream-sync"))
-        return SpeakerSyncStreamer;
-      if (this.config.mode.startsWith("prefetch")) return SpeakerPrefetchPlayer;
-      return SpeakerStreamer;
-    })();
-
-    console.log(`init player ${this.speakerId}: ${Player.name}`);
-    this.player = new Player({
-      audioContext: this.audioContext,
-      id: this.speakerId,
-      uri: this.uri,
-      config: this.config,
-    });
-
-    this.player.audio.addEventListener("playing", () => {
-      if (this.player.isSafeToPlay && this.speakerEngine.playing)
-        this.updateVolume();
-    });
   }
 
   toString() {

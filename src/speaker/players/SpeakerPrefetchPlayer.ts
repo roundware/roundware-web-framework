@@ -3,17 +3,11 @@ import {
   IAudioBufferSourceNode,
   IAudioContext,
   IGainNode,
-  IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
 
 import { SpeakerConfig } from "../../types/roundware";
 import { ISpeakerPlayer, SpeakerConstructor } from "../../types/speaker";
-import {
-  cleanAudioURL,
-  NEARLY_ZERO,
-  silenceAudioBase64,
-  speakerLog,
-} from "../../utils";
+import { NEARLY_ZERO, speakerLog } from "../../utils";
 
 /**
  *

@@ -14,9 +14,7 @@ export const mockRoundware = new Roundware({
   speakerConfig: {
     acceptableDelayMs: 100,
     length: 100,
-    loop: true,
-    prefetch: true,
-    sync: true,
+    mode: "prefetch-sync",
     syncCheckInterval: 100,
   },
   assetFilters: [] as IAssetFilters,

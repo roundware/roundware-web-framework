@@ -51,4 +51,6 @@ export type SpeakerConfig = {
   acceptableDelayMs?: number;
   syncCheckInterval?: number;
   replaceWithNoneProbability?: number;
+  // list of lengths from which app will select randomly one of
+  lengths?: number[];
 };

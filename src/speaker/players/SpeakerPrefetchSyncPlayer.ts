@@ -269,4 +269,8 @@ export class SpeakerPrefetchSyncPlayer
     this.endCallback = callback;
     console.log(`callback set`);
   }
+
+  updateDuration(duration: number) {
+    if (this.source) this.source.loopEnd = duration;
+  }
 }

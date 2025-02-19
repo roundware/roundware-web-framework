@@ -1,4 +1,3 @@
-/* Sends mock responses for roundware API calls */
 import {
   MOCK_ASSET_DATA,
   MOCK_AUDIO_TRACKS_DATA,

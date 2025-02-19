@@ -1,8 +1,10 @@
 import { Point } from "@turf/helpers";
+import { sample } from "lodash";
 import { IAudioContext } from "standardized-audio-context";
 import { Logger } from "../helpers/Logger";
-import { Roundware } from "../roundware";
 import { IMixParams } from "../types/index";
+import { ISpeakerData } from "../types/speaker";
+import { SpeakerPrefetchSyncPlayer } from "./players/SpeakerPrefetchSyncPlayer";
 import { SpeakerTrack } from "./speaker_track";
 import { SpeakerVolumeProcessor } from "./speaker_volume_processor";
 export class SpeakerEngine extends Logger {
@@ -15,14 +17,34 @@ export class SpeakerEngine extends Logger {
   volumeProcessor: SpeakerVolumeProcessor;
 
   constructor(
-    private _client: Roundware,
+    speakers: ISpeakerData[],
     private audioContext: IAudioContext,
     mixParams: IMixParams
   ) {
     super();
     this.mixParams = mixParams;
     this.listenerPoint = mixParams?.listenerPoint!.geometry;
-    this.initializeSpeakers();
+    this.endedSpeakersLength = 0;
+
+    const that = this;
+
+    this.speakerTracks = speakers.map(
+      (speakerData) =>
+        new SpeakerTrack({
+          audioContext: that.audioContext,
+          data: speakerData,
+          config: mixParams.speakerConfig || {
+            mode: "stream-sync",
+            loop: false,
+          },
+          speakerEngine: that,
+        })
+    );
+
+    this.speakerTracks.forEach((s) =>
+      s.player.onEnd(() => that.handleSpeakerEnd())
+    );
+    this.updateParams(this.playing, this.mixParams || {});
     console.debug("SpeakerEngine initialized");
     this.volumeProcessor = new SpeakerVolumeProcessor(this.speakerTracks || []);
 
@@ -140,34 +162,40 @@ export class SpeakerEngine extends Logger {
         this.listenerPoint,
         this.mixParams?.speakerConfig?.replaceWithNoneProbability || 0.3
       );
+
+      // modify lengths;
+      if (Array.isArray(this.mixParams?.speakerConfig?.lengths)) {
+        // last (max) from hold list
+        const lastN = this.volumeProcessor.holdList.slice(
+          this.volumeProcessor.holdList.length - max
+        ) as SpeakerTrack[];
+
+        const base = lastN[0];
+
+        for (let i = 0; i < lastN.length - 1; i++) {
+          const speaker = lastN[i + 1];
+          // get random length
+          const randomLength = sample(this.mixParams?.speakerConfig?.lengths);
+          if (speaker && typeof randomLength === "number") {
+            if (
+              speaker.player instanceof SpeakerPrefetchSyncPlayer &&
+              base.player instanceof SpeakerPrefetchSyncPlayer
+            ) {
+              speaker.player.updateDuration(
+                randomLength * base.player.source?.buffer?.duration!
+              );
+            } else {
+              throw new Error(
+                "Speaker player is not instance of SpeakerPrefetchSyncPlayer"
+              );
+            }
+          }
+        }
+      }
     }
     this.log("Updating volumes due to loop point");
     this.speakerTracks?.forEach((s) => s.updateVolume());
     this.volumeProcessor.logHoldlist();
-  }
-
-  initializeSpeakers() {
-    this.endedSpeakersLength = 0;
-    const speakers = this._client.speakers();
-    const that = this;
-
-    this.speakerTracks = speakers.map(
-      (speakerData) =>
-        new SpeakerTrack({
-          audioContext: that.audioContext,
-          data: speakerData,
-          config: that.mixParams?.speakerConfig || {
-            mode: "stream-sync",
-            loop: false,
-          },
-          speakerEngine: that,
-        })
-    );
-
-    this.speakerTracks.forEach((s) =>
-      s.player.onEnd(() => that.handleSpeakerEnd())
-    );
-    this.updateParams(this.playing, this.mixParams || {});
   }
 
   allSpeakersEndCallback = () => {};
