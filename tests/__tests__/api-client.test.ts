@@ -230,6 +230,61 @@ describe("Api Client", () => {
           }
         );
       });
+
+      it("should set query params correctly when GET request", async () => {
+        await apiClient.send(mockPath, mockData, {
+          method: "GET",
+          contentType: "multipart/form-data",
+          test: true,
+          another: true,
+        });
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path?test=true&another=true&test=mock_data&id=1234",
+          {
+            headers: {},
+            method: "GET",
+            mode: "cors",
+          }
+        );
+      });
+
+      it("should set query params correctly when HEAD request", async () => {
+        await apiClient.send(mockPath, mockData, {
+          method: "HEAD",
+          contentType: "multipart/form-data",
+          test: true,
+          another: true,
+        });
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path?test=true&another=true&test=mock_data&id=1234",
+          {
+            headers: {},
+            method: "HEAD",
+            mode: "cors",
+          }
+        );
+      });
+
+      it("should not set query params correctly when data is not string", async () => {
+        await apiClient.send(mockPath, "false", {
+          method: "HEAD",
+          contentType: "multipart/form-data",
+          test: true,
+          another: true,
+        });
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path?test=true&another=true",
+          {
+            headers: {},
+            method: "HEAD",
+            mode: "cors",
+          }
+        );
+      });
+
       it("should pass body in correctly for PATCH request", async () => {
         await apiClient.send(mockPath, mockData, {
           method: "PATCH",
@@ -283,6 +338,34 @@ describe("Api Client", () => {
         } catch (e) {
           expect(e).toBeInstanceOf(RoundwareConnectionError);
         }
+      });
+    });
+
+    describe(".authToken", () => {
+      test("should set auth token with token appended", () => {
+        apiClient.authToken = `123`;
+        // @ts-ignore
+        expect(apiClient._authToken).toBe(`token 123`);
+      });
+
+      test("should pass auth token in header", async () => {
+        apiClient.authToken = `123`;
+        await apiClient.send(mockPath, mockData, {
+          method: "PATCH",
+        });
+        expect(global.fetch).toBeCalledTimes(1);
+        expect(global.fetch).toBeCalledWith(
+          "https://prod.roundware.com/api/2/mock_path",
+          {
+            body: JSON.stringify(mockData),
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "token 123",
+            },
+            method: "PATCH",
+            mode: "cors",
+          }
+        );
       });
     });
   });

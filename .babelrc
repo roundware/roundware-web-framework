@@ -4,16 +4,23 @@
       "@babel/preset-env",
       {
         "useBuiltIns": "usage",
-        "corejs": { "version": 3 },
+        "corejs": {
+          "version": 3
+        },
         "shippedProposals": true
       }
     ],
     "@babel/preset-typescript"
   ],
-  "ignore": ["**/*.d.ts"],
+  "ignore": [
+    "**/*.d.ts"
+  ],
   "overrides": [
     {
-      "exclude": ["**/*.d.ts"]
+      "exclude": [
+        "**/*.d.ts",
+        "**/*.test.ts"
+      ]
     }
   ]
 }

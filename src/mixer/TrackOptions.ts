@@ -24,10 +24,11 @@ export class TrackOptions {
     this.fadeOutTime = [params.minfadeouttime, params.maxfadeouttime];
     this.repeatRecordings = !!params.repeatrecordings;
     this.tags = params.tag_filters;
-    (this.bannedDuration = params.banned_duration || 600),
-      (this.startWithSilence = hasOwnProperty(params, "start_with_silence")
-        ? !!params.start_with_silence
-        : true);
+    this.bannedDuration =
+      typeof params.banned_duration != "number" ? 600 : params.banned_duration;
+    this.startWithSilence = hasOwnProperty(params, "start_with_silence")
+      ? !!params.start_with_silence
+      : true;
     this.fadeOutWhenFiltered = hasOwnProperty(params, "fadeout_when_filtered")
       ? !!params.fadeout_when_filtered
       : true;

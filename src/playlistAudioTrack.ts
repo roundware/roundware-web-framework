@@ -11,10 +11,10 @@ import { IDecoratedAsset } from "./types/asset";
 import { IAudioTrackData } from "./types/audioTrack";
 import { ITrackStates } from "./types/track-states";
 import {
-  debugLogger,
   getUrlParam,
   makeAudioSafeToPlay,
   playlistTrackLog,
+  silenceAudioBase64,
   timestamp,
 } from "./utils";
 /*
@@ -110,8 +110,7 @@ export const LOGGABLE_HOWL_EVENTS = [
   "unlock",
 ];
 
-export const silenceAudioBase64 =
-  "data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+const NEARLY_ZERO = 0.0001;
 export class PlaylistAudiotrack {
   /**
    * id of audiotrack
@@ -128,7 +127,7 @@ export class PlaylistAudiotrack {
    */
   playlist: Playlist;
   playing: boolean;
-  windowScope: Window;
+
   currentAsset: IDecoratedAsset | null;
 
   gainNode: IGainNode<IAudioContext>;
@@ -157,13 +156,12 @@ export class PlaylistAudiotrack {
   isSafeToPlay = false;
   constructor({
     audioContext,
-    windowScope,
+
     audioData,
     playlist,
     client,
   }: {
     audioContext: IAudioContext;
-    windowScope: Window;
     audioData: IAudioTrackData;
     playlist: Playlist;
     client: Roundware;
@@ -172,7 +170,7 @@ export class PlaylistAudiotrack {
     this.timedAssetPriority = audioData.timed_asset_priority;
     this.playlist = playlist;
     this.playing = false;
-    this.windowScope = windowScope;
+
     this.listenEvents = client.events;
     this.currentAsset = null;
     this.audioData = audioData;
@@ -201,14 +199,14 @@ export class PlaylistAudiotrack {
     audioElement.addEventListener("ended", () => this.onAudioEnded());
 
     const trackOptions = new TrackOptions(
-      (param) => getUrlParam(windowScope.location.toString(), param),
+      (param) => getUrlParam(window.location.toString(), param),
       audioData
     );
 
     audioElement.addEventListener("playing", () => {
       if (!this.isSafeToPlay) return;
       if (this.playlist.playing === false) return this.pauseAudio();
-      this.currentAsset!.status = undefined;
+      if (this.currentAsset) this.currentAsset.status = undefined;
       if (this.currentAsset) {
         this.listenEvents?.logAssetStart(this.currentAsset.id);
         this.playing = true;
@@ -229,7 +227,10 @@ export class PlaylistAudiotrack {
     this.audioElement = audioElement;
 
     this.trackOptions = trackOptions;
-    this.mixParams = { timedAssetPriority: audioData.timed_asset_priority };
+    this.mixParams = {
+      timedAssetPriority: audioData.timed_asset_priority,
+      listenTagIds: audioData.tag_filters,
+    };
 
     const { minpanpos, maxpanpos, minpanduration, maxpanduration } = audioData;
     this.audioPanner = new AudioPanner(
@@ -243,8 +244,12 @@ export class PlaylistAudiotrack {
     this.audioPanner.start();
     this.setInitialTrackState();
 
+    const that = this;
     // try to play silence audio to avoid NotAllowedError on iOS
-    makeAudioSafeToPlay(this.audioElement, () => (this.isSafeToPlay = true));
+    makeAudioSafeToPlay(this.audioElement, this.audioContext, () => {
+      that.isSafeToPlay = true;
+      console.log(`successfully ${that.audioData.id} ${that.isSafeToPlay}`);
+    });
   }
 
   setInitialTrackState() {
@@ -265,7 +270,8 @@ export class PlaylistAudiotrack {
     this.state.play();
   }
 
-  updateParams(params: IMixParams = {}) {
+  updateParams({ listenTagIds = [], ...params }: IMixParams = {}) {
+    this.mixParams?.listenTagIds?.concat(...listenTagIds);
     this.mixParams = { ...this.mixParams, ...params };
     if (this.state) this.state.updateParams(this.mixParams);
   }
@@ -277,7 +283,7 @@ export class PlaylistAudiotrack {
   }
 
   setZeroGain() {
-    this.gainNode.gain.value = 0;
+    this.gainNode.gain.value = NEARLY_ZERO;
   }
 
   fadeIn(fadeInDurationSeconds: number): boolean {
@@ -290,7 +296,7 @@ export class PlaylistAudiotrack {
 
     try {
       this.setZeroGain();
-      this.rampGain(finalVolume, fadeInDurationSeconds);
+      this.rampGain(finalVolume || NEARLY_ZERO, fadeInDurationSeconds);
       return true;
     } catch (err) {
       playlistTrackLog(`${this} unable to fadeIn`);
@@ -317,19 +323,11 @@ export class PlaylistAudiotrack {
     return this.rampGain(0, fadeOutDurationSeconds);
   }
 
-  rampGain(
-    finalVolume: number,
-    durationSeconds: number,
-    rampMethod:
-      | "exponentialRampToValueAtTime"
-      | "linearRampToValueAtTime" = "linearRampToValueAtTime"
-  ) {
+  rampGain(finalVolume: number, durationSeconds: number) {
     console.log(
       `\t[ramping gain from ${
         this.gainNode.gain.value
-      } to ${finalVolume.toFixed(2)} (${durationSeconds.toFixed(
-        1
-      )}s - ${rampMethod})]`
+      } to ${finalVolume.toFixed(2)} (${durationSeconds.toFixed(1)}s)]`
     );
 
     try {
@@ -337,8 +335,8 @@ export class PlaylistAudiotrack {
         this.gainNode.gain.value,
         this.audioContext.currentTime
       );
-      this.gainNode.gain[rampMethod](
-        finalVolume,
+      this.gainNode.gain.exponentialRampToValueAtTime(
+        finalVolume || NEARLY_ZERO,
         this.audioContext.currentTime + durationSeconds
       );
       return true;
@@ -367,7 +365,7 @@ export class PlaylistAudiotrack {
       if (currentAsset.status != "paused") {
         currentAsset.playCount++;
       }
-      currentAsset.lastListenTime = new Date();
+      currentAsset.lastListenTime = new Date().getTime();
     }
 
     const newAsset = this.playlist.next(this);
@@ -378,7 +376,7 @@ export class PlaylistAudiotrack {
       const { file, start_time } = newAsset;
       playlistTrackLog(
         `#${this.trackId} Selected Asset: ${newAsset.id}, was paused: ${
-          newAsset.paused || false
+          newAsset.status == "paused"
         }]`
       );
 
@@ -386,6 +384,7 @@ export class PlaylistAudiotrack {
       if (typeof file !== "string") {
         return null;
       }
+
       audioElement.src = file;
       audioElement.addEventListener(
         "loadedmetadata",
@@ -396,7 +395,6 @@ export class PlaylistAudiotrack {
         },
         { once: true }
       );
-      this.audioElement = audioElement;
       this.played = false;
       return newAsset;
     }
@@ -411,20 +409,23 @@ export class PlaylistAudiotrack {
     this.pauseAudio();
   }
 
-  playAudio() {
+  async playAudio() {
     try {
-      if (this.audioContext.state !== "running") this.audioContext.resume();
+      if (this.audioContext.state !== "running")
+        await this.audioContext.resume();
       if (!this.audioElement.src) this.audioElement.src = silenceAudioBase64;
-      this.audioElement.play();
+
+      await this.audioElement.play();
+      console.log(`${this.audioData.id} works`);
     } catch (e) {
-      console.error(e);
+      console.error(`${this.audioData.id}`, e);
       this.setInitialTrackState();
       this.transition(this.state!);
     }
   }
 
   pauseAudio() {
-    this.audioElement.pause();
+    if (!this.audioElement.paused) this.audioElement.pause();
   }
 
   /**

@@ -1,16 +1,11 @@
 import { IAudioContext } from "standardized-audio-context";
 import { AssetPool } from "./assetPool";
 import { Playlist } from "./playlist";
-import { Roundware } from "./roundware";
-import { SpeakerTrack } from "./speaker_track";
-import {
-  Coordinates,
-  GeoListenModeType,
-  IMixParams,
-  ITimedAssetData,
-} from "./types";
-import { IAssetData } from "./types/asset";
+import { Roundware, AssetPriorityType } from "./roundware";
+import { Coordinates, GeoListenModeType, IMixParams } from "./types";
+import { IAssetData, IDecoratedAsset } from "./types/asset";
 
+import { SpeakerEngine } from "./speaker/speaker_engine";
 import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
 
 export const GeoListenMode: {
@@ -25,34 +20,35 @@ export const GeoListenMode: {
 
 export class Mixer {
   playing: boolean;
-  private _windowScope: Window;
+
   private _client: Roundware;
   private _prefetchSpeakerAudio: any | boolean;
 
   mixParams: IMixParams;
   playlist: Playlist | undefined;
+  speakerEngine: SpeakerEngine | undefined;
   assetPool: AssetPool;
-  speakerTracks: SpeakerTrack[] | undefined;
+
   audioContext: IAudioContext;
 
   constructor({
     client,
-    windowScope,
     listenerLocation,
-    filters = [],
+    filters,
     sortMethods = [],
     mixParams = {},
   }: {
     client: Roundware;
-    windowScope: Window;
     listenerLocation: Coordinates;
-    filters?: unknown[];
-    sortMethods?: unknown[];
+    filters?: (
+      asset: IDecoratedAsset,
+      mixParams: IMixParams
+    ) => AssetPriorityType;
+    sortMethods?: string[];
     mixParams: IMixParams;
   }) {
     this.playing = false;
 
-    this._windowScope = windowScope;
     this._client = client;
 
     const assets: IAssetData[] = client.assets();
@@ -69,12 +65,11 @@ export class Mixer {
     this.assetPool = new AssetPool({
       assets,
       timedAssets,
-      // @ts-ignore here it asks for a function
-      filters,
+      filterChain: filters,
       sortMethods,
       mixParams: this.mixParams,
     });
-    this.audioContext = buildAudioContext(this._windowScope);
+    this.audioContext = buildAudioContext();
   }
 
   updateParams({ listenerLocation, ...params }: IMixParams) {
@@ -85,14 +80,8 @@ export class Mixer {
       });
     }
     this.mixParams = { ...this.mixParams, ...params };
-    if (this.playlist) {
-      this.playlist.updateParams(params);
-    }
-    if (Array.isArray(this.speakerTracks)) {
-      this.speakerTracks.forEach((t) =>
-        t.updateParams(this.playing, { listenerPoint: params.listenerPoint })
-      );
-    }
+    this.playlist?.updateParams(params);
+    this.speakerEngine?.updateParams(this.playing, this.mixParams);
   }
   /**
    * @param  {number} trackId
@@ -127,7 +116,7 @@ export class Mixer {
       const listenerPoint = this.mixParams.listenerPoint;
 
       let selectTrackId: string | number | null = getUrlParam(
-        this._windowScope.location.toString(),
+        window.location.toString(),
         "rwfSelectTrackId"
       );
       let audioTracks = this._client.audiotracks();
@@ -144,10 +133,17 @@ export class Mixer {
         listenerPoint,
         assetPool: this.assetPool,
         audioContext: this.audioContext,
-        windowScope: this._windowScope,
       });
 
-      this.initializeSpeakers();
+      this.speakerEngine = new SpeakerEngine(
+        this._client.speakers(),
+        this.audioContext,
+        {
+          listenerPoint,
+          ...this.mixParams,
+        }
+      );
+
       this.updateParams(this.mixParams);
       console.info(`Mixer Activated`);
     }
@@ -178,12 +174,7 @@ export class Mixer {
     }
     this.playing = true;
     if (this.playlist) this.playlist.play();
-    if (Array.isArray(this.speakerTracks)) {
-      this.speakerTracks.forEach((s) => {
-        s.player.timerStart();
-        s.play();
-      });
-    }
+    this.speakerEngine?.play();
   }
 
   stop() {
@@ -193,64 +184,6 @@ export class Mixer {
     }
     this.playing = false;
     if (this.playlist) this.playlist.pause();
-    if (Array.isArray(this.speakerTracks))
-      this.speakerTracks.forEach((s) => {
-        s.player.timerStop();
-        s.pause();
-      });
-  }
-
-  endedSpeakersLength = 0;
-  handleSpeakerEnd() {
-    this.endedSpeakersLength += 1;
-    console.log(
-      `some speaker ended`,
-      this.endedSpeakersLength,
-      this.speakerTracks?.length
-    );
-    if (this.endedSpeakersLength == this.speakerTracks?.length) {
-      this.allSpeakersEndCallback();
-    }
-  }
-
-  replay() {
-    this.endedSpeakersLength = 0;
-    const that = this;
-    this.speakerTracks?.forEach((s) => {
-      s.player.pause();
-      s.player.replay();
-      that.play();
-    });
-  }
-
-  initializeSpeakers() {
-    this.endedSpeakersLength = 0;
-    const speakers = this._client.speakers();
-    const that = this;
-
-    this.speakerTracks = speakers.map(
-      (speakerData) =>
-        new SpeakerTrack({
-          audioContext: that.audioContext,
-          listenerPoint: that.mixParams.listenerPoint!,
-          data: speakerData,
-          config: that.mixParams.speakerConfig || {
-            sync: false,
-            length: 600,
-            loop: false,
-            prefetch: false,
-          },
-        })
-    );
-
-    this.speakerTracks.forEach((s) =>
-      s.player.onEnd(() => that.handleSpeakerEnd())
-    );
-    this.updateParams(this.mixParams);
-  }
-
-  allSpeakersEndCallback = () => {};
-  onAllSpeakersEnd(callback: () => void) {
-    this.allSpeakersEndCallback = callback;
+    this.speakerEngine?.stop();
   }
 }

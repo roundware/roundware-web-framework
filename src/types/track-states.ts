@@ -10,7 +10,7 @@ import {
   WaitingForAssetState,
 } from "../TrackStates";
 
-interface ICommonStateProperties {
+export interface ICommonStateProperties {
   track: PlaylistAudiotrack;
   timerApproximateEndingAtMs?: number;
 
