@@ -30,6 +30,7 @@ export class AudioPanner {
     this.panNode = panNode;
     this.audioContext = audioContext;
     this.updateParams();
+    this.panNode.pan.value = random(this.minpanpos, this.maxpanpos);
   }
 
   updateParams() {

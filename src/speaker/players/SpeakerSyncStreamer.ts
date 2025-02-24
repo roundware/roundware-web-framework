@@ -3,11 +3,11 @@ import {
   IGainNode,
   IMediaElementAudioSourceNode,
 } from "standardized-audio-context";
-import { SpeakerConfig } from "../types/roundware";
-import { ISpeakerPlayer, SpeakerConstructor } from "../types/speaker";
-import { cleanAudioURL, speakerLog } from "../utils";
+import { SpeakerConfig } from "../../types/roundware";
+import { ISpeakerPlayer, SpeakerConstructor } from "../../types/speaker";
+import { cleanAudioURL, NEARLY_ZERO, speakerLog } from "../../utils";
 
-export class SpeakerSyncStreamer implements ISpeakerPlayer {
+export class SpeakerSyncStreamer extends EventTarget implements ISpeakerPlayer {
   isSafeToPlay: boolean = true;
   playing: boolean = false;
   audio: HTMLAudioElement;
@@ -22,6 +22,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
   private _fadingTimeout?: NodeJS.Timeout;
 
   constructor({ audioContext, config, uri, id }: SpeakerConstructor) {
+    super();
     this.id = id;
     this.config = config;
     this.uri = cleanAudioURL(uri);
@@ -31,7 +32,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     this.audio = new Audio(this.uri);
     this.audio.loop = config.loop || false;
     this.gainNode = audioContext.createGain();
-    this.gainNode.gain.value = 0;
+    this.gainNode.gain.value = NEARLY_ZERO;
     this.audio.crossOrigin = "anonymous";
     this.audio.loop = false;
 
@@ -41,13 +42,26 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
 
     const that = this;
 
+    ["abort", "ended", "error", "waiting", "stalled", "playing"].forEach(
+      (e) => {
+        this.audio.addEventListener(e, () => {
+          that.log(e + " event");
+          if ([`abort`, `ended`, `error`].includes(e)) {
+            that.playing = false;
+          }
+        });
+      }
+    );
+
     this.log(`sync streamer initiaed`);
   }
 
   started = false;
-
+  alreadyTrying = false;
   async play(): Promise<boolean> {
     if (this.playing) return true;
+    if (this.alreadyTrying) return false;
+    this.alreadyTrying = true;
     try {
       if (this.context.state !== "running") {
         await this.context.resume();
@@ -73,13 +87,22 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
       }
 
       this.log(`Playing...`);
+
+      this.alert(`Started playing`);
     } catch (e) {
       console.error(e);
       this.playing = false;
+    } finally {
+      this.alreadyTrying = false;
     }
     return true;
   }
 
+  // for debugging
+  alert(...params: any) {
+    // if (this.id != 255) return;
+    // alert(params);
+  }
   pause(): void {
     this.playing = false;
     this.audio.pause();
@@ -116,17 +139,22 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
     this.log(
       `startng fade ${this.gainNode.gain.value} -> ${this.fadingDestination}`
     );
-    this.gainNode.gain.cancelScheduledValues(0);
 
-    this.gainNode.gain.linearRampToValueAtTime(
-      this.fadingDestination,
-      this.context.currentTime + duration
+    this.alert(`Fade to ${toVolume}`);
+
+    this.fading = true;
+    const endTime = this.context.currentTime + duration;
+    this.gainNode.gain.cancelScheduledValues(0);
+    this.gainNode.gain.exponentialRampToValueAtTime(
+      this.fadingDestination || NEARLY_ZERO,
+      endTime
     );
     if (this._fadingTimeout) {
       clearTimeout(this._fadingTimeout);
     }
     this._fadingTimeout = setTimeout(() => {
       this.fading = false;
+      this.log(`fading ended at volume ${this.gainNode.gain.value}`);
     }, duration * 1000);
   }
 
@@ -138,10 +166,6 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
   }
   onLoadingProgress(callback: (newPercent: number) => void): void {}
   onEnd(callback: () => void): void {}
-
-  updateTime(newTime: number): void {
-    this.audio.currentTime = newTime;
-  }
 
   syncTracker?: number;
   trackSync() {
@@ -173,5 +197,7 @@ export class SpeakerSyncStreamer implements ISpeakerPlayer {
         1 + difference / (this.config.syncCheckInterval || 2500);
       this.log(`Changing Playback rate to ${this.audio.playbackRate}`);
     }
+
+    this.fade();
   }
 }

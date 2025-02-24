@@ -13,7 +13,7 @@ import { IAssetFilters } from "./asset";
 import { ISpeakerFilters } from "./speaker";
 
 export interface IOptions {
-  apiClient: ApiClient;
+  apiClient?: ApiClient;
   deviceId: string;
   clientType?: string;
   geoListenMode: GeoListenModeType;
@@ -38,10 +38,19 @@ export interface IRoundwareConstructorOptions extends IOptions {
 }
 
 export type SpeakerConfig = {
-  prefetch?: boolean;
-  sync?: boolean;
+  /** mode */
+  mode:
+    | "prefetch-sync"
+    | "stream-sync"
+    | "prefetch"
+    | "stream"
+    | `prefetch-sync-basePlusMax${number}Random`;
+
   loop?: boolean;
   length?: number;
   acceptableDelayMs?: number;
   syncCheckInterval?: number;
+  replaceWithNoneProbability?: number;
+  // list of lengths from which app will select randomly one of
+  lengths?: number[];
 };

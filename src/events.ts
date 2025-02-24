@@ -1,7 +1,6 @@
 import { ApiClient } from "./api-client";
 import { IAssetData } from "./types/asset";
 import { EventPayload, EventType } from "./types/events";
-type ListenEventsTypes = "play";
 const LISTEN_EVENTS = "/listenevents/";
 const EVENTS_PATH = `/events/`;
 /**
