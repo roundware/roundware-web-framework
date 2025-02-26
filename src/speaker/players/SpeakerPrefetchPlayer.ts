@@ -80,6 +80,7 @@ export class SpeakerPrefetchPlayer
   lastStartedAtSeconds = 0;
   lastStartedAtTime = 0;
   async play(): Promise<boolean> {
+    this.cancelFadeOutAndPause();
     if (!this.loaded || !this.source) {
       this.log(`not loaded or started yet`);
       this.initializeSource();
@@ -184,14 +185,22 @@ export class SpeakerPrefetchPlayer
       this._fading = false;
     }, duration * 1000);
   }
+
+  _fadeOutAndPauseTimeout: NodeJS.Timeout | null = null;
   fadeOutAndPause(): void {
     if (!this.playing) return;
     this.fade(0);
     this.log(`fading out and pausing`);
-    setTimeout(() => {
+    this._fadeOutAndPauseTimeout = setTimeout(() => {
       this.pause();
     }, 3000);
   }
+
+  cancelFadeOutAndPause(): void {
+    if (this._fadeOutAndPauseTimeout)
+      clearTimeout(this._fadeOutAndPauseTimeout);
+  }
+
   log(string: string): void {
     speakerLog(`${this.id}] ${string}`);
   }

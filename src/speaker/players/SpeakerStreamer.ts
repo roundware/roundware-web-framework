@@ -87,6 +87,7 @@ export class SpeakerStreamer extends EventTarget implements ISpeakerPlayer {
 
   _alreadyTryingToPlay = false;
   async play() {
+    this.cancelFadeOutAndPause();
     // if not yet safe to play must retry again
 
     if (!this.isSafeToPlay) {
@@ -177,6 +178,7 @@ export class SpeakerStreamer extends EventTarget implements ISpeakerPlayer {
     this.playing = false;
   }
 
+  _fadeOutAndPauseTimeout: NodeJS.Timeout | null = null;
   fadeOutAndPause() {
     if (!this.playing) return;
     if (this.volume() < 0.05) return this.pause();
@@ -185,13 +187,19 @@ export class SpeakerStreamer extends EventTarget implements ISpeakerPlayer {
       0,
       this._context.currentTime + this._fadeDuration
     );
-    setTimeout(() => {
+    this._fadeOutAndPauseTimeout = setTimeout(() => {
       // if audio was fading to something else
       // and couldn't managed to fade to 0 in 3 seconds, try again
       if (this.volume() > 0.05) this.fadeOutAndPause();
       else this.pause();
     }, this._fadeDuration * 1000);
   }
+
+  cancelFadeOutAndPause(): void {
+    if (this._fadeOutAndPauseTimeout)
+      clearTimeout(this._fadeOutAndPauseTimeout);
+  }
+
   volume() {
     return this._gainNode.gain.value;
   }

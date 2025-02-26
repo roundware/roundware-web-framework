@@ -59,6 +59,7 @@ export class SpeakerSyncStreamer extends EventTarget implements ISpeakerPlayer {
   started = false;
   alreadyTrying = false;
   async play(): Promise<boolean> {
+    this.cancelFadeOutAndPause();
     if (this.playing) return true;
     if (this.alreadyTrying) return false;
     this.alreadyTrying = true;
@@ -161,6 +162,7 @@ export class SpeakerSyncStreamer extends EventTarget implements ISpeakerPlayer {
   fadeOutAndPause(): void {
     this.fade(0);
   }
+  cancelFadeOutAndPause(): void {}
   log(string: string): void {
     speakerLog(`[${this.id}] ${string}`);
   }

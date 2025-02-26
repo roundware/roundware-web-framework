@@ -79,6 +79,7 @@ export class SpeakerPrefetchSyncPlayer
 
   started = false;
   async play(): Promise<boolean> {
+    this.cancelFadeOutAndPause();
     if (!this.loaded || !this.started) {
       this.log(`not loaded or started yet`);
       return false;
@@ -87,8 +88,10 @@ export class SpeakerPrefetchSyncPlayer
       this.fade();
       return true;
     }
+    // check if gain node is connected to destination
 
     this.gainNode.connect(this.context.destination);
+
     this.playing = true;
     return true;
   }
@@ -235,35 +238,40 @@ export class SpeakerPrefetchSyncPlayer
   _fadingTimeout: NodeJS.Timeout | null = null;
 
   fade(toVolume: number = this._fadingDestination, duration: number = 3): void {
-    if (this._fadingDestination == toVolume && this._fading) return;
+    if (this._fadingDestination === toVolume && this._fading) return;
     this._fadingDestination = toVolume;
     if (!this.playing) return;
-
-    // already at that volume
-    if (Math.abs(this.volume - this._fadingDestination) < 0.05) return;
+    if (this._fadingTimeout) {
+      clearTimeout(this._fadingTimeout);
+    }
+    this._fading = true;
+    this.gainNode.gain.cancelAndHoldAtTime(this.context.currentTime);
     this.log(`startng fade ${this.volume} -> ${this._fadingDestination}`);
-    this.gainNode.gain.cancelScheduledValues(0);
-
     this.gainNode.gain.exponentialRampToValueAtTime(
       this._fadingDestination || NEARLY_ZERO,
       this.context.currentTime + duration
     );
-    if (this._fadingTimeout) {
-      clearTimeout(this._fadingTimeout);
-    }
+
     this._fadingTimeout = setTimeout(() => {
       this._fading = false;
     }, duration * 1000);
   }
 
+  _fadeOutAndPauseTimeout: NodeJS.Timeout | null = null;
   fadeOutAndPause(): void {
     if (!this.playing) return;
     this.fade(0);
     this.log(`fading out and pausing`);
-    setTimeout(() => {
+    this._fadeOutAndPauseTimeout = setTimeout(() => {
       this.pause();
     }, 3000);
   }
+
+  cancelFadeOutAndPause(): void {
+    if (this._fadeOutAndPauseTimeout)
+      clearTimeout(this._fadeOutAndPauseTimeout);
+  }
+
   log(string: string): void {
     speakerLog(`${this.id}] ${string}`);
   }

@@ -31,6 +31,7 @@ export interface ISpeakerPlayer extends EventTarget {
   timerStop(): void;
   fade(destinationVolume?: number, duration?: number): void;
   fadeOutAndPause(): void;
+  cancelFadeOutAndPause(): void;
   log(string: string): void;
   onLoadingProgress(callback: (newPercent: number) => void): void;
   onEnd(callback: () => void): void;
