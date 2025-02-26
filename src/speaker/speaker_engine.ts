@@ -1,12 +1,13 @@
 import { Point } from "@turf/helpers";
 import { sample } from "lodash";
-import { IAudioContext } from "standardized-audio-context";
+import { IAudioBuffer, IAudioContext } from "standardized-audio-context";
 import { Logger } from "../helpers/Logger";
 import { IMixParams } from "../types/index";
 import { ISpeakerData } from "../types/speaker";
 import { SpeakerPrefetchSyncPlayer } from "./players/SpeakerPrefetchSyncPlayer";
 import { SpeakerTrack } from "./speaker_track";
 import { SpeakerVolumeProcessor } from "./speaker_volume_processor";
+import { BufferEffectsProcessor } from "./buffer_effects_processor";
 export class SpeakerEngine extends Logger {
   speakerTracks: SpeakerTrack[] | undefined;
   mixParams: IMixParams | undefined;
@@ -176,14 +177,37 @@ export class SpeakerEngine extends Logger {
           const speaker = lastN[i + 1];
           // get random length
           const randomLength = sample(this.mixParams?.speakerConfig?.lengths);
+          this.log(`basePluxMaxNRandom ${i + 1} random length ${randomLength}`);
           if (speaker && typeof randomLength === "number") {
             if (
               speaker.player instanceof SpeakerPrefetchSyncPlayer &&
               base.player instanceof SpeakerPrefetchSyncPlayer
             ) {
-              speaker.player.updateDuration(
-                randomLength * base.player.source?.buffer?.duration!
-              );
+              // speaker.player.updateDuration(
+              //   randomLength * base.player.source?.buffer?.duration!
+              // );
+
+              if (!base.player.originalBuffer) {
+                throw new Error(
+                  "Base player does not have its original buffer loaded"
+                );
+              }
+
+              if (!speaker.player.originalBuffer) {
+                throw new Error(
+                  "Speaker player does not have its original buffer loaded"
+                );
+              }
+
+              const newBuffer = new BufferEffectsProcessor(
+                speaker.player.originalBuffer,
+                this.audioContext
+              )
+                .trim(0, randomLength * base.player.originalBuffer.duration)
+                .microFadeInAndOut()
+                .getBuffer();
+
+              speaker.player.updateBufferAndPlayNow(newBuffer);
             } else {
               throw new Error(
                 "Speaker player is not instance of SpeakerPrefetchSyncPlayer"

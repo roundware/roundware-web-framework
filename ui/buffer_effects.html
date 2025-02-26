@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Buffer Effects Processor Test</title>
+  </head>
+  <body>
+    <h1>Test Buffer Effects Processor</h1>
+    <input type="file" id="audioFile" accept="audio/*" />
+    <br />
+    <label
+      >Trim Start (s): <input type="number" id="trimStart" value="1" step="0.1"
+    /></label>
+    <label
+      >Trim End (s): <input type="number" id="trimEnd" value="5" step="0.1"
+    /></label>
+    <button id="trimButton" disabled>Apply Trim</button>
+    <br />
+    <label
+      >Fade In (s): <input type="number" id="fadeIn" value="1" step="0.1"
+    /></label>
+    <button id="fadeInButton" disabled>Apply Fade In</button>
+    <br />
+    <label
+      >Fade Out (s): <input type="number" id="fadeOut" value="1" step="0.1"
+    /></label>
+    <button id="fadeOutButton" disabled>Apply Fade Out</button>
+    <br />
+    <label
+      >Delay (s): <input type="number" id="delay" value="0.5" step="0.1"
+    /></label>
+    <button id="delayButton" disabled>Apply Delay</button>
+    <br />
+    <button id="playButton" disabled>Play Processed Audio</button>
+    <audio id="audioPlayer" controls></audio>
+
+    <script type="module">
+      import { BufferEffectsProcessor } from "../dist/speaker/buffer_effects_processor.js";
+
+      const audioFileInput = document.getElementById("audioFile");
+      const playButton = document.getElementById("playButton");
+      const trimButton = document.getElementById("trimButton");
+      const fadeInButton = document.getElementById("fadeInButton");
+      const fadeOutButton = document.getElementById("fadeOutButton");
+      const delayButton = document.getElementById("delayButton");
+      const audioPlayer = document.getElementById("audioPlayer");
+      let audioBuffer;
+      let audioContext = new AudioContext();
+      let processor;
+
+      audioFileInput.addEventListener("change", async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const arrayBuffer = await file.arrayBuffer();
+        audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        processor = new BufferEffectsProcessor(audioBuffer, audioContext);
+
+        playButton.disabled = false;
+        trimButton.disabled = false;
+        fadeInButton.disabled = false;
+        fadeOutButton.disabled = false;
+        delayButton.disabled = false;
+      });
+
+      trimButton.addEventListener("click", () => {
+        const start = parseFloat(document.getElementById("trimStart").value);
+        const end = parseFloat(document.getElementById("trimEnd").value);
+        processor = processor.trim(start, end);
+      });
+
+      fadeInButton.addEventListener("click", () => {
+        const duration = parseFloat(document.getElementById("fadeIn").value);
+        processor = processor.fadeIn(duration);
+      });
+
+      fadeOutButton.addEventListener("click", () => {
+        const duration = parseFloat(document.getElementById("fadeOut").value);
+        processor = processor.fadeOut(duration);
+      });
+
+      delayButton.addEventListener("click", () => {
+        const delayTime = parseFloat(document.getElementById("delay").value);
+        processor = processor.delay(delayTime);
+      });
+
+      playButton.addEventListener("click", () => {
+        if (!processor) return;
+
+        const processedBuffer = processor.getBuffer();
+        const newSource = audioContext.createBufferSource();
+        newSource.buffer = processedBuffer;
+        newSource.connect(audioContext.destination);
+        newSource.start();
+      });
+    </script>
+  </body>
+</html>

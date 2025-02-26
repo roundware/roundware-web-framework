@@ -5,7 +5,7 @@
     "type": "git",
     "url": "git+https://github.com/roundware/roundware-web-framework.git"
   },
-  "version": "0.12.8-alpha.18",
+  "version": "0.12.8-alpha.19",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "files": [
     "dist"
@@ -17,6 +17,7 @@
     "test": "jest",
     "build": "rm -rf dist && NODE_ENV=production && npm-run-all --parallel build:*",
     "build:main": "tsup src/index.ts --dts --format esm,cjs",
+    "build:non-bundled": "tsc",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
     "devstart": "NODE_ENV=development webpack server",
     "deploy": "np",

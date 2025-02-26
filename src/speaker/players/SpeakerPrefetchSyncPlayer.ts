@@ -7,6 +7,7 @@ import {
 import { SpeakerConfig } from "../../types/roundware";
 import { ISpeakerPlayer, SpeakerConstructor } from "../../types/speaker";
 import { NEARLY_ZERO, speakerLog } from "../../utils";
+import { BufferEffectsProcessor } from "../buffer_effects_processor";
 
 export class SpeakerPrefetchSyncPlayer
   extends EventTarget
@@ -23,7 +24,8 @@ export class SpeakerPrefetchSyncPlayer
   config: SpeakerConfig;
   loadedPercentage = 0;
 
-  buffer?: IAudioBuffer;
+  originalBuffer?: IAudioBuffer;
+  currentBuffer?: IAudioBuffer;
 
   constructor({ audioContext, id, uri, config }: SpeakerConstructor) {
     super();
@@ -51,7 +53,14 @@ export class SpeakerPrefetchSyncPlayer
       audioContext.decodeAudioData(
         audioData,
         function (buffer) {
-          speakerContext.buffer = buffer;
+          speakerContext.originalBuffer = buffer;
+
+          speakerContext.currentBuffer = new BufferEffectsProcessor(
+            buffer,
+            speakerContext.context
+          )
+            .microFadeInAndOut()
+            .getBuffer();
           // @ts-ignore
           global._roundwareTotalAudioBufferSize +=
             buffer.length * buffer.numberOfChannels * 4;
@@ -94,15 +103,15 @@ export class SpeakerPrefetchSyncPlayer
   pausedAt = 0;
 
   get remainingDuration() {
-    if (!this.buffer) return 0;
-    return (this.config.length || this.buffer?.duration) - this.pausedAt;
+    if (!this.currentBuffer) return 0;
+    return (this.config.length || this.currentBuffer?.duration) - this.pausedAt;
   }
 
   endTimeout: NodeJS.Timeout | null = null;
   loopInterval: NodeJS.Timeout[] = [];
 
   async timerStart() {
-    if (this.started || !this.buffer) {
+    if (this.started || !this.currentBuffer) {
       return;
     }
 
@@ -124,7 +133,7 @@ export class SpeakerPrefetchSyncPlayer
     this.source.start(this.context.currentTime, this.pausedAt);
 
     if (this.config.loop) {
-      const finalDuration = this.config.length || this.buffer.duration;
+      const finalDuration = this.config.length || this.currentBuffer.duration;
       this.log(`looping every ${finalDuration} seconds`);
       const that = this;
       if (this.pausedAt == 0) {
@@ -190,7 +199,7 @@ export class SpeakerPrefetchSyncPlayer
   }
 
   initializeSource() {
-    if (!this.buffer) return;
+    if (!this.currentBuffer) return;
     // disconnect previous ones as we are going to create new
     this.gainNode.disconnect();
     this.source?.disconnect();
@@ -198,12 +207,11 @@ export class SpeakerPrefetchSyncPlayer
     // create new source
     this.source = this.context.createBufferSource();
 
-    // buffer already downloaded from constructor
-    this.source.buffer = this.buffer;
+    this.source.buffer = this.currentBuffer;
 
     if (this.config.loop) {
       this.source.loop = true;
-      this.source.loopEnd = this.config.length || this.buffer.duration;
+      this.source.loopEnd = this.config.length || this.currentBuffer.duration;
     } else {
       this.source.loop = false;
     }
@@ -225,6 +233,7 @@ export class SpeakerPrefetchSyncPlayer
   _fadingDestination = 0;
   _fading = false;
   _fadingTimeout: NodeJS.Timeout | null = null;
+
   fade(toVolume: number = this._fadingDestination, duration: number = 3): void {
     if (this._fadingDestination == toVolume && this._fading) return;
     this._fadingDestination = toVolume;
@@ -246,6 +255,7 @@ export class SpeakerPrefetchSyncPlayer
       this._fading = false;
     }, duration * 1000);
   }
+
   fadeOutAndPause(): void {
     if (!this.playing) return;
     this.fade(0);
@@ -270,7 +280,9 @@ export class SpeakerPrefetchSyncPlayer
     console.log(`callback set`);
   }
 
-  updateDuration(duration: number) {
-    if (this.source) this.source.loopEnd = duration;
+  updateBufferAndPlayNow(buffer: IAudioBuffer) {
+    this.timerStop();
+    this.currentBuffer = buffer;
+    this.timerStart();
   }
 }
