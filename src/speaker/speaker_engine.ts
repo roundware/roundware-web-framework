@@ -183,10 +183,6 @@ export class SpeakerEngine extends Logger {
               speaker.player instanceof SpeakerPrefetchSyncPlayer &&
               base.player instanceof SpeakerPrefetchSyncPlayer
             ) {
-              // speaker.player.updateDuration(
-              //   randomLength * base.player.source?.buffer?.duration!
-              // );
-
               if (!base.player.originalBuffer) {
                 throw new Error(
                   "Base player does not have its original buffer loaded"
@@ -201,13 +197,23 @@ export class SpeakerEngine extends Logger {
 
               const newBuffer = new BufferEffectsProcessor(
                 speaker.player.originalBuffer,
-                this.audioContext
+                this.audioContext,
+                this.mixParams?.speakerConfig?.effects || {}
               )
                 .trim(0, randomLength * base.player.originalBuffer.duration)
                 .microFadeInAndOut()
+                .delayAndClip()
                 .getBuffer();
 
               speaker.player.updateBufferAndPlayNow(newBuffer);
+              if (
+                Array.isArray(this.mixParams.speakerConfig.effects?.pan) &&
+                typeof this.mixParams.speakerConfig.effects.pan[i] === "number"
+              ) {
+                speaker.player.setPanPosition(
+                  this.mixParams.speakerConfig.effects.pan[i]
+                );
+              }
             } else {
               throw new Error(
                 "Speaker player is not instance of SpeakerPrefetchSyncPlayer"

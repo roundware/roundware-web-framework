@@ -37,6 +37,15 @@ export interface IRoundwareConstructorOptions extends IOptions {
   speakerConfig: SpeakerConfig;
 }
 
+export type EffectsConfig = {
+  microFadeInDurationInMs?: number;
+  fadeInDurationInMs?: number;
+  delayTimeInMs?: number;
+  feedback?: number;
+  reverb?: number;
+  pan?: number[];
+};
+
 export type SpeakerConfig = {
   /** mode */
   mode:
@@ -53,4 +62,5 @@ export type SpeakerConfig = {
   replaceWithNoneProbability?: number;
   // list of lengths from which app will select randomly one of
   lengths?: number[];
+  effects?: EffectsConfig;
 };

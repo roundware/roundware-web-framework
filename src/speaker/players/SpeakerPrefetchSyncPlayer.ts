@@ -3,6 +3,7 @@ import {
   IAudioBufferSourceNode,
   IAudioContext,
   IGainNode,
+  IStereoPannerNode,
 } from "standardized-audio-context";
 import { SpeakerConfig } from "../../types/roundware";
 import { ISpeakerPlayer, SpeakerConstructor } from "../../types/speaker";
@@ -20,6 +21,8 @@ export class SpeakerPrefetchSyncPlayer
   source?: IAudioBufferSourceNode<IAudioContext>;
   id: number;
   gainNode: IGainNode<IAudioContext>;
+  // pan node
+  panNode: IStereoPannerNode<IAudioContext>;
   context: IAudioContext;
   config: SpeakerConfig;
   loadedPercentage = 0;
@@ -35,6 +38,8 @@ export class SpeakerPrefetchSyncPlayer
     this.config = config;
     this.gainNode = audioContext.createGain();
     this.gainNode.gain.value = NEARLY_ZERO;
+    this.panNode = audioContext.createStereoPanner();
+    this.panNode.pan.value = 0;
 
     var request = new XMLHttpRequest();
 
@@ -57,7 +62,8 @@ export class SpeakerPrefetchSyncPlayer
 
           speakerContext.currentBuffer = new BufferEffectsProcessor(
             buffer,
-            speakerContext.context
+            speakerContext.context,
+            speakerContext.config.effects || {}
           )
             .microFadeInAndOut()
             .getBuffer();
@@ -88,9 +94,8 @@ export class SpeakerPrefetchSyncPlayer
       this.fade();
       return true;
     }
-    // check if gain node is connected to destination
 
-    this.gainNode.connect(this.context.destination);
+    this.connectToDest();
 
     this.playing = true;
     return true;
@@ -113,7 +118,7 @@ export class SpeakerPrefetchSyncPlayer
   endTimeout: NodeJS.Timeout | null = null;
   loopInterval: NodeJS.Timeout[] = [];
 
-  async timerStart() {
+  async timerStart(offset?: number) {
     if (this.started || !this.currentBuffer) {
       return;
     }
@@ -133,7 +138,7 @@ export class SpeakerPrefetchSyncPlayer
     }
 
     // start now will so stay in sync with other speakers, from last paused time
-    this.source.start(this.context.currentTime, this.pausedAt);
+    this.source.start(this.context.currentTime, offset || this.pausedAt);
 
     if (this.config.loop) {
       const finalDuration = this.config.length || this.currentBuffer.duration;
@@ -204,8 +209,7 @@ export class SpeakerPrefetchSyncPlayer
   initializeSource() {
     if (!this.currentBuffer) return;
     // disconnect previous ones as we are going to create new
-    this.gainNode.disconnect();
-    this.source?.disconnect();
+    this.disconnect();
 
     // create new source
     this.source = this.context.createBufferSource();
@@ -220,7 +224,7 @@ export class SpeakerPrefetchSyncPlayer
     }
 
     // connect to audio context
-    this.source.connect(this.gainNode).connect(this.context.destination);
+    this.connectToDest();
 
     this.started = false;
 
@@ -228,9 +232,21 @@ export class SpeakerPrefetchSyncPlayer
     this.fade();
   }
 
+  connectToDest() {
+    this.source
+      ?.connect(this.gainNode)
+      .connect(this.panNode)
+      .connect(this.context.destination);
+  }
+
+  disconnect() {
+    this.gainNode.disconnect();
+    this.panNode.disconnect();
+  }
+
   pause(): void {
     if (!this.playing) return;
-    this.gainNode.disconnect();
+    this.disconnect();
     this.playing = false;
   }
   _fadingDestination = 0;
@@ -291,6 +307,11 @@ export class SpeakerPrefetchSyncPlayer
   updateBufferAndPlayNow(buffer: IAudioBuffer) {
     this.timerStop();
     this.currentBuffer = buffer;
+
     this.timerStart();
+  }
+
+  setPanPosition(pan: number) {
+    this.panNode.pan.value = pan;
   }
 }

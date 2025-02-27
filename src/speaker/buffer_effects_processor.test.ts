@@ -7,7 +7,8 @@ describe("BufferEffectsProcessor", () => {
     it("should trim the buffer", () => {
       const processor = new BufferEffectsProcessor(
         new AudioContext().createBuffer(2, 10, 44100),
-        new AudioContext()
+        new AudioContext(),
+        {}
       );
       const trimmedBuffer = processor.trim(0, 0.5).getBuffer();
       expect(trimmedBuffer.duration).toBeCloseTo(0.5, 1);
@@ -21,7 +22,8 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
-        new AudioContext()
+        new AudioContext(),
+        {}
       );
       const fadedBuffer = processor.fadeIn(0.5).getBuffer();
       expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
@@ -31,7 +33,8 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
-        new AudioContext()
+        new AudioContext(),
+        {}
       );
       const fadedBuffer = processor.fadeOut(0.5).getBuffer();
       expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
@@ -42,7 +45,8 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
-        new AudioContext()
+        new AudioContext(),
+        {}
       );
       const fadedBuffer = processor.fadeInAndOut(0.5).getBuffer();
       expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
@@ -54,7 +58,8 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
-        new AudioContext()
+        new AudioContext(),
+        {}
       );
       const fadedBuffer = processor.microFadeInAndOut().getBuffer();
       expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
@@ -68,9 +73,12 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
-        new AudioContext()
+        new AudioContext(),
+        {
+          delayTimeInMs: 50,
+        }
       );
-      const delayedBuffer = processor.delayAndClip(0.5).getBuffer();
+      const delayedBuffer = processor.delayAndClip().getBuffer();
       expect(delayedBuffer.duration).toEqual(mockBuffer.duration);
     });
   });
