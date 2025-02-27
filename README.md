@@ -13,12 +13,12 @@ This is currently alpha software; the code is in flux!
 ```js
 //
 git clone git@github.com:roundware/roundware-web-framework.git
-npm run build && npm pack
+npm run build
 
 // isstall tarbal in your app
 cd roundware-web-template
-npm i ../roundware-web-framework/roundware-web-framework-0.12.4.tgz
-npm start
+npm i ../roundware-web-framework
+npm run dev
 
 ```
 
