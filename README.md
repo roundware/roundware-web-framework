@@ -100,9 +100,8 @@ npm install roundware-web-framework
 ## Contributor Workflow
 
 ```bash
-npm run devstart && open http://localhost:8080/ # open example/ app
-npm run test                                    # execute Jasmine test suite
-npm run deploy                                  # publish new version of package
+npm run build
+npm run test                                    # execute Jest test
 ```
 
 See [HOW_TO_CONTRIBUTE.md](HOW_TO_CONTRIBUTE.md) for further details.
