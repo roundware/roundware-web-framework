@@ -105,6 +105,101 @@ export class BufferEffectsProcessor {
     return this;
   }
 
+  // trim and fadein and out in single pass
+  trimAndFadeInAndOut(
+    startTime: number, 
+    endTime: number, 
+    fadeDuration: number = this.config.fadeInDurationInMs
+      ? this.config.fadeInDurationInMs / 1000
+      : 0.3
+  ): BufferEffectsProcessor {
+    const sampleRate = this.audioBuffer.sampleRate;
+    const startFrame = startTime * sampleRate;
+    const endFrame = endTime * sampleRate;
+  
+    const channels = this.audioBuffer.numberOfChannels;
+  
+    // Step 1: Create a new AudioBuffer for the trimmed audio
+    const trimmedBuffer = this.context.createBuffer(
+      channels,
+      endFrame - startFrame,
+      sampleRate
+    );
+  
+    // Step 2: Copy the trimmed audio data into the new buffer
+    for (let channel = 0; channel < channels; channel++) {
+      const sourceData = this.audioBuffer
+        .getChannelData(channel)
+        .subarray(startFrame, endFrame);
+      trimmedBuffer.getChannelData(channel).set(sourceData);
+    }
+  
+    // Now, apply fade-in and fade-out to the trimmed buffer in a single pass
+    const length = trimmedBuffer.length;
+    const fadeSamples = Math.min(fadeDuration * sampleRate, length);
+  
+    // Step 3: Apply fade-in and fade-out in a single pass
+    for (let channel = 0; channel < channels; channel++) {
+      const channelData = trimmedBuffer.getChannelData(channel);
+  
+      // Fade-in effect on the first `fadeSamples` samples
+      for (let i = 0; i < fadeSamples; i++) {
+        channelData[i] *= i / fadeSamples;
+      }
+  
+      // Fade-out effect on the last `fadeSamples` samples
+      for (let i = 0; i < fadeSamples; i++) {
+        channelData[length - i - 1] *= i / fadeSamples;
+      }
+    }
+  
+    // Set the trimmed and faded buffer as the new audio buffer
+    this.audioBuffer = trimmedBuffer;
+  
+    return this;
+  }
+  
+  delayReverbClip(): BufferEffectsProcessor {
+    const delayTime = this.config.delayTimeInMs || 50;
+    const feedback = this.config.feedback || 0.5;
+    const reverb = this.config.reverb || 0.5;
+  
+    const delaySamples = Math.floor(
+      (delayTime / 1000) * this.audioBuffer.sampleRate
+    );
+    const numberOfChannels = this.audioBuffer.numberOfChannels;
+    const newBuffer = this.context.createBuffer(
+      numberOfChannels,
+      this.audioBuffer.length,
+      this.audioBuffer.sampleRate
+    );
+  
+    for (let channel = 0; channel < numberOfChannels; channel++) {
+      const inputData = this.audioBuffer.getChannelData(channel);
+      const outputData = newBuffer.getChannelData(channel);
+  
+      // Copy original signal
+      for (let i = 0; i < inputData.length; i++) {
+        outputData[i] = inputData[i];
+      }
+  
+      // Apply delay effect
+      for (let i = 0; i < inputData.length - delaySamples; i++) {
+        outputData[i + delaySamples] += inputData[i] * feedback;
+      }
+  
+      // Apply reverb effect
+      for (let i = 0; i < inputData.length; i++) {
+        if (i > 0) {
+          outputData[i] += inputData[i - 1] * reverb;
+        }
+      }
+    }
+  
+    this.audioBuffer = newBuffer;
+    return this;
+  }
+
   microFadeInAndOut(): BufferEffectsProcessor {
     return this.fadeInAndOut(
       this.config.microFadeInDurationInMs
