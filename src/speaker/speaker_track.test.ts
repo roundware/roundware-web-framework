@@ -1,8 +1,10 @@
 import { SpeakerTrack } from "./speaker_track";
-import { Point, LineString } from "@turf/helpers";
+
 import { SpeakerPrefetchPlayer } from "./players/SpeakerPrefetchPlayer";
 import { SpeakerConfig } from "../types/roundware";
 import { AudioContext } from "standardized-audio-context-mock";
+import { LineString, Point } from "geojson";
+import { polygon } from "@turf/helpers";
 
 // Fake the SpeakerPrefetchPlayer so that SpeakerTrack selects it based on config.mode
 jest.mock("./players/SpeakerPrefetchPlayer", () => {
@@ -64,6 +66,15 @@ describe("SpeakerTrack", () => {
       boundary: outerBoundaryLineString,
       attenuation_distance: 1000, // in meters; conversion to km happens in the constructor
       uri: "test-uri",
+      shape: polygon([
+        [
+          [0, 0],
+          [0, 10],
+          [10, 10],
+          [10, 0],
+          [0, 0],
+        ],
+      ]),
     };
 
     config = { mode: "prefetch" };

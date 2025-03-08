@@ -2,6 +2,7 @@ import { before, range, shuffle, xor } from "lodash";
 import { SpeakerVolumeProcessor, VPTrack } from "./speaker_volume_processor";
 import { coordsToPoints } from "../utils";
 import { Logger } from "../helpers/Logger";
+import { point, polygon } from "@turf/helpers";
 
 describe("Volume Processor", () => {
   const holdedTracks: VPTrack[] = range(0, 10).map((index) => ({
@@ -9,6 +10,15 @@ describe("Volume Processor", () => {
     minVolume: 0,
     speakerData: {
       parents: index === 0 ? [] : [index - 1],
+      shape: polygon([
+        [
+          [0, 0],
+          [0, 1],
+          [1, 1],
+          [1, 0],
+          [0, 0],
+        ],
+      ]),
     },
     speakerId: index,
     volumeByLocation() {
@@ -21,6 +31,15 @@ describe("Volume Processor", () => {
     minVolume: 0,
     speakerData: {
       parents: [index - 1],
+      shape: polygon([
+        [
+          [0, 0],
+          [0, 1],
+          [1, 1],
+          [1, 0],
+          [0, 0],
+        ],
+      ]),
     },
     speakerId: index,
     volumeByLocation() {
@@ -145,7 +164,12 @@ describe("Volume Processor", () => {
       const initialTracks = allTracks.slice(0, 5);
       initialTracks.forEach((track) => vP.holdTrack(track));
 
-      vP.holdRoot();
+      vP.holdRoot(
+        coordsToPoints({
+          latitude: 0,
+          longitude: 0,
+        }).geometry
+      );
       const baseTrack = vP.holdList[vP.holdList.length - 1];
 
       vP.restToZero();
@@ -171,6 +195,15 @@ describe("Volume Processor", () => {
         speakerId: 0,
         speakerData: {
           parents: [],
+          shape: polygon([
+            [
+              [0, 0],
+              [0, 1],
+              [1, 1],
+              [1, 0],
+              [0, 0],
+            ],
+          ]),
         },
         ...common,
       },
@@ -178,6 +211,15 @@ describe("Volume Processor", () => {
         speakerId: 1,
         speakerData: {
           parents: [0],
+          shape: polygon([
+            [
+              [0, 0],
+              [0, 1],
+              [1, 1],
+              [1, 0],
+              [0, 0],
+            ],
+          ]),
         },
         ...common,
       },
@@ -185,6 +227,15 @@ describe("Volume Processor", () => {
         speakerId: 2,
         speakerData: {
           parents: [1],
+          shape: polygon([
+            [
+              [0, 0],
+              [0, 1],
+              [1, 1],
+              [1, 0],
+              [0, 0],
+            ],
+          ]),
         },
         ...common,
       },
@@ -192,7 +243,7 @@ describe("Volume Processor", () => {
 
     test("should find the oldest ancestor", () => {
       const processor = new SpeakerVolumeProcessor(tracks);
-      const root = processor.findRoot(shuffle(tracks));
+      const root = processor.findRoot(shuffle(tracks), point([0, 0]).geometry);
       expect(root?.speakerId).toBe(0);
     });
   });

@@ -1,14 +1,16 @@
-import { Point } from "@turf/helpers";
+import centerOfMass from "@turf/center-of-mass";
 import { clone, random, sample, shuffle } from "lodash";
 import { Logger } from "../helpers/Logger";
 import { ISpeakerData } from "../types/speaker";
 import { SpeakerTrack } from "./speaker_track";
+import { Point } from "geojson";
+import distance from "@turf/distance";
 
 export type VPTrack = Pick<
   SpeakerTrack,
   "calculatedVolume" | "speakerId" | "volumeByLocation" | "minVolume"
 > & {
-  speakerData?: Pick<ISpeakerData, "parents">;
+  speakerData?: Pick<ISpeakerData, "parents" | "shape">;
 };
 
 export class SpeakerVolumeProcessor extends Logger {
@@ -53,16 +55,11 @@ export class SpeakerVolumeProcessor extends Logger {
     return this;
   }
 
-  holdRoot() {
+  holdRoot(listenerPoint: Point) {
     // which is base.
     const allIds = new Set(this.getAvailableTracks().map((a) => a.speakerId));
 
-    // find oldest ancestor
-    const base = this.getAvailableTracks()
-      .filter((node) =>
-        node.speakerData?.parents?.every((parentId) => !allIds.has(parentId))
-      )
-      .sort((a, b) => a.calculatedVolume - b.calculatedVolume)[0];
+    const base = this.findRoot(this.getAvailableTracks(), listenerPoint);
 
     if (!base) return this;
 
@@ -125,6 +122,7 @@ export class SpeakerVolumeProcessor extends Logger {
       lastNSlots.shift();
 
       // new slot;
+
       // 70% of times, select random new audible track
       if (Math.random() > replaceWithNoneProbability) {
         const randomTrack = sample(available); // available is already excluding previous slots.
@@ -158,7 +156,7 @@ export class SpeakerVolumeProcessor extends Logger {
     return this;
   }
 
-  findRoot(tracks: VPTrack[]) {
+  findRoot(tracks: VPTrack[], currentLocation: Point) {
     // which is base.
     const allIds = new Set(tracks.map((a) => a.speakerId));
 
@@ -167,7 +165,15 @@ export class SpeakerVolumeProcessor extends Logger {
       .filter((node) =>
         node.speakerData?.parents?.every((parentId) => !allIds.has(parentId))
       )
-      .sort((a, b) => a.calculatedVolume - b.calculatedVolume)[0];
+      .sort((a, b) => {
+        const centerOfMassA = centerOfMass(a.speakerData!.shape);
+        const centerOfMassB = centerOfMass(b.speakerData!.shape);
+
+        return (
+          distance(currentLocation, centerOfMassA) -
+          distance(currentLocation, centerOfMassB)
+        );
+      })[0];
 
     return base;
   }

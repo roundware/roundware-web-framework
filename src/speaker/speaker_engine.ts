@@ -1,4 +1,3 @@
-import { Point } from "@turf/helpers";
 import { sample } from "lodash";
 import { IAudioBuffer, IAudioContext } from "standardized-audio-context";
 import { Logger } from "../helpers/Logger";
@@ -8,6 +7,7 @@ import { SpeakerPrefetchSyncPlayer } from "./players/SpeakerPrefetchSyncPlayer";
 import { SpeakerTrack } from "./speaker_track";
 import { SpeakerVolumeProcessor } from "./speaker_volume_processor";
 import { BufferEffectsProcessor } from "./buffer_effects_processor";
+import { Point } from "geojson";
 export class SpeakerEngine extends Logger {
   speakerTracks: SpeakerTrack[] | undefined;
   mixParams: IMixParams | undefined;
@@ -116,7 +116,7 @@ export class SpeakerEngine extends Logger {
         .clearHolds()
         .byLocation(this.listenerPoint)
         .holdMinVolumes()
-        .holdRoot();
+        .holdRoot(this.listenerPoint);
 
       const selectedRoot =
         this.volumeProcessor.holdList[this.volumeProcessor.holdList.length - 1];
