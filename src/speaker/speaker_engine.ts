@@ -308,7 +308,13 @@ export class SpeakerEngine extends Logger {
     this.log(
       "basePlusMaxNRandom ",
       step,
-      this.basePlusMaxNRandomList.map((t) => t?.speakerId || null)
+      this.basePlusMaxNRandomList.map((t) =>
+        t
+          ? {
+              speakerId: t.speakerId,
+            }
+          : null
+      )
     );
   }
 
