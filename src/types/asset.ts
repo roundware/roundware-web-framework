@@ -1,7 +1,4 @@
-import { Feature } from "@turf/helpers";
-import { Point } from "@turf/helpers";
-import { Polygon } from "@turf/helpers";
-import { MultiPolygon } from "@turf/helpers";
+import { Polygon, MultiPolygon, Feature, Point } from "geojson";
 
 export interface IAssetData {
   id: number;

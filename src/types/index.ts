@@ -1,4 +1,4 @@
-import { Feature, Point } from "@turf/helpers";
+import { Feature, Point } from "geojson";
 import { TrackOptions } from "../mixer/TrackOptions";
 import { PlaylistAudiotrack } from "../playlistAudioTrack";
 import { IRoundwareConstructorOptions } from "./roundware";

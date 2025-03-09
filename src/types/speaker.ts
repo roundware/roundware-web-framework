@@ -1,6 +1,7 @@
 import { IAudioContext } from "standardized-audio-context";
 import { SpeakerConfig } from "./roundware";
-import { LineString, MultiLineString, MultiPolygon } from "@turf/helpers";
+import { LineString, MultiLineString, MultiPolygon } from "geojson";
+
 export interface ISpeakerData {
   id: number;
   maxvolume: number;

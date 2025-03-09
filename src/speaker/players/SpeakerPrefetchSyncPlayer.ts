@@ -58,15 +58,18 @@ export class SpeakerPrefetchSyncPlayer
       audioContext.decodeAudioData(
         audioData,
         function (buffer) {
-          speakerContext.originalBuffer = buffer;
-
-          speakerContext.currentBuffer = new BufferEffectsProcessor(
+          speakerContext.originalBuffer = new BufferEffectsProcessor(
             buffer,
             speakerContext.context,
             speakerContext.config.effects || {}
           )
             .microFadeInAndOut()
+            .delayAndClip()
+            .reverbAndClip()
             .getBuffer();
+
+          speakerContext.currentBuffer = speakerContext.originalBuffer;
+
           // @ts-ignore
           global._roundwareTotalAudioBufferSize +=
             buffer.length * buffer.numberOfChannels * 4;
@@ -313,5 +316,9 @@ export class SpeakerPrefetchSyncPlayer
 
   setPanPosition(pan: number) {
     this.panNode.pan.value = pan;
+  }
+
+  getOriginalBuffer() {
+    return this.originalBuffer;
   }
 }

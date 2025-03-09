@@ -1,7 +1,7 @@
 /* global require */
 
-const { point } = require("@turf/helpers");
-import { Point, Feature } from "@turf/helpers";
+import { point } from "@turf/helpers";
+import { Feature, Point } from "geojson";
 import { AudioContext, IAudioContext } from "standardized-audio-context";
 
 const MATCHES_URI_SCHEME = new RegExp(/^https?:\/\//i);

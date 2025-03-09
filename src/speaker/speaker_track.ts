@@ -1,13 +1,5 @@
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
-import {
-  Coord,
-  Feature,
-  LineString,
-  MultiPolygon,
-  Point,
-  Polygon,
-  MultiLineString,
-} from "@turf/helpers";
+import { Coord } from "@turf/helpers";
 import lineToPolygon from "@turf/line-to-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
 import pointToLineDistance from "@turf/point-to-line-distance";
@@ -21,6 +13,14 @@ import { SpeakerSyncStreamer } from "./players/SpeakerSyncStreamer";
 
 import { SpeakerPrefetchPlayer } from "./players/SpeakerPrefetchPlayer";
 import { SpeakerEngine } from "./speaker_engine";
+import {
+  LineString,
+  MultiLineString,
+  Feature,
+  MultiPolygon,
+  Polygon,
+  Point,
+} from "geojson";
 const convertLinesToPolygon = (shape: LineString | MultiLineString) =>
   lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;

@@ -1,6 +1,5 @@
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
 import { getUrlParam } from "./utils";
-import { Point, Feature } from "@turf/helpers";
 
 import { IAudioTrackData } from "./types/audioTrack";
 import { IMixParams, ITrackIdMap } from "./types";
@@ -8,6 +7,7 @@ import { IDecoratedAsset } from "./types/asset";
 import { Roundware } from "./roundware";
 import { AssetPool } from "./assetPool";
 import { IAudioContext } from "standardized-audio-context";
+import { Feature, Point } from "geojson";
 
 export class Playlist {
   listenerPoint: Feature<Point>;
