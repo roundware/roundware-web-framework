@@ -182,6 +182,14 @@ export class SpeakerEngine extends Logger {
     this.log("Loop Callback", mode);
 
     if (new RegExp(/basePlusMax\d+Random/).test(mode)) {
+      const loopPointUpdateProbability =
+        this.mixParams?.speakerConfig?.loopPointUpdateProbability ?? 1;
+
+      if (Math.random() >= loopPointUpdateProbability) {
+        this.logBasePlusMaxNRandom("Skipping loop point update");
+        return;
+      }
+
       const max = this.getMax();
 
       this.logBasePlusMaxNRandom("Before");
