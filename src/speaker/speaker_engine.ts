@@ -216,6 +216,7 @@ export class SpeakerEngine extends Logger {
         const baseLoopDuration = baseLoop.currentBuffer?.duration ?? 0;
 
         for (let i = 1; i < max; i++) {
+          const track = this.basePlusMaxNRandomList[i];
           // should we even consider?
           const considerationProbability =
             this.mixParams?.speakerConfig?.slotConsiderationProbability ?? 0.5;
@@ -230,8 +231,12 @@ export class SpeakerEngine extends Logger {
             this.mixParams?.speakerConfig?.replaceWithNoneProbability ?? 0.5;
 
           if (Math.random() >= replaceWithNoneProbability) {
+            if (track) {
+              this.scheduleLoopBasedStop(track);
+            }
             this.basePlusMaxNRandomList[i] = null;
             this.logBasePlusMaxNRandom("Replacing with none " + i);
+
             continue;
           }
 
@@ -242,13 +247,18 @@ export class SpeakerEngine extends Logger {
 
           const randomTrack = sample(available);
           if (randomTrack) {
+            if (track) {
+              this.scheduleLoopBasedStop(track);
+            }
             this.basePlusMaxNRandomList[i] = randomTrack;
             this.logBasePlusMaxNRandom(
               "Replacing with random " + i + " New:" + randomTrack.speakerId
             );
             if (randomTrack.player instanceof SpeakerPrefetchSyncPlayer) {
+              //
               const panPosition =
                 this.mixParams.speakerConfig.effects?.pan?.[i] ?? 0;
+
               randomTrack.player.setPanPosition(panPosition);
 
               this.logBasePlusMaxNRandom(
@@ -316,6 +326,21 @@ export class SpeakerEngine extends Logger {
           : null
       )
     );
+  }
+
+  scheduleLoopBasedStop(track: SpeakerTrack) {
+    if (!(track.player instanceof SpeakerPrefetchSyncPlayer)) {
+      return;
+    }
+    const remainingDuration =
+      track.player.getRemainingSecondsUntilNextLoopPoint();
+    if (remainingDuration > 0) {
+      setTimeout(() => {
+        track.player.fadeOutAndPause();
+      }, remainingDuration * 1000);
+    } else {
+      track.player.fadeOutAndPause();
+    }
   }
 
   allSpeakersEndCallback = () => {};

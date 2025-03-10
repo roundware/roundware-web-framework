@@ -321,4 +321,27 @@ export class SpeakerPrefetchSyncPlayer
   getOriginalBuffer() {
     return this.originalBuffer;
   }
+
+  getRemainingSecondsUntilNextLoopPoint() {
+    if (!this.currentBuffer) return 0;
+
+    const currentDuration = this.currentBuffer.duration;
+
+    // use modulas to get the remaining duration until next loop point;
+    const nextLoopPointInSeconds =
+      currentDuration -
+      ((this.context.currentTime - this.startedAt) % currentDuration);
+
+    // 0 - 0.1
+    if (nextLoopPointInSeconds >= 0 && nextLoopPointInSeconds <= 0.1) {
+      return 0;
+    }
+
+    // approximately currentDuration later (assume this is now!)
+    if (Math.abs(nextLoopPointInSeconds - currentDuration) <= 0.1) {
+      return 0;
+    }
+
+    return nextLoopPointInSeconds;
+  }
 }
