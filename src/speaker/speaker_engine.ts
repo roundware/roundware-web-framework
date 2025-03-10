@@ -335,6 +335,7 @@ export class SpeakerEngine extends Logger {
     const remainingDuration =
       track.player.getRemainingSecondsUntilNextLoopPoint();
     if (remainingDuration > 0) {
+      this.log("Scheduling stop after", remainingDuration);
       setTimeout(() => {
         track.player.fadeOutAndPause();
       }, remainingDuration * 1000);
