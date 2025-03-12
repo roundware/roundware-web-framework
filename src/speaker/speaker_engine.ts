@@ -80,6 +80,8 @@ export class SpeakerEngine extends Logger {
           t.speakerData?.shape!
         );
 
+        t.log(`Distance for loading: ${distanceToShape} / ${preloadDistance}`);
+
         if (distanceToShape < preloadDistance) {
           t.player.fetch();
         } else {
