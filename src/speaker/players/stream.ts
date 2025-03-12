@@ -15,6 +15,8 @@ import { cleanAudioURL, silenceAudioBase64, speakerLog } from "../../utils";
  * @class SpeakerPlayer
  */
 export class SpeakerStreamer extends EventTarget implements ISpeakerPlayer {
+  mode: ISpeakerPlayer["mode"] = "stream";
+  isFetching: boolean = false;
   private _fadeDuration: number;
   audio: HTMLAudioElement;
   private _audioSrc: IMediaElementAudioSourceNode<IAudioContext>;
@@ -84,6 +86,9 @@ export class SpeakerStreamer extends EventTarget implements ISpeakerPlayer {
   log(string: string, force = false) {
     (this.isSafeToPlay || force) && speakerLog(`${this.id}: ${string}`);
   }
+
+  async fetch(): Promise<void> {}
+  offload(): void {}
 
   _alreadyTryingToPlay = false;
   async play() {

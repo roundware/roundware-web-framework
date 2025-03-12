@@ -36,6 +36,15 @@ export interface ISpeakerPlayer extends EventTarget {
   log(string: string): void;
   onLoadingProgress(callback: (newPercent: number) => void): void;
   onEnd(callback: () => void): void;
+  fetch(): Promise<void>;
+  offload(): void;
+  isFetching: boolean;
+  mode:
+    | "prefetch"
+    | "prefetch_sync"
+    | "progressive_sync"
+    | "stream"
+    | "stream_sync";
 }
 
 export type SpeakerConstructor = {

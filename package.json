@@ -5,7 +5,7 @@
     "type": "git",
     "url": "git+https://github.com/roundware/roundware-web-framework.git"
   },
-  "version": "0.12.9-alpha.0",
+  "version": "0.12.9-alpha.1",
   "description": "Client framework for Roundware, a location-based contributory audio platform",
   "files": [
     "dist"
@@ -74,6 +74,7 @@
     "@turf/helpers": "^7.2.0",
     "@turf/line-to-polygon": "^6.5.0",
     "@turf/point-to-line-distance": "^6.5.0",
+    "@turf/point-to-polygon-distance": "^7.2.0",
     "@types/geojson": "^7946.0.16",
     "@types/lodash": "^4.17.15",
     "localforage": "^1.10.0",

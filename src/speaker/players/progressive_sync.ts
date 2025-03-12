@@ -10,10 +10,12 @@ import { ISpeakerPlayer, SpeakerConstructor } from "../../types/speaker";
 import { NEARLY_ZERO, speakerLog } from "../../utils";
 import { BufferEffectsProcessor } from "../buffer_effects_processor";
 
-export class SpeakerPrefetchSyncPlayer
+export class SpeakerProgressiveSyncPlayer
   extends EventTarget
   implements ISpeakerPlayer
 {
+  mode: ISpeakerPlayer["mode"] = "progressive_sync";
+
   isSafeToPlay: boolean = true;
   playing: boolean = false;
   loaded = false;
@@ -21,6 +23,7 @@ export class SpeakerPrefetchSyncPlayer
   source?: IAudioBufferSourceNode<IAudioContext>;
   id: number;
   gainNode: IGainNode<IAudioContext>;
+  uri: string;
   // pan node
   panNode: IStereoPannerNode<IAudioContext>;
   context: IAudioContext;
@@ -40,10 +43,20 @@ export class SpeakerPrefetchSyncPlayer
     this.gainNode.gain.value = NEARLY_ZERO;
     this.panNode = audioContext.createStereoPanner();
     this.panNode.pan.value = 0;
+    this.uri = uri;
+  }
 
-    var request = new XMLHttpRequest();
+  isFetching = false;
+  async fetch(): Promise<void> {
+    if (this.isFetching) {
+      return;
+    }
 
-    request.open("GET", uri, true);
+    this.isFetching = true;
+
+    const request = new XMLHttpRequest();
+    this.log("Fetching audio");
+    request.open("GET", this.uri, true);
     request.timeout = Infinity;
     request.responseType = "arraybuffer";
     request.onprogress = (ev) => {
@@ -55,9 +68,10 @@ export class SpeakerPrefetchSyncPlayer
     request.onload = function () {
       var audioData = request.response;
 
-      audioContext.decodeAudioData(
+      speakerContext.context.decodeAudioData(
         audioData,
         function (buffer) {
+          speakerContext.isFetching = false;
           speakerContext.originalBuffer = new BufferEffectsProcessor(
             buffer,
             speakerContext.context,
@@ -84,6 +98,29 @@ export class SpeakerPrefetchSyncPlayer
     };
 
     request.send();
+  }
+
+  isOffloading = false;
+  offload(): void {
+    if (!this.originalBuffer) return;
+    if (this.isOffloading) return;
+    this.isOffloading = true;
+    this.fadeOutAndPause();
+
+    this.isOffloading = true;
+    const speakerContext = this;
+    // original context
+    setTimeout(
+      () => {
+        speakerContext.source = undefined;
+        speakerContext.loaded = false;
+        speakerContext.loadedPercentage = 0;
+        speakerContext.currentBuffer = undefined;
+        speakerContext.originalBuffer = undefined;
+        speakerContext.log("Offloaded");
+      },
+      this.volume > NEARLY_ZERO ? 3000 : 0
+    );
   }
 
   started = false;

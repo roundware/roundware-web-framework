@@ -8,6 +8,7 @@ import { ISpeakerPlayer, SpeakerConstructor } from "../../types/speaker";
 import { cleanAudioURL, NEARLY_ZERO, speakerLog } from "../../utils";
 
 export class SpeakerSyncStreamer extends EventTarget implements ISpeakerPlayer {
+  mode: ISpeakerPlayer["mode"] = "stream_sync";
   isSafeToPlay: boolean = true;
   playing: boolean = false;
   audio: HTMLAudioElement;
@@ -55,6 +56,9 @@ export class SpeakerSyncStreamer extends EventTarget implements ISpeakerPlayer {
 
     this.log(`sync streamer initiaed`);
   }
+  isFetching = false;
+  async fetch(): Promise<void> {}
+  offload(): void {}
 
   started = false;
   alreadyTrying = false;

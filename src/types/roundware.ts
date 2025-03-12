@@ -53,7 +53,8 @@ export type SpeakerConfig = {
     | "stream-sync"
     | "prefetch"
     | "stream"
-    | `prefetch-sync-basePlusMax${number}Random`;
+    | "progressive-sync"
+    | `progressive-sync-basePlusMax${number}Random`;
 
   loop?: boolean;
   length?: number;
@@ -65,4 +66,7 @@ export type SpeakerConfig = {
   // list of fractions from which app will select randomly one of
   loopFractions?: number[];
   effects?: EffectsConfig;
+
+  // distance before starting the fetch
+  prefetchDistanceMeters?: number;
 };

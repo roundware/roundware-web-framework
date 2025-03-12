@@ -4,14 +4,14 @@ import lineToPolygon from "@turf/line-to-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
 import pointToLineDistance from "@turf/point-to-line-distance";
 import { IAudioContext } from "standardized-audio-context";
-import { SpeakerStreamer } from "./players/SpeakerStreamer";
-import { SpeakerPrefetchSyncPlayer } from "./players/SpeakerPrefetchSyncPlayer";
+import { SpeakerStreamer } from "./players/stream";
+import { SpeakerPrefetchSyncPlayer } from "./players/prefech_sync";
 import { ISpeakerData, ISpeakerPlayer } from "../types/speaker";
 import { speakerLog } from "../utils";
 import { SpeakerConfig } from "../types/roundware";
-import { SpeakerSyncStreamer } from "./players/SpeakerSyncStreamer";
+import { SpeakerSyncStreamer } from "./players/stream_sync";
 
-import { SpeakerPrefetchPlayer } from "./players/SpeakerPrefetchPlayer";
+import { SpeakerPrefetchPlayer } from "./players/prefetch";
 import { SpeakerEngine } from "./speaker_engine";
 import {
   LineString,
@@ -21,6 +21,7 @@ import {
   Polygon,
   Point,
 } from "geojson";
+import { SpeakerProgressiveSyncPlayer } from "./players/progressive_sync";
 const convertLinesToPolygon = (shape: LineString | MultiLineString) =>
   lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
@@ -94,6 +95,8 @@ export class SpeakerTrack {
       if (this.config.mode.startsWith("stream-sync"))
         return SpeakerSyncStreamer;
       if (this.config.mode.startsWith("prefetch")) return SpeakerPrefetchPlayer;
+      if (this.config.mode.startsWith("progressive-sync"))
+        return SpeakerProgressiveSyncPlayer;
       return SpeakerStreamer;
     })();
 

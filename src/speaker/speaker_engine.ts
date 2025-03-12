@@ -3,13 +3,14 @@ import { IAudioBuffer, IAudioContext } from "standardized-audio-context";
 import { Logger } from "../helpers/Logger";
 import { IMixParams } from "../types/index";
 import { ISpeakerData } from "../types/speaker";
-import { SpeakerPrefetchSyncPlayer } from "./players/SpeakerPrefetchSyncPlayer";
+import { SpeakerPrefetchSyncPlayer } from "./players/prefech_sync";
 import { SpeakerTrack } from "./speaker_track";
 
 import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { Point } from "geojson";
 import centerOfMass from "@turf/center-of-mass";
 import distance from "@turf/distance";
+import pointToPolygonDistance from "@turf/point-to-polygon-distance";
 export class SpeakerEngine extends Logger {
   speakerTracks: SpeakerTrack[] | undefined;
   mixParams: IMixParams | undefined;
@@ -65,6 +66,26 @@ export class SpeakerEngine extends Logger {
     }
     this.log("Updating volumes due to location change");
     this.updateVolumeOnLocationChange();
+  }
+
+  loadTracks() {
+    if (this.mixParams?.speakerConfig?.mode.startsWith("progressive")) {
+      const preloadDistance =
+        this.mixParams?.speakerConfig?.prefetchDistanceMeters ?? 1;
+
+      this.speakerTracks?.forEach((t) => {
+        const distanceToShape = pointToPolygonDistance(
+          this.listenerPoint,
+          t.speakerData?.shape!
+        );
+
+        if (distanceToShape < preloadDistance) {
+          t.player.fetch();
+        } else {
+          t.player.offload();
+        }
+      });
+    }
   }
 
   updateVolumeOnLocationChange() {

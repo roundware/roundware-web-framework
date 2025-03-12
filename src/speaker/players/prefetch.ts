@@ -19,6 +19,7 @@ export class SpeakerPrefetchPlayer
   extends EventTarget
   implements ISpeakerPlayer
 {
+  mode: ISpeakerPlayer["mode"] = "prefetch";
   isSafeToPlay: boolean = true;
   playing: boolean = false;
   loaded = false;
@@ -31,6 +32,8 @@ export class SpeakerPrefetchPlayer
   loadedPercentage = 0;
 
   buffer?: IAudioBuffer;
+
+  isFetching = false;
 
   constructor({ audioContext, id, uri, config }: SpeakerConstructor) {
     super();
@@ -54,12 +57,15 @@ export class SpeakerPrefetchPlayer
     };
     const speakerContext = this;
 
+    this.isFetching = true;
+
     request.onload = function () {
       var audioData = request.response;
 
       audioContext.decodeAudioData(
         audioData,
         function (buffer) {
+          speakerContext.isFetching = false;
           speakerContext.buffer = buffer;
           // @ts-ignore
           global._roundwareTotalAudioBufferSize +=
@@ -76,6 +82,10 @@ export class SpeakerPrefetchPlayer
 
     request.send();
   }
+
+  async fetch(): Promise<void> {}
+
+  offload(): void {}
 
   lastStartedAtSeconds = 0;
   lastStartedAtTime = 0;

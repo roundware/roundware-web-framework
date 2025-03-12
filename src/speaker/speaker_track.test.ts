@@ -1,13 +1,13 @@
 import { SpeakerTrack } from "./speaker_track";
 
-import { SpeakerPrefetchPlayer } from "./players/SpeakerPrefetchPlayer";
+import { SpeakerPrefetchPlayer } from "./players/prefetch";
 import { SpeakerConfig } from "../types/roundware";
 import { AudioContext } from "standardized-audio-context-mock";
 import { LineString, Point } from "geojson";
 import { polygon } from "@turf/helpers";
 
 // Fake the SpeakerPrefetchPlayer so that SpeakerTrack selects it based on config.mode
-jest.mock("./players/SpeakerPrefetchPlayer", () => {
+jest.mock("./players/prefetch", () => {
   return {
     SpeakerPrefetchPlayer: class {
       audio = {
@@ -297,9 +297,9 @@ describe("SpeakerTrack", () => {
     expect(speaker.player).toBeInstanceOf(SpeakerPrefetchPlayer);
   });
 
-  test("constructor selects SpeakerPrefetchSyncPlayer when config.mode starts with 'prefetch-sync'", () => {
+  test("constructor selects SpeakerProgressiveSyncPlayer when config.mode starts with 'prefetch-sync'", () => {
     const localConfig = {
-      mode: "prefetch-sync-basePlusMax5Random",
+      mode: "progressive-sync-basePlusMax5Random",
     } as SpeakerConfig;
     const speaker = new SpeakerTrack({
       audioContext: fakeAudioContext,
@@ -307,7 +307,9 @@ describe("SpeakerTrack", () => {
       config: localConfig,
       speakerEngine: fakeSpeakerEngine,
     });
-    expect(speaker.player.constructor.name).toBe("SpeakerPrefetchSyncPlayer");
+    expect(speaker.player.constructor.name).toBe(
+      "SpeakerProgressiveSyncPlayer"
+    );
   });
 
   test("constructor selects SpeakerSyncStreamer when config.mode starts with 'stream-sync'", () => {
