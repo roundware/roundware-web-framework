@@ -65,10 +65,11 @@ export class SpeakerEngine extends Logger {
       this.listenerPoint = params.listenerPoint.geometry;
     }
     this.log("Updating volumes due to location change");
+    this.updateProgressiveTracks();
     this.updateVolumeOnLocationChange();
   }
 
-  loadTracks() {
+  updateProgressiveTracks() {
     if (this.mixParams?.speakerConfig?.mode.startsWith("progressive")) {
       const preloadDistance =
         this.mixParams?.speakerConfig?.prefetchDistanceMeters ?? 1;
