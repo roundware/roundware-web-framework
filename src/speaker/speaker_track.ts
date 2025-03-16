@@ -3,25 +3,26 @@ import { Coord } from "@turf/helpers";
 import lineToPolygon from "@turf/line-to-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
 import pointToLineDistance from "@turf/point-to-line-distance";
-import { IAudioContext } from "standardized-audio-context";
-import { SpeakerStreamer } from "./players/stream";
-import { SpeakerPrefetchSyncPlayer } from "./players/prefech_sync";
-import { ISpeakerData, ISpeakerPlayer } from "../types/speaker";
-import { speakerLog } from "../utils";
-import { SpeakerConfig } from "../types/roundware";
-import { SpeakerSyncStreamer } from "./players/stream_sync";
-
-import { SpeakerPrefetchPlayer } from "./players/prefetch";
-import { SpeakerEngine } from "./speaker_engine";
 import {
+  IAudioBuffer,
+  IAudioBufferSourceNode,
+  IAudioContext,
+  IGainNode,
+} from "standardized-audio-context";
+import { SpeakerConfig } from "../types/roundware";
+import { ISpeakerData } from "../types/speaker";
+import { speakerLog } from "../utils";
+
+import {
+  Feature,
   LineString,
   MultiLineString,
-  Feature,
   MultiPolygon,
-  Polygon,
   Point,
+  Polygon,
 } from "geojson";
-import { SpeakerProgressiveSyncPlayer } from "./players/progressive_sync";
+import { BufferEffectsProcessor } from "./buffer_effects_processor";
+import { EventEmitter } from "../event_emitter";
 const convertLinesToPolygon = (shape: LineString | MultiLineString) =>
   lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
@@ -31,8 +32,14 @@ const NEARLY_ZERO = 0.05;
  * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker’s defined zone.'
  * (quoted from https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/Speaker.swift)
  * */
-export class SpeakerTrack {
-  speakerId: number;
+export class SpeakerTrack extends EventEmitter<{
+  loading: (percentage: number) => void;
+  loaded: () => void;
+  unloaded: () => void;
+  playing: () => void;
+  fadingOut: () => void;
+  baseTrackEnded: () => void;
+}> {
   maxVolume: number;
   minVolume: number;
   attenuationDistanceKm: number;
@@ -44,25 +51,27 @@ export class SpeakerTrack {
 
   calculatedVolume: number;
 
-  speakerData: ISpeakerData;
-
-  soundId: number | undefined;
-  player!: ISpeakerPlayer;
-  audioContext: IAudioContext;
+  data: ISpeakerData;
   config: SpeakerConfig;
-  speakerEngine: SpeakerEngine;
+
+  loadedPercentage = 0;
+
+  buffer: IAudioBuffer | null = null;
+  audioContext: IAudioContext;
+
+  bufferSource: IAudioBufferSourceNode<IAudioContext> | null = null;
+  gainNode: IGainNode<IAudioContext> | null = null;
 
   constructor({
-    audioContext,
     data,
+    audioContext,
     config,
-    speakerEngine,
   }: {
-    audioContext: IAudioContext;
-    speakerEngine: SpeakerEngine;
     data: ISpeakerData;
+    audioContext: IAudioContext;
     config: SpeakerConfig;
   }) {
+    super();
     const {
       id: speakerId,
       maxvolume: maxVolume,
@@ -72,11 +81,11 @@ export class SpeakerTrack {
       attenuation_distance: attenuationDistance,
       uri,
     } = data;
-    this.speakerEngine = speakerEngine;
-    this.audioContext = audioContext;
+
     this.config = config;
-    this.speakerData = data;
-    this.speakerId = speakerId;
+    this.audioContext = audioContext;
+    this.data = data;
+
     this.maxVolume = maxVolume;
     this.minVolume = minVolume;
     this.attenuationDistanceKm = attenuationDistance / 1000;
@@ -88,30 +97,6 @@ export class SpeakerTrack {
     }
     if (boundary) this.outerBoundary = convertLinesToPolygon(boundary);
     this.calculatedVolume = NEARLY_ZERO;
-
-    const Player = (() => {
-      if (this.config.mode.startsWith("prefetch-sync"))
-        return SpeakerPrefetchSyncPlayer;
-      if (this.config.mode.startsWith("stream-sync"))
-        return SpeakerSyncStreamer;
-      if (this.config.mode.startsWith("prefetch")) return SpeakerPrefetchPlayer;
-      if (this.config.mode.startsWith("progressive-sync"))
-        return SpeakerProgressiveSyncPlayer;
-      return SpeakerStreamer;
-    })();
-
-    console.log(`init player ${this.speakerId}: ${Player.name}`);
-    this.player = new Player({
-      audioContext: this.audioContext,
-      id: this.speakerId,
-      uri: this.uri,
-      config: this.config,
-    });
-
-    this.player.audio.addEventListener("playing", () => {
-      if (this.player.isSafeToPlay && this.speakerEngine.playing)
-        this.updateVolume();
-    });
   }
 
   outerBoundaryContains(point: Coord) {
@@ -155,54 +140,164 @@ export class SpeakerTrack {
     }
   }
 
-  log(string: string) {
-    speakerLog(`${this.speakerId}] ` + string);
-  }
-
-  /**
-   * Updates / (Schedules a update to if not playing) volume to match speaker track configurations using the `fade()` function
-   * @memberof SpeakerTrack
-   */
-  updateVolume() {
-    if (this.calculatedVolume < 0.05) this.player.fadeOutAndPause();
-    else {
-      this.player.play();
-      this.player.fade(this.calculatedVolume);
+  request: XMLHttpRequest | null = null;
+  loadBuffer() {
+    if (this.request) {
+      return;
     }
 
-    return this.calculatedVolume;
-  }
+    if (this.buffer) {
+      return;
+    }
 
-  get logline(): string {
-    return `${this} (${this.uri})`;
-  }
+    this.request = new XMLHttpRequest();
+    this.log("Fetching audio");
+    this.request.open("GET", this.uri, true);
+    this.request.timeout = Infinity;
+    this.request.responseType = "arraybuffer";
+    this.request.onprogress = (ev) => {
+      this.loadedPercentage = Number(((ev.loaded / ev.total) * 100).toFixed(2));
+      this.emit("loading", this.loadedPercentage);
+    };
+    const speakerContext = this;
+    this.request.onload = function () {
+      if (!speakerContext.request) return;
+      var audioData = speakerContext.request.response;
 
-  play() {
-    if (this.calculatedVolume < 0.05) return; // no need to play
+      speakerContext.audioContext.decodeAudioData(
+        audioData,
+        function (buffer) {
+          speakerContext.request = null;
+          speakerContext.buffer = buffer;
 
-    try {
-      this.player.play().then((success) => {
-        if (!success) {
-          setTimeout(() => {
-            this.play();
-          }, 2000);
+          // @ts-ignore
+          global._roundwareTotalAudioBufferSize +=
+            buffer.length * buffer.numberOfChannels * 4;
+
+          speakerContext.emit("loaded");
+        },
+
+        function (e) {
+          speakerContext.log("Error with decoding audio data " + e.message);
         }
-      });
-    } catch (err) {
-      console.error("Unable to play", this.logline, err);
+      );
+    };
+
+    this.request.send();
+  }
+
+  unload() {
+    if (this.buffer) {
+      this.emit("unloaded");
+    }
+    this.buffer = null;
+    this.bufferSource = null;
+    this.gainNode = null;
+    this.loadedPercentage = 0;
+    this.request?.abort();
+    this.request = null;
+  }
+
+  playAsBaseTrack() {
+    if (!this.buffer) {
+      throw new Error("Track is not loaded");
+    }
+
+    if (this.bufferSource) {
+      throw new Error("Track is already playing");
+    }
+
+    this.stopTimeout && clearTimeout(this.stopTimeout);
+
+    this.bufferSource = this.audioContext.createBufferSource();
+    this.bufferSource.loop = false;
+
+    this.bufferSource.buffer = new BufferEffectsProcessor(
+      this.buffer,
+      this.audioContext,
+      this.config?.effects || {}
+    )
+      .microFadeInAndOut()
+      .getBuffer();
+
+    if (!this.gainNode) {
+      this.gainNode = this.audioContext.createGain();
+      this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
+      this.gainNode.gain.value = NEARLY_ZERO;
+      this.gainNode.gain.exponentialRampToValueAtTime(
+        this.calculatedVolume,
+        this.audioContext.currentTime + FADE_DURATION_SECONDS
+      );
+    }
+
+    this.bufferSource.connect(this.gainNode);
+    this.gainNode.connect(this.audioContext.destination);
+    this.bufferSource.start();
+    this.bufferSource.onended = () => {
+      this.stopAndClearBufferSource();
+      this.emit("baseTrackEnded");
+    };
+    this.emit("playing");
+    console.trace();
+  }
+
+  stopTimeout: NodeJS.Timeout | null = null;
+
+  fadeOutAndStopBufferSource() {
+    if (!this.gainNode || !this.bufferSource) {
+      return;
+    }
+    this.emit("fadingOut");
+    this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
+
+    this.gainNode.gain.exponentialRampToValueAtTime(
+      NEARLY_ZERO,
+      this.audioContext.currentTime + FADE_DURATION_SECONDS
+    );
+
+    this.stopTimeout = setTimeout(() => {
+      this.stopAndClearBufferSource();
+    }, FADE_DURATION_SECONDS * 1000);
+  }
+
+  stopUrgently() {
+    if (this.bufferSource) {
+      this.stopAndClearBufferSource();
     }
   }
 
-  pause() {
+  stopAndClearBufferSource() {
     try {
-      this.player?.pause();
-    } catch (err) {
-      console.error("Unable to pause", this.logline, err);
+      this.bufferSource?.stop();
+      this.bufferSource?.disconnect();
+      this.gainNode?.disconnect();
+      this.bufferSource = null;
+      this.gainNode = null;
+    } catch (e) {
+      console.error(e);
     }
+  }
+
+  fadeBufferSourceToVolume(volume: number) {
+    if (!this.gainNode) {
+      return;
+    }
+
+    this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
+    this.gainNode.gain.exponentialRampToValueAtTime(
+      volume || NEARLY_ZERO,
+      this.audioContext.currentTime + FADE_DURATION_SECONDS
+    );
+  }
+
+  log(string: string) {
+    speakerLog(`${this.data.id}] ` + string);
   }
 
   toString() {
-    const { speakerId } = this;
-    return `SpeakerTrack (${speakerId})`;
+    const {
+      data: { id },
+    } = this;
+    return `SpeakerTrack (${id})`;
   }
 }

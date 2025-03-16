@@ -1,433 +1,246 @@
-import { sample } from "lodash";
-import { IAudioBuffer, IAudioContext } from "standardized-audio-context";
-import { Logger } from "../helpers/Logger";
-import { IMixParams } from "../types/index";
-import { ISpeakerData } from "../types/speaker";
-import { SpeakerPrefetchSyncPlayer } from "./players/prefech_sync";
-import { SpeakerTrack } from "./speaker_track";
-
-import { BufferEffectsProcessor } from "./buffer_effects_processor";
-import { Point } from "geojson";
-import centerOfMass from "@turf/center-of-mass";
-import distance from "@turf/distance";
+import { point } from "@turf/helpers";
 import pointToPolygonDistance from "@turf/point-to-polygon-distance";
-export class SpeakerEngine extends Logger {
-  speakerTracks: SpeakerTrack[] | undefined;
-  mixParams: IMixParams | undefined;
-  playing: boolean = false;
-  endedSpeakersLength: number = 0;
-  listenerPoint: Point;
+import { IAudioContext } from "standardized-audio-context";
+import { IMixParams, SpeakerConfig } from "../types/index";
+import { ISpeakerData } from "../types/speaker";
+import { SpeakerTrack } from "./speaker_track";
+import { LoadingStrategy, SpeakerUtils } from "./speaker_utils";
+import { EventEmitter } from "../event_emitter";
+
+export class SpeakerEngine extends EventEmitter<{
+  init: () => void;
+  play: () => void;
+  stop: () => void;
+  updateParams: (params: IMixParams) => void;
+  baseTrackStarted: () => void;
+  loopPointReached: () => void;
+  playingTracksUpdated: () => void;
+  speakerNear: (distance: number) => void;
+  baseTrackChanged: () => void;
+}> {
+  mixParams: IMixParams = {};
+  speakers: SpeakerTrack[] = [];
+  audioContext: IAudioContext;
+  playingTracks: (SpeakerTrack | null)[] = [];
 
   constructor(
-    speakers: ISpeakerData[],
-    private audioContext: IAudioContext,
-    mixParams: IMixParams
+    speakersData: ISpeakerData[],
+    audioContext: IAudioContext,
+    config: SpeakerConfig
   ) {
     super();
-    this.mixParams = mixParams;
-    this.listenerPoint = mixParams?.listenerPoint!.geometry;
-    this.endedSpeakersLength = 0;
-
-    const that = this;
-
-    this.speakerTracks = speakers.map(
-      (speakerData) =>
+    this.speakers = speakersData.map(
+      (data) =>
         new SpeakerTrack({
-          audioContext: that.audioContext,
-          data: speakerData,
-          config: mixParams.speakerConfig || {
-            mode: "stream-sync",
-            loop: false,
-            loopFractions: [1],
-          },
-          speakerEngine: that,
+          data,
+          audioContext,
+          config,
         })
     );
+    this.audioContext = audioContext;
+    this.emit("init");
 
-    this.speakerTracks.forEach((s) =>
-      s.player.onEnd(() => that.handleSpeakerEnd())
-    );
-    this.updateParams(this.playing, this.mixParams || {});
-    console.debug("SpeakerEngine initialized");
-
-    this.loopCallbackFunction = this.loopCallbackFunction.bind(this);
-  }
-
-  updateParams(playing: boolean, { listenerLocation, ...params }: IMixParams) {
-    this.mixParams = { ...this.mixParams, ...params };
-    this.playing = playing;
-    if (
-      params &&
-      params.listenerPoint &&
-      params.listenerPoint.geometry &&
-      params.listenerPoint.geometry.coordinates
-    ) {
-      this.listenerPoint = params.listenerPoint.geometry;
+    // prefetch all speakers
+    if (this.loadingStrategy === LoadingStrategy.PREFETCH) {
+      this.speakers.forEach((speaker) => {
+        speaker.loadBuffer();
+      });
     }
-    this.log("Updating volumes due to location change");
-    this.updateProgressiveTracks();
-    this.updateVolumeOnLocationChange();
   }
 
-  updateProgressiveTracks() {
-    if (this.mixParams?.speakerConfig?.mode.startsWith("progressive")) {
-      const preloadDistance =
-        this.mixParams?.speakerConfig?.prefetchDistanceMeters ?? 1;
+  playing = false;
+  public async play(): Promise<void> {
+    console.log(this.loadingStrategy, this.mode);
 
-      this.speakerTracks?.forEach((t) => {
-        const distanceToShape = pointToPolygonDistance(
+    this.playing = true;
+
+    if (this.loadingStrategy === LoadingStrategy.PREFETCH) {
+      // prefech requires all speakers to be loaded
+      if (!this.speakers.every((speaker) => speaker.buffer))
+        throw new Error(
+          `Prefetch strategy requires all speakers to be loaded before playing`
+        );
+    } else if (this.loadingStrategy === LoadingStrategy.PROGRESSIVE) {
+      if (this.mode.maxRandom > 0) {
+        this.onLocationUpdateProgressiveBasePlusMaxNRandom();
+      }
+    }
+
+    this.emit("play");
+  }
+
+  public async stop(): Promise<void> {
+    this.playingTracks.forEach((track) => {
+      track?.off("baseTrackEnded", this.onLoopPointBound);
+      track?.stopUrgently();
+    });
+    this.playing = false;
+    this.emit("stop");
+  }
+
+  updateParams(params: IMixParams) {
+    this.mixParams = params;
+
+    if (this.loadingStrategy === LoadingStrategy.PROGRESSIVE) {
+      // distance
+      const minDistanceToLoad =
+        this.mixParams.speakerConfig?.prefetchDistanceMeters || 0;
+
+      this.speakers.forEach((speaker) => {
+        const distance = pointToPolygonDistance(
           this.listenerPoint,
-          t.speakerData?.shape!
+          speaker.data.shape!
         );
 
-        t.log(`Distance for loading: ${distanceToShape} / ${preloadDistance}`);
-
-        if (distanceToShape < preloadDistance) {
-          t.player.fetch();
+        if (distance < minDistanceToLoad) {
+          this.emit("speakerNear", distance);
+          speaker.loadBuffer();
         } else {
-          t.player.offload();
+          speaker.unload();
         }
       });
-    }
-  }
 
-  updateVolumeOnLocationChange() {
-    if (Array.isArray(this.speakerTracks)) {
-      if (this.playing === false) {
-        this.speakerTracks.forEach((t) => t.player.fadeOutAndPause());
-        return;
+      if (this.mode.maxRandom > 0 && this.playing) {
+        this.onLocationUpdateProgressiveBasePlusMaxNRandom();
       }
-
-      // calculate volumes;
-      this.calculateLocationBaseVolumes();
-
-      this.speakerTracks.forEach((t) => {
-        t.updateVolume();
-      });
     }
   }
 
-  loopListening: SpeakerTrack[] = [];
+  onLocationUpdateProgressiveBasePlusMaxNRandom() {
+    // find speakers to play;
+    if (this.mode.maxRandom > 0) {
+      this.calculateVolumesByLocation();
+      const baseTrack = this.latestBaseTrack;
 
-  removeAllLoopListeners() {
-    this.loopListening.forEach((track) => {
-      track.player.removeEventListener("loop", this.loopCallbackFunction);
-    });
-  }
+      const previousBaseTrack = this.currentBaseTrack;
 
-  addLoopListener(track: SpeakerTrack) {
-    track.player.addEventListener("loop", this.loopCallbackFunction);
-    this.loopListening.push(track);
-    this.log("Added new loop listener", track);
-  }
+      this.playingTracks[0] = baseTrack || null;
 
-  calculateLocationBaseVolumes() {
-    const mode =
-      this.mixParams?.speakerConfig?.mode.split("-").reverse()[0] || "";
+      if (previousBaseTrack?.data.id !== baseTrack?.data.id) {
+        this.emit("baseTrackChanged");
 
-    // test for basePlusMax${number}Random using regex
-    if (new RegExp(/basePlusMax\d+Random/).test(mode)) {
-      this.calculateLocationVolumeBasePlusMaxNRandom();
-    } else {
-      this.calculateLocationVolumeDefault();
+        // new base track selected
+        if (!baseTrack?.buffer) {
+          baseTrack?.loadBuffer();
+          baseTrack?.on("loaded", () => {
+            this.playAsBaseTrack(baseTrack);
+          });
+        } else {
+          this.playAsBaseTrack(baseTrack);
+        }
+        // rest stop playing for now;
+        this.speakers.forEach((track) => {
+          if (track.data.id === baseTrack?.data.id) return;
+          track.off("baseTrackEnded", this.onLoopPointBound);
+          track.fadeOutAndStopBufferSource();
+        });
+      } else {
+        // base track not changed;
+        // just update by location based volume!;
+        this.playingTracks.forEach((track) => {
+          if (!track) return;
+          track.calculatedVolume = track.volumeByLocation(this.listenerPoint);
+          track.fadeBufferSourceToVolume(track.calculatedVolume);
+        });
+      }
     }
   }
 
-  calculateLocationVolumeDefault() {
-    this.speakerTracks?.forEach((t) => {
-      t.calculatedVolume = t.volumeByLocation(this.listenerPoint);
+  playAsBaseTrack(track: SpeakerTrack) {
+    // too late to play (for ex. loading took time)
+    if (!this.playing || this.currentBaseTrack?.data.id !== track.data.id) {
+      track.off("baseTrackEnded", this.onLoopPointBound);
+      track.fadeOutAndStopBufferSource();
+      return;
+    }
+
+    track.playAsBaseTrack();
+    if (!track.bufferSource) {
+      throw new Error("Buffer Source not available for setting up loop point");
+    }
+    track.on("baseTrackEnded", this.onLoopPointBound);
+    this.emit("baseTrackStarted");
+  }
+  private onLoopPointBound = this.onLoopPoint.bind(this);
+  onLoopPoint() {
+    if (!this.playing) return;
+
+    this.calculateVolumesByLocation();
+
+    const latestBaseTrack = this.latestBaseTrack;
+    const currentBaseTrack = this.currentBaseTrack;
+
+    if (this.latestBaseTrack?.data.id !== this.currentBaseTrack?.data.id) {
+      if (currentBaseTrack) {
+        currentBaseTrack.off("baseTrackEnded", this.onLoopPointBound);
+        currentBaseTrack.fadeOutAndStopBufferSource();
+      }
+      if (latestBaseTrack) this.playAsBaseTrack(latestBaseTrack);
+      this.playingTracks = [latestBaseTrack || null];
+      this.emit("playingTracksUpdated");
+    } else if (currentBaseTrack) {
+      // continue with current base track;
+      this.playAsBaseTrack(currentBaseTrack);
+    }
+
+    this.playingTracks.forEach((track) => {
+      track?.fadeBufferSourceToVolume(track.calculatedVolume);
+    });
+
+    this.emit("loopPointReached");
+  }
+
+  calculateVolumesByLocation() {
+    this.speakers.filter((speaker) => {
+      speaker.calculatedVolume = speaker.volumeByLocation(this.listenerPoint);
+      return speaker.calculatedVolume > speaker.minVolume;
     });
   }
 
-  basePlusMaxNRandomList: (SpeakerTrack | null)[] = [];
-
-  calculateLocationVolumeBasePlusMaxNRandom(max = this.getMax()) {
-    if (!this.speakerTracks) return;
-    // [0,1,2,3,4,5,6,7,8,9]
-    this.speakerTracks?.forEach((t) => {
-      t.calculatedVolume = t.volumeByLocation(this.listenerPoint);
+  get latestBaseTrack() {
+    // find speakers available in this region
+    const availableSpeakers = this.speakers.filter((speaker) => {
+      return speaker.calculatedVolume > speaker.minVolume;
     });
 
-    const currentBaseSpeaker = SpeakerEngine.findBaseSpeaker(
-      this.speakerTracks.filter((t) => t.calculatedVolume > 0),
+    // find base speaker
+    const baseSpeaker = SpeakerUtils.findBaseSpeaker(
+      availableSpeakers.map((s) => s.data),
       this.listenerPoint
     );
 
-    const previousBaseSpeaker = this.basePlusMaxNRandomList[0];
-
-    if (!currentBaseSpeaker) {
-      this.basePlusMaxNRandomList = new Array(max).fill(null);
-      // make rest zero;
-      this.speakerTracks.forEach((t) => {
-        t.calculatedVolume = 0;
-      });
-
-      this.logBasePlusMaxNRandom("No Base");
-      this.removeAllLoopListeners();
-    } else if (
-      this.loopListening.length == 0 ||
-      previousBaseSpeaker?.speakerId !== currentBaseSpeaker.speakerId
-    ) {
-      this.removeAllLoopListeners();
-
-      this.basePlusMaxNRandomList = [
-        currentBaseSpeaker,
-        ...new Array(max - 1).fill(null),
-      ];
-
-      // make rest zero except base;
-      this.speakerTracks.forEach((t) => {
-        if (t.speakerId !== currentBaseSpeaker.speakerId) {
-          t.calculatedVolume = 0;
-        }
-      });
-
-      this.logBasePlusMaxNRandom("New Base");
-      this.addLoopListener(currentBaseSpeaker);
-    } else {
-      this.logBasePlusMaxNRandom("Base Unchanged");
-    }
+    // find base track
+    const baseTrack = this.speakers.find(
+      (track) => track.data.id === baseSpeaker?.id
+    );
+    return baseTrack;
   }
 
-  getMax() {
-    const mode =
-      this.mixParams?.speakerConfig?.mode.split("-").reverse()[0] || "";
-
-    if (new RegExp(/basePlusMax\d+Random/).test(mode)) {
-      return parseInt(mode.match(/\d+/)![0]);
-    }
-
-    return 0;
+  get currentBaseTrack() {
+    return this.playingTracks[0];
   }
 
-  loopCallbackFunction() {
-    const mode =
-      this.mixParams?.speakerConfig?.mode.split("-").reverse()[0] || "";
-    this.log("Loop Callback", mode);
-
-    if (new RegExp(/basePlusMax\d+Random/).test(mode)) {
-      const loopPointUpdateProbability =
-        this.mixParams?.speakerConfig?.loopPointUpdateProbability ?? 1;
-
-      if (Math.random() >= loopPointUpdateProbability) {
-        this.logBasePlusMaxNRandom("Skipping loop point update");
-        return;
-      }
-
-      const max = this.getMax();
-
-      this.logBasePlusMaxNRandom("Before");
-
-      if (!Array.isArray(this.speakerTracks)) return;
-
-      // modify lengths;
-      if (Array.isArray(this.mixParams?.speakerConfig?.loopFractions)) {
-        let available = this.speakerTracks
-          .map((t) => {
-            t.calculatedVolume = t.volumeByLocation(this.listenerPoint);
-            return t;
-          })
-          .filter((t) => t.calculatedVolume > (t.minVolume || 0))
-          .filter((t) => !this.basePlusMaxNRandomList.includes(t));
-
-        const baseLoop = this.basePlusMaxNRandomList[0]?.player;
-
-        if (!(baseLoop instanceof SpeakerPrefetchSyncPlayer)) {
-          this.log("Base loop is of wrong type", baseLoop);
-          return;
-        }
-
-        const baseLoopDuration = baseLoop.currentBuffer?.duration ?? 0;
-
-        for (let i = 1; i < max; i++) {
-          const track = this.basePlusMaxNRandomList[i];
-          // should we even consider?
-          const considerationProbability =
-            this.mixParams?.speakerConfig?.slotConsiderationProbability ?? 0.5;
-
-          if (Math.random() >= considerationProbability) {
-            this.logBasePlusMaxNRandom("Skipping slot " + i);
-            continue; // keep this slot as is;
-          }
-
-          // should replace with none?
-          const replaceWithNoneProbability =
-            this.mixParams?.speakerConfig?.replaceWithNoneProbability ?? 0.5;
-
-          if (Math.random() >= replaceWithNoneProbability) {
-            if (track) {
-              this.scheduleLoopBasedStop(track);
-            }
-            this.basePlusMaxNRandomList[i] = null;
-            this.logBasePlusMaxNRandom("Replacing with none " + i);
-
-            continue;
-          }
-
-          // need replace with another!
-          if (available.length == 0) {
-            continue; // nothing we can do;
-          }
-
-          const randomTrack = sample(available);
-          if (randomTrack) {
-            if (track) {
-              this.scheduleLoopBasedStop(track);
-            }
-            this.basePlusMaxNRandomList[i] = randomTrack;
-            this.logBasePlusMaxNRandom(
-              "Replacing with random " + i + " New:" + randomTrack.speakerId
-            );
-            if (randomTrack.player instanceof SpeakerPrefetchSyncPlayer) {
-              //
-              const panPosition =
-                this.mixParams.speakerConfig.effects?.pan?.[i] ?? 0;
-
-              randomTrack.player.setPanPosition(panPosition);
-
-              this.logBasePlusMaxNRandom(
-                "Pan Position " + i + " " + panPosition
-              );
-              const loadedBuffer = randomTrack.player.getOriginalBuffer();
-
-              if (!loadedBuffer) {
-                this.log("Buffer not loaded yet", randomTrack.speakerId);
-                continue;
-              }
-
-              const fraction =
-                sample(this.mixParams.speakerConfig.loopFractions) ?? 1;
-
-              this.logBasePlusMaxNRandom("Fraction " + i + " " + fraction);
-
-              const effectsProcessor = new BufferEffectsProcessor(
-                loadedBuffer,
-                randomTrack.player.context,
-                this.mixParams.speakerConfig.effects || {}
-              );
-              randomTrack.player.updateBufferAndPlayNow(
-                effectsProcessor
-                  .trim(0, baseLoopDuration * fraction)
-                  .microFadeInAndOut()
-                  .getBuffer()
-              );
-            }
-
-            available = available.filter(
-              (t) => t.speakerId !== randomTrack.speakerId
-            );
-          } else {
-            this.log("No available track found for slot", i);
-          }
-        }
-
-        // set all others to zero;
-        this.speakerTracks.forEach((t) => {
-          if (
-            !this.basePlusMaxNRandomList.some(
-              (lt) => lt?.speakerId === t.speakerId
-            )
-          ) {
-            t.calculatedVolume = 0;
-          }
-        });
-      }
-      this.logBasePlusMaxNRandom("Final");
-    }
-    this.log("Updating volumes due to loop point");
-    this.speakerTracks?.forEach((s) => s.updateVolume());
+  // getters
+  get listenerPoint() {
+    const lP = this.mixParams.listenerPoint;
+    if (!lP) throw new Error(`Listener Point missing in mixParams`);
+    return lP.geometry;
   }
 
-  logBasePlusMaxNRandom(step: string) {
-    this.log(
-      "basePlusMaxNRandom ",
-      step,
-      this.basePlusMaxNRandomList.map((t) =>
-        t
-          ? {
-              speakerId: t.speakerId,
-            }
-          : null
-      )
+  get loadingStrategy() {
+    return SpeakerUtils.getLoadingStrategy(
+      this.mixParams.speakerConfig?.mode || "progressive-sync"
     );
   }
 
-  scheduleLoopBasedStop(track: SpeakerTrack) {
-    if (!(track.player instanceof SpeakerPrefetchSyncPlayer)) {
-      return;
-    }
-    const remainingDuration =
-      track.player.getRemainingSecondsUntilNextLoopPoint();
-    if (remainingDuration > 0) {
-      this.log("Scheduling stop after", remainingDuration);
-      setTimeout(() => {
-        track.player.fadeOutAndPause();
-      }, remainingDuration * 1000);
-    } else {
-      track.player.fadeOutAndPause();
-    }
-  }
-
-  allSpeakersEndCallback = () => {};
-  onAllSpeakersEnd(callback: () => void) {
-    this.allSpeakersEndCallback = callback;
-  }
-
-  replay() {
-    this.endedSpeakersLength = 0;
-    const that = this;
-    this.speakerTracks?.forEach((s) => {
-      s.player.pause();
-      s.player.replay();
-      that.play();
-    });
-  }
-
-  play() {
-    this.speakerTracks?.forEach((s) => {
-      s.player.timerStart();
-      s.play();
-    });
-  }
-
-  stop() {
-    this.speakerTracks?.forEach((s) => {
-      s.player.timerStop();
-      s.pause();
-    });
-  }
-
-  handleSpeakerEnd() {
-    this.endedSpeakersLength += 1;
-    console.log(
-      `some speaker ended`,
-      this.endedSpeakersLength,
-      this.speakerTracks?.length
+  get mode() {
+    return SpeakerUtils.getMode(
+      this.mixParams.speakerConfig?.mode ||
+        "progressive-sync-basePlusMax5Random"
     );
-    if (this.endedSpeakersLength == this.speakerTracks?.length) {
-      this.allSpeakersEndCallback();
-    }
   }
 
-  static findBaseSpeaker(tracks: SpeakerTrack[], currentLocation: Point) {
-    // which is base.
-    const allIds = new Set(tracks.map((a) => a.speakerId));
-
-    // find oldest ancestor
-    const base = tracks
-      .filter((node) =>
-        node.speakerData?.parents?.every((parentId) => !allIds.has(parentId))
-      )
-      .sort((a, b) => {
-        const centerOfMassA = centerOfMass(a.speakerData!.shape);
-        const centerOfMassB = centerOfMass(b.speakerData!.shape);
-
-        return (
-          distance(currentLocation, centerOfMassA) -
-          distance(currentLocation, centerOfMassB)
-        );
-      })[0];
-
-    return base;
+  toString() {
+    return "Roundware Speaker Engine";
   }
 }

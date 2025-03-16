@@ -1,6 +1,7 @@
 import { IAudioContext } from "standardized-audio-context";
 import { SpeakerConfig } from "./roundware";
 import { LineString, MultiLineString, MultiPolygon } from "geojson";
+import { IMixParams } from "./index";
 
 export interface ISpeakerData {
   id: number;
