@@ -203,7 +203,7 @@ export class SpeakerTrack extends EventEmitter<{
       throw new Error("Track is not loaded");
     }
 
-    if (this.bufferSource) {
+    if (this.bufferSource && !this.stopTimeout) {
       throw new Error("Track is already playing");
     }
 
