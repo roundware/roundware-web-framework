@@ -5,8 +5,8 @@ import { Roundware, AssetPriorityType } from "./roundware";
 import { Coordinates, GeoListenModeType, IMixParams } from "./types";
 import { IAssetData, IDecoratedAsset } from "./types/asset";
 
-import { SpeakerEngine } from "./speaker/speaker_engine";
 import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
+import { SpeakerEngine } from "./speaker/speaker_engine";
 
 export const GeoListenMode: {
   DISABLED: GeoListenModeType;
@@ -81,7 +81,7 @@ export class Mixer {
     }
     this.mixParams = { ...this.mixParams, ...params };
     this.playlist?.updateParams(params);
-    this.speakerEngine?.updateParams(this.playing, this.mixParams);
+    this.speakerEngine?.updateParams?.(this.mixParams);
   }
   /**
    * @param  {number} trackId
@@ -138,10 +138,7 @@ export class Mixer {
       this.speakerEngine = new SpeakerEngine(
         this._client.speakers(),
         this.audioContext,
-        {
-          listenerPoint,
-          ...this.mixParams,
-        }
+        this.mixParams.speakerConfig!
       );
 
       this.updateParams(this.mixParams);
@@ -165,8 +162,11 @@ export class Mixer {
     return this.playing;
   }
 
-  play() {
+  async play() {
     this.initContext();
+    if (this.audioContext.state === "suspended") {
+      await this.audioContext.resume();
+    }
     // console.log(`playing`);
     // consssole.log(this.audioContext.currentTime);
     if (this.playing === false) {

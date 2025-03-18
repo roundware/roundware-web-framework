@@ -279,7 +279,7 @@ export class PlaylistAudiotrack {
   // Halts any scheduled gain changes and holds at current level
   // @see https://developer.mozilla.org/en-US/docs/Web/API/AudioParam/cancelAndHoldAtTime
   holdGain() {
-    this.gainNode.gain.cancelScheduledValues(0);
+    this.gainNode.gain.cancelAndHoldAtTime(0);
   }
 
   setZeroGain() {
