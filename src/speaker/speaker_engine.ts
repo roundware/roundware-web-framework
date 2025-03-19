@@ -6,6 +6,7 @@ import { ISpeakerData } from "../types/speaker";
 import { SpeakerTrack } from "./speaker_track";
 import { LoadingStrategy, SpeakerUtils } from "./speaker_utils";
 import { EventEmitter } from "../event_emitter";
+import { random, sample } from "lodash";
 
 export class SpeakerEngine extends EventEmitter<{
   init: () => void;
@@ -183,13 +184,105 @@ export class SpeakerEngine extends EventEmitter<{
       this.playAsBaseTrack(currentBaseTrack);
     }
 
+    this.recalculateNonBaseTracks();
+
     this.playingTracks.forEach((track) => {
       track?.fadeBufferSourceToVolume(track.calculatedVolume);
+    });
+
+    this.speakers.forEach((speaker) => {
+      speaker.off("baseTrackEnded", this.onLoopPointBound);
+      speaker.fadeOutAndStopBufferSource();
     });
 
     this.emit("loopPointReached");
   }
 
+  recalculateNonBaseTracks() {
+    let availableSpeakers = this.speakers.filter((speaker) => {
+      return (
+        speaker.calculatedVolume > speaker.minVolume &&
+        !this.playingTracks.includes(speaker)
+      );
+    });
+
+    // loopPointUpdateProbability; should ignore this call?
+    const loopPointUpdateProbability =
+      this.mixParams.speakerConfig?.loopPointUpdateProbability || 1;
+
+    // return if should not update
+    if (Math.random() < loopPointUpdateProbability) return;
+
+    for (let i = 1; i < this.playingTracks.length; i++) {
+      // slotConsiderationProbability
+      const slotConsiderationProbability =
+        this.mixParams.speakerConfig?.slotConsiderationProbability || 1;
+
+      // return if should not update
+      if (Math.random() > slotConsiderationProbability) return;
+
+      const speaker = this.playingTracks[i];
+
+      // should replace with none?
+      const replaceWithNoneProbability =
+        this.mixParams.speakerConfig?.replaceWithNoneProbability || 0;
+      if (Math.random() < replaceWithNoneProbability) {
+        // replace with none
+        this.playingTracks[i] = null;
+        if (speaker) {
+          const remainingTime = speaker.getBufferSourceRemainingTime();
+          if (remainingTime > 0.01) {
+            setTimeout(() => {
+              speaker.fadeOutAndStopBufferSource();
+            }, remainingTime * 1000);
+          } else speaker.fadeOutAndStopBufferSource();
+        }
+        return;
+      }
+
+      // replace with new speaker
+      const newSpeaker = sample(availableSpeakers);
+
+      if (newSpeaker) {
+        if (speaker) {
+          const remainingTime = speaker.getBufferSourceRemainingTime();
+          if (remainingTime > 0.01) {
+            setTimeout(() => {
+              speaker.fadeOutAndStopBufferSource();
+            }, remainingTime * 1000);
+          } else speaker.fadeOutAndStopBufferSource();
+        }
+
+        this.playingTracks[i] = newSpeaker;
+        availableSpeakers = availableSpeakers.filter(
+          (s) => s.data.id !== newSpeaker.data.id
+        );
+        // find a new random length;
+        const lengths = this.mixParams.speakerConfig?.loopFractions ?? [1];
+        const randomLength = sample(lengths);
+        if (!randomLength) throw new Error(`Random length not found`);
+        if (!this.playingTracks[0]?.buffer)
+          throw new Error(`Base track buffer not found`);
+        const duration = this.playingTracks[0].buffer.duration * randomLength;
+        if (!newSpeaker.buffer) {
+          let now = this.audioContext.currentTime;
+          newSpeaker.on("loaded", () => {
+            if (
+              !this.playingTracks.some((t) => t?.data.id === newSpeaker.data.id)
+            )
+              return;
+            // offset;
+            const currentTime = this.audioContext.currentTime;
+            const offset = currentTime - now;
+            newSpeaker.playWithDuration(duration, offset);
+          });
+          newSpeaker.loadBuffer();
+        } else newSpeaker.playWithDuration(duration);
+      } else {
+        this.playingTracks[i] = null;
+      }
+    }
+  }
   calculateVolumesByLocation() {
     this.speakers.filter((speaker) => {
       speaker.calculatedVolume = speaker.volumeByLocation(this.listenerPoint);

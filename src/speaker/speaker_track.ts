@@ -198,7 +198,9 @@ export class SpeakerTrack extends EventEmitter<{
     this.request = null;
   }
 
-  playAsBaseTrack() {
+  startedAtContextTime = 0;
+
+  playWithDuration(duraiton?: number, offset?: number) {
     if (!this.buffer) {
       throw new Error("Track is not loaded");
     }
@@ -217,6 +219,7 @@ export class SpeakerTrack extends EventEmitter<{
       this.audioContext,
       this.config?.effects || {}
     )
+      .trim(0, duraiton ?? this.buffer.duration)
       .microFadeInAndOut()
       .getBuffer();
 
@@ -232,13 +235,27 @@ export class SpeakerTrack extends EventEmitter<{
 
     this.bufferSource.connect(this.gainNode);
     this.gainNode.connect(this.audioContext.destination);
-    this.bufferSource.start();
+    this.bufferSource.start(this.audioContext.currentTime, offset || 0);
+    this.startedAtContextTime = this.audioContext.currentTime;
     this.bufferSource.onended = () => {
       this.stopAndClearBufferSource();
       this.emit("baseTrackEnded");
     };
     this.emit("playing");
     console.trace();
+  }
+
+  playAsBaseTrack() {
+    this.playWithDuration();
+  }
+
+  getBufferSourceRemainingTime() {
+    if (!this.bufferSource) {
+      return 0;
+    }
+    const duration = this.bufferSource.buffer?.duration || 0;
+    const elapsed = this.audioContext.currentTime - this.startedAtContextTime;
+    return duration - elapsed;
   }
 
   stopTimeout: NodeJS.Timeout | null = null;
