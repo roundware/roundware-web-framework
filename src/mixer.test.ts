@@ -10,8 +10,8 @@ jest.mock("./playlist");
 jest.mock("./speaker/speaker_engine");
 jest.mock("./utils");
 jest.mock("./assetPool");
-jest.spyOn(SpeakerEngine.prototype, "play").mockImplementation(() => {});
-jest.spyOn(SpeakerEngine.prototype, "stop").mockImplementation(() => {});
+jest.spyOn(SpeakerEngine.prototype, "play").mockImplementation(() => Promise.resolve());
+jest.spyOn(SpeakerEngine.prototype, "stop").mockImplementation(() => Promise.resolve());
 
 describe("Mixer", () => {
   let mockClient: Roundware;
@@ -127,7 +127,7 @@ describe("Mixer", () => {
     const mockPlay = jest.fn();
     mixer.playlist = { play: mockPlay } as unknown as Playlist;
   
-    const speakerPlaySpy = jest.spyOn(SpeakerEngine.prototype, "play").mockImplementation(() => {});
+    const speakerPlaySpy = jest.spyOn(SpeakerEngine.prototype, "play").mockImplementation(() => Promise.resolve());
   
     mixer.play();
   
@@ -139,7 +139,7 @@ describe("Mixer", () => {
   });
 
   it("should test speakerEngine.stop directly", () => {
-    const speakerStopSpy = jest.spyOn(SpeakerEngine.prototype, "stop").mockImplementation(() => {});
+    const speakerStopSpy = jest.spyOn(SpeakerEngine.prototype, "stop").mockImplementation(() => Promise.resolve());
   
     mixer.initContext();
   
