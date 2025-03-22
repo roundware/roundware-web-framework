@@ -13,7 +13,7 @@ export class SpeakerUtils {
     // find oldest ancestor
     const base = speakers
       .filter((node) =>
-        node?.parents?.every((parentId) => !allIds.has(parentId))
+        (node?.parents ?? [])?.every((parentId) => !allIds.has(parentId))
       )
       .sort((a, b) => {
         const centerOfMassA = centerOfMass(a!.shape);
