@@ -156,4 +156,20 @@ describe("SpeakerUtils", () => {
       });
     });
   });
+
+  describe("findRemainingTime", () => {
+    it("should return the remaining time", () => {
+      const result = SpeakerUtils.findRemainingTime(12, 10, 6);
+      expect(result).toBe(4);
+
+      const result2 = SpeakerUtils.findRemainingTime(15, 10, 6);
+      expect(result2).toBe(1);
+    });
+
+    it("should return '0' if remaining time is zero", () => {
+      const result = SpeakerUtils.findRemainingTime(16, 10, 6);
+      expect(result).toBe(0);
+    });
+
+  });
 });

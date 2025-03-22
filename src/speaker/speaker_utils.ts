@@ -71,6 +71,14 @@ export class SpeakerUtils {
       sync: mode.includes("sync"),
     };
   }
+
+
+  static findRemainingTime(currentTime: number,
+      startedAt: number,
+    duration: number) {
+    const remainingTime = duration - (currentTime - startedAt);
+    return remainingTime;
+  }
 }
 
 export enum LoadingStrategy {

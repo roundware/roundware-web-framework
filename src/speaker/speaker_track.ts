@@ -249,14 +249,7 @@ export class SpeakerTrack extends EventEmitter<{
     this.playWithDuration();
   }
 
-  getBufferSourceRemainingTime() {
-    if (!this.bufferSource) {
-      return 0;
-    }
-    const duration = this.bufferSource.buffer?.duration || 0;
-    const elapsed = this.audioContext.currentTime - this.startedAtContextTime;
-    return duration - elapsed;
-  }
+
 
   stopTimeout: NodeJS.Timeout | null = null;
 

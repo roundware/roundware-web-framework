@@ -229,8 +229,11 @@ export class SpeakerEngine extends EventEmitter<{
       if (Math.random() < replaceWithNoneProbability) {
         // replace with none
         this.playingTracks[i] = null;
-        if (speaker) {
-          const remainingTime = speaker.getBufferSourceRemainingTime();
+        if (speaker && speaker.buffer) {
+          const remainingTime = SpeakerUtils.findRemainingTime(this.audioContext.currentTime, 
+            speaker.startedAtContextTime,
+            speaker.buffer.duration
+          );
           if (remainingTime > 0.01) {
             setTimeout(() => {
               speaker.fadeOutAndStopBufferSource();
@@ -244,8 +247,11 @@ export class SpeakerEngine extends EventEmitter<{
       const newSpeaker = sample(availableSpeakers);
 
       if (newSpeaker) {
-        if (speaker) {
-          const remainingTime = speaker.getBufferSourceRemainingTime();
+        if (speaker && speaker.buffer) {
+          const remainingTime = SpeakerUtils.findRemainingTime(this.audioContext.currentTime, 
+            speaker.startedAtContextTime,
+            speaker.buffer.duration
+          );
           if (remainingTime > 0.01) {
             setTimeout(() => {
               speaker.fadeOutAndStopBufferSource();
