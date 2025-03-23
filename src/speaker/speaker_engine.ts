@@ -7,7 +7,7 @@ import { SpeakerTrack } from "./speaker_track";
 import { LoadingStrategy, SpeakerUtils } from "./speaker_utils";
 import { EventEmitter } from "../event_emitter";
 import { random, sample } from "lodash";
-import { FADE_IN_DURATION_SECONDS } from "../utils";
+import { FADE_IN_DURATION_SECONDS, isNearlyZero } from "../utils";
 
 export class SpeakerEngine extends EventEmitter<{
   init: () => void;
@@ -31,6 +31,8 @@ export class SpeakerEngine extends EventEmitter<{
   audioContext: IAudioContext;
   playingTracks: (SpeakerTrack | null)[] = [];
 
+  groupStartTimes: Record<number, number | null> = {};
+
   constructor(
     speakersData: ISpeakerData[],
     audioContext: IAudioContext,
@@ -43,6 +45,7 @@ export class SpeakerEngine extends EventEmitter<{
           data,
           audioContext,
           config,
+          groupId: SpeakerUtils.getRootForSpeaker(data, speakersData)
         })
     );
     this.audioContext = audioContext;
@@ -54,6 +57,13 @@ export class SpeakerEngine extends EventEmitter<{
         speaker.loadBuffer();
       });
     }
+
+    // log the groups;
+    const groups = new Set<number>();
+    this.speakers.forEach((speaker) => {
+      groups.add(speaker.groupId);
+    });
+    console.debug(`Groups:`, Array.from(groups));
   }
 
   playing = false;
@@ -185,9 +195,24 @@ export class SpeakerEngine extends EventEmitter<{
       throw new Error("Base track buffer not found");
     }
 
+    const currentTime = this.audioContext.currentTime;
+
+    const timeUntilNextLoop = SpeakerUtils.timeUntilClosestLoopPoint({
+      currentTime,
+      startTime: this.groupStartTimes[track.groupId] ?? currentTime,
+      duration: track.buffer.duration,
+    });
+
+    let offset = track.buffer.duration - timeUntilNextLoop;
+
+    if(isNearlyZero(offset, 0.015)) {
+      offset = 0;
+      this.groupStartTimes[track.groupId] = currentTime;
+    }
+
     track.playForDuration({
       duration: track.buffer.duration,
-      offset: 0,
+      offset,
       fadeInDuration: isContinued ? 0 : FADE_IN_DURATION_SECONDS,
       times: 1,
       pan: 0,

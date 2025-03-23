@@ -172,4 +172,90 @@ describe("SpeakerUtils", () => {
     });
 
   });
+
+  describe("getRootForSpeaker", () => {
+    // Mock speaker data
+    const mockSpeakers: Pick<ISpeakerData, 'id' | 'parents'>[] = [
+      { id: 1, parents: [],  },
+      { id: 2, parents: [1],  },
+      { id: 3, parents: [2],  },
+      { id: 4, parents: [1],  },
+      { id: 5, parents: [],  },
+      { id: 6, parents: [999],  }, // Parent doesn't exist
+    ];
+
+    it("should return speaker id when speaker has no parents", () => {
+      const result = SpeakerUtils.getRootForSpeaker(mockSpeakers[0], mockSpeakers);
+      expect(result).toBe(1);
+    });
+
+    it("should return root speaker id for speaker with one parent", () => {
+      const result = SpeakerUtils.getRootForSpeaker(mockSpeakers[1], mockSpeakers);
+      expect(result).toBe(1);
+    });
+
+    it("should return root speaker id for speaker with multiple levels of parents", () => {
+      const result = SpeakerUtils.getRootForSpeaker(mockSpeakers[2], mockSpeakers);
+      expect(result).toBe(1);
+    });
+
+    it("should return speaker id when parent is not found in speakers array", () => {
+      const result = SpeakerUtils.getRootForSpeaker(mockSpeakers[5], mockSpeakers);
+      expect(result).toBe(6);
+    });
+
+    it("should handle multiple speakers with same root correctly", () => {
+      const result1 = SpeakerUtils.getRootForSpeaker(mockSpeakers[1], mockSpeakers);
+      const result2 = SpeakerUtils.getRootForSpeaker(mockSpeakers[3], mockSpeakers);
+      expect(result1).toBe(1);
+      expect(result2).toBe(1);
+    });
+  });
+
+  describe("timeUntilClosestLoopPoint", () => {
+    it("should calculate correct time until next loop point - example 1", () => {
+      const result = SpeakerUtils.timeUntilClosestLoopPoint({
+        currentTime: 8,
+        startTime: 0,
+        duration: 3
+      });
+      expect(result).toBe(1);
+    });
+
+    it("should calculate correct time until next loop point - example 2", () => {
+      const result = SpeakerUtils.timeUntilClosestLoopPoint({
+        currentTime: 9,
+        startTime: 6,
+        duration: 3
+      });
+      expect(result).toBe(3);
+    });
+
+    it("should calculate correct time until next loop point - example 3", () => {
+      const result = SpeakerUtils.timeUntilClosestLoopPoint({
+        currentTime: 13,
+        startTime: 9,
+        duration: 3
+      });
+      expect(result).toBe(2);
+    });
+
+    it("should handle exact loop points", () => {
+      const result = SpeakerUtils.timeUntilClosestLoopPoint({
+        currentTime: 12,
+        startTime: 6,
+        duration: 3
+      });
+      expect(result).toBe(3); // At exact loop point, should return full duration
+    });
+
+    it("should handle very small remaining times", () => {
+      const result = SpeakerUtils.timeUntilClosestLoopPoint({
+        currentTime: 10.99,
+        startTime: 8,
+        duration: 3
+      });
+      expect(result).toBeCloseTo(0.01, 2);
+    });
+  });
 });

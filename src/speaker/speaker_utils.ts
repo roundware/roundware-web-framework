@@ -93,6 +93,51 @@ export class SpeakerUtils {
     return random < probability;
   }
   
+
+  static getRootForSpeaker(speaker: Pick<ISpeakerData,'id' | 'parents'>, speakers: Pick<ISpeakerData,'id' | 'parents'>[]): ISpeakerData['id'] {
+    const directParents = speaker.parents;
+    
+    // If no parents, return current speaker's ID
+    if (!directParents || directParents.length === 0) {
+      return speaker.id;
+    }
+
+    // Get the first parent speaker object
+    const parentSpeaker = speakers.find(s => s.id === directParents[0]);
+    
+    // If parent not found, return current speaker's ID
+    if (!parentSpeaker) {
+      return speaker.id;
+    }
+
+    // Recursively find the root of the parent
+    return this.getRootForSpeaker(parentSpeaker, speakers);
+  }
+
+
+  static timeUntilClosestLoopPoint(
+    {
+      currentTime,
+      startTime,
+      duration,
+    }:{
+      currentTime: number;
+      startTime: number;
+      duration: number;
+    }
+  ) {
+    // Calculate how much time has passed since the start
+    const timeSinceStart = currentTime - startTime;
+    
+    // Calculate where we are within the current loop cycle
+    const positionInLoop = timeSinceStart % duration;
+    
+    // The time until next loop point is the duration minus our position in the current loop
+    const timeUntilNextLoop = duration - positionInLoop;
+    
+    return timeUntilNextLoop;
+  }
+
 }
 
 export enum LoadingStrategy {

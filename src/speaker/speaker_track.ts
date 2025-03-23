@@ -64,14 +64,18 @@ export class SpeakerTrack extends EventEmitter<{
   private bufferSource: IAudioBufferSourceNode<IAudioContext> | null = null;
   private gainNode: IGainNode<IAudioContext> | null = null;
 
+  groupId: number;
+
   constructor({
     data,
     audioContext,
     config,
+    groupId
   }: {
     data: ISpeakerData;
     audioContext: IAudioContext;
     config: SpeakerConfig;
+    groupId: number;
   }) {
     super();
     const {
@@ -99,6 +103,9 @@ export class SpeakerTrack extends EventEmitter<{
     }
     if (boundary) this.outerBoundary = convertLinesToPolygon(boundary);
     this.calculatedVolume = NEARLY_ZERO;
+
+    this.groupId = groupId;
+
   }
 
   outerBoundaryContains(point: Coord) {
