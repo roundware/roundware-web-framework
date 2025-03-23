@@ -79,6 +79,7 @@ export class SpeakerUtils {
     const remainingTime = duration - (currentTime - startedAt);
     return remainingTime;
   }
+  
 }
 
 export enum LoadingStrategy {

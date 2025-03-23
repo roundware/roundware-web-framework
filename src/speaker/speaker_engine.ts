@@ -15,9 +15,16 @@ export class SpeakerEngine extends EventEmitter<{
   updateParams: (params: IMixParams) => void;
   baseTrackStarted: () => void;
   loopPointReached: () => void;
-  playingTracksUpdated: () => void;
-  speakerNear: (distance: number) => void;
+  playingTracksUpdated: (playingTracks: (number | null)[]) => void;
+  speakersNear: (speakers: {
+    [key: number]: number
+  }) => void;
   baseTrackChanged: () => void;
+  skippingLoopPointUpdate: (random: number, loopPointUpdateProbability: number) => void;
+  skippingSlotConsideration: (random: number, slotConsiderationProbability: number) => void;
+  replacingWithNone: (random: number, replaceWithNoneProbability: number) => void;
+  stoppingInFuture: (remainingTime: number) => void;
+  newSpeaker: (newSpeaker: SpeakerTrack) => void;
 }> {
   mixParams: IMixParams = {};
   speakers: SpeakerTrack[] = [];
@@ -83,6 +90,10 @@ export class SpeakerEngine extends EventEmitter<{
     this.mixParams = params;
 
     if (this.loadingStrategy === LoadingStrategy.PROGRESSIVE) {
+
+      const newSpeakers: {
+        [key: number]: number
+      }[] = [];
       // distance
       const minDistanceToLoad =
         this.mixParams.speakerConfig?.prefetchDistanceMeters || 0;
@@ -94,12 +105,19 @@ export class SpeakerEngine extends EventEmitter<{
         );
 
         if (distance < minDistanceToLoad) {
-          this.emit("speakerNear", distance);
+          // this.emit("speakerNear", {});
+          newSpeakers.push({
+            [speaker.data.id]: distance
+          });
           speaker.loadBuffer();
         } else {
           speaker.unload();
         }
       });
+
+      this.emit("speakersNear", newSpeakers.reduce((acc, curr) => ({...acc, ...curr}), {}));
+
+
 
       if (this.mode.maxRandom > 0 && this.playing) {
         this.onLocationUpdateProgressiveBasePlusMaxNRandom();
@@ -116,7 +134,7 @@ export class SpeakerEngine extends EventEmitter<{
       const previousBaseTrack = this.currentBaseTrack;
 
       this.playingTracks[0] = baseTrack || null;
-
+      this.emit('playingTracksUpdated', this.playingTracks.map(t => t?.data.id ?? null));
       if (previousBaseTrack?.data.id !== baseTrack?.data.id) {
         this.emit("baseTrackChanged");
 
@@ -146,6 +164,9 @@ export class SpeakerEngine extends EventEmitter<{
       }
     }
   }
+
+
+    
 
   playAsBaseTrack(track: SpeakerTrack) {
     // too late to play (for ex. loading took time)
@@ -177,8 +198,7 @@ export class SpeakerEngine extends EventEmitter<{
         currentBaseTrack.fadeOutAndStopBufferSource();
       }
       if (latestBaseTrack) this.playAsBaseTrack(latestBaseTrack);
-      this.playingTracks = [latestBaseTrack || null];
-      this.emit("playingTracksUpdated");
+      this.playingTracks = [latestBaseTrack || null];      
     } else if (currentBaseTrack) {
       // continue with current base track;
       this.playAsBaseTrack(currentBaseTrack);
@@ -191,11 +211,13 @@ export class SpeakerEngine extends EventEmitter<{
     });
 
     this.speakers.forEach((speaker) => {
+      if(speaker.data.id === this.currentBaseTrack?.data.id) return;
       speaker.off("baseTrackEnded", this.onLoopPointBound);
       speaker.fadeOutAndStopBufferSource();
     });
 
     this.emit("loopPointReached");
+    this.emit("playingTracksUpdated", this.playingTracks.map(t => t?.data.id ?? null));
   }
 
   recalculateNonBaseTracks() {
@@ -210,8 +232,13 @@ export class SpeakerEngine extends EventEmitter<{
     const loopPointUpdateProbability =
       this.mixParams.speakerConfig?.loopPointUpdateProbability || 1;
 
+     
     // return if should not update
-    if (Math.random() < loopPointUpdateProbability) return;
+    let random = Math.random();
+    if (random < loopPointUpdateProbability) {
+      this.emit('skippingLoopPointUpdate', random, loopPointUpdateProbability);
+      return;
+    }
 
     for (let i = 1; i < this.playingTracks.length; i++) {
       // slotConsiderationProbability
@@ -219,14 +246,20 @@ export class SpeakerEngine extends EventEmitter<{
         this.mixParams.speakerConfig?.slotConsiderationProbability || 1;
 
       // return if should not update
-      if (Math.random() > slotConsiderationProbability) return;
+      random = Math.random();
+      if (random > slotConsiderationProbability) {
+        this.emit('skippingSlotConsideration', random, slotConsiderationProbability);
+        return;
+      }
 
       const speaker = this.playingTracks[i];
 
       // should replace with none?
       const replaceWithNoneProbability =
         this.mixParams.speakerConfig?.replaceWithNoneProbability || 0;
-      if (Math.random() < replaceWithNoneProbability) {
+      random = Math.random();
+      if (random < replaceWithNoneProbability) {
+        this.emit('replacingWithNone', random, replaceWithNoneProbability);
         // replace with none
         this.playingTracks[i] = null;
         if (speaker && speaker.buffer) {
@@ -253,6 +286,7 @@ export class SpeakerEngine extends EventEmitter<{
             speaker.buffer.duration
           );
           if (remainingTime > 0.01) {
+            this.emit('stoppingInFuture', remainingTime);
             setTimeout(() => {
               speaker.fadeOutAndStopBufferSource();
             }, remainingTime * 1000);
@@ -260,6 +294,7 @@ export class SpeakerEngine extends EventEmitter<{
         }
 
         this.playingTracks[i] = newSpeaker;
+        this.emit('newSpeaker', newSpeaker);
         availableSpeakers = availableSpeakers.filter(
           (s) => s.data.id !== newSpeaker.data.id
         );

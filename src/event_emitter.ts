@@ -26,13 +26,8 @@ export class EventEmitter<T extends EventMap> {
   emit<K extends keyof T>(event: K, ...args: Parameters<T[K]>): void {
     // console.log(this.toString(), "emitted", event);
 
-    console.log(
-      `%c${this.toString()} emitted ${event.toString()} ${JSON.stringify(
-        args,
-        null,
-        2
-      )}`,
-      "color: #00f"
+    console.debug(
+      `${this.toString()} emitted ${event.toString()}`,...args,
     );
 
     if (!this.events[event]) return;
