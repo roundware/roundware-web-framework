@@ -7,6 +7,7 @@ import { SpeakerTrack } from "./speaker_track";
 import { LoadingStrategy, SpeakerUtils } from "./speaker_utils";
 import { EventEmitter } from "../event_emitter";
 import { random, sample } from "lodash";
+import { FADE_IN_DURATION_SECONDS } from "../utils";
 
 export class SpeakerEngine extends EventEmitter<{
   init: () => void;
@@ -16,15 +17,14 @@ export class SpeakerEngine extends EventEmitter<{
   baseTrackStarted: () => void;
   loopPointReached: () => void;
   playingTracksUpdated: (playingTracks: (number | null)[]) => void;
-  speakersNear: (speakers: {
-    [key: number]: number
-  }) => void;
+  speakersNear: (speakers: { [key: number]: number }) => void;
   baseTrackChanged: () => void;
-  skippingLoopPointUpdate: (random: number, loopPointUpdateProbability: number) => void;
-  skippingSlotConsideration: (random: number, slotConsiderationProbability: number) => void;
-  replacingWithNone: (random: number, replaceWithNoneProbability: number) => void;
+  skippingLoopPointUpdate: () => void;
+  skippingSlot: () => void;
+  replacingWithNone: () => void;
   stoppingInFuture: (remainingTime: number) => void;
   newSpeaker: (newSpeaker: SpeakerTrack) => void;
+  speakersAvailable: (speakers: number[]) => void;
 }> {
   mixParams: IMixParams = {};
   speakers: SpeakerTrack[] = [];
@@ -79,10 +79,12 @@ export class SpeakerEngine extends EventEmitter<{
 
   public async stop(): Promise<void> {
     this.playingTracks.forEach((track) => {
-      track?.off("baseTrackEnded", this.onLoopPointBound);
+      // cancel all loops and future processing
+      track?.clearListeners("trackFinished");
       track?.stopUrgently();
     });
     this.playing = false;
+    this.playingTracks = [];
     this.emit("stop");
   }
 
@@ -90,9 +92,8 @@ export class SpeakerEngine extends EventEmitter<{
     this.mixParams = params;
 
     if (this.loadingStrategy === LoadingStrategy.PROGRESSIVE) {
-
       const newSpeakers: {
-        [key: number]: number
+        [key: number]: number;
       }[] = [];
       // distance
       const minDistanceToLoad =
@@ -107,7 +108,7 @@ export class SpeakerEngine extends EventEmitter<{
         if (distance < minDistanceToLoad) {
           // this.emit("speakerNear", {});
           newSpeakers.push({
-            [speaker.data.id]: distance
+            [speaker.data.id]: distance,
           });
           speaker.loadBuffer();
         } else {
@@ -115,9 +116,10 @@ export class SpeakerEngine extends EventEmitter<{
         }
       });
 
-      this.emit("speakersNear", newSpeakers.reduce((acc, curr) => ({...acc, ...curr}), {}));
-
-
+      this.emit(
+        "speakersNear",
+        newSpeakers.reduce((acc, curr) => ({ ...acc, ...curr }), {})
+      );
 
       if (this.mode.maxRandom > 0 && this.playing) {
         this.onLocationUpdateProgressiveBasePlusMaxNRandom();
@@ -129,28 +131,34 @@ export class SpeakerEngine extends EventEmitter<{
     // find speakers to play;
     if (this.mode.maxRandom > 0) {
       this.calculateVolumesByLocation();
-      const baseTrack = this.latestBaseTrack;
 
       const previousBaseTrack = this.currentBaseTrack;
+      const baseTrack = this.latestBaseTrack;
+
 
       this.playingTracks[0] = baseTrack || null;
-      this.emit('playingTracksUpdated', this.playingTracks.map(t => t?.data.id ?? null));
-      if (previousBaseTrack?.data.id !== baseTrack?.data.id) {
+      this.emit(
+        "playingTracksUpdated",
+        this.playingTracks.map((t) => t?.data.id ?? null)
+      );
+      if (previousBaseTrack?.data?.id != baseTrack?.data?.id) {
         this.emit("baseTrackChanged");
 
-        // new base track selected
-        if (!baseTrack?.buffer) {
-          baseTrack?.loadBuffer();
-          baseTrack?.on("loaded", () => {
-            this.playAsBaseTrack(baseTrack);
-          });
-        } else {
-          this.playAsBaseTrack(baseTrack);
+        if (baseTrack) {
+          // new base track selected
+          if (!baseTrack?.buffer) {
+            baseTrack?.loadBuffer();
+            baseTrack?.on("loaded", () => {
+              this.playAsBaseTrack(baseTrack, false);
+            });
+          } else {
+            this.playAsBaseTrack(baseTrack, false);
+          }
         }
         // rest stop playing for now;
         this.speakers.forEach((track) => {
-          if (track.data.id === baseTrack?.data.id) return;
-          track.off("baseTrackEnded", this.onLoopPointBound);
+          if (baseTrack && track.data.id === baseTrack?.data.id) return;
+          track.off("trackFinished", this.onLoopPointBound);
           track.fadeOutAndStopBufferSource();
         });
       } else {
@@ -165,22 +173,27 @@ export class SpeakerEngine extends EventEmitter<{
     }
   }
 
-
-    
-
-  playAsBaseTrack(track: SpeakerTrack) {
+  playAsBaseTrack(track: SpeakerTrack, isContinued: boolean) {
     // too late to play (for ex. loading took time)
     if (!this.playing || this.currentBaseTrack?.data.id !== track.data.id) {
-      track.off("baseTrackEnded", this.onLoopPointBound);
+      track.off("trackFinished", this.onLoopPointBound);
       track.fadeOutAndStopBufferSource();
       return;
     }
 
-    track.playAsBaseTrack();
-    if (!track.bufferSource) {
-      throw new Error("Buffer Source not available for setting up loop point");
+    if (!track.buffer) {
+      throw new Error("Base track buffer not found");
     }
-    track.on("baseTrackEnded", this.onLoopPointBound);
+
+    track.playForDuration({
+      duration: track.buffer.duration,
+      offset: 0,
+      fadeInDuration: isContinued ? 0 : FADE_IN_DURATION_SECONDS,
+      times: 1,
+      pan: 0,
+    });
+   
+    track.on("trackFinished", this.onLoopPointBound);
     this.emit("baseTrackStarted");
   }
   private onLoopPointBound = this.onLoopPoint.bind(this);
@@ -192,16 +205,17 @@ export class SpeakerEngine extends EventEmitter<{
     const latestBaseTrack = this.latestBaseTrack;
     const currentBaseTrack = this.currentBaseTrack;
 
-    if (this.latestBaseTrack?.data.id !== this.currentBaseTrack?.data.id) {
+    if (this.latestBaseTrack?.data.id != this.currentBaseTrack?.data.id) {
       if (currentBaseTrack) {
-        currentBaseTrack.off("baseTrackEnded", this.onLoopPointBound);
+        currentBaseTrack.clearListeners('trackFinished');
+        currentBaseTrack.clearListeners('trackAborted');
         currentBaseTrack.fadeOutAndStopBufferSource();
       }
-      if (latestBaseTrack) this.playAsBaseTrack(latestBaseTrack);
-      this.playingTracks = [latestBaseTrack || null];      
+      if (latestBaseTrack) this.playAsBaseTrack(latestBaseTrack, false);
+      this.playingTracks = [latestBaseTrack || null];
     } else if (currentBaseTrack) {
       // continue with current base track;
-      this.playAsBaseTrack(currentBaseTrack);
+      this.playAsBaseTrack(currentBaseTrack, true);
     }
 
     this.recalculateNonBaseTracks();
@@ -211,13 +225,19 @@ export class SpeakerEngine extends EventEmitter<{
     });
 
     this.speakers.forEach((speaker) => {
-      if(speaker.data.id === this.currentBaseTrack?.data.id) return;
-      speaker.off("baseTrackEnded", this.onLoopPointBound);
-      speaker.fadeOutAndStopBufferSource();
+      if (this.playingTracks.some((t) => t?.data.id === speaker.data.id))
+        return;
+      speaker.off("trackFinished", this.onLoopPointBound);
+      if (speaker.volumeByLocation(this.listenerPoint) < speaker.minVolume) {
+        speaker.fadeOutAndStopBufferSource();
+      }
     });
 
     this.emit("loopPointReached");
-    this.emit("playingTracksUpdated", this.playingTracks.map(t => t?.data.id ?? null));
+    this.emit(
+      "playingTracksUpdated",
+      this.playingTracks.map((t) => t?.data.id ?? null)
+    );
   }
 
   recalculateNonBaseTracks() {
@@ -232,24 +252,34 @@ export class SpeakerEngine extends EventEmitter<{
     const loopPointUpdateProbability =
       this.mixParams.speakerConfig?.loopPointUpdateProbability || 1;
 
-     
     // return if should not update
-    let random = Math.random();
-    if (random < loopPointUpdateProbability) {
-      this.emit('skippingLoopPointUpdate', random, loopPointUpdateProbability);
+
+    if (
+      !SpeakerUtils.shouldDoSomethingWithProbability(
+        loopPointUpdateProbability,
+        "loop point update"
+      )
+    ) {
+      this.emit("skippingLoopPointUpdate");
       return;
     }
 
-    for (let i = 1; i < this.playingTracks.length; i++) {
+
+    for (let i = 1; i < this.mode.maxRandom; i++) {
       // slotConsiderationProbability
       const slotConsiderationProbability =
         this.mixParams.speakerConfig?.slotConsiderationProbability || 1;
 
       // return if should not update
-      random = Math.random();
-      if (random > slotConsiderationProbability) {
-        this.emit('skippingSlotConsideration', random, slotConsiderationProbability);
-        return;
+
+      if (
+        !SpeakerUtils.shouldDoSomethingWithProbability(
+          slotConsiderationProbability,
+          "slot consideration"
+        )
+      ) {
+        this.emit("skippingSlot");
+        continue;
       }
 
       const speaker = this.playingTracks[i];
@@ -257,44 +287,29 @@ export class SpeakerEngine extends EventEmitter<{
       // should replace with none?
       const replaceWithNoneProbability =
         this.mixParams.speakerConfig?.replaceWithNoneProbability || 0;
-      random = Math.random();
-      if (random < replaceWithNoneProbability) {
-        this.emit('replacingWithNone', random, replaceWithNoneProbability);
+
+      if (
+        SpeakerUtils.shouldDoSomethingWithProbability(
+          replaceWithNoneProbability,
+          "replace with none"
+        )
+      ) {
+        this.emit("replacingWithNone");
         // replace with none
         this.playingTracks[i] = null;
-        if (speaker && speaker.buffer) {
-          const remainingTime = SpeakerUtils.findRemainingTime(this.audioContext.currentTime, 
-            speaker.startedAtContextTime,
-            speaker.buffer.duration
-          );
-          if (remainingTime > 0.01) {
-            setTimeout(() => {
-              speaker.fadeOutAndStopBufferSource();
-            }, remainingTime * 1000);
-          } else speaker.fadeOutAndStopBufferSource();
-        }
-        return;
+        continue;
       }
 
       // replace with new speaker
       const newSpeaker = sample(availableSpeakers);
 
       if (newSpeaker) {
-        if (speaker && speaker.buffer) {
-          const remainingTime = SpeakerUtils.findRemainingTime(this.audioContext.currentTime, 
-            speaker.startedAtContextTime,
-            speaker.buffer.duration
-          );
-          if (remainingTime > 0.01) {
-            this.emit('stoppingInFuture', remainingTime);
-            setTimeout(() => {
-              speaker.fadeOutAndStopBufferSource();
-            }, remainingTime * 1000);
-          } else speaker.fadeOutAndStopBufferSource();
+        if (speaker) {
+          speaker.clearListeners("trackFinished"); // will not loop when finished!
         }
 
         this.playingTracks[i] = newSpeaker;
-        this.emit('newSpeaker', newSpeaker);
+        this.emit("newSpeaker", newSpeaker);
         availableSpeakers = availableSpeakers.filter(
           (s) => s.data.id !== newSpeaker.data.id
         );
@@ -304,7 +319,13 @@ export class SpeakerEngine extends EventEmitter<{
         if (!randomLength) throw new Error(`Random length not found`);
         if (!this.playingTracks[0]?.buffer)
           throw new Error(`Base track buffer not found`);
-        const duration = this.playingTracks[0].buffer.duration * randomLength;
+
+        const baseTrackDuration = this.playingTracks[0].buffer.duration;
+        const duration = baseTrackDuration * randomLength;
+
+        const panPosition =
+          this.mixParams.speakerConfig?.effects?.pan?.[i - 1] ?? 0;
+
         if (!newSpeaker.buffer) {
           let now = this.audioContext.currentTime;
           newSpeaker.on("loaded", () => {
@@ -315,10 +336,23 @@ export class SpeakerEngine extends EventEmitter<{
             // offset;
             const currentTime = this.audioContext.currentTime;
             const offset = currentTime - now;
-            newSpeaker.playWithDuration(duration, offset);
+            newSpeaker.playForDuration({
+              duration,
+              offset,
+              fadeInDuration: FADE_IN_DURATION_SECONDS,
+              times: Math.ceil(baseTrackDuration / duration),
+              pan: panPosition,
+            });
           });
           newSpeaker.loadBuffer();
-        } else newSpeaker.playWithDuration(duration);
+        } else
+          newSpeaker.playForDuration({
+            duration,
+            offset: 0,
+            times: Math.ceil(baseTrackDuration / duration),
+            fadeInDuration: FADE_IN_DURATION_SECONDS,
+            pan: panPosition,
+          });
       } else {
         this.playingTracks[i] = null;
       }
@@ -332,10 +366,16 @@ export class SpeakerEngine extends EventEmitter<{
   }
 
   get latestBaseTrack() {
+    this.calculateVolumesByLocation();
     // find speakers available in this region
     const availableSpeakers = this.speakers.filter((speaker) => {
       return speaker.calculatedVolume > speaker.minVolume;
     });
+
+    this.emit(
+      "speakersAvailable",
+      availableSpeakers.map((s) => s.data.id)
+    );
 
     // find base speaker
     const baseSpeaker = SpeakerUtils.findBaseSpeaker(

@@ -79,6 +79,19 @@ export class SpeakerUtils {
     const remainingTime = duration - (currentTime - startedAt);
     return remainingTime;
   }
+
+
+  static shouldDoSomethingWithProbability(probability: number, taskName?: string) {
+    const random = Math.random();
+
+    if(taskName) {  
+      console.debug(`${
+        random < probability ? '✅' : '❌'
+      } ${taskName} probability: ${random} < ${probability} `);
+    }
+
+    return random < probability;
+  }
   
 }
 

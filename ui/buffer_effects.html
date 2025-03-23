@@ -4,39 +4,78 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Buffer Effects Processor Test</title>
+    <style>
+      canvas {
+        border: 1px solid #ccc;
+        margin: 20px 0;
+        width: 100%;
+        max-width: 800px;
+      }
+      .controls {
+        margin: 20px 0;
+        padding: 10px;
+        border: 1px solid #eee;
+      }
+      .note-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+    </style>
   </head>
   <body>
     <h1>Test Buffer Effects Processor</h1>
+    <div class="note-controls">
+      <button id="generateNoteButton">Generate C Note (120 BPM)</button>
+      <span id="noteInfo"></span>
+    </div>
     <input type="file" id="audioFile" accept="audio/*" />
     <br />
-    <label
-      >Trim Start (s): <input type="number" id="trimStart" value="1" step="0.1"
-    /></label>
-    <label
-      >Trim End (s): <input type="number" id="trimEnd" value="5" step="0.1"
-    /></label>
-    <button id="trimButton" disabled>Apply Trim</button>
-    <br />
-    <label
-      >Fade In (s): <input type="number" id="fadeIn" value="1" step="0.1"
-    /></label>
-    <button id="fadeInButton" disabled>Apply Fade In</button>
-    <br />
-    <label
-      >Fade Out (s): <input type="number" id="fadeOut" value="1" step="0.1"
-    /></label>
-    <button id="fadeOutButton" disabled>Apply Fade Out</button>
-    <br />
-    <label
-      >Delay (s): <input type="number" id="delay" value="0.5" step="0.1"
-    /></label>
-    <button id="delayButton" disabled>Apply Delay</button>
+    <canvas id="waveformCanvas"></canvas>
+    <div class="controls">
+      <h3>Basic Effects</h3>
+      <label
+        >Trim Start (s): <input type="number" id="trimStart" value="1" step="0.1"
+      /></label>
+      <label
+        >Trim End (s): <input type="number" id="trimEnd" value="5" step="0.1"
+      /></label>
+      <button id="trimButton" disabled>Apply Trim</button>
+      <br />
+      <label
+        >Fade In (s): <input type="number" id="fadeIn" value="1" step="0.1"
+      /></label>
+      <button id="fadeInButton" disabled>Apply Fade In</button>
+      <br />
+      <label
+        >Fade Out (s): <input type="number" id="fadeOut" value="1" step="0.1"
+      /></label>
+      <button id="fadeOutButton" disabled>Apply Fade Out</button>
+      <br />
+      <label
+        >Delay (s): <input type="number" id="delay" value="0.5" step="0.1"
+      /></label>
+      <button id="delayButton" disabled>Apply Delay</button>
+    </div>
+    <div class="controls">
+      <h3>Compose Buffer</h3>
+      <label>Duration (s): <input type="number" id="composeDuration" value="1" step="0.1" /></label>
+      <br />
+      <label>Times: <input type="number" id="composeTimes" value="3" min="1" step="1" /></label>
+      <br />
+      <label>Pan: <input type="range" id="composePan" min="-1" max="1" step="0.1" value="0" /></label>
+      <br />
+      <label>Fade In Duration (s): <input type="number" id="composeFadeIn" value="0.5" step="0.1" /></label>
+      <br />
+      <button id="composeButton" disabled>Apply Compose</button>
+    </div>
     <br />
     <button id="playButton" disabled>Play Processed Audio</button>
     <audio id="audioPlayer" controls></audio>
 
     <script type="module">
-      import { BufferEffectsProcessor } from "../dist/speaker/buffer_effects_processor.js";
+      import { BufferEffectsProcessor } from "../dist/src/speaker/buffer_effects_processor.js";
 
       const audioFileInput = document.getElementById("audioFile");
       const playButton = document.getElementById("playButton");
@@ -44,54 +83,282 @@
       const fadeInButton = document.getElementById("fadeInButton");
       const fadeOutButton = document.getElementById("fadeOutButton");
       const delayButton = document.getElementById("delayButton");
+      const composeButton = document.getElementById("composeButton");
+      const generateNoteButton = document.getElementById("generateNoteButton");
+      const noteInfo = document.getElementById("noteInfo");
       const audioPlayer = document.getElementById("audioPlayer");
+      const canvas = document.getElementById("waveformCanvas");
+      const ctx = canvas.getContext("2d");
+
       let audioBuffer;
-      let audioContext = new AudioContext();
+      let audioContext;
       let processor;
+      let analyser;
+      let dataArray;
+      let animationFrame;
+      let currentSource;
+      const BPM = 120;
 
-      audioFileInput.addEventListener("change", async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
+      // Initialize audio context on user interaction
+      function initAudioContext() {
+        if (!audioContext) {
+          audioContext = new AudioContext();
+          setupAnalyser();
+        }
+      }
 
-        const arrayBuffer = await file.arrayBuffer();
-        audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        processor = new BufferEffectsProcessor(audioBuffer, audioContext);
-
+      function enableButtons() {
         playButton.disabled = false;
         trimButton.disabled = false;
         fadeInButton.disabled = false;
         fadeOutButton.disabled = false;
         delayButton.disabled = false;
+        composeButton.disabled = false;
+      }
+
+      function drawWaveform() {
+        if (!analyser) return;
+
+        const WIDTH = canvas.width;
+        const HEIGHT = canvas.height;
+
+        requestAnimationFrame(drawWaveform);
+
+        analyser.getByteTimeDomainData(dataArray);
+
+        ctx.fillStyle = "rgb(200, 200, 200)";
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        // Draw grid lines
+        ctx.strokeStyle = "rgb(180, 180, 180)";
+        ctx.lineWidth = 0.5;
+        for (let y = 0; y < HEIGHT; y += HEIGHT/4) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(WIDTH, y);
+          ctx.stroke();
+        }
+
+        // Draw waveform with increased amplitude and thickness
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgb(0, 0, 0)";
+        ctx.beginPath();
+
+        const sliceWidth = WIDTH * 1.0 / dataArray.length;
+        let x = 0;
+
+        for (let i = 0; i < dataArray.length; i++) {
+          const v = (dataArray[i] / 128.0) * 2.0; // Doubled the amplitude
+          const y = (v * HEIGHT / 2) + (HEIGHT / 2); // Center vertically
+
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+
+          x += sliceWidth;
+        }
+
+        ctx.stroke();
+      }
+
+      function setupAnalyser() {
+        if (analyser) {
+          analyser.disconnect();
+        }
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        drawWaveform();
+      }
+
+      function resizeCanvas() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = 400;
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      function stopCurrentPlayback() {
+        if (currentSource) {
+          currentSource.stop();
+          currentSource.disconnect();
+        }
+      }
+
+      function updateVisualization() {
+        if (!processor) return;
+
+        stopCurrentPlayback();
+        const processedBuffer = processor.getBuffer();
+        
+        // Draw the waveform directly from the buffer
+        const channelData = processedBuffer.getChannelData(0);
+        const WIDTH = canvas.width;
+        const HEIGHT = canvas.height;
+
+        // Clear canvas and draw grid
+        ctx.fillStyle = "rgb(200, 200, 200)";
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        // Draw grid lines
+        ctx.strokeStyle = "rgb(180, 180, 180)";
+        ctx.lineWidth = 0.5;
+        for (let y = 0; y < HEIGHT; y += HEIGHT/4) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(WIDTH, y);
+          ctx.stroke();
+        }
+
+        // Draw waveform with increased amplitude
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "rgb(0, 0, 0)";
+        ctx.beginPath();
+
+        const sliceWidth = WIDTH * 1.0 / channelData.length;
+        let x = 0;
+
+        for (let i = 0; i < channelData.length; i++) {
+          const v = channelData[i] * 1.5; // Increased amplitude by 50%
+          const y = (v * HEIGHT / 2) + (HEIGHT / 2);
+
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+
+          x += sliceWidth;
+        }
+
+        ctx.stroke();
+      }
+
+      function generateCNote() {
+        const sampleRate = audioContext.sampleRate;
+        const beatsPerSecond = BPM / 60;
+        const secondsPerBeat = 1 / beatsPerSecond;
+        const duration = secondsPerBeat * 16; // 4 bars (16 beats)
+        const frequency = 261.63; // C4 note frequency
+
+        const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+        const channelData = buffer.getChannelData(0);
+
+        // Generate one beat of the note
+        const beatSamples = secondsPerBeat * sampleRate;
+        const beatBuffer = new Float32Array(beatSamples);
+        for (let i = 0; i < beatSamples; i++) {
+          const t = i / sampleRate;
+          // Generate a sine wave with exponential envelope
+          const envelope = Math.exp(-t * 4); // Quicker decay for each note
+          beatBuffer[i] = Math.sin(2 * Math.PI * frequency * t) * envelope;
+        }
+
+        // Copy the beat pattern for the full duration
+        for (let beat = 0; beat < 16; beat++) {
+          const startIndex = beat * beatSamples;
+          channelData.set(beatBuffer, startIndex);
+        }
+
+        return buffer;
+      }
+
+      generateNoteButton.addEventListener("click", async () => {
+        // Initialize audio context if not already done
+        initAudioContext();
+
+        // Resume audio context if it was suspended
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+
+        const buffer = generateCNote();
+        audioBuffer = buffer;
+        processor = new BufferEffectsProcessor(audioBuffer, audioContext, {
+          microFadeInDurationInMs: 150,
+        });
+
+        // Update note info
+        noteInfo.textContent = `C4 note at ${BPM} BPM (${(buffer.duration).toFixed(2)}s)`;
+
+        // Enable all buttons
+        enableButtons();
+
+        // Update visualization
+        updateVisualization();
+      });
+
+      audioFileInput.addEventListener("change", async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Initialize audio context if not already done
+        initAudioContext();
+
+        const arrayBuffer = await file.arrayBuffer();
+        audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        processor = new BufferEffectsProcessor(audioBuffer, audioContext);
+
+        // Enable all buttons
+        enableButtons();
+
+        // Update visualization
+        updateVisualization();
       });
 
       trimButton.addEventListener("click", () => {
         const start = parseFloat(document.getElementById("trimStart").value);
         const end = parseFloat(document.getElementById("trimEnd").value);
         processor = processor.trim(start, end);
+        updateVisualization();
       });
 
       fadeInButton.addEventListener("click", () => {
         const duration = parseFloat(document.getElementById("fadeIn").value);
         processor = processor.fadeIn(duration);
+        updateVisualization();
       });
 
       fadeOutButton.addEventListener("click", () => {
         const duration = parseFloat(document.getElementById("fadeOut").value);
         processor = processor.fadeOut(duration);
+        updateVisualization();
       });
 
       delayButton.addEventListener("click", () => {
         const delayTime = parseFloat(document.getElementById("delay").value);
         processor = processor.delay(delayTime);
+        updateVisualization();
+      });
+
+      composeButton.addEventListener("click", () => {
+        const duration = parseFloat(document.getElementById("composeDuration").value);
+        const times = parseInt(document.getElementById("composeTimes").value);
+        const pan = parseFloat(document.getElementById("composePan").value);
+        const fadeInDuration = parseFloat(document.getElementById("composeFadeIn").value);
+        
+        processor = processor.composeBuffer({
+          duration,
+          times,
+          pan,
+          fadeInDuration
+        });
+        updateVisualization();
       });
 
       playButton.addEventListener("click", () => {
         if (!processor) return;
 
+        stopCurrentPlayback();
         const processedBuffer = processor.getBuffer();
         const newSource = audioContext.createBufferSource();
         newSource.buffer = processedBuffer;
         newSource.connect(audioContext.destination);
+        currentSource = newSource;
         newSource.start();
       });
     </script>

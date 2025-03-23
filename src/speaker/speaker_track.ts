@@ -23,6 +23,7 @@ import {
 } from "geojson";
 import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { EventEmitter } from "../event_emitter";
+import { SpeakerUtils } from "./speaker_utils";
 const convertLinesToPolygon = (shape: LineString | MultiLineString) =>
   lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
@@ -38,7 +39,8 @@ export class SpeakerTrack extends EventEmitter<{
   unloaded: () => void;
   playing: () => void;
   fadingOut: () => void;
-  baseTrackEnded: () => void;
+  trackFinished: () => void;
+  trackAborted: (remainingTime: number) => void;
 }> {
   maxVolume: number;
   minVolume: number;
@@ -59,8 +61,8 @@ export class SpeakerTrack extends EventEmitter<{
   buffer: IAudioBuffer | null = null;
   audioContext: IAudioContext;
 
-  bufferSource: IAudioBufferSourceNode<IAudioContext> | null = null;
-  gainNode: IGainNode<IAudioContext> | null = null;
+  private bufferSource: IAudioBufferSourceNode<IAudioContext> | null = null;
+  private gainNode: IGainNode<IAudioContext> | null = null;
 
   constructor({
     data,
@@ -191,8 +193,6 @@ export class SpeakerTrack extends EventEmitter<{
       this.emit("unloaded");
     }
     this.buffer = null;
-    this.bufferSource = null;
-    this.gainNode = null;
     this.loadedPercentage = 0;
     this.request?.abort();
     this.request = null;
@@ -200,7 +200,19 @@ export class SpeakerTrack extends EventEmitter<{
 
   startedAtContextTime = 0;
 
-  playWithDuration(duraiton?: number, offset?: number) {
+  playForDuration({
+    duration,
+    times,
+    offset,
+    fadeInDuration,
+    pan,
+  }: {
+    duration: number;
+    offset: number;
+    times: number;
+    fadeInDuration: number;
+    pan: number;
+  }) {
     if (!this.buffer) {
       throw new Error("Track is not loaded");
     }
@@ -209,47 +221,65 @@ export class SpeakerTrack extends EventEmitter<{
       throw new Error("Track is already playing");
     }
 
-    this.stopTimeout && clearTimeout(this.stopTimeout);
+    if (this.stopTimeout) {
+      clearTimeout(this.stopTimeout);
+      if (this.bufferSource) {
+        this.clearBufferSource();
+      }
+    }
 
     this.bufferSource = this.audioContext.createBufferSource();
     this.bufferSource.loop = false;
 
-    this.bufferSource.buffer = new BufferEffectsProcessor(
+    const bP = new BufferEffectsProcessor(
       this.buffer,
       this.audioContext,
       this.config?.effects || {}
-    )
-      .trim(0, duraiton ?? this.buffer.duration)
-      .microFadeInAndOut()
-      .getBuffer();
+    ).composeBuffer({
+      duration,
+      times,
+      fadeInDuration,
+    });
+
+    this.bufferSource.buffer = bP.getBuffer();
 
     if (!this.gainNode) {
       this.gainNode = this.audioContext.createGain();
-      this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
-      this.gainNode.gain.value = NEARLY_ZERO;
-      this.gainNode.gain.exponentialRampToValueAtTime(
-        this.calculatedVolume,
-        this.audioContext.currentTime + FADE_DURATION_SECONDS
-      );
+      this.gainNode.gain.value = this.calculatedVolume;
     }
 
+    // connections:
     this.bufferSource.connect(this.gainNode);
-    this.gainNode.connect(this.audioContext.destination);
+    const panner = this.audioContext.createStereoPanner();
+    panner.pan.value = pan;
+    this.gainNode.connect(panner);
+    panner.connect(this.audioContext.destination);
+
     this.bufferSource.start(this.audioContext.currentTime, offset || 0);
     this.startedAtContextTime = this.audioContext.currentTime;
+    const bufferSource = this.bufferSource;
+    const startedAtContextTime = this.startedAtContextTime;
     this.bufferSource.onended = () => {
-      this.stopAndClearBufferSource();
-      this.emit("baseTrackEnded");
+      if (!bufferSource || !bufferSource.buffer) {
+        throw new Error("Buffer source is not set but track ended");
+      }
+      const remainingTime = SpeakerUtils.findRemainingTime(
+        this.audioContext.currentTime,
+        startedAtContextTime,
+        bufferSource.buffer.duration
+      );
+      this.clearBufferSource();
+      if (
+        remainingTime <= NEARLY_ZERO ||
+        Math.abs(bufferSource.buffer.duration - remainingTime) <= NEARLY_ZERO
+      ) {
+        this.emit("trackFinished");
+      } else {
+        this.emit("trackAborted", remainingTime);
+      }
     };
     this.emit("playing");
-    console.trace();
   }
-
-  playAsBaseTrack() {
-    this.playWithDuration();
-  }
-
-
 
   stopTimeout: NodeJS.Timeout | null = null;
 
@@ -257,6 +287,11 @@ export class SpeakerTrack extends EventEmitter<{
     if (!this.gainNode || !this.bufferSource) {
       return;
     }
+
+    if (this.stopTimeout) {
+      clearTimeout(this.stopTimeout);
+    }
+
     this.emit("fadingOut");
     this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
 
@@ -266,19 +301,22 @@ export class SpeakerTrack extends EventEmitter<{
     );
 
     this.stopTimeout = setTimeout(() => {
-      this.stopAndClearBufferSource();
+      this.bufferSource?.stop();
     }, FADE_DURATION_SECONDS * 1000);
   }
 
   stopUrgently() {
     if (this.bufferSource) {
-      this.stopAndClearBufferSource();
+      this.bufferSource.stop();
     }
   }
 
-  stopAndClearBufferSource() {
+  private clearBufferSource() {
     try {
-      this.bufferSource?.stop();
+      if (this.bufferSource) {
+        this.bufferSource.onended = null;
+        this.bufferSource?.stop();
+      }
       this.bufferSource?.disconnect();
       this.gainNode?.disconnect();
       this.bufferSource = null;
@@ -291,6 +329,10 @@ export class SpeakerTrack extends EventEmitter<{
   fadeBufferSourceToVolume(volume: number) {
     if (!this.gainNode) {
       return;
+    }
+
+    if (this.stopTimeout) {
+      clearTimeout(this.stopTimeout);
     }
 
     this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);

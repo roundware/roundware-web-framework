@@ -211,5 +211,5 @@ export const makeAudioSafeToPlay = (
     );
   });
 };
-
+export const FADE_IN_DURATION_SECONDS = 3;
 export const NEARLY_ZERO = 0.0001;

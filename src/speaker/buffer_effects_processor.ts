@@ -44,18 +44,27 @@ export class BufferEffectsProcessor {
   fadeIn(durationSeconds?: number): BufferEffectsProcessor {
     const numberOfChannels = this.audioBuffer.numberOfChannels;
     const length = this.audioBuffer.length;
-    const fadeSamples = Math.min(
+    const minFadeDuration = 0.01; // 10ms minimum fade duration
+    
+    const fadeDuration = Math.max(
       durationSeconds ||
         (this.config.fadeInDurationInMs
           ? this.config.fadeInDurationInMs / 1000
-          : 0.3) * this.audioBuffer.sampleRate,
+          : 0.3),
+      minFadeDuration
+    );
+    
+    const fadeSamples = Math.min(
+      fadeDuration * this.audioBuffer.sampleRate,
       length
     );
 
     for (let channel = 0; channel < numberOfChannels; channel++) {
       const channelData = this.audioBuffer.getChannelData(channel);
       for (let i = 0; i < fadeSamples; i++) {
-        channelData[i] *= i / fadeSamples;
+        // Use exponential curve for smoother fade
+        const fadeValue = Math.pow(i / fadeSamples, 2);
+        channelData[i] *= fadeValue;
       }
     }
     return this;
@@ -272,5 +281,73 @@ export class BufferEffectsProcessor {
 
   getBuffer(): AudioBuffer {
     return this.audioBuffer;
+  }
+
+  composeBuffer({
+    duration,
+    times,
+    fadeInDuration,
+  }: {
+    duration: number;
+    times: number;
+    fadeInDuration?: number;
+  }): BufferEffectsProcessor {
+    // First trim the audio to the specified duration
+    this.trim(0, duration);
+
+    const sampleRate = this.audioBuffer.sampleRate;
+    const originalLength = this.audioBuffer.length;
+    
+    // Create a new buffer that can hold all repetitions
+    const newBuffer = this.context.createBuffer(
+      this.audioBuffer.numberOfChannels,
+      originalLength * times,
+      sampleRate
+    );
+
+    // Copy audio for each repetition
+    for (let channel = 0; channel < this.audioBuffer.numberOfChannels; channel++) {
+      const sourceData = this.audioBuffer.getChannelData(channel);
+      const targetData = newBuffer.getChannelData(channel);
+
+      for (let repeat = 0; repeat < times; repeat++) {
+        const startIndex = repeat * originalLength;
+        
+        // Copy the audio
+        for (let i = 0; i < originalLength; i++) {
+          targetData[startIndex + i] = sourceData[i];
+        }
+
+        // Apply micro fades between loops
+        const microFadeSamples = Math.min(
+          (this.config.microFadeInDurationInMs
+            ? this.config.microFadeInDurationInMs / 1000
+            : 0.05) * sampleRate,
+          originalLength
+        );
+
+        // Fade in
+        for (let i = 0; i < microFadeSamples; i++) {
+          targetData[startIndex + i] *= i / microFadeSamples;
+        }
+
+        // Fade out
+        for (let i = 0; i < microFadeSamples; i++) {
+          targetData[startIndex + originalLength - i - 1] *= i / microFadeSamples;
+        }
+      }
+
+      // Apply overall fade-in if specified
+      if (fadeInDuration) {
+        const fadeInSamples = Math.min(fadeInDuration * sampleRate, targetData.length);
+        for (let i = 0; i < fadeInSamples; i++) {
+          const fadeValue = Math.pow(i / fadeInSamples, 2);
+          targetData[i] *= fadeValue;
+        }
+      }
+    }
+
+    this.audioBuffer = newBuffer;
+    return this;
   }
 }
