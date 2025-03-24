@@ -21,6 +21,7 @@ import { AssetPool } from "./assetPool";
 import { IAudioTrackData } from "./types/audioTrack";
 import { RoundwareEvents } from "./events";
 import { ApiClient } from "./api-client";
+import { IMixParams } from "./types";
 
 // Mock dependencies
 const mockAudioContext = {
@@ -532,6 +533,25 @@ describe("TrackStates", () => {
       expect(track.pauseAudio).toHaveBeenCalled();
       expect(state.timeRemainingMs).toBeDefined();
       jest.useRealTimers();
+    });
+
+    it("should call parent class updateParams", () => {
+      const mockMixParams: IMixParams = {
+        listenerPoint: {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [0, 0]
+          },
+          properties: {}
+        }
+      };
+      const parentUpdateParamsSpy = jest.spyOn(TimedTrackState.prototype, 'updateParams');
+      
+      state.updateParams(mockMixParams);
+      
+      expect(parentUpdateParamsSpy).toHaveBeenCalledWith(mockMixParams);
+      parentUpdateParamsSpy.mockRestore();
     });
   });
 
