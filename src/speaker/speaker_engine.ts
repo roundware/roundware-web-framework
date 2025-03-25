@@ -31,7 +31,7 @@ export class SpeakerEngine extends EventEmitter<{
   audioContext: IAudioContext;
   playingTracks: (SpeakerTrack | null)[] = [];
 
-  groupStartTimes: Record<number, number | null> = {};
+  group: Map<number, number | null> = new Map();
 
   constructor(
     speakersData: ISpeakerData[],
@@ -45,7 +45,7 @@ export class SpeakerEngine extends EventEmitter<{
           data,
           audioContext,
           config,
-          groupId: SpeakerUtils.getRootForSpeaker(data, speakersData)
+          groupId: SpeakerUtils.getRootForSpeaker(data, speakersData),
         })
     );
     this.audioContext = audioContext;
@@ -58,12 +58,22 @@ export class SpeakerEngine extends EventEmitter<{
       });
     }
 
+    const groups = new Map<number, Set<number>>();
     // log the groups;
-    const groups = new Set<number>();
     this.speakers.forEach((speaker) => {
-      groups.add(speaker.groupId);
+      if (groups.has(speaker.groupId)) {
+        groups.get(speaker.groupId)?.add(speaker.data.id);
+      } else {
+        groups.set(speaker.groupId, new Set([speaker.data.id]));
+      }
     });
-    console.debug(`Groups:`, Array.from(groups));
+
+    console.debug(`Groups:`, Array.from(groups.entries()));
+
+    // set the start times;
+    groups.forEach((speakers, groupId) => {
+      this.group.set(groupId, null);
+    });
   }
 
   playing = false;
@@ -88,10 +98,10 @@ export class SpeakerEngine extends EventEmitter<{
   }
 
   public async stop(): Promise<void> {
-    this.playingTracks.forEach((track) => {
+    this.speakers.forEach((track) => {
       // cancel all loops and future processing
       track?.clearListeners("trackFinished");
-      track?.stopUrgently();
+      track?.abortBufferSource();
     });
     this.playing = false;
     this.playingTracks = [];
@@ -144,7 +154,6 @@ export class SpeakerEngine extends EventEmitter<{
 
       const previousBaseTrack = this.currentBaseTrack;
       const baseTrack = this.latestBaseTrack;
-
 
       this.playingTracks[0] = baseTrack || null;
       this.emit(
@@ -199,15 +208,15 @@ export class SpeakerEngine extends EventEmitter<{
 
     const timeUntilNextLoop = SpeakerUtils.timeUntilClosestLoopPoint({
       currentTime,
-      startTime: this.groupStartTimes[track.groupId] ?? currentTime,
+      startTime: this.group.get(track.groupId) ?? currentTime,
       duration: track.buffer.duration,
     });
 
     let offset = track.buffer.duration - timeUntilNextLoop;
 
-    if(isNearlyZero(offset, 0.015)) {
+    if (isNearlyZero(offset, 0.015)) {
       offset = 0;
-      this.groupStartTimes[track.groupId] = currentTime;
+      this.group.set(track.groupId, currentTime);
     }
 
     track.playForDuration({
@@ -217,7 +226,7 @@ export class SpeakerEngine extends EventEmitter<{
       times: 1,
       pan: 0,
     });
-   
+
     track.on("trackFinished", this.onLoopPointBound);
     this.emit("baseTrackStarted");
   }
@@ -232,8 +241,8 @@ export class SpeakerEngine extends EventEmitter<{
 
     if (this.latestBaseTrack?.data.id != this.currentBaseTrack?.data.id) {
       if (currentBaseTrack) {
-        currentBaseTrack.clearListeners('trackFinished');
-        currentBaseTrack.clearListeners('trackAborted');
+        currentBaseTrack.clearListeners("trackFinished");
+        currentBaseTrack.clearListeners("trackAborted");
         currentBaseTrack.fadeOutAndStopBufferSource();
       }
       if (latestBaseTrack) this.playAsBaseTrack(latestBaseTrack, false);
@@ -266,12 +275,7 @@ export class SpeakerEngine extends EventEmitter<{
   }
 
   recalculateNonBaseTracks() {
-    let availableSpeakers = this.speakers.filter((speaker) => {
-      return (
-        speaker.calculatedVolume > speaker.minVolume &&
-        !this.playingTracks.includes(speaker)
-      );
-    });
+   
 
     // loopPointUpdateProbability; should ignore this call?
     const loopPointUpdateProbability =
@@ -289,8 +293,15 @@ export class SpeakerEngine extends EventEmitter<{
       return;
     }
 
-
     for (let i = 1; i < this.mode.maxRandom; i++) {
+
+      let availableSpeakers = this.speakers.filter((speaker) => {
+        return (
+          speaker.calculatedVolume > speaker.minVolume &&
+          !this.playingTracks.includes(speaker)
+        );
+      });
+
       // slotConsiderationProbability
       const slotConsiderationProbability =
         this.mixParams.speakerConfig?.slotConsiderationProbability || 1;

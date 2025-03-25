@@ -287,11 +287,14 @@ export class BufferEffectsProcessor {
     duration,
     times,
     fadeInDuration,
+    fadeInStartVolume,
   }: {
     duration: number;
     times: number;
     fadeInDuration?: number;
+    fadeInStartVolume?: number;
   }): BufferEffectsProcessor {
+    const NEARLY_ZERO = 0.001; // Define minimum starting volume
     // First trim the audio to the specified duration
     this.trim(0, duration);
 
@@ -340,8 +343,12 @@ export class BufferEffectsProcessor {
       // Apply overall fade-in if specified
       if (fadeInDuration) {
         const fadeInSamples = Math.min(fadeInDuration * sampleRate, targetData.length);
+        const startVolume = fadeInStartVolume ?? NEARLY_ZERO;
+        
         for (let i = 0; i < fadeInSamples; i++) {
-          const fadeValue = Math.pow(i / fadeInSamples, 2);
+          const fadeProgress = i / fadeInSamples;
+          // Interpolate between startVolume and 1.0 using exponential curve
+          const fadeValue = startVolume + (1 - startVolume) * Math.pow(fadeProgress, 2);
           targetData[i] *= fadeValue;
         }
       }

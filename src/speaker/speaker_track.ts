@@ -30,7 +30,7 @@ const FADE_DURATION_SECONDS = 3;
 const NEARLY_ZERO = 0.05;
 
 /** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners.
- * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker’s defined zone.'
+ * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker's defined zone.'
  * (quoted from https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/Speaker.swift)
  * */
 export class SpeakerTrack extends EventEmitter<{
@@ -61,10 +61,14 @@ export class SpeakerTrack extends EventEmitter<{
   buffer: IAudioBuffer | null = null;
   audioContext: IAudioContext;
 
-  private bufferSource: IAudioBufferSourceNode<IAudioContext> | null = null;
-  private gainNode: IGainNode<IAudioContext> | null = null;
+  private bufferSource?: IAudioBufferSourceNode<IAudioContext> | null = null;
+  private gainNode?: IGainNode<IAudioContext> | null = null;
 
   groupId: number;
+
+  bufferSourcePlaying = false;
+
+
 
   constructor({
     data,
@@ -224,15 +228,22 @@ export class SpeakerTrack extends EventEmitter<{
       throw new Error("Track is not loaded");
     }
 
-    if (this.bufferSource && !this.stopTimeout) {
-      throw new Error("Track is already playing");
-    }
-
+    // Ensure any existing playback is properly cleaned up
     if (this.stopTimeout) {
       clearTimeout(this.stopTimeout);
-      if (this.bufferSource) {
-        this.clearBufferSource();
-      }
+      this.stopTimeout = null;
+    }
+
+    if (this.bufferSource) {
+      this.stopBufferSource();
+      this.clearBufferSource();
+    }
+
+    let fadeInStartVolume = NEARLY_ZERO;
+
+    if(this.gainNode) {
+      this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
+      fadeInStartVolume = this.gainNode.gain.value;
     }
 
     this.bufferSource = this.audioContext.createBufferSource();
@@ -246,6 +257,7 @@ export class SpeakerTrack extends EventEmitter<{
       duration,
       times,
       fadeInDuration,
+      fadeInStartVolume,  
     });
 
     this.bufferSource.buffer = bP.getBuffer();
@@ -262,14 +274,17 @@ export class SpeakerTrack extends EventEmitter<{
     this.gainNode.connect(panner);
     panner.connect(this.audioContext.destination);
 
-    this.bufferSource.start(this.audioContext.currentTime, offset || 0);
-    this.startedAtContextTime = this.audioContext.currentTime;
     const bufferSource = this.bufferSource;
+    
+    this.startBufferSource(this.audioContext.currentTime, offset || 0);
+
     const startedAtContextTime = this.startedAtContextTime;
+
     this.bufferSource.onended = () => {
       if (!bufferSource || !bufferSource.buffer) {
-        throw new Error("Buffer source is not set but track ended");
+        throw new Error("Previously playing source was not cleared before track ended");
       }
+      this.bufferSourcePlaying = false;
       const remainingTime = SpeakerUtils.findRemainingTime(
         this.audioContext.currentTime,
         startedAtContextTime,
@@ -297,6 +312,7 @@ export class SpeakerTrack extends EventEmitter<{
 
     if (this.stopTimeout) {
       clearTimeout(this.stopTimeout);
+      this.stopTimeout = null;
     }
 
     this.emit("fadingOut");
@@ -308,13 +324,33 @@ export class SpeakerTrack extends EventEmitter<{
     );
 
     this.stopTimeout = setTimeout(() => {
-      this.bufferSource?.stop();
+      console.debug('Stopping from timeout');
+      this.stopBufferSource();
     }, FADE_DURATION_SECONDS * 1000);
   }
 
-  stopUrgently() {
+  startBufferSource(
+    when: number,
+    offset: number
+  ) {
+    if (this.bufferSource) {
+      this.bufferSource.start(when, offset);
+      this.bufferSourcePlaying = true;
+      this.startedAtContextTime = when - offset;
+    }
+  };
+
+  stopBufferSource() {
     if (this.bufferSource) {
       this.bufferSource.stop();
+      console.trace('stopBufferSource');
+      this.bufferSourcePlaying = false;
+    }
+  }
+
+  abortBufferSource() {
+    if (this.bufferSource) {
+      this.stopBufferSource();
     }
   }
 
@@ -322,14 +358,19 @@ export class SpeakerTrack extends EventEmitter<{
     try {
       if (this.bufferSource) {
         this.bufferSource.onended = null;
-        this.bufferSource?.stop();
+        this.bufferSource.disconnect();
+        delete this.bufferSource;
+        this.bufferSource = null;
+        this.bufferSourcePlaying = false;
       }
-      this.bufferSource?.disconnect();
-      this.gainNode?.disconnect();
-      this.bufferSource = null;
-      this.gainNode = null;
+      if (this.gainNode) {
+        this.gainNode.disconnect();
+        delete this.gainNode;
+        this.gainNode = null;
+      }
+      this.bufferSourcePlaying = false;
     } catch (e) {
-      console.error(e);
+      console.error('Error clearing buffer source:', e);
     }
   }
 
@@ -340,6 +381,7 @@ export class SpeakerTrack extends EventEmitter<{
 
     if (this.stopTimeout) {
       clearTimeout(this.stopTimeout);
+      this.stopTimeout = null;
     }
 
     this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
