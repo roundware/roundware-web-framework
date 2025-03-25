@@ -177,7 +177,7 @@ export class SpeakerEngine extends EventEmitter<{
         // rest stop playing for now;
         this.speakers.forEach((track) => {
           if (baseTrack && track.data.id === baseTrack?.data.id) return;
-          track.off("trackFinished", this.onLoopPointBound);
+          this.clearEndListeners(track);
           track.fadeOutAndStopBufferSource();
         });
       } else {
@@ -193,9 +193,12 @@ export class SpeakerEngine extends EventEmitter<{
   }
 
   playAsBaseTrack(track: SpeakerTrack, isContinued: boolean) {
+
+    this.clearEndListeners(track); // previous listeners
+
     // too late to play (for ex. loading took time)
-    if (!this.playing || this.currentBaseTrack?.data.id !== track.data.id) {
-      track.off("trackFinished", this.onLoopPointBound);
+    if (!this.playing || this.currentBaseTrack?.data.id != track.data.id) {
+      
       track.fadeOutAndStopBufferSource();
       return;
     }
@@ -219,6 +222,9 @@ export class SpeakerEngine extends EventEmitter<{
       this.group.set(track.groupId, currentTime);
     }
 
+       
+  
+
     track.playForDuration({
       duration: track.buffer.duration,
       offset,
@@ -226,7 +232,7 @@ export class SpeakerEngine extends EventEmitter<{
       times: 1,
       pan: 0,
     });
-
+ 
     track.on("trackFinished", this.onLoopPointBound);
     this.emit("baseTrackStarted");
   }
@@ -261,7 +267,7 @@ export class SpeakerEngine extends EventEmitter<{
     this.speakers.forEach((speaker) => {
       if (this.playingTracks.some((t) => t?.data.id === speaker.data.id))
         return;
-      speaker.off("trackFinished", this.onLoopPointBound);
+      this.clearEndListeners(speaker);
       if (speaker.volumeByLocation(this.listenerPoint) < speaker.minVolume) {
         speaker.fadeOutAndStopBufferSource();
       }
@@ -272,6 +278,11 @@ export class SpeakerEngine extends EventEmitter<{
       "playingTracksUpdated",
       this.playingTracks.map((t) => t?.data.id ?? null)
     );
+  }
+
+  clearEndListeners(track: SpeakerTrack) {
+    track.clearListeners('trackAborted');
+    track.clearListeners('trackFinished');
   }
 
   recalculateNonBaseTracks() {
