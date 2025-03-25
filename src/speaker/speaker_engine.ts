@@ -304,14 +304,16 @@ export class SpeakerEngine extends EventEmitter<{
       return;
     }
 
+    let availableSpeakers = this.speakers.filter((speaker) => {
+      return (
+        speaker.calculatedVolume > speaker.minVolume &&
+        !this.playingTracks.includes(speaker)
+      );
+    }).map(s => s.data.id);
+
     for (let i = 1; i < this.mode.maxRandom; i++) {
 
-      let availableSpeakers = this.speakers.filter((speaker) => {
-        return (
-          speaker.calculatedVolume > speaker.minVolume &&
-          !this.playingTracks.includes(speaker)
-        );
-      });
+      
 
       // slotConsiderationProbability
       const slotConsiderationProbability =
@@ -348,7 +350,9 @@ export class SpeakerEngine extends EventEmitter<{
       }
 
       // replace with new speaker
-      const newSpeaker = sample(availableSpeakers);
+      const newSpeakerId = sample(availableSpeakers);
+
+      const newSpeaker = this.speakers.find(s => s.data.id === newSpeakerId);
 
       if (newSpeaker) {
         if (speaker) {
@@ -358,7 +362,7 @@ export class SpeakerEngine extends EventEmitter<{
         this.playingTracks[i] = newSpeaker;
         this.emit("newSpeaker", newSpeaker);
         availableSpeakers = availableSpeakers.filter(
-          (s) => s.data.id !== newSpeaker.data.id
+          (s) => s !== newSpeakerId
         );
         // find a new random length;
         const lengths = this.mixParams.speakerConfig?.loopFractions ?? [1];
