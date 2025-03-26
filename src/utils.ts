@@ -211,5 +211,7 @@ export const makeAudioSafeToPlay = (
     );
   });
 };
-
+export const FADE_IN_DURATION_SECONDS = 3;
 export const NEARLY_ZERO = 0.0001;
+
+export const isNearlyZero = (value: number, tolerance: number = 0.015) => Math.abs(value) < tolerance;

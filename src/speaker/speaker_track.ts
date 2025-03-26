@@ -21,15 +21,16 @@ import {
   Point,
   Polygon,
 } from "geojson";
-import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { EventEmitter } from "../event_emitter";
+import { BufferEffectsProcessor } from "./buffer_effects_processor";
+import { SpeakerUtils } from "./speaker_utils";
 const convertLinesToPolygon = (shape: LineString | MultiLineString) =>
   lineToPolygon(shape);
 const FADE_DURATION_SECONDS = 3;
 const NEARLY_ZERO = 0.05;
 
 /** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners.
- * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker’s defined zone.'
+ * Speakers can overlap, causing their audio to be mixed together accordingly.  Volume attenuation happens linearly over a specified distance from the edge of the Speaker's defined zone.'
  * (quoted from https://github.com/loafofpiecrust/roundware-ios-framework-v2/blob/client-mixing/RWFramework/RWFramework/Playlist/Speaker.swift)
  * */
 export class SpeakerTrack extends EventEmitter<{
@@ -38,7 +39,8 @@ export class SpeakerTrack extends EventEmitter<{
   unloaded: () => void;
   playing: () => void;
   fadingOut: () => void;
-  baseTrackEnded: () => void;
+  trackFinished: () => void;
+  trackAborted: (remainingTime: number) => void;
 }> {
   maxVolume: number;
   minVolume: number;
@@ -59,17 +61,29 @@ export class SpeakerTrack extends EventEmitter<{
   buffer: IAudioBuffer | null = null;
   audioContext: IAudioContext;
 
-  bufferSource: IAudioBufferSourceNode<IAudioContext> | null = null;
-  gainNode: IGainNode<IAudioContext> | null = null;
+  private bufferSource?: IAudioBufferSourceNode<IAudioContext> | null = null;
+  private gainNode?: IGainNode<IAudioContext> | null = null;
+
+  groupId: number;
+
+  bufferSourcePlaying = false;
+
+  loopConfig: {
+    pan?: number;
+    duration?: number;
+    times?: number;
+  } = {};
 
   constructor({
     data,
     audioContext,
     config,
+    groupId,
   }: {
     data: ISpeakerData;
     audioContext: IAudioContext;
     config: SpeakerConfig;
+    groupId: number;
   }) {
     super();
     const {
@@ -97,6 +111,8 @@ export class SpeakerTrack extends EventEmitter<{
     }
     if (boundary) this.outerBoundary = convertLinesToPolygon(boundary);
     this.calculatedVolume = NEARLY_ZERO;
+
+    this.groupId = groupId;
   }
 
   outerBoundaryContains(point: Coord) {
@@ -191,8 +207,6 @@ export class SpeakerTrack extends EventEmitter<{
       this.emit("unloaded");
     }
     this.buffer = null;
-    this.bufferSource = null;
-    this.gainNode = null;
     this.loadedPercentage = 0;
     this.request?.abort();
     this.request = null;
@@ -200,70 +214,118 @@ export class SpeakerTrack extends EventEmitter<{
 
   startedAtContextTime = 0;
 
-  playWithDuration(duraiton?: number, offset?: number) {
+  stoppedAtGainValue = NEARLY_ZERO;
+
+  playWithConfig({
+    duration,
+    times,
+    offset,
+    fadeInDuration,
+    pan,
+  }: {
+    duration: number;
+    offset: number;
+    times: number;
+    fadeInDuration: number;
+    pan: number;
+  }) {
+    this.loopConfig.duration = duration;
+    this.loopConfig.times = times;
+    this.loopConfig.pan = pan;
+
     if (!this.buffer) {
       throw new Error("Track is not loaded");
     }
 
-    if (this.bufferSource && !this.stopTimeout) {
-      throw new Error("Track is already playing");
+    // Ensure any existing playback is properly cleaned up
+    if (this.stopTimeout) {
+      clearTimeout(this.stopTimeout);
+      this.stopTimeout = null;
     }
 
-    this.stopTimeout && clearTimeout(this.stopTimeout);
+    if (this.bufferSource) {
+      this.stopBufferSource();
+      this.clearBufferSource();
+    }
+
+    let fadeInStartVolume = NEARLY_ZERO;
+
+    if (!fadeInDuration) {
+      fadeInStartVolume = this.calculatedVolume;
+    }
 
     this.bufferSource = this.audioContext.createBufferSource();
     this.bufferSource.loop = false;
 
-    this.bufferSource.buffer = new BufferEffectsProcessor(
+    const bP = new BufferEffectsProcessor(
       this.buffer,
       this.audioContext,
       this.config?.effects || {}
-    )
-      .trim(0, duraiton ?? this.buffer.duration)
-      .microFadeInAndOut()
-      .getBuffer();
+    ).composeBuffer({
+      duration,
+      times,
+      fadeInDuration,
+      fadeInStartVolume,
+    });
+
+    this.bufferSource.buffer = bP.getBuffer();
 
     if (!this.gainNode) {
       this.gainNode = this.audioContext.createGain();
-      this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
-      this.gainNode.gain.value = NEARLY_ZERO;
-      this.gainNode.gain.exponentialRampToValueAtTime(
-        this.calculatedVolume,
-        this.audioContext.currentTime + FADE_DURATION_SECONDS
-      );
+      this.gainNode.gain.value = this.calculatedVolume;
     }
 
+    // connections:
     this.bufferSource.connect(this.gainNode);
-    this.gainNode.connect(this.audioContext.destination);
-    this.bufferSource.start(this.audioContext.currentTime, offset || 0);
-    this.startedAtContextTime = this.audioContext.currentTime;
+    const panner = this.audioContext.createStereoPanner();
+    panner.pan.value = pan;
+    this.gainNode.connect(panner);
+    panner.connect(this.audioContext.destination);
+
+    const bufferSource = this.bufferSource;
+
+    this.startBufferSource(this.audioContext.currentTime, offset || 0);
+
+    const startedAtContextTime = this.startedAtContextTime;
+
     this.bufferSource.onended = () => {
-      this.stopAndClearBufferSource();
-      this.emit("baseTrackEnded");
+      if (!bufferSource || !bufferSource.buffer) {
+        throw new Error(
+          "Previously playing source was not cleared before track ended"
+        );
+      }
+
+      this.bufferSourcePlaying = false;
+      const remainingTime = SpeakerUtils.findRemainingTime(
+        this.audioContext.currentTime,
+        startedAtContextTime,
+        bufferSource.buffer.duration
+      );
+      this.clearBufferSource();
+      if (
+        remainingTime <= NEARLY_ZERO ||
+        Math.abs(bufferSource.buffer.duration - remainingTime) <= NEARLY_ZERO
+      ) {
+        this.emit("trackFinished");
+      } else {
+        this.emit("trackAborted", remainingTime);
+      }
     };
     this.emit("playing");
-    console.trace();
-  }
-
-  playAsBaseTrack() {
-    this.playWithDuration();
-  }
-
-  getBufferSourceRemainingTime() {
-    if (!this.bufferSource) {
-      return 0;
-    }
-    const duration = this.bufferSource.buffer?.duration || 0;
-    const elapsed = this.audioContext.currentTime - this.startedAtContextTime;
-    return duration - elapsed;
   }
 
   stopTimeout: NodeJS.Timeout | null = null;
 
   fadeOutAndStopBufferSource() {
     if (!this.gainNode || !this.bufferSource) {
-      return;
+      throw new Error("Buffer source or gain node not found");
     }
+
+    if (this.stopTimeout) {
+      clearTimeout(this.stopTimeout);
+      this.stopTimeout = null;
+    }
+
     this.emit("fadingOut");
     this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
 
@@ -273,31 +335,61 @@ export class SpeakerTrack extends EventEmitter<{
     );
 
     this.stopTimeout = setTimeout(() => {
-      this.stopAndClearBufferSource();
+      console.debug("Stopping from timeout");
+      this.stopBufferSource();
     }, FADE_DURATION_SECONDS * 1000);
   }
 
-  stopUrgently() {
+  startBufferSource(when: number, offset: number) {
     if (this.bufferSource) {
-      this.stopAndClearBufferSource();
+      this.bufferSource.start(when, offset);
+      this.bufferSourcePlaying = true;
+      this.startedAtContextTime = when - offset;
     }
   }
 
-  stopAndClearBufferSource() {
+  stopBufferSource() {
+    if (this.bufferSource) {
+      this.bufferSource.stop();
+      console.trace("stopBufferSource");
+      this.bufferSourcePlaying = false;
+    }
+  }
+
+  abortBufferSource() {
+    if (this.bufferSource) {
+      this.stopBufferSource();
+    }
+  }
+
+  private clearBufferSource() {
     try {
-      this.bufferSource?.stop();
-      this.bufferSource?.disconnect();
-      this.gainNode?.disconnect();
-      this.bufferSource = null;
-      this.gainNode = null;
+      if (this.bufferSource) {
+        this.bufferSource.onended = null;
+        this.bufferSource.disconnect();
+        delete this.bufferSource;
+        this.bufferSource = null;
+        this.bufferSourcePlaying = false;
+      }
+      if (this.gainNode) {
+        this.gainNode.disconnect();
+        delete this.gainNode;
+        this.gainNode = null;
+      }
+      this.bufferSourcePlaying = false;
     } catch (e) {
-      console.error(e);
+      console.error("Error clearing buffer source:", e);
     }
   }
 
   fadeBufferSourceToVolume(volume: number) {
     if (!this.gainNode) {
       return;
+    }
+
+    if (this.stopTimeout) {
+      clearTimeout(this.stopTimeout);
+      this.stopTimeout = null;
     }
 
     this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);

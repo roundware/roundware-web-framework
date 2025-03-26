@@ -22,17 +22,18 @@ export class EventEmitter<T extends EventMap> {
     }
   }
 
+  // Clear all listeners for a given event
+  clearListeners<K extends keyof T>(event: K): void {
+    if (!this.events[event]) return;
+    this.events[event] = [];
+  }
+
   // Emit an event
   emit<K extends keyof T>(event: K, ...args: Parameters<T[K]>): void {
     // console.log(this.toString(), "emitted", event);
 
-    console.log(
-      `%c${this.toString()} emitted ${event.toString()} ${JSON.stringify(
-        args,
-        null,
-        2
-      )}`,
-      "color: #00f"
+    console.debug(
+      `${this.toString()} emitted ${event.toString()}`,...args,
     );
 
     if (!this.events[event]) return;
