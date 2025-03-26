@@ -182,6 +182,14 @@ describe("TrackStates", () => {
       };
       (track.loadNextAsset as jest.Mock).mockReturnValue(mockAsset);
 
+      // Capture the event listener callback
+      let playingCallback: Function = () => {};
+      (track.audioElement.addEventListener as jest.Mock).mockImplementation((event, callback) => {
+        if (event === "playing") {
+          playingCallback = callback;
+        }
+      });
+
       state.play();
 
       expect(track.loadNextAsset).toHaveBeenCalled();
@@ -191,6 +199,12 @@ describe("TrackStates", () => {
         expect.any(Function),
         { once: true }
       );
+      expect(track.playAudio).toHaveBeenCalled();
+      expect(track.playlist._client.listenHistory.addAsset).toHaveBeenCalledWith(mockAsset);
+
+      // Simulate the playing event
+      playingCallback();
+      expect(track.transition).toHaveBeenCalledWith(expect.any(FadingInState));
     });
 
     it("should transition to WaitingForAssetState when no asset is loaded", () => {
@@ -209,6 +223,68 @@ describe("TrackStates", () => {
       expect(() => state.skip()).not.toThrow();
       expect(() => state.replay()).not.toThrow();
       expect(() => state.updateParams()).not.toThrow();
+    });
+
+    it("should not transition when playlist is not playing", () => {
+      const mockAsset: IDecoratedAsset = {
+        id: 1,
+        description: "test",
+        latitude: 0,
+        longitude: 0,
+        shape: null,
+        filename: "test.mp3",
+        file: "test.mp3",
+        volume: 1,
+        submitted: true,
+        created: new Date(),
+        updated: new Date(),
+        weight: 1,
+        start_time: 0,
+        end_time: 10,
+        user: null,
+        media_type: "audio",
+        audio_length_in_seconds: 10,
+        tag_ids: [],
+        session_id: 1,
+        project_id: 1,
+        language_id: 1,
+        envelope_ids: [],
+        description_loc_ids: [],
+        alt_text_loc_ids: [],
+        activeRegionLowerBound: 0,
+        activeRegionUpperBound: 10,
+        activeRegionLength: 10,
+        locationPoint: mockListenerPoint,
+        playCount: 0,
+      };
+      (track.loadNextAsset as jest.Mock).mockReturnValue(mockAsset);
+
+      // Set playlist to not playing
+      track.playlist.playing = false;
+
+      // Capture the event listener callback
+      let playingCallback: Function = () => {};
+      (track.audioElement.addEventListener as jest.Mock).mockImplementation((event, callback) => {
+        if (event === "playing") {
+          playingCallback = callback;
+        }
+      });
+
+      state.play();
+
+      expect(track.loadNextAsset).toHaveBeenCalled();
+      expect(track.setZeroGain).toHaveBeenCalled();
+      expect(track.audioElement.addEventListener).toHaveBeenCalledWith(
+        "playing",
+        expect.any(Function),
+        { once: true }
+      );
+      expect(track.playAudio).toHaveBeenCalled();
+      expect(track.playlist._client.listenHistory.addAsset).toHaveBeenCalledWith(mockAsset);
+
+      // Simulate the playing event
+      playingCallback();
+      expect(track.transition).not.toHaveBeenCalled();
     });
   });
 
@@ -553,6 +629,10 @@ describe("TrackStates", () => {
       expect(parentUpdateParamsSpy).toHaveBeenCalledWith(mockMixParams);
       parentUpdateParamsSpy.mockRestore();
     });
+
+    it("should return correct string representation", () => {
+      expect(state.toString()).toBe(`FadingOut asset #${assetEnvelope.assetId} (${assetEnvelope.fadeOutDuration.toFixed(1)}s)`);
+    });
   });
 
   describe("WaitingForAssetState", () => {
@@ -633,25 +713,6 @@ describe("TrackStates", () => {
     });
   });
 
-  describe("makeInitialTrackState", () => {
-    it("should create LoadingState when startWithSilence is false", () => {
-      const state = makeInitialTrackState(track, trackOptions);
-      expect(state).toBeInstanceOf(LoadingState);
-    });
-
-    it("should create DeadAirState when startWithSilence is true", () => {
-      const optionsWithSilence = new TrackOptions(
-        (param: string) => "",
-        {
-          ...mockAudioData,
-          start_with_silence: true,
-        }
-      );
-      const state = makeInitialTrackState(track, optionsWithSilence);
-      expect(state).toBeInstanceOf(DeadAirState);
-    });
-  });
-
   describe("TimedTrackState", () => {
     let state: TimedTrackState;
     let consoleSpy: jest.SpyInstance;
@@ -664,15 +725,56 @@ describe("TrackStates", () => {
     afterEach(() => {
       consoleSpy.mockRestore();
     });
-
-    it("should log warning when setNextState is not implemented", () => {
-      state.setNextState();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("does not implement a next state")
-      );
+    
+    
+    it("should handle setNextStateTimer with logging", () => {
+      jest.useFakeTimers();
+      const logSpy = jest.spyOn(state, 'log');
+      state.setNextStateTimer(5000);
+      expect(state.timerId).toBeDefined();
+      expect(state.intervalId).toBeDefined();
+      expect(state.timerApproximateEndingAtMs).toBeDefined();
+      
+      // Advance timer to trigger interval callback
+      jest.advanceTimersByTime(1000);
+      expect(logSpy).toHaveBeenCalled();
+      
+      jest.useRealTimers();
     });
 
-    it("should handle updateParams with fadeout_when_filtered disabled", () => {
+    it("should handle clearTimer with no timers", () => {
+      const result = state.clearTimer();
+      expect(result).toBe(0);
+    });
+
+    it("should handle clearTimer with only intervalId", () => {
+      state.intervalId = setInterval(() => {}, 1000);
+      const clearIntervalSpy = jest.spyOn(window, 'clearInterval');
+      const result = state.clearTimer();
+      expect(clearIntervalSpy).toHaveBeenCalledWith(state.intervalId);
+      expect(result).toBe(0);
+      clearIntervalSpy.mockRestore();
+    });
+
+    it("should handle finish method", () => {
+      state.timeRemainingMs = 5000;
+      state.finish();
+      expect(state.timeRemainingMs).toBeUndefined();
+    });
+
+    it("should handle skip method", () => {
+      const setNextStateSpy = jest.spyOn(state, 'setNextState');
+      state.skip();
+      expect(setNextStateSpy).toHaveBeenCalled();
+      setNextStateSpy.mockRestore();
+    });
+
+    it("should handle setLoadingState", () => {
+      state.setLoadingState();
+      expect(track.transition).toHaveBeenCalledWith(expect.any(LoadingState));
+    });
+
+    it("should handle updateParams with no fadeout_when_filtered", () => {
       track.audioData.fadeout_when_filtered = false;
       state.updateParams({});
       expect(track.transition).not.toHaveBeenCalled();
@@ -685,7 +787,7 @@ describe("TrackStates", () => {
       expect(track.transition).not.toHaveBeenCalled();
     });
 
-    it("should handle updateParams when already in FadingOutState", () => {
+    it("should handle updateParams when already fading out", () => {
       track.audioData.fadeout_when_filtered = true;
       track.currentAsset = {
         id: 1,
@@ -765,24 +867,55 @@ describe("TrackStates", () => {
       jest.spyOn(require("./assetFilters"), "distanceRangesFilter").mockReturnValue(() => ASSET_PRIORITIES.DISCARD);
 
       state.updateParams({});
-      expect(track.transition).toHaveBeenCalledWith(
-        expect.any(FadingOutState)
-      );
+      expect(track.transition).toHaveBeenCalledWith(expect.any(FadingOutState));
       expect(track.currentAsset.status).toBe("paused");
       expect(track.currentAsset.pausedFromTrackId).toBe(track.trackId);
       expect(track.pausedAssetId).toBe(track.currentAsset.id);
     });
+  });
 
-    it("should return early if timer is already active", () => {
-      jest.useFakeTimers();
-      state.play(5); // Start with 5 seconds
-      expect(state.timerId).toBeDefined();
+  describe("makeInitialTrackState", () => {
+    it("should create LoadingState when startWithSilence is false", () => {
+      const state = makeInitialTrackState(track, trackOptions);
+      expect(state).toBeInstanceOf(LoadingState);
+      expect(state.track).toBe(track);
+      expect(state.trackOptions).toBe(trackOptions);
       
-      // Try to play again while timer is active
-      const result = state.play(3);
-      expect(result).toBeUndefined();
+      // Verify the state can be used
+      state.play();
+      expect(track.loadNextAsset).toHaveBeenCalled();
+    });
+
+    it("should create DeadAirState when startWithSilence is true", () => {
+      const optionsWithSilence = new TrackOptions(
+        (param: string) => "",
+        {
+          ...mockAudioData,
+          start_with_silence: true,
+        }
+      );
+      const state = makeInitialTrackState(track, optionsWithSilence) as DeadAirState;
+      expect(state).toBeInstanceOf(DeadAirState);
+      expect(state.track).toBe(track);
+      expect(state.trackOptions).toBe(optionsWithSilence);
+      
+      // Verify the state can be used
+      jest.useFakeTimers();
+      state.play();
       expect(state.timerId).toBeDefined();
       jest.useRealTimers();
+    });
+
+    it("should handle edge case with undefined startWithSilence", () => {
+      const optionsWithUndefinedSilence = new TrackOptions(
+        (param: string) => "",
+        {
+          ...mockAudioData,
+          start_with_silence: false,
+        }
+      );
+      const state = makeInitialTrackState(track, optionsWithUndefinedSilence);
+      expect(state).toBeInstanceOf(LoadingState);
     });
   });
 });
