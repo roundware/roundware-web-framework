@@ -4,5 +4,10 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "prettier.jsxSingleQuote": true,
   "prettier.singleQuote": true,
-  "prettier.printWidth": 1000
+  "prettier.printWidth": 1000,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "always",
+    "source.organizeImports": "always",
+  },
+  "editor.formatOnSave": true
 }

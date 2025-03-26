@@ -21,8 +21,8 @@ import {
   Point,
   Polygon,
 } from "geojson";
-import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { EventEmitter } from "../event_emitter";
+import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { SpeakerUtils } from "./speaker_utils";
 const convertLinesToPolygon = (shape: LineString | MultiLineString) =>
   lineToPolygon(shape);
@@ -68,13 +68,17 @@ export class SpeakerTrack extends EventEmitter<{
 
   bufferSourcePlaying = false;
 
-
+  loopConfig: {
+    pan?: number;
+    duration?: number;
+    times?: number;
+  } = {};
 
   constructor({
     data,
     audioContext,
     config,
-    groupId
+    groupId,
   }: {
     data: ISpeakerData;
     audioContext: IAudioContext;
@@ -109,7 +113,6 @@ export class SpeakerTrack extends EventEmitter<{
     this.calculatedVolume = NEARLY_ZERO;
 
     this.groupId = groupId;
-
   }
 
   outerBoundaryContains(point: Coord) {
@@ -211,7 +214,9 @@ export class SpeakerTrack extends EventEmitter<{
 
   startedAtContextTime = 0;
 
-  playForDuration({
+  stoppedAtGainValue = NEARLY_ZERO;
+
+  playWithConfig({
     duration,
     times,
     offset,
@@ -224,6 +229,10 @@ export class SpeakerTrack extends EventEmitter<{
     fadeInDuration: number;
     pan: number;
   }) {
+    this.loopConfig.duration = duration;
+    this.loopConfig.times = times;
+    this.loopConfig.pan = pan;
+
     if (!this.buffer) {
       throw new Error("Track is not loaded");
     }
@@ -241,9 +250,8 @@ export class SpeakerTrack extends EventEmitter<{
 
     let fadeInStartVolume = NEARLY_ZERO;
 
-    if(this.gainNode) {
-      this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
-      fadeInStartVolume = this.gainNode.gain.value;
+    if (!fadeInDuration) {
+      fadeInStartVolume = this.calculatedVolume;
     }
 
     this.bufferSource = this.audioContext.createBufferSource();
@@ -257,7 +265,7 @@ export class SpeakerTrack extends EventEmitter<{
       duration,
       times,
       fadeInDuration,
-      fadeInStartVolume,  
+      fadeInStartVolume,
     });
 
     this.bufferSource.buffer = bP.getBuffer();
@@ -275,15 +283,18 @@ export class SpeakerTrack extends EventEmitter<{
     panner.connect(this.audioContext.destination);
 
     const bufferSource = this.bufferSource;
-    
+
     this.startBufferSource(this.audioContext.currentTime, offset || 0);
 
     const startedAtContextTime = this.startedAtContextTime;
 
     this.bufferSource.onended = () => {
       if (!bufferSource || !bufferSource.buffer) {
-        throw new Error("Previously playing source was not cleared before track ended");
+        throw new Error(
+          "Previously playing source was not cleared before track ended"
+        );
       }
+
       this.bufferSourcePlaying = false;
       const remainingTime = SpeakerUtils.findRemainingTime(
         this.audioContext.currentTime,
@@ -307,7 +318,7 @@ export class SpeakerTrack extends EventEmitter<{
 
   fadeOutAndStopBufferSource() {
     if (!this.gainNode || !this.bufferSource) {
-      return;
+      throw new Error("Buffer source or gain node not found");
     }
 
     if (this.stopTimeout) {
@@ -324,26 +335,23 @@ export class SpeakerTrack extends EventEmitter<{
     );
 
     this.stopTimeout = setTimeout(() => {
-      console.debug('Stopping from timeout');
+      console.debug("Stopping from timeout");
       this.stopBufferSource();
     }, FADE_DURATION_SECONDS * 1000);
   }
 
-  startBufferSource(
-    when: number,
-    offset: number
-  ) {
+  startBufferSource(when: number, offset: number) {
     if (this.bufferSource) {
       this.bufferSource.start(when, offset);
       this.bufferSourcePlaying = true;
       this.startedAtContextTime = when - offset;
     }
-  };
+  }
 
   stopBufferSource() {
     if (this.bufferSource) {
       this.bufferSource.stop();
-      console.trace('stopBufferSource');
+      console.trace("stopBufferSource");
       this.bufferSourcePlaying = false;
     }
   }
@@ -370,7 +378,7 @@ export class SpeakerTrack extends EventEmitter<{
       }
       this.bufferSourcePlaying = false;
     } catch (e) {
-      console.error('Error clearing buffer source:', e);
+      console.error("Error clearing buffer source:", e);
     }
   }
 
