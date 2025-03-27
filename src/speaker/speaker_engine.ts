@@ -102,7 +102,10 @@ export class SpeakerEngine extends EventEmitter<{
     this.speakers.forEach((track) => {
       // cancel all loops and future processing
       track?.clearListeners("trackFinished");
-      track?.abortBufferSource();
+      track?.clearListeners("trackAborted");
+      if (track.bufferSourcePlaying) {
+        track.abortBufferSource();
+      }
     });
     this.playing = false;
     this.playingTracks = [];
@@ -314,6 +317,7 @@ export class SpeakerEngine extends EventEmitter<{
         // repeat all the tracks;
         this.playingTracks.forEach((track) => {
           if (track === null) return;
+          if (track === baseTrackId) return;
           const speaker = this.getSpeakerTrackById(track);
           this.repeatLoopOnLoopPoint(speaker);
         });
@@ -503,7 +507,7 @@ export class SpeakerEngine extends EventEmitter<{
       throw new Error(`Track times not found`);
     }
 
-    track.abortBufferSource();
+    if (track.bufferSourcePlaying) track.abortBufferSource();
 
     const remainingDuration = SpeakerUtils.findRemainingTime(
       this.audioContext.currentTime,

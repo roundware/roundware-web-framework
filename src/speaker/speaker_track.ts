@@ -360,6 +360,7 @@ export class SpeakerTrack extends EventEmitter<{
     if (this.bufferSource) {
       this.stopBufferSource();
     }
+    this.clearBufferSource();
   }
 
   private clearBufferSource() {
