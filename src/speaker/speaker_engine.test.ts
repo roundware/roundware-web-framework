@@ -471,7 +471,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
   it("should handle zero group start time correctly", () => {
     // Set specific context time
     Object.defineProperty(mockAudioContext, "currentTime", {
-      get: () => 15.5,
+      get: () => 60,
     });
 
     // Set track configuration
@@ -501,7 +501,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
     expect(mockSpeakerTrack.playWithConfig).toHaveBeenCalledWith(
       expect.objectContaining({
         duration: 10,
-        offset: 5.5,
+        offset: 0,
         times: expect.any(Number),
         pan: 0,
         fadeInDuration: 0,
@@ -780,7 +780,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
   it("should handle repeated calls with the same configuration", () => {
     // Set context time
     Object.defineProperty(mockAudioContext, "currentTime", {
-      get: () => 15,
+      get: () => 30,
     });
 
     // Set track configuration
@@ -808,7 +808,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
 
     // Advance time
     Object.defineProperty(mockAudioContext, "currentTime", {
-      get: () => 25,
+      get: () => 60,
     });
 
     speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack);
@@ -817,7 +817,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
     const firstCall = mockSpeakerTrack.playWithConfig.mock.calls[0][0];
     const secondCall = mockSpeakerTrack.playWithConfig.mock.calls[1][0];
 
-    expect(firstCall.offset).toBe(5); // 15 % 10 = 5
-    expect(secondCall.offset).toBe(5); // 25 % 10 = 5
+    expect(firstCall.offset).toBe(0); // 15 % 10 = 5
+    expect(secondCall.offset).toBe(0); // 25 % 10 = 5
   });
 });

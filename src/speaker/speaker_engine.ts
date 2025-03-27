@@ -229,7 +229,9 @@ export class SpeakerEngine extends EventEmitter<{
 
     if (isNearlyZero(offset, 0.015)) {
       offset = 0;
-      this.group.set(track.groupId, currentTime);
+      if (this.group.get(track.groupId) === null) {
+        this.group.set(track.groupId, currentTime);
+      }
     }
 
     // playing the base track
@@ -513,57 +515,83 @@ export class SpeakerEngine extends EventEmitter<{
 
     if (track.bufferSourcePlaying) track.abortBufferSource();
 
-    const groupStartTime = this.group.get(track.groupId);
+    // check if is odd duration;
+    const isOddDuration = !isNearlyZero(
+      baseTrackDuration % track.loopConfig.duration
+    );
+    if (isOddDuration) {
+      const groupStartTime = this.group.get(track.groupId);
 
-    if (groupStartTime === null || groupStartTime === undefined) {
-      throw new Error(`Tried to repeat track who's group is not started yet!`);
+      if (groupStartTime === null || groupStartTime === undefined) {
+        throw new Error(
+          `Tried to repeat track who's group is not started yet!`
+        );
+      }
+
+      const currentTime = this.audioContext.currentTime;
+
+      let newTimes = 0;
+
+      // duration exceeding at current loop point;
+      let exceededDuration =
+        (currentTime - groupStartTime) % track.loopConfig.duration;
+
+      if (isNearlyZero(exceededDuration)) {
+        exceededDuration = 0;
+      }
+
+      let calculatedCurrentTime = currentTime;
+
+      if (exceededDuration > 0) {
+        newTimes += 1;
+        calculatedCurrentTime += exceededDuration;
+      }
+
+      let nextLoopPointAt = currentTime + baseTrackDuration;
+
+      while (calculatedCurrentTime < nextLoopPointAt) {
+        newTimes += 1;
+        calculatedCurrentTime += track.loopConfig.duration;
+      }
+
+      this.emit("repeatingTrack", {
+        trackId: track.data.id,
+        exceededDuration,
+        newTimes,
+      });
+
+      console.debug(track.data.id, {
+        exceededDuration,
+        newTimes,
+        baseTrackDuration,
+        trackDuration: track.loopConfig.duration,
+        groupStartTime,
+        currentTime,
+        nextLoopPointAt,
+        trackId: track.data.id,
+      });
+
+      track.playWithConfig({
+        duration: track.loopConfig.duration,
+        fadeInDuration: 0,
+        offset: exceededDuration,
+        pan: track.loopConfig.pan,
+        times: newTimes,
+      });
+    } else {
+      this.emit("repeatingTrack", {
+        trackId: track.data.id,
+        exceededDuration: 0,
+        newTimes: track.loopConfig.times,
+      });
+      track.playWithConfig({
+        duration: track.loopConfig.duration,
+        offset: 0,
+        fadeInDuration: 0,
+        pan: track.loopConfig.pan,
+        times: baseTrackDuration / track.loopConfig.duration,
+      });
     }
-
-    const currentTime = this.audioContext.currentTime;
-
-    let newTimes = 0;
-
-    // duration exceeding at current loop point;
-    let exceededDuration =
-      (currentTime - groupStartTime) % track.loopConfig.duration;
-
-    if (isNearlyZero(exceededDuration)) {
-      exceededDuration = 0;
-    }
-
-    let calculatedCurrentTime = currentTime;
-
-    if (exceededDuration > 0) {
-      newTimes += 1;
-      calculatedCurrentTime += exceededDuration;
-    }
-
-    let nextLoopPointAt = currentTime + baseTrackDuration;
-
-    while (calculatedCurrentTime < nextLoopPointAt) {
-      newTimes += 1;
-      calculatedCurrentTime += track.loopConfig.duration;
-    }
-
-    // Calculate playedDuration and remainingDuration for testing
-    const playedDuration =
-      exceededDuration > 0 ? currentTime - groupStartTime : 0;
-    const remainingDuration =
-      exceededDuration > 0 ? track.loopConfig.duration - exceededDuration : 0;
-
-    this.emit("repeatingTrack", {
-      trackId: track.data.id,
-      exceededDuration,
-      newTimes,
-    });
-
-    track.playWithConfig({
-      duration: track.loopConfig.duration,
-      fadeInDuration: 0,
-      offset: exceededDuration,
-      pan: track.loopConfig.pan,
-      times: newTimes,
-    });
   }
 
   calculateVolumesByLocation() {
