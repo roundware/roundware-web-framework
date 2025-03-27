@@ -24,7 +24,11 @@ export class SpeakerEngine extends EventEmitter<{
   stoppingInFuture: (remainingTime: number) => void;
   newSpeaker: (newSpeaker: SpeakerTrack) => void;
   speakersAvailable: (speakers: number[]) => void;
-  repeatingTrack: (track: number) => void;
+  repeatingTrack: (track: {
+    trackId: number;
+    exceededDuration: number;
+    newTimes: number;
+  }) => void;
   fadingOutLoop: (track: number) => void;
 }> {
   mixParams: IMixParams = {};
@@ -509,27 +513,57 @@ export class SpeakerEngine extends EventEmitter<{
 
     if (track.bufferSourcePlaying) track.abortBufferSource();
 
-    const remainingDuration = SpeakerUtils.findRemainingTime(
-      this.audioContext.currentTime,
-      track.startedAtContextTime,
-      track.loopConfig.duration * track.loopConfig.times
-    );
-    // already played duration?
+    const groupStartTime = this.group.get(track.groupId);
+
+    if (groupStartTime === null || groupStartTime === undefined) {
+      throw new Error(`Tried to repeat track who's group is not started yet!`);
+    }
+
+    const currentTime = this.audioContext.currentTime;
+
+    let newTimes = 0;
+
+    // duration exceeding at current loop point;
+    let exceededDuration =
+      (currentTime - groupStartTime) % track.loopConfig.duration;
+
+    if (isNearlyZero(exceededDuration)) {
+      exceededDuration = 0;
+    }
+
+    let calculatedCurrentTime = currentTime;
+
+    if (exceededDuration > 0) {
+      newTimes += 1;
+      calculatedCurrentTime += exceededDuration;
+    }
+
+    let nextLoopPointAt = currentTime + baseTrackDuration;
+
+    while (calculatedCurrentTime < nextLoopPointAt) {
+      newTimes += 1;
+      calculatedCurrentTime += track.loopConfig.duration;
+    }
+
+    // Calculate playedDuration and remainingDuration for testing
     const playedDuration =
-      track.loopConfig.duration * track.loopConfig.times - remainingDuration;
+      exceededDuration > 0 ? currentTime - groupStartTime : 0;
+    const remainingDuration =
+      exceededDuration > 0 ? track.loopConfig.duration - exceededDuration : 0;
+
+    this.emit("repeatingTrack", {
+      trackId: track.data.id,
+      exceededDuration,
+      newTimes,
+    });
+
     track.playWithConfig({
       duration: track.loopConfig.duration,
       fadeInDuration: 0,
-      offset: isNearlyZero(remainingDuration, 0.015) ? 0 : playedDuration,
+      offset: exceededDuration,
       pan: track.loopConfig.pan,
-      // TODO: calculate correct times.
-      times: Math.ceil(
-        (baseTrackDuration +
-          (isNearlyZero(remainingDuration, 0.015) ? 0 : remainingDuration)) /
-          track.loopConfig.duration
-      ),
+      times: newTimes,
     });
-    this.emit("repeatingTrack", track.data.id);
   }
 
   calculateVolumesByLocation() {
