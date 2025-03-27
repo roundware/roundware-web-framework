@@ -41,6 +41,13 @@ export class SpeakerTrack extends EventEmitter<{
   fadingOut: () => void;
   trackFinished: () => void;
   trackAborted: (remainingTime: number) => void;
+  startingBufferSource: ({
+    when,
+    offset,
+  }: {
+    when: number;
+    offset: number;
+  }) => void;
 }> {
   maxVolume: number;
   minVolume: number;
@@ -345,6 +352,10 @@ export class SpeakerTrack extends EventEmitter<{
       this.bufferSource.start(when, offset);
       this.bufferSourcePlaying = true;
       this.startedAtContextTime = when - offset;
+      this.emit("startingBufferSource", {
+        when,
+        offset,
+      });
     }
   }
 
@@ -360,6 +371,7 @@ export class SpeakerTrack extends EventEmitter<{
     if (this.bufferSource) {
       this.stopBufferSource();
     }
+    this.clearBufferSource();
   }
 
   private clearBufferSource() {

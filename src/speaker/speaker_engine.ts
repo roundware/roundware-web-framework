@@ -24,7 +24,11 @@ export class SpeakerEngine extends EventEmitter<{
   stoppingInFuture: (remainingTime: number) => void;
   newSpeaker: (newSpeaker: SpeakerTrack) => void;
   speakersAvailable: (speakers: number[]) => void;
-  repeatingTrack: (track: number) => void;
+  repeatingTrack: (track: {
+    trackId: number;
+    exceededDuration: number;
+    newTimes: number;
+  }) => void;
   fadingOutLoop: (track: number) => void;
 }> {
   mixParams: IMixParams = {};
@@ -102,7 +106,10 @@ export class SpeakerEngine extends EventEmitter<{
     this.speakers.forEach((track) => {
       // cancel all loops and future processing
       track?.clearListeners("trackFinished");
-      track?.abortBufferSource();
+      track?.clearListeners("trackAborted");
+      if (track.bufferSourcePlaying) {
+        track.abortBufferSource();
+      }
     });
     this.playing = false;
     this.playingTracks = [];
@@ -222,7 +229,9 @@ export class SpeakerEngine extends EventEmitter<{
 
     if (isNearlyZero(offset, 0.015)) {
       offset = 0;
-      this.group.set(track.groupId, currentTime);
+      if (this.group.get(track.groupId) === null) {
+        this.group.set(track.groupId, currentTime);
+      }
     }
 
     // playing the base track
@@ -314,6 +323,7 @@ export class SpeakerEngine extends EventEmitter<{
         // repeat all the tracks;
         this.playingTracks.forEach((track) => {
           if (track === null) return;
+          if (track === baseTrackId) return;
           const speaker = this.getSpeakerTrackById(track);
           this.repeatLoopOnLoopPoint(speaker);
         });
@@ -503,29 +513,85 @@ export class SpeakerEngine extends EventEmitter<{
       throw new Error(`Track times not found`);
     }
 
-    track.abortBufferSource();
+    if (track.bufferSourcePlaying) track.abortBufferSource();
 
-    const remainingDuration = SpeakerUtils.findRemainingTime(
-      this.audioContext.currentTime,
-      track.startedAtContextTime,
-      track.loopConfig.duration * track.loopConfig.times
+    // check if is odd duration;
+    const isOddDuration = !isNearlyZero(
+      baseTrackDuration % track.loopConfig.duration
     );
-    // already played duration?
-    const playedDuration =
-      track.loopConfig.duration * track.loopConfig.times - remainingDuration;
-    track.playWithConfig({
-      duration: track.loopConfig.duration,
-      fadeInDuration: 0,
-      offset: isNearlyZero(remainingDuration, 0.015) ? 0 : playedDuration,
-      pan: track.loopConfig.pan,
-      // TODO: calculate correct times.
-      times: Math.ceil(
-        (baseTrackDuration +
-          (isNearlyZero(remainingDuration, 0.015) ? 0 : remainingDuration)) /
-          track.loopConfig.duration
-      ),
-    });
-    this.emit("repeatingTrack", track.data.id);
+    if (isOddDuration) {
+      const groupStartTime = this.group.get(track.groupId);
+
+      if (groupStartTime === null || groupStartTime === undefined) {
+        throw new Error(
+          `Tried to repeat track who's group is not started yet!`
+        );
+      }
+
+      const currentTime = this.audioContext.currentTime;
+
+      let newTimes = 0;
+
+      // duration exceeding at current loop point;
+      let exceededDuration =
+        (currentTime - groupStartTime) % track.loopConfig.duration;
+
+      if (isNearlyZero(exceededDuration)) {
+        exceededDuration = 0;
+      }
+
+      let calculatedCurrentTime = currentTime;
+
+      if (exceededDuration > 0) {
+        newTimes += 1;
+        calculatedCurrentTime += exceededDuration;
+      }
+
+      let nextLoopPointAt = currentTime + baseTrackDuration;
+
+      while (calculatedCurrentTime < nextLoopPointAt) {
+        newTimes += 1;
+        calculatedCurrentTime += track.loopConfig.duration;
+      }
+
+      this.emit("repeatingTrack", {
+        trackId: track.data.id,
+        exceededDuration,
+        newTimes,
+      });
+
+      console.debug(track.data.id, {
+        exceededDuration,
+        newTimes,
+        baseTrackDuration,
+        trackDuration: track.loopConfig.duration,
+        groupStartTime,
+        currentTime,
+        nextLoopPointAt,
+        trackId: track.data.id,
+      });
+
+      track.playWithConfig({
+        duration: track.loopConfig.duration,
+        fadeInDuration: 0,
+        offset: exceededDuration,
+        pan: track.loopConfig.pan,
+        times: newTimes,
+      });
+    } else {
+      this.emit("repeatingTrack", {
+        trackId: track.data.id,
+        exceededDuration: 0,
+        newTimes: track.loopConfig.times,
+      });
+      track.playWithConfig({
+        duration: track.loopConfig.duration,
+        offset: 0,
+        fadeInDuration: 0,
+        pan: track.loopConfig.pan,
+        times: baseTrackDuration / track.loopConfig.duration,
+      });
+    }
   }
 
   calculateVolumesByLocation() {
