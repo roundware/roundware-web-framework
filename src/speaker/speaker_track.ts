@@ -113,10 +113,24 @@ export class SpeakerTrack extends EventEmitter<{
     this.uri = uri;
 
     if (attenuation_border) {
-      this.attenuationBorderPolygon = convertLinesToPolygon(attenuation_border);
-      this.attenuationBorderLineString = attenuation_border;
+      try {
+        this.attenuationBorderPolygon =
+          convertLinesToPolygon(attenuation_border);
+        this.attenuationBorderLineString = attenuation_border;
+      } catch (e) {
+        console.error(
+          "Error converting attenuation border to polygon:",
+          e,
+          data
+        );
+      }
     }
-    if (boundary) this.outerBoundary = convertLinesToPolygon(boundary);
+    try {
+      if (boundary) this.outerBoundary = convertLinesToPolygon(boundary);
+    } catch (e) {
+      console.error("Error converting outer boundary to polygon:", e, data);
+    }
+
     this.calculatedVolume = NEARLY_ZERO;
 
     this.groupId = groupId;
