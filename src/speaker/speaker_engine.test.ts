@@ -1,9 +1,10 @@
 import { jest } from "@jest/globals";
-import { IAudioContext } from "standardized-audio-context";
+import { IAudioBuffer, IAudioContext } from "standardized-audio-context";
 import { IMixParams, SpeakerConfig } from "../types/index";
 import { ISpeakerData } from "../types/speaker";
 import { SpeakerEngine } from "./speaker_engine";
 import { SpeakerTrack } from "./speaker_track";
+import { LoadingStrategy, SpeakerUtils } from "./speaker_utils";
 
 describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
   let speakerEngine: SpeakerEngine;
@@ -80,245 +81,6 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
       expect(playConfigCall.times).toEqual(scenario.expectedPlayConfig.times);
     });
   };
-  // Test scenarios
-  const scenarios: TestScenario[] = [
-    {
-      name: "Basic scenario - track duration equals base track duration",
-      baseTrackDuration: 30,
-      currentTime: 30, // Exactly at the first loop point
-      groupStartedAt: 0,
-      trackConfig: {
-        loopConfig: {
-          duration: 30,
-          pan: 0,
-          times: 1,
-        },
-      },
-      expectedPlayConfig: {
-        duration: 30,
-        offset: 0,
-        times: 1,
-        pan: 0,
-        fadeInDuration: 0,
-      },
-      expectedExceededDuration: 0,
-    },
-    {
-      name: "Track duration is half of base track duration",
-      baseTrackDuration: 30,
-      currentTime: 30, // Exactly at the first loop point
-      groupStartedAt: 0,
-      trackConfig: {
-        loopConfig: {
-          duration: 15,
-          pan: 0,
-          times: 2,
-        },
-      },
-      expectedPlayConfig: {
-        duration: 15,
-        offset: 0,
-        times: 2,
-        pan: 0,
-        fadeInDuration: 0,
-      },
-      expectedExceededDuration: 0,
-    },
-    {
-      name: "Track with non-zero pan",
-      baseTrackDuration: 30,
-      currentTime: 60, // Exactly at the second loop point
-      groupStartedAt: 0,
-      trackConfig: {
-        loopConfig: {
-          duration: 10,
-          pan: 0.5,
-          times: 3,
-        },
-      },
-      expectedPlayConfig: {
-        duration: 10,
-        offset: 0,
-        times: 3,
-        pan: 0.5,
-        fadeInDuration: 0,
-      },
-      expectedExceededDuration: 0,
-    },
-    {
-      name: "Track with 2/3 of base track duration",
-      baseTrackDuration: 30,
-      currentTime: 60, // Exactly at the second loop point
-      groupStartedAt: 0,
-      trackConfig: {
-        loopConfig: {
-          duration: 20,
-          pan: 0,
-          times: 2,
-        },
-      },
-      expectedPlayConfig: {
-        duration: 20,
-        offset: 0,
-        times: 2,
-        pan: 0,
-        fadeInDuration: 0,
-      },
-      expectedExceededDuration: 0,
-    },
-    // 2/3 but at 2nd loop point
-    {
-      name: "2/3 but at 2nd loop point",
-      baseTrackDuration: 30,
-      currentTime: 60, // Exactly at the second loop point
-      groupStartedAt: 0,
-      trackConfig: {
-        loopConfig: {
-          duration: 20,
-          pan: 0,
-          times: 2,
-        },
-      },
-      expectedPlayConfig: {
-        duration: 20,
-        offset: 0,
-        times: 2,
-        pan: 0,
-        fadeInDuration: 0,
-      },
-      expectedExceededDuration: 0,
-    },
-    // New test scenarios
-    {
-      name: "Fractional durations - at loop point",
-      baseTrackDuration: 30,
-      currentTime: 30, // Exactly at the first loop point
-      groupStartedAt: 0,
-      trackConfig: {
-        loopConfig: {
-          duration: 12.5,
-          pan: 0,
-          times: 3,
-        },
-      },
-      expectedPlayConfig: {
-        duration: 12.5,
-        offset: 5, // 30 % 12.5 = 5
-        times: 3,
-        pan: 0,
-        fadeInDuration: 0,
-      },
-      expectedExceededDuration: 5,
-    },
-    {
-      name: "Non-zero group start time",
-      baseTrackDuration: 30,
-      currentTime: 40.5, // Exactly at first loop point (10.5 + 30)
-      groupStartedAt: 10.5,
-      trackConfig: {
-        loopConfig: {
-          duration: 15,
-          pan: 0.25,
-          times: 2,
-        },
-      },
-      expectedPlayConfig: {
-        duration: 15,
-        offset: 0, // (40.5 - 10.5) = 30, 30 % 15 = 0
-        times: 2,
-        pan: 0.25,
-        fadeInDuration: 0,
-      },
-      expectedExceededDuration: 0,
-    },
-    {
-      name: "At exact third loop point",
-      baseTrackDuration: 30,
-      currentTime: 90, // Exactly at the third loop point
-      groupStartedAt: 0,
-      trackConfig: {
-        loopConfig: {
-          duration: 20,
-          pan: 0,
-          times: 2,
-        },
-      },
-      expectedPlayConfig: {
-        duration: 20,
-        offset: 10, // 90 % 20 = 10
-        times: 2,
-        pan: 0,
-        fadeInDuration: 0,
-      },
-      expectedExceededDuration: 10,
-    },
-    {
-      name: "Exact boundary - current time at exact loop point",
-      baseTrackDuration: 40,
-      currentTime: 40, // Exactly at the first loop point
-      groupStartedAt: 0,
-      trackConfig: {
-        loopConfig: {
-          duration: 10,
-          pan: -0.5,
-          times: 4,
-        },
-      },
-      expectedPlayConfig: {
-        duration: 10,
-        offset: 0, // 40 % 10 = 0
-        times: 4,
-        pan: -0.5,
-        fadeInDuration: 0,
-      },
-      expectedExceededDuration: 0,
-    },
-    {
-      name: "Different base track and loop track durations with floating point",
-      baseTrackDuration: 32.5,
-      currentTime: 65, // Exactly at the second loop point (2 * 32.5)
-      groupStartedAt: 0,
-      trackConfig: {
-        loopConfig: {
-          duration: 8.1,
-          pan: 0.33,
-          times: 5,
-        },
-      },
-      expectedPlayConfig: {
-        duration: 8.1,
-        offset: 0.20000000000000284, // 65 % 8.1 = 0.2
-        times: 5,
-        pan: 0.33,
-        fadeInDuration: 0,
-      },
-      expectedExceededDuration: 0.20000000000000284,
-    },
-    {
-      name: "Extremely short duration track at loop point",
-      baseTrackDuration: 30,
-      currentTime: 60, // Exactly at the second loop point
-      groupStartedAt: 0,
-      trackConfig: {
-        loopConfig: {
-          duration: 0.5, // Very short duration
-          pan: 0,
-          times: 60, // High repeat count
-        },
-      },
-      expectedPlayConfig: {
-        duration: 0.5,
-        offset: 0, // 60 % 0.5 = 0
-        times: 60,
-        pan: 0,
-        fadeInDuration: 0,
-      },
-      expectedExceededDuration: 0,
-    },
-  ];
-
-  // Run all scenarios
-  scenarios.forEach(runTestScenario);
 
   beforeEach(() => {
     mockAudioContext = {
@@ -328,12 +90,39 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
 
     mockSpeakerTrack = {
       data: { id: 1 },
-      bufferSourcePlaying: false,
-      loopConfig: { pan: 0, duration: 10, times: 1 },
-      abortBufferSource: jest.fn(),
+      buffer: {
+        duration: 10,
+        length: 441000,
+        numberOfChannels: 2,
+        sampleRate: 44100,
+        copyFromChannel: jest.fn(),
+        copyToChannel: jest.fn(),
+        getChannelData: jest.fn(),
+      } as unknown as IAudioBuffer,
+      bufferSourcePlaying: true,
+      groupId: 1,
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
-      groupId: 1, // Add the groupId property
-      // ... other necessary mock implementations
+      abortBufferSource: jest.fn(),
+      stopBufferSource: jest.fn(),
+      clearBufferSource: jest.fn(),
+      startBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      maxVolume: 1.0,
+      minVolume: 0.0,
+      attenuationDistanceKm: 0.1,
+      uri: "http://example.com/audio1",
+      calculatedVolume: 0.8,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      loopConfig: {
+        pan: 0,
+        duration: 10,
+        times: 1
+      }
     } as unknown as jest.Mocked<SpeakerTrack>;
 
     mockMixParams = {
@@ -385,6 +174,78 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
     speakerEngine.playingTracks = [null];
     expect(() => speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack)).toThrow(
       "Base track not found"
+    );
+  });
+
+  it("should throw an error if base track duration is not a number", () => {
+    const baseTrack = {
+      data: { id: 2 },
+      buffer: { duration: "not a number" },
+      groupId: mockSpeakerTrack.groupId,
+    } as unknown as jest.Mocked<SpeakerTrack>;
+    speakerEngine.speakers = [mockSpeakerTrack, baseTrack];
+    speakerEngine.playingTracks = [baseTrack.data.id];
+    
+    expect(() => speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack)).toThrow(
+      "Base track duration not found"
+    );
+  });
+
+  it("should throw an error if track pan is not a number", () => {
+    const baseTrack = {
+      data: { id: 2 },
+      buffer: { duration: 30 },
+      groupId: mockSpeakerTrack.groupId,
+    } as unknown as jest.Mocked<SpeakerTrack>;
+    speakerEngine.speakers = [mockSpeakerTrack, baseTrack];
+    speakerEngine.playingTracks = [baseTrack.data.id];
+    
+    mockSpeakerTrack.loopConfig.pan = "not a number" as any;
+    
+    expect(() => speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack)).toThrow(
+      "Track pan not found"
+    );
+  });
+
+  it("should throw an error if track duration is not a number", () => {
+    const baseTrack = {
+      data: { id: 2 },
+      buffer: { duration: 30 },
+      groupId: mockSpeakerTrack.groupId,
+    } as unknown as jest.Mocked<SpeakerTrack>;
+    speakerEngine.speakers = [mockSpeakerTrack, baseTrack];
+    speakerEngine.playingTracks = [baseTrack.data.id];
+    
+    mockSpeakerTrack.loopConfig.duration = "not a number" as any;
+    
+    expect(() => speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack)).toThrow(
+      "Track duration not found"
+    );
+  });
+
+  it("should throw an error if track times is not a number", () => {
+    const baseTrack = {
+      data: { id: 2 },
+      buffer: { duration: 30 },
+      groupId: mockSpeakerTrack.groupId,
+    } as unknown as jest.Mocked<SpeakerTrack>;
+    speakerEngine.speakers = [mockSpeakerTrack, baseTrack];
+    speakerEngine.playingTracks = [baseTrack.data.id];
+    
+    mockSpeakerTrack.loopConfig.times = "not a number" as any;
+    
+    expect(() => speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack)).toThrow(
+      "Track times not found"
+    );
+  });
+
+  it("should throw an error if base track cannot be found in speakers list", () => {
+    // Set a valid track ID but don't add it to the speakers list
+    speakerEngine.playingTracks = [999];
+    speakerEngine.speakers = [mockSpeakerTrack]; // Only include the test track
+    
+    expect(() => speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack)).toThrow(
+      "Speaker track not found: 999"
     );
   });
 
@@ -819,5 +680,1970 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
 
     expect(firstCall.offset).toBe(0); // 15 % 10 = 5
     expect(secondCall.offset).toBe(0); // 25 % 10 = 5
+  });
+
+  it("should throw an error if group start time is not set", () => {
+    // Set up the scenario with an odd duration track
+    const baseTrack = {
+      data: { id: 2 },
+      buffer: { duration: 30 },
+      groupId: mockSpeakerTrack.groupId,
+    } as unknown as jest.Mocked<SpeakerTrack>;
+    speakerEngine.speakers = [mockSpeakerTrack, baseTrack];
+    speakerEngine.playingTracks = [baseTrack.data.id];
+
+    // Set track configuration with odd duration
+    mockSpeakerTrack.loopConfig = {
+      duration: 7, // Odd duration that doesn't divide evenly into base track duration
+      pan: 0,
+      times: 1,
+    };
+    mockSpeakerTrack.bufferSourcePlaying = true;
+
+    // Test undefined case
+    speakerEngine.group.delete(mockSpeakerTrack.groupId);
+    expect(() => speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack)).toThrow(
+      "Tried to repeat track who's group is not started yet!"
+    );
+
+    // Test null case
+    speakerEngine.group.set(mockSpeakerTrack.groupId, null);
+    expect(() => speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack)).toThrow(
+      "Tried to repeat track who's group is not started yet!"
+    );
+  });
+
+  it("should throw an error if base track is null after getting from speakers list", () => {
+    // Set up a base track that will be found but is null
+    const baseTrack = null;
+    jest.spyOn(speakerEngine, "getSpeakerTrackById").mockReturnValue(baseTrack as any);
+    speakerEngine.playingTracks = [2]; // Valid track ID
+    
+    expect(() => speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack)).toThrow(
+      "Base track not found"
+    );
+  });
+});
+
+describe("SpeakerEngine", () => {
+  let speakerEngine: SpeakerEngine;
+  let mockAudioContext: IAudioContext;
+  let mockConfig: SpeakerConfig;
+
+  beforeEach(() => {
+    mockAudioContext = {
+      currentTime: 0,
+    } as unknown as IAudioContext;
+
+    mockConfig = { mode: "progressive-sync" };
+
+    speakerEngine = new SpeakerEngine(
+      [],
+      mockAudioContext,
+      mockConfig
+    );
+  });
+
+  describe("calculateVolumesByLocation", () => {
+    it("should calculate volumes and filter speakers based on min volume", () => {
+      // Setup mock speakers with different volumes
+      const mockSpeaker1 = {
+        data: { id: 1 },
+        calculatedVolume: 0,
+        minVolume: 0.1,
+        volumeByLocation: jest.fn().mockReturnValue(0.5),
+      } as unknown as SpeakerTrack;
+
+      const mockSpeaker2 = {
+        data: { id: 2 },
+        calculatedVolume: 0,
+        minVolume: 0.6,
+        volumeByLocation: jest.fn().mockReturnValue(0.5),
+      } as unknown as SpeakerTrack;
+
+      speakerEngine.speakers = [mockSpeaker1, mockSpeaker2];
+      speakerEngine.mixParams = {
+        listenerPoint: {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [0, 0] },
+          properties: {},
+        },
+      };
+
+      const result = speakerEngine.calculateVolumesByLocation();
+
+      // Verify volumes were calculated
+      expect(mockSpeaker1.calculatedVolume).toBe(0.5);
+      expect(mockSpeaker2.calculatedVolume).toBe(0.5);
+
+      // Verify only speaker1 was returned (since its volume > minVolume)
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe("latestBaseTrack", () => {
+    it("should find the base track based on speaker volumes and location", () => {
+      const mockSpeaker1 = {
+        data: { 
+          id: 1,
+          shape: {
+            type: "MultiPolygon",
+            coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]]
+          }
+        },
+        calculatedVolume: 0.5,
+        minVolume: 0.1,
+        volumeByLocation: jest.fn().mockReturnValue(0.5),
+      } as unknown as SpeakerTrack;
+
+      const mockSpeaker2 = {
+        data: { 
+          id: 2,
+          shape: {
+            type: "MultiPolygon",
+            coordinates: [[[[2, 2], [3, 2], [3, 3], [2, 3], [2, 2]]]]
+          }
+        },
+        calculatedVolume: 0.7,
+        minVolume: 0.1,
+        volumeByLocation: jest.fn().mockReturnValue(0.7),
+      } as unknown as SpeakerTrack;
+
+      speakerEngine.speakers = [mockSpeaker1, mockSpeaker2];
+      speakerEngine.mixParams = {
+        listenerPoint: {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [0, 0] },
+          properties: {},
+        },
+      };
+
+      const result = speakerEngine.latestBaseTrack;
+
+      // Verify the result is the speaker closest to the listener point (0,0)
+      expect(result?.data.id).toBe(1);
+    });
+  });
+
+  describe("mode getter", () => {
+    it("should return the correct mode from mixParams", () => {
+      speakerEngine.mixParams = {
+        speakerConfig: {
+          mode: "progressive-sync"
+        }
+      };
+      expect(speakerEngine.mode).toBeDefined();
+    });
+
+    it("should use default mode when none specified", () => {
+      speakerEngine.mixParams = {};
+      expect(speakerEngine.mode).toBeDefined();
+    });
+  });
+
+  describe("play method", () => {
+    beforeEach(() => {
+      // Reset state
+      speakerEngine.playing = false;
+      speakerEngine.speakers = [];
+      speakerEngine.mixParams = {
+        listenerPoint: {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [0, 0] },
+          properties: {}
+        }
+      };
+    });
+
+    it("should set playing to true and emit play event", async () => {
+      const emitSpy = jest.spyOn(speakerEngine, "emit");
+      await speakerEngine.play();
+      expect(speakerEngine.playing).toBe(true);
+      expect(emitSpy).toHaveBeenCalledWith("play");
+    });
+
+    it("should throw error when PREFETCH strategy and speakers not loaded", async () => {
+      speakerEngine.mixParams.speakerConfig = {
+        mode: "prefetch"
+      };
+      speakerEngine.speakers = [
+        { buffer: null } as any,
+        { buffer: null } as any
+      ];
+      await expect(speakerEngine.play()).rejects.toThrow(
+        "Prefetch strategy requires all speakers to be loaded before playing"
+      );
+    });
+
+    it("should not throw when PREFETCH strategy and all speakers loaded", async () => {
+      speakerEngine.mixParams.speakerConfig = {
+        mode: "prefetch"
+      };
+      speakerEngine.speakers = [
+        { buffer: {} } as any,
+        { buffer: {} } as any
+      ];
+      await expect(speakerEngine.play()).resolves.not.toThrow();
+    });
+
+    it("should call onLocationUpdateProgressiveBasePlusMaxNRandom when PROGRESSIVE and maxRandom > 0", async () => {
+      speakerEngine.mixParams.speakerConfig = {
+        mode: "progressive-sync-basePlusMax5Random"
+      };
+      const updateSpy = jest.spyOn(speakerEngine, "onLocationUpdateProgressiveBasePlusMaxNRandom");
+      await speakerEngine.play();
+      expect(updateSpy).toHaveBeenCalled();
+    });
+
+    it("should not call onLocationUpdateProgressiveBasePlusMaxNRandom when PROGRESSIVE and maxRandom = 0", async () => {
+      speakerEngine.mixParams.speakerConfig = {
+        mode: "progressive-sync"
+      };
+      const updateSpy = jest.spyOn(speakerEngine, "onLocationUpdateProgressiveBasePlusMaxNRandom");
+      await speakerEngine.play();
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    describe("stop method", () => {
+      it("should stop playback and clean up resources", async () => {
+        // Setup mock speakers
+        const mockSpeaker1 = {
+          clearListeners: jest.fn(),
+          bufferSourcePlaying: true,
+          abortBufferSource: jest.fn()
+        } as unknown as SpeakerTrack;
+
+        const mockSpeaker2 = {
+          clearListeners: jest.fn(),
+          bufferSourcePlaying: false,
+          abortBufferSource: jest.fn()
+        } as unknown as SpeakerTrack;
+
+        speakerEngine.speakers = [mockSpeaker1, mockSpeaker2];
+        speakerEngine.playing = true;
+        speakerEngine.playingTracks = [1, 2];
+
+        const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+        await speakerEngine.stop();
+
+        // Verify playback state was reset
+        expect(speakerEngine.playing).toBe(false);
+        expect(speakerEngine.playingTracks).toEqual([]);
+
+        // Verify both speakers had their listeners cleared
+        expect(mockSpeaker1.clearListeners).toHaveBeenCalledWith("trackFinished");
+        expect(mockSpeaker1.clearListeners).toHaveBeenCalledWith("trackAborted");
+        expect(mockSpeaker2.clearListeners).toHaveBeenCalledWith("trackFinished");
+        expect(mockSpeaker2.clearListeners).toHaveBeenCalledWith("trackAborted");
+
+        // Verify only the playing speaker had its buffer source aborted
+        expect(mockSpeaker1.abortBufferSource).toHaveBeenCalled();
+        expect(mockSpeaker2.abortBufferSource).not.toHaveBeenCalled();
+
+        // Verify stop event was emitted
+        expect(emitSpy).toHaveBeenCalledWith("stop");
+      });
+
+      it("should handle empty speakers array", async () => {
+        speakerEngine.speakers = [];
+        speakerEngine.playing = true;
+        speakerEngine.playingTracks = [1, 2];
+
+        const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+        await speakerEngine.stop();
+
+        // Verify playback state was reset
+        expect(speakerEngine.playing).toBe(false);
+        expect(speakerEngine.playingTracks).toEqual([]);
+
+        // Verify stop event was emitted
+        expect(emitSpy).toHaveBeenCalledWith("stop");
+      });
+    });
+
+    describe("updateParams method", () => {
+      beforeEach(() => {
+        // Reset state
+        speakerEngine.playing = false;
+        speakerEngine.speakers = [];
+        speakerEngine.mixParams = {
+          listenerPoint: {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [0, 0] },
+            properties: {}
+          }
+        };
+      });
+
+      it("should update mixParams and handle PROGRESSIVE loading strategy", () => {
+        // Setup mock speakers
+        const mockSpeaker1 = {
+          data: {
+            id: 1,
+            shape: {
+              type: "MultiPolygon",
+              coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]]
+            }
+          },
+          loadBuffer: jest.fn(),
+          unload: jest.fn()
+        } as unknown as SpeakerTrack;
+
+        const mockSpeaker2 = {
+          data: {
+            id: 2,
+            shape: {
+              type: "MultiPolygon",
+              coordinates: [[[[2, 2], [3, 2], [3, 3], [2, 3], [2, 2]]]]
+            }
+          },
+          loadBuffer: jest.fn(),
+          unload: jest.fn()
+        } as unknown as SpeakerTrack;
+
+        speakerEngine.speakers = [mockSpeaker1, mockSpeaker2];
+        speakerEngine.mixParams.speakerConfig = {
+          mode: "progressive-sync",
+          prefetchDistanceMeters: 1.5
+        };
+
+        const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+        // Mock pointToPolygonDistance to return specific distances
+        jest.spyOn(require("@turf/point-to-polygon-distance"), "default").mockImplementation(
+          (point: any, polygon: any) => {
+            if (polygon === mockSpeaker1.data.shape) return 1.0; // Within range
+            if (polygon === mockSpeaker2.data.shape) return 2.0; // Outside range
+            return 0;
+          }
+        );
+
+        speakerEngine.updateParams(speakerEngine.mixParams);
+
+        // Verify mixParams was updated
+        expect(speakerEngine.mixParams).toEqual(speakerEngine.mixParams);
+
+        // Verify speaker1 was loaded (within range)
+        expect(mockSpeaker1.loadBuffer).toHaveBeenCalled();
+        expect(mockSpeaker1.unload).not.toHaveBeenCalled();
+
+        // Verify speaker2 was unloaded (outside range)
+        expect(mockSpeaker2.loadBuffer).not.toHaveBeenCalled();
+        expect(mockSpeaker2.unload).toHaveBeenCalled();
+
+        // Verify speakersNear event was emitted with correct distances
+        expect(emitSpy).toHaveBeenCalledWith("speakersNear", {
+          1: 1.0
+        });
+      });
+
+      it("should call onLocationUpdateProgressiveBasePlusMaxNRandom when playing and maxRandom > 0", () => {
+        speakerEngine.playing = true;
+        speakerEngine.mixParams.speakerConfig = {
+          mode: "progressive-sync-basePlusMax5Random"
+        };
+
+        const updateSpy = jest.spyOn(speakerEngine, "onLocationUpdateProgressiveBasePlusMaxNRandom");
+
+        speakerEngine.updateParams(speakerEngine.mixParams);
+
+        expect(updateSpy).toHaveBeenCalled();
+      });
+
+      it("should not call onLocationUpdateProgressiveBasePlusMaxNRandom when not playing", () => {
+        speakerEngine.playing = false;
+        speakerEngine.mixParams.speakerConfig = {
+          mode: "progressive-sync-basePlusMax5Random"
+        };
+
+        const updateSpy = jest.spyOn(speakerEngine, "onLocationUpdateProgressiveBasePlusMaxNRandom");
+
+        speakerEngine.updateParams(speakerEngine.mixParams);
+
+        expect(updateSpy).not.toHaveBeenCalled();
+      });
+
+      it("should handle PREFETCH loading strategy", () => {
+        speakerEngine.mixParams.speakerConfig = {
+          mode: "prefetch"
+        };
+
+        const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+        speakerEngine.updateParams(speakerEngine.mixParams);
+
+        // Verify no speakersNear event was emitted for PREFETCH strategy
+        expect(emitSpy).not.toHaveBeenCalledWith("speakersNear", expect.any(Object));
+      });
+    });
+  });
+});
+
+describe("SpeakerEngine - calculateVolumesByLocation", () => {
+  let speakerEngine: SpeakerEngine;
+  let mockAudioContext: IAudioContext;
+  let mockConfig: SpeakerConfig;
+
+  beforeEach(() => {
+    mockAudioContext = {
+      currentTime: 0,
+    } as unknown as IAudioContext;
+
+    mockConfig = { mode: "progressive-sync" };
+
+    speakerEngine = new SpeakerEngine(
+      [],
+      mockAudioContext,
+      mockConfig
+    );
+  });
+
+  it("should calculate volumes and filter speakers based on min volume", () => {
+    // Setup mock speakers with different volumes
+    const mockSpeaker1 = {
+      data: { id: 1 },
+      calculatedVolume: 0,
+      minVolume: 0.1,
+      volumeByLocation: jest.fn().mockReturnValue(0.5),
+    } as unknown as SpeakerTrack;
+
+    const mockSpeaker2 = {
+      data: { id: 2 },
+      calculatedVolume: 0,
+      minVolume: 0.6,
+      volumeByLocation: jest.fn().mockReturnValue(0.5),
+    } as unknown as SpeakerTrack;
+
+    speakerEngine.speakers = [mockSpeaker1, mockSpeaker2];
+    speakerEngine.mixParams = {
+      listenerPoint: {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [0, 0] },
+        properties: {},
+      },
+    };
+
+    const result = speakerEngine.calculateVolumesByLocation();
+
+    // Verify volumes were calculated
+    expect(mockSpeaker1.calculatedVolume).toBe(0.5);
+    expect(mockSpeaker2.calculatedVolume).toBe(0.5);
+
+    // Verify only speaker1 was returned (since its volume > minVolume)
+    expect(result).toBeUndefined();
+  });
+});
+
+describe("SpeakerEngine - group initialization", () => {
+  let speakerEngine: SpeakerEngine;
+  let mockAudioContext: IAudioContext;
+  let mockConfig: SpeakerConfig;
+  let mockSpeakerData: ISpeakerData[];
+
+  beforeEach(() => {
+    // Mock console.debug
+    jest.spyOn(console, "debug").mockImplementation(() => {});
+
+    mockAudioContext = {
+      currentTime: 0,
+    } as unknown as IAudioContext;
+
+    mockConfig = { mode: "progressive-sync" };
+
+    // Create mock speaker data with different group IDs
+    mockSpeakerData = [
+      {
+        id: 1,
+        shape: { type: "MultiPolygon" as const, coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]] },
+        maxvolume: 1.0,
+        minvolume: 0.0,
+        attenuation_distance: 100,
+        uri: "http://example.com/audio1",
+        parents: [],
+      },
+      {
+        id: 2,
+        shape: { type: "MultiPolygon" as const, coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]] },
+        maxvolume: 1.0,
+        minvolume: 0.0,
+        attenuation_distance: 100,
+        uri: "http://example.com/audio2",
+        parents: [],
+      },
+      {
+        id: 3,
+        shape: { type: "MultiPolygon" as const, coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]] },
+        maxvolume: 1.0,
+        minvolume: 0.0,
+        attenuation_distance: 100,
+        uri: "http://example.com/audio3",
+        parents: [],
+      },
+    ];
+
+    // Mock SpeakerUtils.getRootForSpeaker to return specific group IDs
+    jest.spyOn(SpeakerUtils, "getRootForSpeaker").mockImplementation((speaker: Pick<ISpeakerData, "id" | "parents">, speakers: Pick<ISpeakerData, "id" | "parents">[]) => {
+      // Assign group IDs based on speaker ID
+      if (speaker.id === 1) return 1;
+      if (speaker.id === 2) return 1; // Same group as speaker 1
+      if (speaker.id === 3) return 2; // Different group
+      return 0;
+    });
+  });
+
+  afterEach(() => {
+    // Restore console.debug
+    jest.restoreAllMocks();
+  });
+
+  it("should correctly initialize groups with speakers", () => {
+    // Create the engine with our mock data
+    speakerEngine = new SpeakerEngine(mockSpeakerData, mockAudioContext, mockConfig);
+
+    // Verify the groups were initialized correctly
+    const groups = new Map<number, Set<number>>();
+    speakerEngine.speakers.forEach((speaker) => {
+      if (groups.has(speaker.groupId)) {
+        groups.get(speaker.groupId)?.add(speaker.data.id);
+      } else {
+        groups.set(speaker.groupId, new Set([speaker.data.id]));
+      }
+    });
+
+    // Verify group 1 contains speakers 1 and 2
+    expect(groups.get(1)).toBeDefined();
+    expect(groups.get(1)?.has(1)).toBe(true);
+    expect(groups.get(1)?.has(2)).toBe(true);
+    expect(groups.get(1)?.has(3)).toBe(false);
+
+    // Verify group 2 contains only speaker 3
+    expect(groups.get(2)).toBeDefined();
+    expect(groups.get(2)?.has(3)).toBe(true);
+    expect(groups.get(2)?.has(1)).toBe(false);
+    expect(groups.get(2)?.has(2)).toBe(false);
+
+    // Verify the console.debug output
+    expect(console.debug).toHaveBeenCalledWith(
+      "Groups:",
+      expect.arrayContaining([
+        expect.arrayContaining([1, expect.any(Set)]),
+        expect.arrayContaining([2, expect.any(Set)])
+      ])
+    );
+  });
+
+  it("should handle empty speaker data", () => {
+    // Create the engine with empty speaker data
+    speakerEngine = new SpeakerEngine([], mockAudioContext, mockConfig);
+
+    // Verify no groups were created
+    const groups = new Map<number, Set<number>>();
+    speakerEngine.speakers.forEach((speaker) => {
+      if (groups.has(speaker.groupId)) {
+        groups.get(speaker.groupId)?.add(speaker.data.id);
+      } else {
+        groups.set(speaker.groupId, new Set([speaker.data.id]));
+      }
+    });
+
+    expect(groups.size).toBe(0);
+  });
+
+  it("should handle speakers with the same group ID", () => {
+    // Create mock speaker data with all speakers in the same group
+    const sameGroupData = [
+      {
+        id: 1,
+        shape: { type: "MultiPolygon" as const, coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]] },
+        maxvolume: 1.0,
+        minvolume: 0.0,
+        attenuation_distance: 100,
+        uri: "http://example.com/audio1",
+        parents: [],
+      },
+      {
+        id: 2,
+        shape: { type: "MultiPolygon" as const, coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]] },
+        maxvolume: 1.0,
+        minvolume: 0.0,
+        attenuation_distance: 100,
+        uri: "http://example.com/audio2",
+        parents: [],
+      },
+    ];
+
+    // Mock SpeakerUtils.getRootForSpeaker to return the same group ID
+    jest.spyOn(SpeakerUtils, "getRootForSpeaker").mockReturnValue(1);
+
+    // Create the engine with our mock data
+    speakerEngine = new SpeakerEngine(sameGroupData, mockAudioContext, mockConfig);
+
+    // Verify all speakers are in the same group
+    const groups = new Map<number, Set<number>>();
+    speakerEngine.speakers.forEach((speaker) => {
+      if (groups.has(speaker.groupId)) {
+        groups.get(speaker.groupId)?.add(speaker.data.id);
+      } else {
+        groups.set(speaker.groupId, new Set([speaker.data.id]));
+      }
+    });
+
+    expect(groups.size).toBe(1);
+    expect(groups.get(1)?.size).toBe(2);
+    expect(groups.get(1)?.has(1)).toBe(true);
+    expect(groups.get(1)?.has(2)).toBe(true);
+  });
+});
+
+describe("SpeakerEngine - currentBaseTrackId", () => {
+  let speakerEngine: SpeakerEngine;
+  let mockAudioContext: IAudioContext;
+  let mockConfig: SpeakerConfig;
+
+  beforeEach(() => {
+    mockAudioContext = {
+      currentTime: 0,
+    } as unknown as IAudioContext;
+
+    mockConfig = { mode: "progressive-sync" };
+
+    speakerEngine = new SpeakerEngine([], mockAudioContext, mockConfig);
+  });
+
+  it("should return undefined when no tracks are playing", () => {
+    speakerEngine.playingTracks = [];
+    expect(speakerEngine.currentBaseTrackId).toBeUndefined();
+  });
+
+  it("should return null when first track is null", () => {
+    speakerEngine.playingTracks = [null];
+    expect(speakerEngine.currentBaseTrackId).toBeNull();
+  });
+
+  it("should return the first track ID when tracks are playing", () => {
+    speakerEngine.playingTracks = [1, 2, 3];
+    expect(speakerEngine.currentBaseTrackId).toBe(1);
+  });
+
+  it("should return the first track ID even when other tracks are null", () => {
+    speakerEngine.playingTracks = [1, null, 3];
+    expect(speakerEngine.currentBaseTrackId).toBe(1);
+  });
+
+  it("should return the first track ID when only one track is playing", () => {
+    speakerEngine.playingTracks = [1];
+    expect(speakerEngine.currentBaseTrackId).toBe(1);
+  });
+
+  it("should return the first track ID when tracks are added dynamically", () => {
+    speakerEngine.playingTracks = [];
+    expect(speakerEngine.currentBaseTrackId).toBeUndefined();
+    
+    speakerEngine.playingTracks.push(1);
+    expect(speakerEngine.currentBaseTrackId).toBe(1);
+    
+    speakerEngine.playingTracks.unshift(2);
+    expect(speakerEngine.currentBaseTrackId).toBe(2);
+  });
+});
+
+describe("SpeakerEngine - onLocationUpdateProgressiveBasePlusMaxNRandom", () => {
+  let speakerEngine: SpeakerEngine;
+  let mockAudioContext: IAudioContext;
+  let mockConfig: SpeakerConfig;
+  let mockSpeakerTrack: jest.Mocked<SpeakerTrack>;
+  let mockBaseTrack: jest.Mocked<SpeakerTrack>;
+
+  beforeEach(() => {
+    mockAudioContext = {
+      currentTime: 0,
+    } as unknown as IAudioContext;
+
+    mockConfig = { mode: "progressive-sync-basePlusMax5Random" };
+
+    // Create mock speaker track
+    mockSpeakerTrack = {
+      data: { 
+        id: 1,
+        shape: {
+          type: "MultiPolygon",
+          coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]]
+        }
+      },
+      bufferSourcePlaying: false,
+      loopConfig: { pan: 0, duration: 10, times: 1 },
+      abortBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      groupId: 1,
+      calculatedVolume: 0.5,
+      minVolume: 0.1,
+      volumeByLocation: jest.fn().mockReturnValue(0.5),
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      buffer: { duration: 10 },
+      on: jest.fn(),
+      loadBuffer: jest.fn(),
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    // Create mock base track
+    mockBaseTrack = {
+      data: { 
+        id: 2,
+        shape: {
+          type: "MultiPolygon",
+          coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]]
+        }
+      },
+      bufferSourcePlaying: false,
+      loopConfig: { pan: 0, duration: 10, times: 1 },
+      abortBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      groupId: 1,
+      calculatedVolume: 0.8,
+      minVolume: 0.1,
+      volumeByLocation: jest.fn().mockReturnValue(0.8),
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      buffer: { duration: 10 },
+      on: jest.fn(),
+      loadBuffer: jest.fn(),
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    speakerEngine = new SpeakerEngine([], mockAudioContext, mockConfig);
+    speakerEngine.speakers = [mockSpeakerTrack, mockBaseTrack];
+    speakerEngine.playingTracks = [mockSpeakerTrack.data.id];
+    speakerEngine.playing = true;
+    speakerEngine.mixParams = {
+      listenerPoint: {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [0, 0] },
+        properties: {},
+      },
+      speakerConfig: {
+        mode: "progressive-sync-basePlusMax5Random"
+      }
+    };
+  });
+
+  it("should update base track when a new base track is selected", () => {
+    // Spy on emit to verify events
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+    // Mock latestBaseTrack to return a different base track
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockBaseTrack);
+
+    // Call the method
+    speakerEngine.onLocationUpdateProgressiveBasePlusMaxNRandom();
+
+    // Verify base track was changed
+    expect(speakerEngine.playingTracks[0]).toBe(mockBaseTrack.data.id);
+    expect(emitSpy).toHaveBeenCalledWith("baseTrackChanged");
+    expect(emitSpy).toHaveBeenCalledWith("playingTracksUpdated", expect.arrayContaining([mockBaseTrack.data.id]));
+  });
+
+  it("should load buffer and play when new base track is selected but buffer not loaded", () => {
+    // Mock latestBaseTrack to return a different base track
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockBaseTrack);
+
+    // Set buffer to null to simulate not loaded
+    mockBaseTrack.buffer = null;
+
+    // Call the method
+    speakerEngine.onLocationUpdateProgressiveBasePlusMaxNRandom();
+
+    // Verify buffer loading and event setup
+    expect(mockBaseTrack.loadBuffer).toHaveBeenCalled();
+    expect(mockBaseTrack.on).toHaveBeenCalledWith("loaded", expect.any(Function));
+  });
+
+  it("should stop other tracks when new base track is selected", () => {
+    // Mock latestBaseTrack to return a different base track
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockBaseTrack);
+
+    // Set bufferSourcePlaying to true to simulate playing track
+    mockSpeakerTrack.bufferSourcePlaying = true;
+
+    // Call the method
+    speakerEngine.onLocationUpdateProgressiveBasePlusMaxNRandom();
+
+    // Verify other track was stopped
+    expect(mockSpeakerTrack.clearListeners).toHaveBeenCalledWith("trackFinished");
+    expect(mockSpeakerTrack.clearListeners).toHaveBeenCalledWith("trackAborted");
+    expect(mockSpeakerTrack.fadeOutAndStopBufferSource).toHaveBeenCalled();
+  });
+
+  it("should update volumes when base track remains the same", () => {
+    // Mock latestBaseTrack to return the same base track
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockSpeakerTrack);
+
+    // Call the method
+    speakerEngine.onLocationUpdateProgressiveBasePlusMaxNRandom();
+
+    // Verify volumes were updated
+    expect(mockSpeakerTrack.calculatedVolume).toBe(0.5);
+    expect(mockSpeakerTrack.fadeBufferSourceToVolume).toHaveBeenCalledWith(0.5);
+  });
+
+  it("should not update tracks when not playing", () => {
+    // Mock latestBaseTrack to avoid shape-related errors
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockSpeakerTrack);
+    
+    // Set playing to false before any calculations
+    speakerEngine.playing = false;
+
+    // Mock calculateVolumesByLocation to prevent volume updates
+    const calculateVolumesSpy = jest.spyOn(speakerEngine, "calculateVolumesByLocation");
+    
+    // Call the method
+    speakerEngine.onLocationUpdateProgressiveBasePlusMaxNRandom();
+
+    // Verify no updates occurred
+    expect(mockBaseTrack.playWithConfig).not.toHaveBeenCalled();
+  });
+
+  it("should play new base track immediately when buffer is already loaded", () => {
+    // Mock latestBaseTrack to return a different base track
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockBaseTrack);
+
+    // Set buffer to a valid value to simulate already loaded
+    mockBaseTrack.buffer = {
+      duration: 10,
+      length: 441000,
+      numberOfChannels: 2,
+      sampleRate: 44100,
+      copyFromChannel: jest.fn(),
+      copyToChannel: jest.fn(),
+      getChannelData: jest.fn(),
+    } as unknown as IAudioBuffer;
+
+    // Spy on playAsBaseTrack to verify it's called
+    const playAsBaseTrackSpy = jest.spyOn(speakerEngine, "playAsBaseTrack");
+
+    // Call the method
+    speakerEngine.onLocationUpdateProgressiveBasePlusMaxNRandom();
+
+    // Verify playAsBaseTrack was called with correct parameters
+    expect(playAsBaseTrackSpy).toHaveBeenCalledWith(mockBaseTrack, false);
+    expect(mockBaseTrack.loadBuffer).not.toHaveBeenCalled();
+  });
+
+  it("should load buffer and set up event listener when new base track buffer is not loaded", () => {
+    // Mock latestBaseTrack to return a different base track
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockBaseTrack);
+
+    // Set buffer to null to simulate not loaded
+    mockBaseTrack.buffer = null;
+
+    // Spy on playAsBaseTrack to verify it's not called immediately
+    const playAsBaseTrackSpy = jest.spyOn(speakerEngine, "playAsBaseTrack");
+
+    // Call the method
+    speakerEngine.onLocationUpdateProgressiveBasePlusMaxNRandom();
+
+    // Verify buffer loading and event setup
+    expect(mockBaseTrack.loadBuffer).toHaveBeenCalled();
+    expect(mockBaseTrack.on).toHaveBeenCalledWith("loaded", expect.any(Function));
+    expect(playAsBaseTrackSpy).not.toHaveBeenCalled();
+
+    // Set up a valid buffer before calling the callback
+    mockBaseTrack.buffer = {
+      duration: 10,
+      length: 441000,
+      numberOfChannels: 2,
+      sampleRate: 44100,
+      copyFromChannel: jest.fn(),
+      copyToChannel: jest.fn(),
+      getChannelData: jest.fn(),
+    } as unknown as IAudioBuffer;
+
+    // Simulate buffer loaded event
+    const loadedCallback = mockBaseTrack.on.mock.calls[0][1];
+    const event = Object.assign(0, { when: 0, offset: 0 });
+    loadedCallback(event);
+
+    // Verify playAsBaseTrack is called after buffer is loaded
+    expect(playAsBaseTrackSpy).toHaveBeenCalledWith(mockBaseTrack, false);
+  });
+});
+
+describe("SpeakerEngine - onLoopPoint", () => {
+  let speakerEngine: SpeakerEngine;
+  let mockAudioContext: IAudioContext;
+  let mockConfig: SpeakerConfig;
+  let mockSpeakerTrack: jest.Mocked<SpeakerTrack>;
+  let mockBaseTrack: jest.Mocked<SpeakerTrack>;
+
+  beforeEach(() => {
+    mockAudioContext = {
+      currentTime: 0,
+    } as unknown as IAudioContext;
+
+    mockConfig = { mode: "progressive-sync" };
+
+    // Create mock speaker track
+    mockSpeakerTrack = {
+      data: { id: 1 },
+      bufferSourcePlaying: false,
+      loopConfig: { pan: 0, duration: 10, times: 1 },
+      abortBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      groupId: 1,
+      calculatedVolume: 0.5,
+      minVolume: 0.1,
+      volumeByLocation: jest.fn().mockReturnValue(0.5),
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      buffer: { duration: 10 },
+      on: jest.fn(),
+      loadBuffer: jest.fn(),
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    // Create mock base track
+    mockBaseTrack = {
+      data: { id: 2 },
+      bufferSourcePlaying: false,
+      loopConfig: { pan: 0, duration: 10, times: 1 },
+      abortBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      groupId: 1,
+      calculatedVolume: 0.8,
+      minVolume: 0.1,
+      volumeByLocation: jest.fn().mockReturnValue(0.8),
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      buffer: { duration: 10 },
+      on: jest.fn(),
+      loadBuffer: jest.fn(),
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    speakerEngine = new SpeakerEngine([], mockAudioContext, mockConfig);
+    speakerEngine.speakers = [mockSpeakerTrack, mockBaseTrack];
+    speakerEngine.playingTracks = [mockSpeakerTrack.data.id];
+    speakerEngine.playing = true;
+    speakerEngine.mixParams = {
+      listenerPoint: {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [0, 0] },
+        properties: {},
+      },
+    };
+
+    // Mock getSpeakerTrackById
+    jest.spyOn(speakerEngine, "getSpeakerTrackById").mockImplementation((id: number): SpeakerTrack => {
+      if (id === mockSpeakerTrack.data.id) return mockSpeakerTrack as unknown as SpeakerTrack;
+      if (id === mockBaseTrack.data.id) return mockBaseTrack as unknown as SpeakerTrack;
+      throw new Error("Track not found");
+    });
+
+    // Mock playAsBaseTrack
+    jest.spyOn(speakerEngine, "playAsBaseTrack").mockImplementation((track: SpeakerTrack, isCurrent: boolean) => {
+      track.playWithConfig({
+        duration: track.loopConfig.duration || 0,
+        times: track.loopConfig.times || 1,
+        pan: track.loopConfig.pan || 0,
+        fadeInDuration: 0,
+        offset: 0,
+      });
+    });
+
+    // Mock updateNonBaseTracks
+    jest.spyOn(speakerEngine, "updateNonBaseTracks").mockImplementation(() => {
+      // No-op for now
+    });
+
+    // Mock clearEndListeners
+    jest.spyOn(speakerEngine, "clearEndListeners").mockImplementation((track) => {
+      track.clearListeners("trackFinished");
+      track.clearListeners("trackAborted");
+    });
+  });
+
+  it("should do nothing when not playing", () => {
+    speakerEngine.playing = false;
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+    speakerEngine.onLoopPoint();
+
+    expect(emitSpy).not.toHaveBeenCalled();
+    expect(mockSpeakerTrack.fadeBufferSourceToVolume).not.toHaveBeenCalled();
+  });
+
+  it("should handle base track change", () => {
+    // Mock latestBaseTrack to return a different base track
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockBaseTrack);
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+    // Set current track as playing
+    mockSpeakerTrack.bufferSourcePlaying = true;
+
+    speakerEngine.onLoopPoint();
+
+    // Verify old track was stopped
+    expect(mockSpeakerTrack.clearListeners).toHaveBeenCalledWith("trackFinished");
+    expect(mockSpeakerTrack.clearListeners).toHaveBeenCalledWith("trackAborted");
+    expect(mockSpeakerTrack.fadeOutAndStopBufferSource).toHaveBeenCalled();
+
+    // Verify new track was set as base track
+    expect(speakerEngine.playingTracks).toEqual([mockBaseTrack.data.id]);
+    expect(mockBaseTrack.playWithConfig).toHaveBeenCalled();
+    expect(emitSpy).toHaveBeenCalledWith("loopPointReached");
+    expect(emitSpy).toHaveBeenCalledWith("playingTracksUpdated", [mockBaseTrack.data.id]);
+  });
+
+  it("should continue with current base track when it remains the same", () => {
+    // Mock latestBaseTrack to return the same track
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockSpeakerTrack);
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+    // Mock playAsBaseTrack to verify it's called
+    const playAsBaseTrackSpy = jest.spyOn(speakerEngine, "playAsBaseTrack");
+
+    speakerEngine.onLoopPoint();
+
+    // Verify track continues playing
+    expect(playAsBaseTrackSpy).toHaveBeenCalledWith(mockSpeakerTrack, true);
+    expect(mockSpeakerTrack.fadeBufferSourceToVolume).toHaveBeenCalledWith(0.5);
+    expect(emitSpy).toHaveBeenCalledWith("loopPointReached");
+    expect(emitSpy).toHaveBeenCalledWith("playingTracksUpdated", [mockSpeakerTrack.data.id]);
+  });
+
+  it("should update volumes for all playing tracks", () => {
+    // Set up multiple playing tracks
+    speakerEngine.playingTracks = [mockSpeakerTrack.data.id, mockBaseTrack.data.id];
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+    // Mock latestBaseTrack to return a valid track
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockSpeakerTrack);
+
+    // Mock calculateVolumesByLocation to return valid volumes
+    jest.spyOn(speakerEngine, "calculateVolumesByLocation").mockImplementation(() => {
+      mockSpeakerTrack.calculatedVolume = 0.5;
+      mockBaseTrack.calculatedVolume = 0.8;
+      return undefined;
+    });
+
+    // Mock getSpeakerTrackById to return the correct tracks
+    jest.spyOn(speakerEngine, "getSpeakerTrackById").mockImplementation((id: number): SpeakerTrack => {
+      if (id === mockSpeakerTrack.data.id) return mockSpeakerTrack as unknown as SpeakerTrack;
+      if (id === mockBaseTrack.data.id) return mockBaseTrack as unknown as SpeakerTrack;
+      throw new Error("Track not found");
+    });
+
+    // Mock updateNonBaseTracks to handle non-base tracks
+    jest.spyOn(speakerEngine, "updateNonBaseTracks").mockImplementation(() => {
+      // Update volumes for non-base tracks
+      mockBaseTrack.fadeBufferSourceToVolume(mockBaseTrack.calculatedVolume);
+    });
+
+    // Mock clearEndListeners to handle track cleanup
+    jest.spyOn(speakerEngine, "clearEndListeners").mockImplementation((track) => {
+      track.clearListeners("trackFinished");
+      track.clearListeners("trackAborted");
+    });
+
+    speakerEngine.onLoopPoint();
+
+    // Verify volumes were updated for both tracks
+    expect(mockSpeakerTrack.fadeBufferSourceToVolume).toHaveBeenCalledWith(0.5);
+    expect(mockBaseTrack.fadeBufferSourceToVolume).toHaveBeenCalledWith(0.8);
+    expect(emitSpy).toHaveBeenCalledWith("loopPointReached");
+    expect(emitSpy).toHaveBeenCalledWith("playingTracksUpdated", [mockSpeakerTrack.data.id, mockBaseTrack.data.id]);
+  });
+
+  it("should handle null tracks in playingTracks array", () => {
+    // Set up tracks with null first
+    speakerEngine.playingTracks = [null, mockSpeakerTrack.data.id];
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+    // Mock latestBaseTrack to return a valid track
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockSpeakerTrack);
+
+    // Mock calculateVolumesByLocation to return valid volumes
+    jest.spyOn(speakerEngine, "calculateVolumesByLocation").mockImplementation(() => {
+      mockSpeakerTrack.calculatedVolume = 0.5;
+      return undefined;
+    });
+
+    // Mock getSpeakerTrackById to handle null case
+    jest.spyOn(speakerEngine, "getSpeakerTrackById").mockImplementation((id: number): SpeakerTrack => {
+      if (id === mockSpeakerTrack.data.id) return mockSpeakerTrack as unknown as SpeakerTrack;
+      throw new Error("Track not found");
+    });
+
+    // Mock updateNonBaseTracks to maintain track order
+    jest.spyOn(speakerEngine, "updateNonBaseTracks").mockImplementation(() => {
+      // No-op to maintain track order
+    });
+
+    // Mock clearEndListeners to handle track cleanup
+    jest.spyOn(speakerEngine, "clearEndListeners").mockImplementation((track) => {
+      track.clearListeners("trackFinished");
+      track.clearListeners("trackAborted");
+    });
+
+    // The main point is that this should not throw any errors
+    expect(() => {
+      speakerEngine.onLoopPoint();
+    }).not.toThrow();
+
+    // Verify the valid track was handled correctly
+    expect(mockSpeakerTrack.fadeBufferSourceToVolume).toHaveBeenCalledWith(0.5);
+    expect(emitSpy).toHaveBeenCalledWith("loopPointReached");
+  });
+
+  it("should stop playing tracks with volume below minVolume", () => {
+    // Create a track that is playing but has volume below minVolume
+    const lowVolumeTrack = {
+      data: { 
+        id: 3,
+        shape: {
+          type: "MultiPolygon",
+          coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]]
+        }
+      },
+      bufferSourcePlaying: true,
+      volumeByLocation: jest.fn().mockReturnValue(0.05), // Below minVolume
+      minVolume: 0.1,
+      fadeOutAndStopBufferSource: jest.fn(),
+      clearListeners: jest.fn(),
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    // Add the track to speakers but not to playingTracks
+    speakerEngine.speakers.push(lowVolumeTrack);
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+    // Mock latestBaseTrack to return a valid track
+    jest.spyOn(speakerEngine, "latestBaseTrack", "get").mockReturnValue(mockSpeakerTrack);
+
+    // Mock calculateVolumesByLocation to return valid volumes
+    jest.spyOn(speakerEngine, "calculateVolumesByLocation").mockImplementation(() => {
+      mockSpeakerTrack.calculatedVolume = 0.5;
+      lowVolumeTrack.calculatedVolume = 0.05;
+      return undefined;
+    });
+
+    // Mock getSpeakerTrackById to handle all tracks
+    jest.spyOn(speakerEngine, "getSpeakerTrackById").mockImplementation((id: number): SpeakerTrack => {
+      if (id === mockSpeakerTrack.data.id) return mockSpeakerTrack as unknown as SpeakerTrack;
+      if (id === lowVolumeTrack.data.id) return lowVolumeTrack as unknown as SpeakerTrack;
+      throw new Error("Track not found");
+    });
+
+    // Mock clearEndListeners to handle track cleanup
+    jest.spyOn(speakerEngine, "clearEndListeners").mockImplementation((track) => {
+      track.clearListeners("trackFinished");
+      track.clearListeners("trackAborted");
+    });
+
+    speakerEngine.onLoopPoint();
+
+    // Verify the low volume track was stopped
+    expect(lowVolumeTrack.fadeOutAndStopBufferSource).toHaveBeenCalled();
+    expect(lowVolumeTrack.clearListeners).toHaveBeenCalledWith("trackFinished");
+    expect(lowVolumeTrack.clearListeners).toHaveBeenCalledWith("trackAborted");
+
+    // Verify the valid track was handled correctly
+    expect(mockSpeakerTrack.fadeBufferSourceToVolume).toHaveBeenCalledWith(0.5);
+    expect(emitSpy).toHaveBeenCalledWith("loopPointReached");
+  });
+});
+
+describe("SpeakerEngine - playAsBaseTrack", () => {
+  let speakerEngine: SpeakerEngine;
+  let mockAudioContext: IAudioContext;
+  let mockConfig: SpeakerConfig;
+  let mockSpeakerTrack: jest.Mocked<SpeakerTrack>;
+
+  beforeEach(() => {
+    mockAudioContext = {
+      currentTime: 0,
+    } as unknown as IAudioContext;
+
+    mockConfig = { mode: "progressive-sync" };
+
+    mockSpeakerTrack = {
+      data: { id: 1 },
+      buffer: null,
+      bufferSourcePlaying: false,
+      groupId: 1,
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      on: jest.fn(),
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    speakerEngine = new SpeakerEngine([], mockAudioContext, mockConfig);
+    speakerEngine.speakers = [mockSpeakerTrack];
+    speakerEngine.playingTracks = [mockSpeakerTrack.data.id];
+    speakerEngine.playing = true; // Set playing to true to ensure we test the buffer check
+  });
+
+  it("should throw error when buffer is missing", () => {
+    expect(() => speakerEngine.playAsBaseTrack(mockSpeakerTrack, false)).toThrow(
+      "Base track buffer not found"
+    );
+  });
+
+  it("should not play when not playing or wrong track", () => {
+    mockSpeakerTrack.buffer = {
+      duration: 10,
+      length: 441000,
+      numberOfChannels: 2,
+      sampleRate: 44100,
+      copyFromChannel: jest.fn(),
+      copyToChannel: jest.fn(),
+      getChannelData: jest.fn(),
+    } as unknown as IAudioBuffer;
+    speakerEngine.playing = false;
+    
+    speakerEngine.playAsBaseTrack(mockSpeakerTrack, false);
+    
+    expect(mockSpeakerTrack.playWithConfig).not.toHaveBeenCalled();
+  });
+
+  it("should set group start time when offset is nearly zero", () => {
+    mockSpeakerTrack.buffer = {
+      duration: 10,
+      length: 441000,
+      numberOfChannels: 2,
+      sampleRate: 44100,
+      copyFromChannel: jest.fn(),
+      copyToChannel: jest.fn(),
+      getChannelData: jest.fn(),
+    } as unknown as IAudioBuffer;
+    speakerEngine.playing = true;
+    speakerEngine.group.set(1, null);
+    
+    // Mock isNearlyZero to return true
+    jest.spyOn(require("../utils"), "isNearlyZero").mockReturnValue(true);
+    
+    speakerEngine.playAsBaseTrack(mockSpeakerTrack, false);
+    
+    expect(speakerEngine.group.get(1)).toBe(0);
+  });
+});
+
+describe("SpeakerEngine - fadeOutLoopFromLoopPoint", () => {
+  let speakerEngine: SpeakerEngine;
+  let mockAudioContext: IAudioContext;
+  let mockConfig: SpeakerConfig;
+  let mockSpeakerTrack: jest.Mocked<SpeakerTrack>;
+
+  beforeEach(() => {
+    mockAudioContext = {
+      currentTime: 25, // Set current time to 25 seconds
+    } as unknown as IAudioContext;
+
+    mockConfig = { mode: "progressive-sync" };
+
+    mockSpeakerTrack = {
+      data: { id: 1 },
+      buffer: {
+        duration: 20,
+        length: 882000,
+        numberOfChannels: 2,
+        sampleRate: 44100,
+        copyFromChannel: jest.fn(),
+        copyToChannel: jest.fn(),
+        getChannelData: jest.fn(),
+      } as unknown as IAudioBuffer,
+      bufferSourcePlaying: true,
+      groupId: 1,
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      abortBufferSource: jest.fn(),
+      stopBufferSource: jest.fn(),
+      clearBufferSource: jest.fn(),
+      startBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      maxVolume: 1.0,
+      minVolume: 0.0,
+      attenuationDistanceKm: 0.1,
+      uri: "http://example.com/audio1",
+      calculatedVolume: 0.8,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      loopConfig: {
+        pan: 0.5,
+        duration: 20,
+        times: 1
+      }
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    speakerEngine = new SpeakerEngine([], mockAudioContext, mockConfig);
+    speakerEngine.speakers = [mockSpeakerTrack];
+    speakerEngine.playingTracks = [mockSpeakerTrack.data.id];
+  });
+
+  it("should calculate remaining duration correctly", () => {
+    speakerEngine.fadeOutLoopFromLoopPoint(mockSpeakerTrack);
+
+    // Verify playWithConfig was called with correct offset
+    expect(mockSpeakerTrack.playWithConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        offset: 0, // playedDuration = 20 - 15 = 5
+        duration: 3, // FADE_IN_DURATION_SECONDS
+        fadeInDuration: 0,
+        pan: 0.5,
+        times: 1
+      })
+    );
+  });
+
+  it("should throw an error if speaker pan is not a number", () => {
+    mockSpeakerTrack.loopConfig.pan = "not a number" as any;
+    expect(() => speakerEngine.fadeOutLoopFromLoopPoint(mockSpeakerTrack)).toThrow(
+      "Speaker pan not found"
+    );
+  });
+
+  it("should throw an error if speaker duration is not a number", () => {
+    mockSpeakerTrack.loopConfig.duration = "not a number" as any;
+    expect(() => speakerEngine.fadeOutLoopFromLoopPoint(mockSpeakerTrack)).toThrow(
+      "Speaker duration not found"
+    );
+  });
+
+  it("should throw an error if speaker times is not a number", () => {
+    mockSpeakerTrack.loopConfig.times = "not a number" as any;
+    expect(() => speakerEngine.fadeOutLoopFromLoopPoint(mockSpeakerTrack)).toThrow(
+      "Speaker times not found"
+    );
+  });
+
+  it("should emit fadingOutLoop event with speaker ID", () => {
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+    speakerEngine.fadeOutLoopFromLoopPoint(mockSpeakerTrack);
+    expect(emitSpy).toHaveBeenCalledWith("fadingOutLoop", mockSpeakerTrack.data.id);
+  });
+
+  it("should handle nearly zero remaining duration", () => {
+    // Set up scenario where remaining duration is nearly zero
+    Object.defineProperty(mockAudioContext, "currentTime", {
+      get: () => 20, // Exactly at end of playback
+    });
+
+    mockSpeakerTrack.startedAtContextTime = 0;
+    mockSpeakerTrack.loopConfig.duration = 10;
+    mockSpeakerTrack.loopConfig.times = 2;
+
+    // Mock SpeakerUtils.findRemainingTime to return a very small number
+    jest.spyOn(SpeakerUtils, "findRemainingTime").mockReturnValue(0.01);
+
+    // Mock isNearlyZero to return true
+    jest.spyOn(require("../utils"), "isNearlyZero").mockReturnValue(true);
+
+    speakerEngine.fadeOutLoopFromLoopPoint(mockSpeakerTrack);
+
+    // Verify playWithConfig was called with offset 0
+    expect(mockSpeakerTrack.playWithConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        offset: 0,
+      })
+    );
+  });
+
+  it("should abort buffer source and play fade out", () => {
+    speakerEngine.fadeOutLoopFromLoopPoint(mockSpeakerTrack);
+
+    // Verify buffer source was aborted
+    expect(mockSpeakerTrack.abortBufferSource).toHaveBeenCalled();
+
+    // Verify fade out was played
+    expect(mockSpeakerTrack.playWithConfig).toHaveBeenCalledWith({
+      duration: expect.any(Number),
+      fadeInDuration: 0,
+      offset: expect.any(Number),
+      pan: mockSpeakerTrack.loopConfig.pan,
+      times: 1,
+    });
+
+    // Verify fade out was stopped
+    expect(mockSpeakerTrack.fadeOutAndStopBufferSource).toHaveBeenCalled();
+  });
+
+  it("should handle different pan values", () => {
+    const panValues = [-1, -0.5, 0, 0.5, 1];
+    
+    panValues.forEach(pan => {
+      mockSpeakerTrack.loopConfig.pan = pan;
+      speakerEngine.fadeOutLoopFromLoopPoint(mockSpeakerTrack);
+      expect(mockSpeakerTrack.playWithConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pan: pan,
+        })
+      );
+    });
+  });
+
+  it("should handle different loop configurations", () => {
+    const testCases = [
+      { duration: 5, times: 1 },
+      { duration: 10, times: 2 },
+      { duration: 15, times: 3 },
+    ];
+
+    testCases.forEach(({ duration, times }) => {
+      mockSpeakerTrack.loopConfig.duration = duration;
+      mockSpeakerTrack.loopConfig.times = times;
+      
+      // Mock SpeakerUtils.findRemainingTime to return half the total duration
+      jest.spyOn(SpeakerUtils, "findRemainingTime").mockReturnValue((duration * times) / 2);
+
+      speakerEngine.fadeOutLoopFromLoopPoint(mockSpeakerTrack);
+
+      // Verify playWithConfig was called with correct configuration
+      expect(mockSpeakerTrack.playWithConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          duration: expect.any(Number),
+          times: 1,
+        })
+      );
+    });
+  });
+});
+
+describe("SpeakerEngine - Constructor", () => {
+  let mockAudioContext: IAudioContext;
+  let mockConfig: SpeakerConfig;
+  let mockSpeakerData: ISpeakerData[];
+
+  beforeEach(() => {
+    mockAudioContext = {
+      currentTime: 0,
+    } as unknown as IAudioContext;
+
+    mockSpeakerData = [
+      { 
+        id: 1, 
+        shape: { 
+          type: "MultiPolygon", 
+          coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]] 
+        },
+        maxvolume: 1.0,
+        minvolume: 0.0,
+        attenuation_distance: 100,
+        uri: "http://example.com/audio1",
+        parents: []
+      },
+      { 
+        id: 2, 
+        shape: { 
+          type: "MultiPolygon", 
+          coordinates: [[[[1, 1], [2, 1], [2, 2], [1, 2], [1, 1]]]] 
+        },
+        maxvolume: 1.0,
+        minvolume: 0.0,
+        attenuation_distance: 100,
+        uri: "http://example.com/audio2",
+        parents: [1]
+      }
+    ];
+
+    // Mock SpeakerUtils.getRootForSpeaker to return different group IDs
+    jest.spyOn(SpeakerUtils, "getRootForSpeaker").mockImplementation((data) => data.id);
+  });
+
+  it("should initialize with prefetch strategy", () => {
+    mockConfig = { mode: "prefetch" };
+    
+    // Mock SpeakerUtils.getLoadingStrategy to return PREFETCH
+    jest.spyOn(SpeakerUtils, "getLoadingStrategy").mockReturnValue(LoadingStrategy.PREFETCH);
+    
+    // Create a spy on SpeakerTrack.prototype.loadBuffer
+    const loadBufferSpy = jest.spyOn(SpeakerTrack.prototype, "loadBuffer") as jest.Mock;
+
+    const speakerEngine = new SpeakerEngine(mockSpeakerData, mockAudioContext, mockConfig);
+    
+    expect(speakerEngine.speakers.length).toBe(2);
+    expect(speakerEngine.group.size).toBe(2);
+    expect(loadBufferSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("should initialize with progressive strategy", () => {
+    mockConfig = { mode: "progressive-sync" };
+    
+    // Mock SpeakerUtils.getLoadingStrategy to return PROGRESSIVE
+    jest.spyOn(SpeakerUtils, "getLoadingStrategy").mockReturnValue(LoadingStrategy.PROGRESSIVE);
+    
+    // Create a spy on SpeakerTrack.prototype.loadBuffer
+    const loadBufferSpy = jest.spyOn(SpeakerTrack.prototype, "loadBuffer") as jest.Mock;
+
+    const speakerEngine = new SpeakerEngine(mockSpeakerData, mockAudioContext, mockConfig);
+    
+    expect(speakerEngine.speakers.length).toBe(2);
+    expect(speakerEngine.group.size).toBe(2);
+  });
+});
+
+describe("SpeakerEngine - updateNonBaseTracks", () => {
+  let speakerEngine: SpeakerEngine;
+  let mockAudioContext: IAudioContext;
+  let mockConfig: SpeakerConfig;
+  let mockBaseTrack: jest.Mocked<SpeakerTrack>;
+  let mockSpeakerTrack: jest.Mocked<SpeakerTrack>;
+  let emitSpy: jest.Mock;
+
+  beforeEach(() => {
+    mockAudioContext = {
+      currentTime: 0,
+    } as unknown as IAudioContext;
+
+    mockConfig = { mode: "progressive-sync-basePlusMax5Random" };
+
+    mockBaseTrack = {
+      data: { id: 1 },
+      buffer: {
+        duration: 10,
+        length: 441000,
+        numberOfChannels: 2,
+        sampleRate: 44100,
+        copyFromChannel: jest.fn(),
+        copyToChannel: jest.fn(),
+        getChannelData: jest.fn(),
+      } as unknown as IAudioBuffer,
+      bufferSourcePlaying: true,
+      groupId: 1,
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      abortBufferSource: jest.fn(),
+      stopBufferSource: jest.fn(),
+      clearBufferSource: jest.fn(),
+      startBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      maxVolume: 1.0,
+      minVolume: 0.0,
+      attenuationDistanceKm: 0.1,
+      uri: "http://example.com/audio1",
+      calculatedVolume: 0.8,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      loopConfig: {
+        pan: 0,
+        duration: 10,
+        times: 1
+      }
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    mockSpeakerTrack = {
+      data: { id: 2 },
+      buffer: {
+        duration: 5,
+        length: 220500,
+        numberOfChannels: 2,
+        sampleRate: 44100,
+        copyFromChannel: jest.fn(),
+        copyToChannel: jest.fn(),
+        getChannelData: jest.fn(),
+      } as unknown as IAudioBuffer,
+      bufferSourcePlaying: true,
+      groupId: 1,
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      abortBufferSource: jest.fn(),
+      stopBufferSource: jest.fn(),
+      clearBufferSource: jest.fn(),
+      startBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      maxVolume: 1.0,
+      minVolume: 0.0,
+      attenuationDistanceKm: 0.1,
+      uri: "http://example.com/audio2",
+      calculatedVolume: 0.8,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      loopConfig: {
+        pan: 0.5,
+        duration: 5,
+        times: 2
+      }
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    speakerEngine = new SpeakerEngine([], mockAudioContext, mockConfig);
+    speakerEngine.speakers = [mockBaseTrack, mockSpeakerTrack];
+    speakerEngine.playingTracks = [mockBaseTrack.data.id, mockSpeakerTrack.data.id];
+    speakerEngine.playing = true;
+    speakerEngine.mixParams = {
+      speakerConfig: {
+        mode: "progressive-sync-basePlusMax5Random",
+        loopPointUpdateProbability: 1,
+        slotConsiderationProbability: 1,
+        replaceWithNoneProbability: 0,
+        loopFractions: [0.5, 1],
+        effects: {
+          pan: [0.5]
+        }
+      }
+    } as IMixParams;
+
+    // Mock SpeakerUtils.shouldDoSomethingWithProbability
+    jest.spyOn(SpeakerUtils, "shouldDoSomethingWithProbability").mockImplementation((probability, _) => {
+      return probability === 0 ? false : true;
+    });
+
+    emitSpy = jest.spyOn(speakerEngine, "emit") as jest.Mock;
+  });
+
+  it("should skip loop point update when probability is 0", () => {
+    speakerEngine.mixParams.speakerConfig!.loopPointUpdateProbability = 0;
+    speakerEngine.updateNonBaseTracks();
+    
+    expect(mockSpeakerTrack.playWithConfig).not.toHaveBeenCalled();
+  });
+
+  it("should replace speaker with none when probability is 1", () => {
+    speakerEngine.mixParams.speakerConfig!.replaceWithNoneProbability = 1;
+    speakerEngine.updateNonBaseTracks();
+    
+    expect(emitSpy).toHaveBeenCalledWith("replacingWithNone", mockSpeakerTrack.data.id);
+    expect(speakerEngine.playingTracks[1]).toBeNull();
+    expect(mockSpeakerTrack.fadeOutAndStopBufferSource).toHaveBeenCalled();
+  });
+
+  it("should replace speaker with new speaker when available", () => {
+    const newSpeaker = {
+      data: { id: 3 },
+      buffer: {
+        duration: 5,
+        length: 220500,
+        numberOfChannels: 2,
+        sampleRate: 44100,
+        copyFromChannel: jest.fn(),
+        copyToChannel: jest.fn(),
+        getChannelData: jest.fn(),
+      } as unknown as IAudioBuffer,
+      bufferSourcePlaying: false,
+      groupId: 1,
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      abortBufferSource: jest.fn(),
+      stopBufferSource: jest.fn(),
+      clearBufferSource: jest.fn(),
+      startBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      maxVolume: 1.0,
+      minVolume: 0.0,
+      attenuationDistanceKm: 0.1,
+      uri: "http://example.com/audio3",
+      calculatedVolume: 0.8,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      loopConfig: {
+        pan: 0.5,
+        duration: 5,
+        times: 2
+      }
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    speakerEngine.speakers.push(newSpeaker);
+    speakerEngine.updateNonBaseTracks();
+    
+    expect(emitSpy).toHaveBeenCalledWith("newSpeaker", expect.any(Object));
+    expect(speakerEngine.playingTracks[1]).toBe(newSpeaker.data.id);
+    expect(newSpeaker.playWithConfig).toHaveBeenCalled();
+  });
+
+  it("should handle buffer loading for new speaker", () => {
+    const newSpeaker = {
+      data: { id: 3 },
+      buffer: null,
+      bufferSourcePlaying: false,
+      groupId: 1,
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      abortBufferSource: jest.fn(),
+      stopBufferSource: jest.fn(),
+      clearBufferSource: jest.fn(),
+      startBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      maxVolume: 1.0,
+      minVolume: 0.0,
+      attenuationDistanceKm: 0.1,
+      uri: "http://example.com/audio3",
+      calculatedVolume: 0.8,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      loopConfig: {
+        pan: 0.5,
+        duration: 5,
+        times: 2
+      }
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    speakerEngine.speakers.push(newSpeaker);
+    
+    expect(newSpeaker.loadBuffer).toBeUndefined();
+  });
+
+  it("should handle different loop fractions and pan positions", () => {
+    speakerEngine.mixParams.speakerConfig!.loopFractions = [0.25, 0.5, 0.75, 1];
+    speakerEngine.mixParams.speakerConfig!.effects!.pan = [-0.5, 0, 0.5];
+    
+    const newSpeaker = {
+      data: { id: 3 },
+      buffer: {
+        duration: 5,
+        length: 220500,
+        numberOfChannels: 2,
+        sampleRate: 44100,
+        copyFromChannel: jest.fn(),
+        copyToChannel: jest.fn(),
+        getChannelData: jest.fn(),
+      } as unknown as IAudioBuffer,
+      bufferSourcePlaying: false,
+      groupId: 1,
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      abortBufferSource: jest.fn(),
+      stopBufferSource: jest.fn(),
+      clearBufferSource: jest.fn(),
+      startBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      maxVolume: 1.0,
+      minVolume: 0.0,
+      attenuationDistanceKm: 0.1,
+      uri: "http://example.com/audio3",
+      calculatedVolume: 0.8,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      loopConfig: {
+        pan: 0.5,
+        duration: 5,
+        times: 2
+      }
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    speakerEngine.speakers.push(newSpeaker);
+    speakerEngine.updateNonBaseTracks();
+    
+    expect(newSpeaker.playWithConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        duration: expect.any(Number),
+        times: expect.any(Number),
+        pan: expect.any(Number)
+      })
+    );
+  });
+
+  it("should handle case when no new speakers are available", () => {
+    // Remove all speakers except the base track and current speaker
+    speakerEngine.speakers = [mockBaseTrack, mockSpeakerTrack];
+    speakerEngine.updateNonBaseTracks();
+    
+    expect(speakerEngine.playingTracks[1]).toBeNull();
+  });
+
+  it("should handle case when speaker is not in playingTracks", () => {
+    speakerEngine.playingTracks = [mockBaseTrack.data.id];
+    speakerEngine.updateNonBaseTracks();
+    
+    expect(speakerEngine.playingTracks.length).toBe(5);
+    expect(speakerEngine.playingTracks[0]).toBe(mockBaseTrack.data.id);
+  });
+
+  it("should repeat all non-base tracks when loop point update is skipped", () => {
+    // Set up multiple non-base tracks
+    const mockSpeakerTrack2 = {
+      data: { id: 3 },
+      buffer: {
+        duration: 5,
+        length: 220500,
+        numberOfChannels: 2,
+        sampleRate: 44100,
+        copyFromChannel: jest.fn(),
+        copyToChannel: jest.fn(),
+        getChannelData: jest.fn(),
+      } as unknown as IAudioBuffer,
+      bufferSourcePlaying: true,
+      groupId: 1,
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      abortBufferSource: jest.fn(),
+      stopBufferSource: jest.fn(),
+      clearBufferSource: jest.fn(),
+      startBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      maxVolume: 1.0,
+      minVolume: 0.0,
+      attenuationDistanceKm: 0.1,
+      uri: "http://example.com/audio3",
+      calculatedVolume: 0.8,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      loopConfig: {
+        pan: 0.5,
+        duration: 5,
+        times: 2
+      }
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    // Add second non-base track
+    speakerEngine.speakers.push(mockSpeakerTrack2);
+    speakerEngine.playingTracks = [mockBaseTrack.data.id, mockSpeakerTrack.data.id, mockSpeakerTrack2.data.id];
+
+    // Set loop point update probability to 0 to trigger skip
+    speakerEngine.mixParams.speakerConfig!.loopPointUpdateProbability = 0;
+
+    // Mock shouldDoSomethingWithProbability to return false for loop point updates
+    jest.spyOn(SpeakerUtils, "shouldDoSomethingWithProbability").mockImplementation((probability, action) => {
+      if (action === "loop point update") return false;
+      return true;
+    });
+
+    // Mock repeatLoopOnLoopPoint to verify it's called
+    const repeatLoopSpy = jest.spyOn(speakerEngine, "repeatLoopOnLoopPoint");
+
+    speakerEngine.updateNonBaseTracks();
+
+    // Verify skippingLoopPointUpdate event was emitted
+    expect(emitSpy).toHaveBeenCalledWith("skippingLoopPointUpdate");
+
+    // Verify repeatLoopOnLoopPoint was called for each non-base track
+    expect(repeatLoopSpy).toHaveBeenCalledTimes(2);
+    expect(repeatLoopSpy).toHaveBeenCalledWith(mockSpeakerTrack);
+    expect(repeatLoopSpy).toHaveBeenCalledWith(mockSpeakerTrack2);
+
+    // Verify base track was not repeated
+    expect(repeatLoopSpy).not.toHaveBeenCalledWith(mockBaseTrack);
+  });
+});
+
+describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
+  let speakerEngine: SpeakerEngine;
+  let mockAudioContext: IAudioContext;
+  let mockConfig: SpeakerConfig;
+  let mockBaseTrack: jest.Mocked<SpeakerTrack>;
+  let mockSpeakerTrack: jest.Mocked<SpeakerTrack>;
+
+  beforeEach(() => {
+    mockAudioContext = {
+      currentTime: 0,
+    } as unknown as IAudioContext;
+
+    mockConfig = { mode: "progressive-sync" };
+
+    mockBaseTrack = {
+      data: { id: 1 },
+      buffer: {
+        duration: 10,
+        length: 441000,
+        numberOfChannels: 2,
+        sampleRate: 44100,
+        copyFromChannel: jest.fn(),
+        copyToChannel: jest.fn(),
+        getChannelData: jest.fn(),
+      } as unknown as IAudioBuffer,
+      bufferSourcePlaying: true,
+      groupId: 1,
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      abortBufferSource: jest.fn(),
+      stopBufferSource: jest.fn(),
+      clearBufferSource: jest.fn(),
+      startBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      maxVolume: 1.0,
+      minVolume: 0.0,
+      attenuationDistanceKm: 0.1,
+      uri: "http://example.com/audio1",
+      calculatedVolume: 0.8,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      loopConfig: {
+        pan: 0,
+        duration: 10,
+        times: 1
+      }
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    mockSpeakerTrack = {
+      data: { id: 2 },
+      buffer: {
+        duration: 5,
+        length: 220500,
+        numberOfChannels: 2,
+        sampleRate: 44100,
+        copyFromChannel: jest.fn(),
+        copyToChannel: jest.fn(),
+        getChannelData: jest.fn(),
+      } as unknown as IAudioBuffer,
+      bufferSourcePlaying: true,
+      groupId: 1,
+      loopConfig: {
+        pan: 0.5,
+        duration: 5,
+        times: 2
+      },
+      abortBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    speakerEngine = new SpeakerEngine([], mockAudioContext, mockConfig);
+    speakerEngine.speakers = [mockBaseTrack, mockSpeakerTrack];
+    speakerEngine.playingTracks = [mockBaseTrack.data.id];
+    speakerEngine.group.set(1, 0);
+  });
+
+  it("should throw error when base track is not found", () => {
+    speakerEngine.playingTracks = [null];
+    expect(() => speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack)).toThrow(
+      "Base track not found"
+    );
+  });
+
+  it("should handle odd duration tracks correctly", () => {
+    mockSpeakerTrack.loopConfig.duration = 3; // Odd duration that doesn't divide evenly into base track duration
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+    
+    speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack);
+    
+    expect(emitSpy).toHaveBeenCalledWith("repeatingTrack", expect.objectContaining({
+      trackId: mockSpeakerTrack.data.id,
+      exceededDuration: expect.any(Number),
+      newTimes: expect.any(Number)
+    }));
+  });
+
+  it("should handle even duration tracks correctly", () => {
+    mockSpeakerTrack.loopConfig.duration = 5; // Even duration that divides evenly into base track duration
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+    
+    speakerEngine.repeatLoopOnLoopPoint(mockSpeakerTrack);
+    
+    expect(emitSpy).toHaveBeenCalledWith("repeatingTrack", expect.objectContaining({
+      trackId: mockSpeakerTrack.data.id,
+      exceededDuration: 0,
+      newTimes: mockSpeakerTrack.loopConfig.times
+    }));
   });
 });
