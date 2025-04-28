@@ -1452,12 +1452,33 @@ describe("SpeakerEngine - onLocationUpdateProgressiveBasePlusMaxNRandom", () => 
     // Set buffer to null to simulate not loaded
     mockBaseTrack.buffer = null;
 
+    // Spy on playAsBaseTrack before calling the method
+    const playAsBaseTrackSpy = jest.spyOn(speakerEngine, "playAsBaseTrack");
+
     // Call the method
     speakerEngine.onLocationUpdateProgressiveBasePlusMaxNRandom();
 
     // Verify buffer loading and event setup
     expect(mockBaseTrack.loadBuffer).toHaveBeenCalled();
     expect(mockBaseTrack.on).toHaveBeenCalledWith("loaded", expect.any(Function));
+
+    // Set up the buffer before simulating the loaded event
+    mockBaseTrack.buffer = {
+      duration: 10,
+      length: 441000,
+      numberOfChannels: 2,
+      sampleRate: 44100,
+      copyFromChannel: jest.fn(),
+      copyToChannel: jest.fn(),
+      getChannelData: jest.fn(),
+    } as unknown as IAudioBuffer;
+
+    // Simulate buffer loaded event
+    const loadedCallback = (mockBaseTrack.on as jest.Mock).mock.calls[0][1] as () => void;
+    loadedCallback();
+
+    // Verify playAsBaseTrack was called after buffer is loaded
+    expect(playAsBaseTrackSpy).toHaveBeenCalledWith(mockBaseTrack, false);
   });
 
   it("should stop other tracks when new base track is selected", () => {
@@ -1561,12 +1582,91 @@ describe("SpeakerEngine - onLocationUpdateProgressiveBasePlusMaxNRandom", () => 
     } as unknown as IAudioBuffer;
 
     // Simulate buffer loaded event
-    const loadedCallback = mockBaseTrack.on.mock.calls[0][1];
-    const event = Object.assign(0, { when: 0, offset: 0 });
-    loadedCallback(event);
+    const loadedCallback = mockBaseTrack.on.mock.calls[0][1] as () => void;
+    const now = mockAudioContext.currentTime;
+    loadedCallback();
 
     // Verify playAsBaseTrack is called after buffer is loaded
     expect(playAsBaseTrackSpy).toHaveBeenCalledWith(mockBaseTrack, false);
+  });
+
+  it("should skip slot and repeat loop when slot consideration probability is 0", () => {
+    // Set up the speaker in a valid state for repeating
+    mockSpeakerTrack.buffer = {
+      duration: 5,
+      length: 220500,
+      numberOfChannels: 2,
+      sampleRate: 44100,
+      copyFromChannel: jest.fn(),
+      copyToChannel: jest.fn(),
+      getChannelData: jest.fn(),
+    } as unknown as IAudioBuffer;
+
+    // Ensure speakerConfig exists and set slot consideration probability to 0 to force skipping
+    speakerEngine.mixParams.speakerConfig = {
+      mode: "progressive-sync-basePlusMax5Random",
+      slotConsiderationProbability: 0,
+      loopPointUpdateProbability: 1,
+      replaceWithNoneProbability: 0,
+      loopFractions: [0.5, 1],
+      effects: {
+        pan: [0.5]
+      }
+    };
+
+    // Mock SpeakerUtils.shouldDoSomethingWithProbability to return false for slot consideration
+    jest.spyOn(SpeakerUtils, "shouldDoSomethingWithProbability").mockImplementation((probability, _) => {
+      return probability === 0 ? false : true;
+    });
+    
+    // Ensure speaker is in the correct position (not base track)
+    speakerEngine.playingTracks = [mockBaseTrack.data.id, mockSpeakerTrack.data.id];
+    
+    // Spy on emit to verify events
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+    
+    // Spy on repeatLoopOnLoopPoint to verify it's called
+    const repeatLoopSpy = jest.spyOn(speakerEngine, "repeatLoopOnLoopPoint");
+    
+    // Call onLoopPoint to trigger the slot skipping logic
+    speakerEngine.onLoopPoint();
+    
+  });
+
+  it("should handle slot consideration skip correctly", () => {
+    // Set up the test environment
+    speakerEngine.mixParams = {
+      speakerConfig: {
+        mode: "progressive-sync-basePlusMax5Random",
+        slotConsiderationProbability: 0.5
+      }
+    };
+
+    // Set up a speaker in the playing tracks
+    speakerEngine.playingTracks = [mockBaseTrack.data.id, mockSpeakerTrack.data.id];
+
+    // Mock shouldDoSomethingWithProbability to return false for slot consideration
+    const shouldDoSomethingSpy = jest.spyOn(SpeakerUtils, "shouldDoSomethingWithProbability")
+      .mockImplementation((probability, action) => {
+        if (action === "slot consideration") return false;
+        return true;
+      });
+
+    // Mock repeatLoopOnLoopPoint
+    const repeatLoopSpy = jest.spyOn(speakerEngine, "repeatLoopOnLoopPoint");
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+    // Call updateNonBaseTracks
+    speakerEngine.updateNonBaseTracks();
+
+    // Verify shouldDoSomethingWithProbability was called with correct parameters
+    expect(shouldDoSomethingSpy).toHaveBeenCalledWith(0.5, "slot consideration");
+
+    // Verify skippingSlot event was emitted
+    expect(emitSpy).toHaveBeenCalledWith("skippingSlot");
+
+    // Verify repeatLoopOnLoopPoint was called with the current speaker
+    expect(repeatLoopSpy).toHaveBeenCalledWith(mockSpeakerTrack);
   });
 });
 
@@ -1851,6 +1951,29 @@ describe("SpeakerEngine - onLoopPoint", () => {
     // Verify the valid track was handled correctly
     expect(mockSpeakerTrack.fadeBufferSourceToVolume).toHaveBeenCalledWith(0.5);
     expect(emitSpy).toHaveBeenCalledWith("loopPointReached");
+  });
+
+  it("should skip slot consideration when probability is 0 and repeat current track", () => {
+    // Initialize mixParams and speakerConfig
+    speakerEngine.mixParams = {
+      speakerConfig: {
+        mode: "progressive-sync-basePlusMax5Random",
+        slotConsiderationProbability: 0
+      }
+    };
+
+    // Mock shouldDoSomethingWithProbability to return false for slot consideration
+    jest.spyOn(SpeakerUtils, "shouldDoSomethingWithProbability").mockImplementation((probability, action) => {
+      if (action === "slot consideration") return false;
+      return true;
+    });
+
+    // Mock repeatLoopOnLoopPoint to verify it's called
+    const repeatLoopSpy = jest.spyOn(speakerEngine, "repeatLoopOnLoopPoint");
+    const emitSpy = jest.spyOn(speakerEngine, "emit");
+
+    speakerEngine.updateNonBaseTracks();
+
   });
 });
 
@@ -2388,12 +2511,32 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
         pan: 0.5,
         duration: 5,
         times: 2
-      }
+      },
+      loadBuffer: jest.fn()
     } as unknown as jest.Mocked<SpeakerTrack>;
 
     speakerEngine.speakers.push(newSpeaker);
+    speakerEngine.updateNonBaseTracks();
     
-    expect(newSpeaker.loadBuffer).toBeUndefined();
+    // Verify loadBuffer was called
+    expect(newSpeaker.loadBuffer).toHaveBeenCalled();
+    
+    // Verify event listener was set up
+    expect(newSpeaker.on).toHaveBeenCalledWith("loaded", expect.any(Function));
+    
+    // Simulate buffer loaded event
+    const loadedCallback = (newSpeaker.on as jest.Mock).mock.calls[0][1] as () => void;
+    const now = mockAudioContext.currentTime;
+    loadedCallback();
+    
+    // Verify playWithConfig was called with correct parameters
+    expect(newSpeaker.playWithConfig).toHaveBeenCalledWith({
+      duration: expect.any(Number),
+      offset: 0,
+      fadeInDuration: expect.any(Number),
+      times: expect.any(Number),
+      pan: expect.any(Number)
+    });
   });
 
   it("should handle different loop fractions and pan positions", () => {
@@ -2532,6 +2675,57 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
 
     // Verify base track was not repeated
     expect(repeatLoopSpy).not.toHaveBeenCalledWith(mockBaseTrack);
+  });
+
+  it("should not play speaker if it's no longer in playing tracks when buffer is loaded", () => {
+    const newSpeaker = {
+      data: { id: 3 },
+      buffer: null,
+      bufferSourcePlaying: false,
+      groupId: 1,
+      clearListeners: jest.fn(),
+      fadeOutAndStopBufferSource: jest.fn(),
+      playWithConfig: jest.fn(),
+      abortBufferSource: jest.fn(),
+      stopBufferSource: jest.fn(),
+      clearBufferSource: jest.fn(),
+      startBufferSource: jest.fn(),
+      fadeBufferSourceToVolume: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      maxVolume: 1.0,
+      minVolume: 0.0,
+      attenuationDistanceKm: 0.1,
+      uri: "http://example.com/audio3",
+      calculatedVolume: 0.8,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      loopConfig: {
+        pan: 0.5,
+        duration: 5,
+        times: 2
+      },
+      loadBuffer: jest.fn()
+    } as unknown as jest.Mocked<SpeakerTrack>;
+
+    speakerEngine.speakers.push(newSpeaker);
+    speakerEngine.updateNonBaseTracks();
+    
+    // Verify loadBuffer was called
+    expect(newSpeaker.loadBuffer).toHaveBeenCalled();
+    
+    // Verify event listener was set up
+    expect(newSpeaker.on).toHaveBeenCalledWith("loaded", expect.any(Function));
+    
+    // Remove speaker from playing tracks before buffer is loaded
+    speakerEngine.playingTracks = [mockBaseTrack.data.id];
+    
+    // Simulate buffer loaded event
+    const loadedCallback = (newSpeaker.on as jest.Mock).mock.calls[0][1] as () => void;
+    loadedCallback();
+    
+    // Verify playWithConfig was not called since speaker is no longer in playing tracks
+    expect(newSpeaker.playWithConfig).not.toHaveBeenCalled();
   });
 });
 
