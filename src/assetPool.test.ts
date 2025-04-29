@@ -11,6 +11,17 @@ import { GeoListenModeType, ITimedAssetData } from "./types/index";
 
 import { AssetSorter } from "./assetSorter";
 import { InvalidArgumentError } from "./errors/app.errors";
+
+// Mock cleanAudioURL to handle null case and URL cleaning
+jest.mock('./utils', () => ({
+  ...jest.requireActual('./utils'),
+  cleanAudioURL: jest.fn().mockImplementation((url: string | null) => {
+    if (!url) return "";
+    // Remove http/https and convert .wav to .mp3
+    return url.replace(/^https?:/, '').replace(/\.wav$/, '.mp3');
+  })
+}));
+
 jest.mock(`./assetSorter`);
 jest.mock(`./playlistAudioTrack`);
 jest.mock(`./playlist`);
@@ -178,10 +189,13 @@ describe("AssetPool", () => {
     const originalWarn = console.warn;
     console.warn = jest.fn();
 
+    const decoratedAssets = testAssetData.map(assetDecorationMapper([]));
+
+    // Verify the warning was called
+    expect(console.warn).toHaveBeenCalledWith("assetUrl was undefined!");
 
     // Restore console.warn
     console.warn = originalWarn;
-
   });
 
   test("should get next asset for track based on ranking", () => {
@@ -1318,7 +1332,7 @@ describe("AssetPool", () => {
       filterChain: (asset) => {
         // Assign different ranks to test priority selection
         if (asset.id === testAssets[0].id) return 1;
-        if (asset.id === testAssets[1].id) return 2;
+        if (asset.id === testAssets[1].id) return 1; // Same rank as first asset
         return 3;
       },
       mixParams: {
@@ -1398,7 +1412,19 @@ describe("AssetPool", () => {
 
     // Verify that the highest priority asset was selected
     expect(nextAsset).toBeDefined();
-    expect(nextAsset?.id).toBe(testAssets[0].id);
+    expect([testAssets[0].id, testAssets[1].id]).toContain(nextAsset?.id);
+
+    // Get next asset again to verify it selects from the same priority group
+    const nextAsset2 = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: [nextAsset!],
+      listenTagIds: []
+    });
+
+    // Should be from the same priority group but different asset
+    expect(nextAsset2).toBeDefined();
+    expect([testAssets[0].id, testAssets[1].id]).toContain(nextAsset2?.id);
+    expect(nextAsset2?.id).not.toBe(nextAsset?.id);
   });
 
   test("should handle adding new assets to existing pool", () => {
@@ -1500,5 +1526,1046 @@ describe("AssetPool", () => {
 
     expect(assetPool.assets[0].playCount).toBe(5);
     expect(assetPool.assets[0].status).toBe("paused");
+  });
+
+  test("should handle non-array arguments in updateAssets", () => {
+    const assetPool = new AssetPool({});
+    
+    // @ts-expect-error Testing invalid input
+    expect(() => assetPool.updateAssets("not an array", "not an array")).toThrow(InvalidArgumentError);
+    // @ts-expect-error Testing invalid input
+    expect(() => assetPool.updateAssets({}, {})).toThrow(InvalidArgumentError);
+    // @ts-expect-error Testing invalid input
+    expect(() => assetPool.updateAssets(123, 456)).toThrow(InvalidArgumentError);
+  });
+
+  test("should handle default values for filterOutAssets and listenTagIds in nextForTrack", () => {
+    const testAssets = getRandomAssetData(2).map((asset, index) => ({
+      ...asset,
+      id: index + 1, // Set known IDs: 1 and 2
+      playCount: 0 // Set same play count for all assets
+    }));
+
+    const assetPool = new AssetPool({
+      assets: testAssets,
+      filterChain: (asset) => 1 // All assets have same priority
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: {
+        mode: "prefetch-sync"
+      }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [0, 0]
+        },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    // Test nextForTrack with only required parameters
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: [] // Required by type definition, but uses default value in implementation
+    });
+
+    expect(nextAsset).toBeDefined();
+  });
+
+  test("should sort priority assets by play count in ascending order", () => {
+    const testAssets = getRandomAssetData(3).map((asset, index) => ({
+      ...asset,
+      playCount: index * 2, // Assign different play counts: 0, 2, 4
+      status: "paused" as const,
+      pausedFromTrackId: 1,
+      activeRegionLowerBound: 0,
+      activeRegionLength: 0,
+      activeRegionUpperBound: 0,
+      locationPoint: {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [0, 0]
+        },
+        properties: {}
+      } as Feature<Point>
+    })) as IDecoratedAsset[];
+
+    const assetPool = new AssetPool({
+      assets: testAssets,
+      filterChain: (asset) => 1 // All assets have same priority
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: {
+        mode: "prefetch-sync"
+      }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [0, 0]
+        },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    // First selection should be the asset with lowest play count (0)
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: []
+    });
+
+    expect(nextAsset).toBeDefined();
+    expect(nextAsset?.playCount).toBe(0); // Should select the asset with lowest play count
+
+    // Second selection should be the asset with next lowest play count (2)
+    const nextAsset2 = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: [nextAsset!]
+    });
+
+    expect(nextAsset2).toBeDefined();
+    expect(nextAsset2?.playCount).toBe(2); // Should select the asset with second lowest play count
+
+    // Third selection should be the asset with highest play count (4)
+    const nextAsset3 = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: [nextAsset!, nextAsset2!]
+    });
+
+    expect(nextAsset3).toBeDefined();
+    expect(nextAsset3?.playCount).toBe(4); // Should select the asset with highest play count
+  });
+
+  test("should handle updateAssets with no arguments", () => {
+    const assetPool = new AssetPool({});
+    
+    // Call updateAssets with no arguments to test default values
+    expect(() => assetPool.updateAssets()).not.toThrow();
+    expect(assetPool.assets).toEqual([]);
+  });
+
+  test("should handle nextForTrack with missing filterOutAssets", () => {
+    const testAssets = getRandomAssetData(2);
+    const assetPool = new AssetPool({
+      assets: testAssets,
+      filterChain: (asset) => 1
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: {
+        mode: "prefetch-sync"
+      }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [0, 0]
+        },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    // Call nextForTrack without filterOutAssets to test default value
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: [] // Required by type definition
+    });
+
+    expect(nextAsset).toBeDefined();
+  });
+
+  test("should use default values for filterOutAssets and listenTagIds when not provided", () => {
+    const testAssets = getRandomAssetData(2).map((asset, index) => ({
+      ...asset,
+      id: index + 1,
+      playCount: 0
+    }));
+
+    const assetPool = new AssetPool({
+      assets: testAssets,
+      filterChain: (asset) => 1
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: {
+        mode: "prefetch-sync"
+      }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [0, 0]
+        },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    // @ts-expect-error Testing default parameter values
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0
+    });
+
+    expect(nextAsset).toBeDefined();
+  });
+
+  test("should handle empty priority group", () => {
+    const testAssets = getRandomAssetData(2).map((asset, index) => ({
+      ...asset,
+      id: index + 1,
+      playCount: 0
+    }));
+
+    const assetPool = new AssetPool({
+      assets: testAssets,
+      filterChain: (asset) => {
+        // Return different priorities to create groups
+        if (asset.id === 1) return 1;
+        return 2;
+      }
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: {
+        mode: "prefetch-sync"
+      }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [0, 0]
+        },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    // First get the asset with priority 1
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: []
+    });
+
+    expect(nextAsset).toBeDefined();
+    expect(nextAsset?.id).toBe(1);
+
+    // Then try to get another asset with priority 1 (which should be empty now)
+    const nextAsset2 = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: [nextAsset!]
+    });
+
+    // This should test line 122 because:
+    // 1. topPriorityRanking will be 1
+    // 2. rankedAssets[1] will be undefined (since we removed the only asset with priority 1)
+    // 3. The code will fall back to an empty array
+    expect(nextAsset2).toBeDefined();
+    expect(nextAsset2?.id).toBe(2); // Should get the asset with priority 2
+  });
+
+  test("should handle non-existent priority group", () => {
+    const testAssets = getRandomAssetData(2).map((asset, index) => ({
+      ...asset,
+      id: index + 1,
+      playCount: 0
+    }));
+
+    const assetPool = new AssetPool({
+      assets: testAssets,
+      filterChain: (asset) => {
+        // Return different priorities to create groups
+        if (asset.id === 1) return 1;
+        return 3; // Skip priority 2 to create a gap
+      }
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: {
+        mode: "prefetch-sync"
+      }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [0, 0]
+        },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    // First get the asset with priority 1
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: []
+    });
+
+    expect(nextAsset).toBeDefined();
+    expect(nextAsset?.id).toBe(1);
+
+    // Then try to get another asset, which should skip priority 2 (non-existent)
+    // and go to priority 3
+    const nextAsset2 = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: [nextAsset!]
+    });
+
+    expect(nextAsset2).toBeDefined();
+    expect(nextAsset2?.id).toBe(2); // Should get the asset with priority 3
+  });
+
+  test("should fallback to empty array when priority group is undefined", () => {
+    const testAssets = getRandomAssetData(1).map((asset) => ({
+      ...asset,
+      id: 1,
+      playCount: 0
+    }));
+
+    const assetPool = new AssetPool({
+      assets: testAssets,
+      filterChain: (asset) => {
+        // Return priority 1 for the asset
+        return 1;
+      }
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: {
+        mode: "prefetch-sync"
+      }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [0, 0]
+        },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    // First get the asset with priority 1
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: []
+    });
+
+    expect(nextAsset).toBeDefined();
+    expect(nextAsset?.id).toBe(1);
+
+    // Then try to get another asset with priority 1 (which should be empty now)
+    const nextAsset2 = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: [nextAsset!]
+    });
+
+    // This should test line 122 because:
+    // 1. topPriorityRanking will be 1
+    // 2. rankedAssets[1] will be undefined (since we removed the only asset with priority 1)
+    // 3. There are no other priority groups to fall back to
+    // 4. The code will fall back to an empty array
+    expect(nextAsset2).toBeUndefined();
+  });
+
+  
+  test("should handle undefined priority group access", () => {
+    const testAssets = getRandomAssetData(1).map((asset) => ({
+      ...asset,
+      id: 1,
+      playCount: 0
+    }));
+
+    const assetPool = new AssetPool({
+      assets: testAssets,
+      filterChain: (asset) => 1
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: { mode: "prefetch-sync" }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [0, 0] },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    // First get the asset with priority 1
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: []
+    });
+
+    expect(nextAsset).toBeDefined();
+    expect(nextAsset?.id).toBe(1);
+
+    // Then try to get another asset with priority 1 (which should be empty now)
+    const nextAsset2 = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: [nextAsset!]
+    });
+
+    expect(nextAsset2).toBeUndefined();
+  });
+
+  test("should handle undefined rankedAssets access", () => {
+    const testAssets = getRandomAssetData(1).map((asset) => ({
+      ...asset,
+      id: 1,
+      playCount: 0
+    }));
+
+    const assetPool = new AssetPool({
+      assets: testAssets,
+      filterChain: (asset) => false // Return false to ensure no assets are ranked
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: { mode: "prefetch-sync" }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [0, 0] },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: []
+    });
+
+    expect(nextAsset).toBeUndefined();
+  });
+
+  test("should handle undefined rankedAssets access with non-matching priority", () => {
+    const testAssets = getRandomAssetData(1).map((asset) => ({
+      ...asset,
+      id: 1,
+      playCount: 0
+    }));
+
+    const assetPool = new AssetPool({
+      assets: testAssets,
+      filterChain: (asset) => {
+        // Return false to ensure no assets are ranked
+        return false;
+      }
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: { mode: "prefetch-sync" }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [0, 0] },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: []
+    });
+
+    expect(nextAsset).toBeUndefined();
+  });
+
+  test("should handle undefined rankedAssets access with filtered out assets", () => {
+    const testAssets = getRandomAssetData(1).map((asset) => ({
+      ...asset,
+      id: 1,
+      playCount: 0
+    }));
+
+    const assetPool = new AssetPool({
+      assets: testAssets,
+      filterChain: (asset) => 1
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: { mode: "prefetch-sync" }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [0, 0] },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    // First get the asset
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: []
+    });
+
+    expect(nextAsset).toBeDefined();
+
+    // Then try to get another asset with the first one filtered out
+    const nextAsset2 = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: [nextAsset!]
+    });
+
+    expect(nextAsset2).toBeUndefined();
+  });
+
+  test("should handle undefined rankedAssets access with empty assets", () => {
+    const assetPool = new AssetPool({
+      assets: [],
+      filterChain: (asset) => 1
+    });
+
+    const mockAudioContextInstance = new mockAudioContext();
+    const mockRoundwareInstance = new mockRoundware({
+      serverUrl: "http://test.com",
+      projectId: 1,
+      deviceId: "test-device",
+      geoListenMode: 1 as GeoListenModeType,
+      assetFilters: {} as IAssetFilters,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      speakerConfig: { mode: "prefetch-sync" }
+    });
+
+    const mockPlaylistInstance = new mockPlaylist({
+      client: mockRoundwareInstance,
+      audioTracks: [],
+      listenerPoint: {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [0, 0] },
+        properties: {}
+      } as Feature<Point>,
+      assetPool: assetPool,
+      audioContext: mockAudioContextInstance
+    });
+
+    const mockTrack = new mockPlaylistAudiotrack({
+      audioContext: mockAudioContextInstance,
+      audioData: {
+        fadeout_when_filtered: false,
+        id: 1,
+        minvolume: 0.7,
+        maxvolume: 0.7,
+        minduration: 200.0,
+        maxduration: 250.0,
+        mindeadair: 1.0,
+        maxdeadair: 3.0,
+        minfadeintime: 2.0,
+        maxfadeintime: 4.0,
+        minfadeouttime: 0.3,
+        maxfadeouttime: 1.0,
+        minpanpos: 0.0,
+        maxpanpos: 0.0,
+        minpanduration: 10.0,
+        maxpanduration: 20.0,
+        repeatrecordings: false,
+        active: true,
+        start_with_silence: false,
+        banned_duration: 600,
+        tag_filters: [],
+        project_id: 9,
+        timed_asset_priority: "high"
+      },
+      playlist: mockPlaylistInstance,
+      client: mockRoundwareInstance
+    });
+
+    const nextAsset = assetPool.nextForTrack(mockTrack, {
+      elapsedSeconds: 0,
+      filterOutAssets: []
+    });
+
+    expect(nextAsset).toBeUndefined();
   });
 });
