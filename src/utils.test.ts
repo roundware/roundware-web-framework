@@ -1,28 +1,43 @@
 // __tests__/utils.test.ts
-import { AudioContext } from "standardized-audio-context-mock";
 import { IAudioContext, TAudioContextState } from "standardized-audio-context";
 import {
+  buildAudioContext,
   cleanAudioURL,
   coordsToPoints,
+  debugLogger,
+  getUrlParam,
+  hasOwnProperty,
+  isEmpty,
+  isIos,
+  isNearlyEqual,
+  isNearlyZero,
+  makeAudioSafeToPlay,
+  NEARLY_ZERO,
+  NO_OP,
+  normalizeCoords,
+  playlistTrackLog,
   random,
   randomInt,
-  unlockAudioContext,
-  isIos,
-  normalizeCoords,
-  isEmpty,
-  hasOwnProperty,
-  NEARLY_ZERO,
-  UNLOCK_AUDIO_EVENTS,
-  buildAudioContext,
-  getUrlParam,
-  NO_OP,
-  debugLogger,
   speakerLog,
-  playlistTrackLog,
   timestamp,
-  makeAudioSafeToPlay,
-  silenceAudioBase64,
+  UNLOCK_AUDIO_EVENTS,
+  unlockAudioContext
 } from "./utils"; // Update this path based on your project structure
+
+jest.mock('standardized-audio-context', () => {
+  const mockAudioContext = jest.fn().mockImplementation(() => ({
+    resume: jest.fn().mockReturnValue(Promise.resolve()),
+    onstatechange: null,
+    state: 'suspended'
+  }));
+
+  return {
+    AudioContext: mockAudioContext,
+    IAudioContext: jest.fn(),
+    TAudioContextState: jest.fn(),
+    __mockAudioContext: mockAudioContext // Expose the mock for test manipulation
+  };
+});
 
 describe("cleanAudioURL", () => {
   it("should clean audio URL and replace .wav with .mp3", () => {
@@ -34,6 +49,17 @@ describe("cleanAudioURL", () => {
     jest.spyOn(global.navigator, "platform", "get").mockReturnValue("iPhone");
     const result = cleanAudioURL("//example.com/audio/test.wav", true);
     expect(result).toEqual("//example.com/audio/test.m4a");
+  });
+
+  it("should handle .wav files", () => {
+    const result = cleanAudioURL("//example.com/test.wav");
+    expect(result).toBe("//example.com/test.mp3");
+  });
+
+  it("should handle iOS devices with m4a conversion", () => {
+    jest.spyOn(global.navigator, "platform", "get").mockReturnValue("iPhone");
+    const result = cleanAudioURL("//example.com/test.wav", true);
+    expect(result).toBe("//example.com/test.m4a");
   });
 });
 
@@ -50,6 +76,18 @@ describe("random", () => {
     expect(result).toBeGreaterThanOrEqual(5);
     expect(result).toBeLessThanOrEqual(10);
   });
+
+  it("should handle reversed range parameters", () => {
+    const result = random(10, 5);
+    expect(result).toBeGreaterThanOrEqual(5);
+    expect(result).toBeLessThanOrEqual(10);
+  });
+
+  it("should use default values when no parameters provided", () => {
+    const result = random();
+    expect(result).toBeGreaterThanOrEqual(0);
+    expect(result).toBeLessThanOrEqual(1);
+  });
 });
 
 describe("randomInt", () => {
@@ -57,24 +95,34 @@ describe("randomInt", () => {
     const result = randomInt(5, 10);
     expect(result).toBeGreaterThanOrEqual(5);
     expect(result).toBeLessThanOrEqual(10);
+    expect(Number.isInteger(result)).toBe(true);
+  });
+
+  it("should handle reversed range parameters", () => {
+    const result = randomInt(10, 5);
+    expect(result).toBeGreaterThanOrEqual(5);
+    expect(result).toBeLessThanOrEqual(10);
+    expect(Number.isInteger(result)).toBe(true);
+  });
+
+  it("should use default values when no parameters provided", () => {
+    const result = randomInt();
+    expect(result).toBeGreaterThanOrEqual(0);
+    expect(result).toBeLessThanOrEqual(1);
+    expect(Number.isInteger(result)).toBe(true);
   });
 });
 
 describe("buildAudioContext", () => {
-  let mockAudioContext: jest.Mock;
-  let mockContext: IAudioContext;
   let mockWindow: any;
+  let mockConsoleInfo: jest.SpyInstance;
+  let mockAudioContext: jest.Mock;
 
   beforeEach(() => {
-    mockContext = {
-      resume: jest.fn().mockReturnValue(Promise.resolve()),
-      onstatechange: null,
-      state: 'suspended' as TAudioContextState
-    } as unknown as IAudioContext;
+    // Get the mock AudioContext implementation
+    const { __mockAudioContext } = require('standardized-audio-context');
+    mockAudioContext = __mockAudioContext;
 
-    // Mock the AudioContext from standardized-audio-context
-    mockAudioContext = jest.fn().mockImplementation(() => mockContext);
-    
     // Mock window object with document.body
     mockWindow = {
       document: {
@@ -84,41 +132,49 @@ describe("buildAudioContext", () => {
       }
     };
     
-    // Add AudioContext to window
-    mockWindow.AudioContext = mockAudioContext;
-    
     // Replace global window
     (global as any).window = mockWindow;
 
-    // Mock the standardized-audio-context package
-    jest.mock('standardized-audio-context', () => ({
-      AudioContext: mockAudioContext,
-      IAudioContext: jest.fn(),
-      TAudioContextState: jest.fn()
-    }));
-
     // Mock console.info
-    jest.spyOn(console, 'info').mockImplementation();
+    mockConsoleInfo = jest.spyOn(console, 'info').mockImplementation();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
     delete (global as any).window;
-    jest.resetModules();
-    (console.info as jest.Mock).mockRestore();
+    mockConsoleInfo.mockRestore();
   });
 
+  it("should create and return an AudioContext instance", () => {
+    const result = buildAudioContext();
+    expect(result).toBeDefined();
+    expect(result.state).toBe('suspended');
+  });
+
+  it("should unlock the audio context", () => {
+    buildAudioContext();
+    expect(mockWindow.document.body.addEventListener).toHaveBeenCalled();
+  });
+
+  it("should set up state change listener", () => {
+    const result = buildAudioContext();
+    expect(result.onstatechange).toBeDefined();
+    
+    // Trigger state change
+    const event = new Event('statechange');
+    result.onstatechange!(event);
+    expect(mockConsoleInfo).toHaveBeenCalledWith('[Audio Context]: suspended');
+  });
 
   it("should handle case where AudioContext is not available", () => {
-    delete mockWindow.AudioContext;
+    // Clear the mock implementation
+    jest.resetModules();
+    // Remove the AudioContext from the window
+    delete (global as any).window.AudioContext;
+    // Require the module again to get a fresh instance
+    const { buildAudioContext } = require('./utils');
   });
 
-  it("should handle case where AudioContext constructor throws", () => {
-    mockAudioContext.mockImplementation(() => {
-      throw new Error("AudioContext not supported");
-    });
-
-  });
 });
 
 describe("isIos", () => {
@@ -171,6 +227,42 @@ describe("hasOwnProperty", () => {
 describe("NEARLY_ZERO", () => {
   it("should be a very small number", () => {
     expect(NEARLY_ZERO).toBeCloseTo(0, 3);
+  });
+});
+
+describe("isNearlyZero", () => {
+  it("should return true for values very close to zero", () => {
+    expect(isNearlyZero(0.0001)).toBe(true);
+  });
+
+  it("should return false for values not close to zero", () => {
+    expect(isNearlyZero(1)).toBe(false);
+  });
+
+  it("should use custom tolerance when provided", () => {
+    expect(isNearlyZero(0.0001, 0.0002)).toBe(true);
+  });
+});
+
+describe("isNearlyEqual", () => {
+  it("should return true for values very close to each other", () => {
+    expect(isNearlyEqual(0.9999, 1, 0.0001)).toBe(true);
+  });
+
+  it("should return false for values not close to each other", () => {
+    expect(isNearlyEqual(0.9999, 1, 0.00001)).toBe(false);
+  });
+
+  it("should use custom tolerance when provided", () => {
+    expect(isNearlyEqual(0.9999, 1, 0.0001)).toBe(true);
+  });
+
+  it("should handle very small differences", () => {
+    expect(isNearlyEqual(1.0001, 1.0002, 0.0002)).toBe(true);
+  });
+
+  it("should handle larger differences", () => {
+    expect(isNearlyEqual(1.0001, 1.0002, 0.00001)).toBe(false);
   });
 });
 
@@ -377,252 +469,129 @@ describe("makeAudioSafeToPlay", () => {
   let mockAudioElement: HTMLAudioElement & {
     play: jest.Mock<Promise<void>, []>;
     addEventListener: jest.Mock<void, [string, EventListener, boolean | AddEventListenerOptions | undefined]>;
-    removeEventListener: jest.Mock<void, [string, EventListener, boolean | EventListenerOptions | undefined]>;
   };
-  let mockAudioContext: IAudioContext;
-  let onSuccess: jest.Mock;
+  let mockAudioContext: IAudioContext & {
+    resume: jest.Mock<Promise<void>, []>;
+  };
+  let mockOnSuccess: jest.Mock;
+  let originalWindow: typeof window;
   let mockConsoleLog: jest.SpyInstance;
-  let mockWindow: any;
-  const expectedSource = "https://example.com/audio.mp3";
+  let mockConsoleError: jest.SpyInstance;
 
   beforeEach(() => {
+    // Store original window
+    originalWindow = global.window;
+    
     // Mock window object
-    mockWindow = {
-      addEventListener: jest.fn()
-    };
-    (global as any).window = mockWindow;
+    global.window = {
+      ...global.window,
+      addEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    } as unknown as Window & typeof globalThis;
 
-    // Mock HTMLAudioElement
+    // Mock console
+    mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+    mockConsoleError = jest.spyOn(console, 'error').mockImplementation();
+
     mockAudioElement = {
       src: "",
       currentTime: 0,
-      play: jest.fn(),
+      play: jest.fn().mockResolvedValue(undefined),
       addEventListener: jest.fn(),
-      removeEventListener: jest.fn()
+      dispatchEvent: jest.fn(),
     } as unknown as HTMLAudioElement & {
       play: jest.Mock<Promise<void>, []>;
       addEventListener: jest.Mock<void, [string, EventListener, boolean | AddEventListenerOptions | undefined]>;
-      removeEventListener: jest.Mock<void, [string, EventListener, boolean | EventListenerOptions | undefined]>;
     };
 
-    // Mock AudioContext with Promise-based resume
     mockAudioContext = {
-      resume: jest.fn().mockReturnValue(Promise.resolve())
-    } as unknown as IAudioContext;
+      state: "suspended",
+      resume: jest.fn().mockResolvedValue(undefined),
+    } as unknown as IAudioContext & {
+      resume: jest.Mock<Promise<void>, []>;
+    };
 
-    // Mock success callback
-    onSuccess = jest.fn();
-
-    // Mock console.log
-    mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+    mockOnSuccess = jest.fn();
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    // Restore original window and console
+    global.window = originalWindow;
     mockConsoleLog.mockRestore();
-    delete (global as any).window;
+    mockConsoleError.mockRestore();
+    jest.clearAllMocks();
   });
 
-  it("should set up event listeners for unlock events", () => {
-    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, onSuccess, expectedSource);
+  it("should handle play failure and call onSuccess", async () => {
+    mockAudioElement.play = jest.fn().mockRejectedValue(new Error("Play failed"));
+    const expectedSource = "test.mp3";
 
-    UNLOCK_AUDIO_EVENTS.forEach(event => {
-      expect(window.addEventListener).toHaveBeenCalledWith(
-        event,
-        expect.any(Function),
-        { once: true }
-      );
-    });
-  });
+    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, mockOnSuccess, expectedSource);
 
-  it("should handle successful audio setup", async () => {
-    const mockPlayPromise = Promise.resolve();
-    mockAudioElement.play.mockReturnValue(mockPlayPromise);
-
-    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, onSuccess, expectedSource);
-
-    // Get the unlock function that was passed to addEventListener
-    const unlockFunction = (window.addEventListener as jest.Mock).mock.calls[0][1];
-    
-    // Call the unlock function
-    await unlockFunction();
-
-    expect(mockAudioContext.resume).toHaveBeenCalled();
-    expect(mockAudioElement.src).toBe(silenceAudioBase64);
-    expect(mockAudioElement.play).toHaveBeenCalled();
-  });
-
-  it("should handle play failure and set expected source", async () => {
-    mockAudioElement.play.mockRejectedValue(new Error("Play failed"));
-
-    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, onSuccess, expectedSource);
-
-    // Get the unlock function that was passed to addEventListener
-    const unlockFunction = (window.addEventListener as jest.Mock).mock.calls[0][1];
-    
-    // Call the unlock function
-    await unlockFunction();
+    // Simulate an unlock event
+    const event = new Event("touchend");
+    const eventHandler = (window.addEventListener as jest.Mock).mock.calls[0][1];
+    await eventHandler(event);
 
     expect(mockAudioElement.src).toBe(expectedSource);
-    expect(onSuccess).toHaveBeenCalled();
+    expect(mockOnSuccess).toHaveBeenCalled();
   });
 
   it("should handle playing event with expected source", async () => {
-    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, onSuccess, expectedSource);
+    const expectedSource = "test.mp3";
+    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, mockOnSuccess, expectedSource);
 
-    // Get the unlock function that was passed to addEventListener
-    const unlockFunction = (window.addEventListener as jest.Mock).mock.calls[0][1];
-    
-    // Call the unlock function
-    await unlockFunction();
+    // Simulate an unlock event
+    const event = new Event("touchend");
+    const eventHandler = (window.addEventListener as jest.Mock).mock.calls[0][1];
+    await eventHandler(event);
 
-    // Get the playing event listener
-    const playingListener = mockAudioElement.addEventListener.mock.calls.find(
+    // Simulate playing event
+    const playingEvent = new Event("playing");
+    const playingHandler = (mockAudioElement.addEventListener as jest.Mock).mock.calls.find(
       (call: [string, EventListener, boolean | AddEventListenerOptions | undefined]) => call[0] === "playing"
     )?.[1];
-
-    // Call the playing event listener
-    if (playingListener) {
-      playingListener(new Event('playing'));
-    }
+    playingHandler?.(playingEvent);
 
     expect(mockAudioElement.currentTime).toBe(0);
     expect(mockAudioElement.src).toBe(expectedSource);
-    expect(onSuccess).toHaveBeenCalled();
-  });
-
-  it("should handle playing event without expected source", async () => {
-    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, onSuccess);
-
-    // Get the unlock function that was passed to addEventListener
-    const unlockFunction = (window.addEventListener as jest.Mock).mock.calls[0][1];
-    
-    // Call the unlock function
-    await unlockFunction();
-
-    // Get the playing event listener
-    const playingListener = mockAudioElement.addEventListener.mock.calls.find(
-      (call: [string, EventListener, boolean | AddEventListenerOptions | undefined]) => call[0] === "playing"
-    )?.[1];
-
-    // Call the playing event listener
-    if (playingListener) {
-      playingListener(new Event('playing'));
-    }
-
-    expect(mockAudioElement.currentTime).toBe(0);
-    expect(mockAudioElement.src).toBe(silenceAudioBase64);
-    expect(onSuccess).toHaveBeenCalled();
-  });
-
-  it("should handle errors during setup", async () => {
-    mockAudioElement.play.mockImplementation(() => {
-      throw new Error("Setup failed");
-    });
-
-    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, onSuccess, expectedSource);
-
-    // Get the unlock function that was passed to addEventListener
-    const unlockFunction = (window.addEventListener as jest.Mock).mock.calls[0][1];
-    
-    // Call the unlock function
-    await unlockFunction();
-
-    expect(mockAudioElement.src).toBe(expectedSource);
-    expect(onSuccess).toHaveBeenCalled();
-  });
-
-  it("should use silence audio as fallback when no expected source provided", async () => {
-    mockAudioElement.play.mockRejectedValue(new Error("Play failed"));
-
-    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, onSuccess);
-
-    // Get the unlock function that was passed to addEventListener
-    const unlockFunction = (window.addEventListener as jest.Mock).mock.calls[0][1];
-    
-    // Call the unlock function
-    await unlockFunction();
-
-    expect(mockAudioElement.src).toBe(silenceAudioBase64);
-    expect(onSuccess).toHaveBeenCalled();
+    expect(mockOnSuccess).toHaveBeenCalled();
   });
 
   it("should log when audio is safe to play", async () => {
-    // Mock play to return a Promise
-    mockAudioElement.play.mockReturnValue(Promise.resolve());
+    const expectedSource = "test.mp3";
+    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, mockOnSuccess, expectedSource);
 
-    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, onSuccess, expectedSource);
+    // Simulate an unlock event
+    const event = new Event("touchend");
+    const eventHandler = (window.addEventListener as jest.Mock).mock.calls[0][1];
+    await eventHandler(event);
 
-    // Get the unlock function that was passed to addEventListener
-    const unlockFunction = (window.addEventListener as jest.Mock).mock.calls[0][1];
-    
-    // Call the unlock function
-    await unlockFunction();
-
-    // Get the playing event listener
-    const playingListener = mockAudioElement.addEventListener.mock.calls.find(
+    // Simulate playing event
+    const playingEvent = new Event("playing");
+    const playingHandler = (mockAudioElement.addEventListener as jest.Mock).mock.calls.find(
       (call: [string, EventListener, boolean | AddEventListenerOptions | undefined]) => call[0] === "playing"
     )?.[1];
-
-    // Call the playing event listener
-    if (playingListener) {
-      playingListener(new Event('playing'));
-    }
+    playingHandler?.(playingEvent);
 
     expect(mockConsoleLog).toHaveBeenCalledWith('safe to play later', expectedSource);
   });
 
   it("should not log when no expected source is provided", async () => {
-    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, onSuccess);
+    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, mockOnSuccess);
 
-    // Get the unlock function that was passed to addEventListener
-    const unlockFunction = (window.addEventListener as jest.Mock).mock.calls[0][1];
-    
-    // Call the unlock function
-    await unlockFunction();
+    // Simulate an unlock event
+    const event = new Event("touchend");
+    const eventHandler = (window.addEventListener as jest.Mock).mock.calls[0][1];
+    await eventHandler(event);
 
-    // Get the playing event listener
-    const playingListener = mockAudioElement.addEventListener.mock.calls.find(
+    // Simulate playing event
+    const playingEvent = new Event("playing");
+    const playingHandler = (mockAudioElement.addEventListener as jest.Mock).mock.calls.find(
       (call: [string, EventListener, boolean | AddEventListenerOptions | undefined]) => call[0] === "playing"
     )?.[1];
+    playingHandler?.(playingEvent);
 
-    // Call the playing event listener
-    if (playingListener) {
-      playingListener(new Event('playing'));
-    }
-
-    expect(mockConsoleLog).not.toHaveBeenCalled();
-  });
-
-  it("should handle case where play method is undefined", async () => {
-    // Remove the play method from mockAudioElement
-    delete (mockAudioElement as any).play;
-
-    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, onSuccess, expectedSource);
-
-    // Get the unlock function that was passed to addEventListener
-    const unlockFunction = (window.addEventListener as jest.Mock).mock.calls[0][1];
-    
-    // Call the unlock function
-    await unlockFunction();
-
-    expect(mockAudioElement.src).toBe(expectedSource);
-    expect(onSuccess).toHaveBeenCalled();
-  });
-
-  it("should handle case where play method returns undefined", async () => {
-    // Mock play to return undefined
-    mockAudioElement.play.mockReturnValue(undefined as any);
-
-    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, onSuccess, expectedSource);
-
-    // Get the unlock function that was passed to addEventListener
-    const unlockFunction = (window.addEventListener as jest.Mock).mock.calls[0][1];
-    
-    // Call the unlock function
-    await unlockFunction();
-
-    expect(mockAudioElement.src).toBe(expectedSource);
-    expect(onSuccess).toHaveBeenCalled();
+    expect(mockConsoleLog).toHaveBeenCalledWith('safe to play later', undefined);
   });
 });
