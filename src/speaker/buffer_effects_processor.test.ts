@@ -1,6 +1,5 @@
-import { IAudioBuffer, IAudioContext } from "standardized-audio-context";
-import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { AudioContext } from "standardized-audio-context-mock";
+import { BufferEffectsProcessor } from "./buffer_effects_processor";
 
 describe("BufferEffectsProcessor", () => {
   describe("trim", () => {
@@ -177,6 +176,82 @@ describe("BufferEffectsProcessor", () => {
       );
       const processedBuffer = processor.reverbAndClip().getBuffer();
       expect(processedBuffer.duration).toBeCloseTo(10, 1);
+    });
+  });
+
+  describe("composeBuffer", () => {
+    it("should compose buffer with multiple repetitions", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100); // 1 second buffer
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const composedBuffer = processor.composeBuffer({
+        duration: 1,
+        times: 3
+      }).getBuffer();
+      expect(composedBuffer.duration).toBeCloseTo(3, 1); // Should be 3 seconds long
+    });
+
+    it("should apply fade-in when specified", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const composedBuffer = processor.composeBuffer({
+        duration: 1,
+        times: 2,
+        fadeInDuration: 0.5
+      }).getBuffer();
+      expect(composedBuffer.duration).toBeCloseTo(2, 1);
+    });
+
+    it("should use custom fade-in start volume", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const composedBuffer = processor.composeBuffer({
+        duration: 1,
+        times: 2,
+        fadeInDuration: 0.5,
+        fadeInStartVolume: 0.2
+      }).getBuffer();
+      expect(composedBuffer.duration).toBeCloseTo(2, 1);
+    });
+
+    it("should trim to timeEnd when specified", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const composedBuffer = processor.composeBuffer({
+        duration: 1,
+        times: 2,
+        timeEnd: 0.5
+      }).getBuffer();
+      expect(composedBuffer.duration).toBeCloseTo(0.5, 1);
+    });
+
+    it("should apply micro fades between loops", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        { microFadeInDurationInMs: 50 }
+      );
+      const composedBuffer = processor.composeBuffer({
+        duration: 1,
+        times: 2
+      }).getBuffer();
+      expect(composedBuffer.duration).toBeCloseTo(2, 1);
     });
   });
 });
