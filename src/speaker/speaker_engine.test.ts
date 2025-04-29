@@ -2727,6 +2727,21 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
     // Verify playWithConfig was not called since speaker is no longer in playing tracks
     expect(newSpeaker.playWithConfig).not.toHaveBeenCalled();
   });
+
+  it("should throw error when base track is not found", () => {
+    // Set up speaker engine with no base track
+    speakerEngine.playingTracks = [null];
+    speakerEngine.speakers = [mockSpeakerTrack];
+
+    // Mock getSpeakerTrackById to return null for base track
+    jest.spyOn(speakerEngine, "getSpeakerTrackById").mockImplementation((id: number): SpeakerTrack => {
+      if (id === mockSpeakerTrack.data.id) return mockSpeakerTrack as unknown as SpeakerTrack;
+      throw new Error("Track not found");
+    });
+
+    // Expect error to be thrown
+    expect(() => speakerEngine.updateNonBaseTracks()).toThrow("Base track not found");
+  });
 });
 
 describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
