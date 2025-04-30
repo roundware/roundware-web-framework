@@ -18,6 +18,7 @@ import {
   playlistTrackLog,
   random,
   randomInt,
+  silenceAudioBase64,
   speakerLog,
   timestamp,
   UNLOCK_AUDIO_EVENTS,
@@ -60,6 +61,12 @@ describe("cleanAudioURL", () => {
     jest.spyOn(global.navigator, "platform", "get").mockReturnValue("iPhone");
     const result = cleanAudioURL("//example.com/test.wav", true);
     expect(result).toBe("//example.com/test.m4a");
+  });
+
+  it("should not convert to m4a on non-iOS devices even when useM4AforIos is true", () => {
+    jest.spyOn(global.navigator, "platform", "get").mockReturnValue("Windows");
+    const result = cleanAudioURL("//example.com/test.wav", true);
+    expect(result).toBe("//example.com/test.mp3");
   });
 });
 
@@ -184,10 +191,90 @@ describe("isIos", () => {
     expect(result).toBe(true);
   });
 
+  it("should return true on iPad Simulator", () => {
+    jest.spyOn(global.navigator, "platform", "get").mockReturnValue("iPad Simulator");
+    const result = isIos();
+    expect(result).toBe(true);
+  });
+
+  it("should return true on iPhone Simulator", () => {
+    jest.spyOn(global.navigator, "platform", "get").mockReturnValue("iPhone Simulator");
+    const result = isIos();
+    expect(result).toBe(true);
+  });
+
+  it("should return true on iPod Simulator", () => {
+    jest.spyOn(global.navigator, "platform", "get").mockReturnValue("iPod Simulator");
+    const result = isIos();
+    expect(result).toBe(true);
+  });
+
+  it("should return true on iPad", () => {
+    jest.spyOn(global.navigator, "platform", "get").mockReturnValue("iPad");
+    const result = isIos();
+    expect(result).toBe(true);
+  });
+
+  it("should return true on iPod", () => {
+    jest.spyOn(global.navigator, "platform", "get").mockReturnValue("iPod");
+    const result = isIos();
+    expect(result).toBe(true);
+  });
+
+  it("should return true for iPad on iOS 13", () => {
+    // Mock navigator.userAgent to include "Mac"
+    Object.defineProperty(global.navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0 Safari/605.1.15',
+      configurable: true
+    });
+    
+    // Mock document to include ontouchend
+    Object.defineProperty(global.document, 'ontouchend', {
+      value: {},
+      configurable: true
+    });
+
+    const result = isIos();
+    expect(result).toBe(true);
+  });
+
   it("should return false on non-iOS platform", () => {
+    // Mock platform to Windows
     jest.spyOn(global.navigator, "platform", "get").mockReturnValue("Windows");
+    
+    // Mock userAgent to not include Mac
+    Object.defineProperty(global.navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      configurable: true
+    });
+
     const result = isIos();
     expect(result).toBe(false);
+  });
+
+  it("should return false when userAgent includes Mac but ontouchend is not in document", () => {
+    // Mock platform to Windows
+    jest.spyOn(global.navigator, "platform", "get").mockReturnValue("Windows");
+    
+    // Mock userAgent to include Mac
+    Object.defineProperty(global.navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0 Safari/605.1.15',
+      configurable: true
+    });
+
+    // Mock document to not have ontouchend property
+    const originalDocument = global.document;
+    global.document = {
+      ...originalDocument,
+      ontouchend: undefined
+    } as Document;
+    delete (global.document as any).ontouchend;
+
+    const result = isIos();
+    expect(result).toBe(false);
+
+    // Restore original document
+    global.document = originalDocument;
   });
 });
 
@@ -255,6 +342,11 @@ describe("isNearlyEqual", () => {
 
   it("should use custom tolerance when provided", () => {
     expect(isNearlyEqual(0.9999, 1, 0.0001)).toBe(true);
+  });
+
+  it("should use default tolerance when not provided", () => {
+    expect(isNearlyEqual(0.99, 1)).toBe(true); // Within default tolerance of 0.015
+    expect(isNearlyEqual(0.98, 1)).toBe(false); // Outside default tolerance of 0.015
   });
 
   it("should handle very small differences", () => {
@@ -534,6 +626,167 @@ describe("makeAudioSafeToPlay", () => {
     await eventHandler(event);
 
     expect(mockAudioElement.src).toBe(expectedSource);
+    expect(mockOnSuccess).toHaveBeenCalled();
+  });
+
+  it("should handle play failure in catch block", async () => {
+    // Mock play to throw an error
+    mockAudioElement.play = jest.fn().mockImplementation(() => {
+      throw new Error("Play error");
+    });
+    const expectedSource = "test.mp3";
+
+    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, mockOnSuccess, expectedSource);
+
+    // Simulate an unlock event
+    const event = new Event("touchend");
+    const eventHandler = (window.addEventListener as jest.Mock).mock.calls[0][1];
+    await eventHandler(event);
+
+    expect(mockAudioElement.src).toBe(expectedSource);
+    expect(mockOnSuccess).toHaveBeenCalled();
+    expect(mockConsoleError).toHaveBeenCalledWith('failed to make safe', expect.any(Error));
+  });
+
+  it("should handle error thrown during play attempt", async () => {
+    // Mock play to throw an error directly
+    mockAudioElement.play = jest.fn().mockImplementation(() => {
+      throw new Error("Direct play error");
+    });
+    const expectedSource = "test.mp3";
+
+    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, mockOnSuccess, expectedSource);
+
+    // Simulate an unlock event
+    const event = new Event("touchend");
+    const eventHandler = (window.addEventListener as jest.Mock).mock.calls[0][1];
+    await eventHandler(event);
+
+    expect(mockAudioElement.src).toBe(expectedSource);
+    expect(mockOnSuccess).toHaveBeenCalled();
+    expect(mockConsoleError).toHaveBeenCalledWith('failed to make safe', expect.any(Error));
+  });
+
+  it("should handle error when no expected source is provided", async () => {
+    // Mock play to throw an error synchronously
+    mockAudioElement.play = jest.fn().mockImplementation(() => {
+      throw new Error("Direct play error");
+    });
+
+    // Mock addEventListener to throw an error synchronously
+    mockAudioElement.addEventListener = jest.fn().mockImplementation(() => {
+      throw new Error("Event listener error");
+    });
+
+    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, mockOnSuccess);
+
+    // Simulate an unlock event
+    const event = new Event("touchend");
+    const eventHandler = (window.addEventListener as jest.Mock).mock.calls[0][1];
+    await eventHandler(event);
+
+    expect(mockAudioElement.src).toBe(silenceAudioBase64);
+    expect(mockOnSuccess).toHaveBeenCalled();
+    expect(mockConsoleError).toHaveBeenCalledWith('failed to make safe', expect.any(Error));
+  });
+
+  it("should return early if already playing", async () => {
+    const expectedSource = "test.mp3";
+    const mockHandler = jest.fn();
+    
+    // Mock audioContext.resume to resolve immediately
+    mockAudioContext.resume = jest.fn().mockResolvedValue(undefined);
+    
+    // Mock window.addEventListener to capture the event handler
+    (window.addEventListener as jest.Mock).mockImplementation((event, handler) => {
+      mockHandler.mockImplementation(handler);
+    });
+
+    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, mockOnSuccess, expectedSource);
+
+    // Simulate first event to set isAlreadyPlaying to true
+    await mockHandler();
+    expect(mockAudioElement.src).toBe(silenceAudioBase64);
+    
+    // Wait for any pending promises
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Simulate second event - should return early
+    await mockHandler();
+    expect(mockAudioElement.src).toBe(silenceAudioBase64);
+  });
+
+  it("should work with default onSuccess callback", async () => {
+    const expectedSource = "test.mp3";
+    
+    // Mock audioContext.resume to resolve immediately
+    mockAudioContext.resume = jest.fn().mockResolvedValue(undefined);
+    
+    // Mock window.addEventListener to capture the event handler
+    const mockHandler = jest.fn();
+    (window.addEventListener as jest.Mock).mockImplementation((event, handler) => {
+      mockHandler.mockImplementation(handler);
+    });
+
+    // Call makeAudioSafeToPlay without providing onSuccess
+    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, undefined, expectedSource);
+
+    // Simulate event
+    await mockHandler();
+    expect(mockAudioElement.src).toBe(silenceAudioBase64);
+  });
+
+  it("should handle play error with expected source", async () => {
+    const expectedSource = "test.mp3";
+    
+    // Mock play to reject with an error
+    mockAudioElement.play = jest.fn().mockRejectedValue(new Error("Play failed"));
+    
+    // Mock audioContext.resume to resolve immediately
+    mockAudioContext.resume = jest.fn().mockResolvedValue(undefined);
+    
+    // Mock window.addEventListener to capture the event handler
+    const mockHandler = jest.fn();
+    (window.addEventListener as jest.Mock).mockImplementation((event, handler) => {
+      mockHandler.mockImplementation(handler);
+    });
+
+    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, mockOnSuccess, expectedSource);
+
+    // Simulate event
+    await mockHandler();
+    
+    // Wait for any pending promises
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    expect(mockAudioElement.src).toBe(expectedSource);
+    expect(mockConsoleError).toHaveBeenCalledWith('failed to make safe', expect.any(Error), expectedSource);
+    expect(mockOnSuccess).toHaveBeenCalled();
+  });
+
+  it("should handle play rejection without expected source", async () => {
+    // Mock play to reject with an error
+    mockAudioElement.play = jest.fn().mockRejectedValue(new Error("Play failed"));
+    
+    // Mock audioContext.resume to resolve immediately
+    mockAudioContext.resume = jest.fn().mockResolvedValue(undefined);
+    
+    // Mock window.addEventListener to capture the event handler
+    const mockHandler = jest.fn();
+    (window.addEventListener as jest.Mock).mockImplementation((event, handler) => {
+      mockHandler.mockImplementation(handler);
+    });
+
+    makeAudioSafeToPlay(mockAudioElement, mockAudioContext, mockOnSuccess);
+
+    // Simulate event
+    await mockHandler();
+    
+    // Wait for any pending promises
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    expect(mockAudioElement.src).toBe(silenceAudioBase64);
+    expect(mockConsoleError).toHaveBeenCalledWith('failed to make safe', expect.any(Error), undefined);
     expect(mockOnSuccess).toHaveBeenCalled();
   });
 
