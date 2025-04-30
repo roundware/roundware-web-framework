@@ -460,12 +460,42 @@ describe("Mixer", () => {
     expect(() => mixer.stop()).not.toThrow();
   });
 
-
-
   it("should pause playlist when stopping", () => {
     const mockPause = jest.fn();
     mixer.playlist = { pause: mockPause } as unknown as Playlist;
     mixer.stop();
     expect(mockPause).toHaveBeenCalled();
+  });
+
+  it("should call speaker engine play and stop methods", async () => {
+    // Mock initContext to prevent it from overwriting our setup
+    const originalInitContext = mixer.initContext;
+    mixer.initContext = jest.fn();
+    
+    // Mock the speaker engine methods
+    const mockPlay = jest.fn();
+    const mockStop = jest.fn();
+    
+    // Create a proper speaker engine instance
+    mixer.speakerEngine = new SpeakerEngine(
+      mockClient.speakers(),
+      mixer.audioContext,
+      { mode: "stream" }
+    );
+    
+    // Spy on the methods
+    jest.spyOn(mixer.speakerEngine, "play").mockImplementation(mockPlay);
+    jest.spyOn(mixer.speakerEngine, "stop").mockImplementation(mockStop);
+    
+    // Test play
+    await mixer.play();
+    expect(mockPlay).toHaveBeenCalled();
+    
+    // Test stop
+    mixer.stop();
+    expect(mockStop).toHaveBeenCalled();
+    
+    // Restore original initContext
+    mixer.initContext = originalInitContext;
   });
 });
