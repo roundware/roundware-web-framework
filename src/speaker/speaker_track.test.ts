@@ -131,6 +131,54 @@ describe('SpeakerTrack', () => {
       expect(speakerTrack.uri).toBe(mockData.uri);
       expect(speakerTrack.calculatedVolume).toBe(0.05); // NEARLY_ZERO
     });
+
+    it('should handle missing attenuation border', () => {
+      const dataWithoutBorder = {
+        ...mockData,
+        attenuation_border: undefined,
+      };
+
+      const track = new SpeakerTrack({
+        data: dataWithoutBorder,
+        audioContext: mockAudioContext,
+        config: mockConfig,
+        groupId: 1,
+      });
+
+      expect(track.attenuationBorderPolygon).toBeUndefined();
+      expect(track.attenuationBorderLineString).toBeUndefined();
+    });
+
+    it('should handle attenuation border conversion error', () => {
+      const mockError = new Error('Invalid attenuation border data');
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const mockLineToPolygon = require('@turf/line-to-polygon');
+      mockLineToPolygon.mockImplementation(() => {
+        throw mockError;
+      });
+
+      const dataWithBorder: ISpeakerData = {
+        ...mockData,
+        attenuation_border: {
+          type: 'LineString',
+          coordinates: [[0, 0], [1, 1]] as Position[],
+        } as LineString,
+      };
+
+      new SpeakerTrack({
+        data: dataWithBorder,
+        audioContext: mockAudioContext,
+        config: mockConfig,
+        groupId: 1,
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Error converting attenuation border to polygon:',
+        mockError,
+        dataWithBorder
+      );
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('constructor boundary conversion', () => {
@@ -308,6 +356,17 @@ describe('SpeakerTrack', () => {
       global.XMLHttpRequest = jest.fn(() => mockXHR) as any;
     });
 
+    it('should return early if request is null when onload is called', () => {
+      const mockDecodeAudioData = jest.fn();
+      mockAudioContext.decodeAudioData = mockDecodeAudioData;
+
+      speakerTrack.loadBuffer();
+      speakerTrack.request = null; // Clear the request before onload
+      mockXHR.onload();
+
+      expect(mockDecodeAudioData).not.toHaveBeenCalled();
+    });
+
     it('should log error when audio decoding fails', () => {
       const mockError = new Error('Decoding failed');
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
@@ -369,6 +428,49 @@ describe('SpeakerTrack', () => {
           fadeInDuration: 1,
           pan: 0,
         });
+      });
+
+      it('should throw error when buffer source or buffer is null when onended is called', () => {
+        // Set up initial buffer source
+        speakerTrack.playWithConfig({
+          duration: 10,
+          times: 1,
+          offset: 0,
+          fadeInDuration: 1,
+          pan: 0,
+        });
+
+        // @ts-ignore - accessing private property for test
+        const bufferSource = speakerTrack.bufferSource;
+        
+        // Clear the buffer source
+        // @ts-ignore - accessing private property for test
+        speakerTrack.bufferSource = null;
+
+        // Call onended directly on the buffer source
+       
+
+        // Reset and test with buffer source but null buffer
+        speakerTrack.playWithConfig({
+          duration: 10,
+          times: 1,
+          offset: 0,
+          fadeInDuration: 1,
+          pan: 0,
+        });
+
+        // @ts-ignore - accessing private property for test
+        const bufferSource2 = speakerTrack.bufferSource as IAudioBufferSourceNode<IAudioContext>;
+        
+        // Clear the buffer
+        if (bufferSource2) {
+          bufferSource2.buffer = null;
+        }
+
+        // Call onended directly on the buffer source
+        expect(() => bufferSource2?.onended?.({} as Event)).toThrow(
+          'Previously playing source was not cleared before track ended'
+        );
       });
 
       it('should emit trackFinished when track completes normally', () => {
@@ -435,6 +537,124 @@ describe('SpeakerTrack', () => {
 
         const mockBufferEffectsProcessor = new BufferEffectsProcessor(mockBuffer, mockAudioContext, {});
 
+      });
+    });
+
+    describe('playWithConfig buffer effects', () => {
+      beforeEach(() => {
+        speakerTrack.buffer = mockBuffer;
+      });
+
+      it('should compose buffer with correct parameters', () => {
+        const mockComposeBuffer = jest.fn().mockReturnValue({
+          getBuffer: jest.fn().mockReturnValue(mockBuffer),
+        });
+        const mockBufferEffectsProcessor = jest.fn().mockImplementation(() => ({
+          composeBuffer: mockComposeBuffer,
+        }));
+        jest.spyOn(require('./buffer_effects_processor'), 'BufferEffectsProcessor').mockImplementation(mockBufferEffectsProcessor);
+
+        speakerTrack.playWithConfig({
+          duration: 10,
+          times: 2,
+          offset: 0,
+          fadeInDuration: 1,
+          pan: 0,
+        });
+
+        expect(mockBufferEffectsProcessor).toHaveBeenCalledWith(
+          mockBuffer,
+          mockAudioContext,
+          {}
+        );
+        expect(mockComposeBuffer).toHaveBeenCalledWith({
+          duration: 10,
+          times: 2,
+          fadeInDuration: 1,
+          fadeInStartVolume: 0.05,
+        });
+      });
+
+      it('should pass config effects to BufferEffectsProcessor', () => {
+        const mockComposeBuffer = jest.fn().mockReturnValue({
+          getBuffer: jest.fn().mockReturnValue(mockBuffer),
+        });
+        const mockBufferEffectsProcessor = jest.fn().mockImplementation(() => ({
+          composeBuffer: mockComposeBuffer,
+        }));
+        jest.spyOn(require('./buffer_effects_processor'), 'BufferEffectsProcessor').mockImplementation(mockBufferEffectsProcessor);
+
+        const mockEffects = { someEffect: true };
+        speakerTrack.config = { 
+          mode: 'prefetch-sync',
+          effects: mockEffects 
+        } as SpeakerConfig;
+
+        speakerTrack.playWithConfig({
+          duration: 10,
+          times: 2,
+          offset: 0,
+          fadeInDuration: 1,
+          pan: 0,
+        });
+
+        expect(mockBufferEffectsProcessor).toHaveBeenCalledWith(
+          mockBuffer,
+          mockAudioContext,
+          mockEffects
+        );
+      });
+
+      it('should use empty object when config is null', () => {
+        const mockComposeBuffer = jest.fn().mockReturnValue({
+          getBuffer: jest.fn().mockReturnValue(mockBuffer),
+        });
+        const mockBufferEffectsProcessor = jest.fn().mockImplementation(() => ({
+          composeBuffer: mockComposeBuffer,
+        }));
+        jest.spyOn(require('./buffer_effects_processor'), 'BufferEffectsProcessor').mockImplementation(mockBufferEffectsProcessor);
+
+        speakerTrack.config = null as unknown as SpeakerConfig;
+
+        speakerTrack.playWithConfig({
+          duration: 10,
+          times: 2,
+          offset: 0,
+          fadeInDuration: 1,
+          pan: 0,
+        });
+
+        expect(mockBufferEffectsProcessor).toHaveBeenCalledWith(
+          mockBuffer,
+          mockAudioContext,
+          {}
+        );
+      });
+
+      it('should use empty object when config is undefined', () => {
+        const mockComposeBuffer = jest.fn().mockReturnValue({
+          getBuffer: jest.fn().mockReturnValue(mockBuffer),
+        });
+        const mockBufferEffectsProcessor = jest.fn().mockImplementation(() => ({
+          composeBuffer: mockComposeBuffer,
+        }));
+        jest.spyOn(require('./buffer_effects_processor'), 'BufferEffectsProcessor').mockImplementation(mockBufferEffectsProcessor);
+
+        speakerTrack.config = undefined as unknown as SpeakerConfig;
+
+        speakerTrack.playWithConfig({
+          duration: 10,
+          times: 2,
+          offset: 0,
+          fadeInDuration: 1,
+          pan: 0,
+        });
+
+        expect(mockBufferEffectsProcessor).toHaveBeenCalledWith(
+          mockBuffer,
+          mockAudioContext,
+          {}
+        );
       });
     });
 
@@ -896,6 +1116,151 @@ describe('SpeakerTrack', () => {
 
       const ratio = speakerTrack.attenuationRatio([0.5, 0.5]);
       expect(ratio).toBe(-1); // 1 - (2.0 / 1.0)
+    });
+  });
+
+  describe('outerBoundaryContains', () => {
+    it('should return true when point is inside outer boundary', () => {
+      const mockPoint: Point = {
+        type: 'Point',
+        coordinates: [0.5, 0.5],
+      };
+      const mockBooleanPointInPolygon = require('@turf/boolean-point-in-polygon');
+      mockBooleanPointInPolygon.mockReturnValue(true);
+
+      // Mock the outer boundary to be defined
+      speakerTrack.outerBoundary = {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+        },
+        properties: {},
+      };
+
+      const result = speakerTrack.outerBoundaryContains(mockPoint);
+      expect(result).toBe(true);
+    });
+
+    it('should return false when point is outside outer boundary', () => {
+      const mockPoint: Point = {
+        type: 'Point',
+        coordinates: [2, 2],
+      };
+      const mockBooleanPointInPolygon = require('@turf/boolean-point-in-polygon');
+      mockBooleanPointInPolygon.mockReturnValue(false);
+
+      // Mock the outer boundary to be defined
+      speakerTrack.outerBoundary = {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+        },
+        properties: {},
+      };
+
+      const result = speakerTrack.outerBoundaryContains(mockPoint);
+      expect(result).toBe(false);
+    });
+
+    it('should return false when outer boundary is undefined', () => {
+      const mockPoint: Point = {
+        type: 'Point',
+        coordinates: [0.5, 0.5],
+      };
+      speakerTrack.outerBoundary = undefined;
+
+      const result = speakerTrack.outerBoundaryContains(mockPoint);
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('startBufferSource', () => {
+    beforeEach(() => {
+      speakerTrack.buffer = mockBuffer;
+      speakerTrack.audioContext = mockAudioContext;
+      mockAudioContext.createBufferSource = jest.fn().mockReturnValue(mockBufferSource);
+    });
+
+    it('should start buffer source and emit event when buffer source exists', () => {
+      const mockWhen = 100;
+      const mockOffset = 10;
+      const emitSpy = jest.spyOn(speakerTrack, 'emit');
+
+      // First call playWithConfig to set up the buffer source
+      speakerTrack.playWithConfig({
+        duration: 10,
+        times: 1,
+        offset: mockOffset,
+        fadeInDuration: 0,
+        pan: 0,
+      });
+
+      // Then call startBufferSource
+      speakerTrack.startBufferSource(mockWhen, mockOffset);
+
+      expect(mockBufferSource.start).toHaveBeenCalledWith(mockWhen, mockOffset);
+      expect(speakerTrack.bufferSourcePlaying).toBe(true);
+      expect(speakerTrack.startedAtContextTime).toBe(mockWhen - mockOffset);
+      expect(emitSpy).toHaveBeenCalledWith('startingBufferSource', {
+        when: mockWhen,
+        offset: mockOffset,
+      });
+    });
+
+    it('should do nothing when buffer source is null', () => {
+      const emitSpy = jest.spyOn(speakerTrack, 'emit');
+
+      speakerTrack.startBufferSource(100, 10);
+
+      expect(mockBufferSource.start).not.toHaveBeenCalled();
+      expect(emitSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('stopBufferSource', () => {
+    beforeEach(() => {
+      speakerTrack.buffer = mockBuffer;
+      speakerTrack.audioContext = mockAudioContext;
+      mockAudioContext.createBufferSource = jest.fn().mockReturnValue(mockBufferSource);
+      speakerTrack.bufferSourcePlaying = true;
+    });
+
+    it('should stop buffer source and update state when buffer source exists', () => {
+      // First set up the buffer source
+      speakerTrack.playWithConfig({
+        duration: 10,
+        times: 1,
+        offset: 0,
+        fadeInDuration: 0,
+        pan: 0,
+      });
+
+      // Mock console.trace to verify it's called
+      const consoleTraceSpy = jest.spyOn(console, 'trace').mockImplementation();
+
+      speakerTrack.stopBufferSource();
+
+      expect(mockBufferSource.stop).toHaveBeenCalled();
+      expect(consoleTraceSpy).toHaveBeenCalledWith('stopBufferSource');
+      expect(speakerTrack.bufferSourcePlaying).toBe(false);
+
+      // Restore console.trace
+      consoleTraceSpy.mockRestore();
+    });
+
+    it('should do nothing when buffer source is null', () => {
+      const consoleTraceSpy = jest.spyOn(console, 'trace').mockImplementation();
+
+      speakerTrack.stopBufferSource();
+
+      expect(mockBufferSource.stop).not.toHaveBeenCalled();
+      expect(consoleTraceSpy).not.toHaveBeenCalled();
+      expect(speakerTrack.bufferSourcePlaying).toBe(true); // Should remain unchanged
+
+      // Restore console.trace
+      consoleTraceSpy.mockRestore();
     });
   });
 });
