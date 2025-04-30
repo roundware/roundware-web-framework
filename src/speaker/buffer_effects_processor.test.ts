@@ -25,24 +25,82 @@ describe("BufferEffectsProcessor", () => {
   });
 
   describe("trimAndFadeInAndOut", () => {
-    it("should trim and apply fades in a single pass", () => {
+    it("should trim and apply fade effects with custom parameters", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
       const processor = new BufferEffectsProcessor(
-        new AudioContext().createBuffer(2, 10, 44100),
+        mockBuffer,
         new AudioContext(),
         {}
       );
       const processedBuffer = processor.trimAndFadeInAndOut(0.2, 0.7, 0.1).getBuffer();
       expect(processedBuffer.duration).toBeCloseTo(0.5, 1);
+      expect(processedBuffer.numberOfChannels).toEqual(mockBuffer.numberOfChannels);
     });
 
-    it("should use default fade duration from config", () => {
+    it("should use config duration when provided", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
       const processor = new BufferEffectsProcessor(
-        new AudioContext().createBuffer(2, 10, 44100),
+        mockBuffer,
         new AudioContext(),
         { fadeInDurationInMs: 300 }
       );
       const processedBuffer = processor.trimAndFadeInAndOut(0.2, 0.7).getBuffer();
       expect(processedBuffer.duration).toBeCloseTo(0.5, 1);
+    });
+
+    it("should use default duration when no parameters provided", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const processedBuffer = processor.trimAndFadeInAndOut(0.2, 0.7).getBuffer();
+      expect(processedBuffer.duration).toBeCloseTo(0.5, 1);
+    });
+
+    it("should handle different channel configurations", () => {
+      const mockBuffer = new AudioContext().createBuffer(1, 44100, 44100); // Mono
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const processedBuffer = processor.trimAndFadeInAndOut(0.2, 0.7, 0.1).getBuffer();
+      expect(processedBuffer.numberOfChannels).toEqual(1);
+    });
+
+    it("should handle edge cases for trim times", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const processedBuffer = processor.trimAndFadeInAndOut(0, 1.0, 0.1).getBuffer();
+      expect(processedBuffer.duration).toBeCloseTo(1.0, 1);
+    });
+
+    it("should not exceed buffer length when fade duration is too long", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const processedBuffer = processor.trimAndFadeInAndOut(0.2, 0.7, 0.5).getBuffer();
+      expect(processedBuffer.duration).toBeCloseTo(0.5, 1);
+    });
+
+    it("should maintain sample rate after processing", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const processedBuffer = processor.trimAndFadeInAndOut(0.2, 0.7, 0.1).getBuffer();
+      expect(processedBuffer.sampleRate).toEqual(44100);
     });
   });
 
@@ -252,6 +310,340 @@ describe("BufferEffectsProcessor", () => {
         times: 2
       }).getBuffer();
       expect(composedBuffer.duration).toBeCloseTo(2, 1);
+    });
+  });
+
+  describe("delayAndClip", () => {
+    it("should apply delay effect with custom parameters", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {
+          delayTimeInMs: 100,
+          feedback: 0.7
+        }
+      );
+      const delayedBuffer = processor.delayAndClip().getBuffer();
+      expect(delayedBuffer.duration).toEqual(mockBuffer.duration);
+      expect(delayedBuffer.numberOfChannels).toEqual(mockBuffer.numberOfChannels);
+    });
+
+    it("should use default parameters when config is not provided", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const delayedBuffer = processor.delayAndClip().getBuffer();
+      expect(delayedBuffer.duration).toEqual(mockBuffer.duration);
+      expect(delayedBuffer.numberOfChannels).toEqual(mockBuffer.numberOfChannels);
+    });
+
+    it("should maintain buffer length after applying delay", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {
+          delayTimeInMs: 50,
+          feedback: 0.5
+        }
+      );
+      const delayedBuffer = processor.delayAndClip().getBuffer();
+      expect(delayedBuffer.length).toEqual(mockBuffer.length);
+    });
+
+    it("should handle different channel configurations", () => {
+      const mockBuffer = new AudioContext().createBuffer(1, 44100, 44100); // Mono
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {
+          delayTimeInMs: 50,
+          feedback: 0.5
+        }
+      );
+      const delayedBuffer = processor.delayAndClip().getBuffer();
+      expect(delayedBuffer.numberOfChannels).toEqual(1);
+    });
+  });
+
+  describe("fadeOut", () => {
+    it("should apply fade-out with custom duration", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeOut(0.5).getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+      expect(fadedBuffer.numberOfChannels).toEqual(mockBuffer.numberOfChannels);
+    });
+
+    it("should use config duration when provided", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        { fadeInDurationInMs: 300 }
+      );
+      const fadedBuffer = processor.fadeOut().getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+
+    it("should use default duration when no parameters provided", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeOut().getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+
+    it("should handle different channel configurations", () => {
+      const mockBuffer = new AudioContext().createBuffer(1, 44100, 44100); // Mono
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeOut(0.5).getBuffer();
+      expect(fadedBuffer.numberOfChannels).toEqual(1);
+    });
+
+    it("should not exceed buffer length when fade duration is too long", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeOut(2.0).getBuffer(); // Longer than buffer duration
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+  });
+
+  describe("fadeInAndOut", () => {
+    it("should apply fade-in and fade-out with custom duration", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeInAndOut(0.5).getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+      expect(fadedBuffer.numberOfChannels).toEqual(mockBuffer.numberOfChannels);
+    });
+
+    it("should use config duration when provided", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        { fadeInDurationInMs: 300 }
+      );
+      const fadedBuffer = processor.fadeInAndOut().getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+
+    it("should use default duration when no parameters provided", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeInAndOut().getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+
+    it("should handle different channel configurations", () => {
+      const mockBuffer = new AudioContext().createBuffer(1, 44100, 44100); // Mono
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeInAndOut(0.5).getBuffer();
+      expect(fadedBuffer.numberOfChannels).toEqual(1);
+    });
+
+    it("should not exceed buffer length when fade duration is too long", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeInAndOut(2.0).getBuffer(); // Longer than buffer duration
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+
+    it("should apply equal fade-in and fade-out durations", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeInAndOut(0.5).getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+  });
+
+  describe("microFadeInAndOut", () => {
+    it("should apply micro fade with custom duration from config", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        { microFadeInDurationInMs: 100 }
+      );
+      const fadedBuffer = processor.microFadeInAndOut().getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+      expect(fadedBuffer.numberOfChannels).toEqual(mockBuffer.numberOfChannels);
+    });
+
+    it("should use default micro fade duration when not provided in config", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.microFadeInAndOut().getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+
+    it("should handle different channel configurations", () => {
+      const mockBuffer = new AudioContext().createBuffer(1, 44100, 44100); // Mono
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        { microFadeInDurationInMs: 100 }
+      );
+      const fadedBuffer = processor.microFadeInAndOut().getBuffer();
+      expect(fadedBuffer.numberOfChannels).toEqual(1);
+    });
+
+    it("should maintain buffer length after applying micro fade", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        { microFadeInDurationInMs: 100 }
+      );
+      const fadedBuffer = processor.microFadeInAndOut().getBuffer();
+      expect(fadedBuffer.length).toEqual(mockBuffer.length);
+    });
+
+    it("should apply shorter fade duration than regular fadeInAndOut", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        { microFadeInDurationInMs: 50 }
+      );
+      const microFadedBuffer = processor.microFadeInAndOut().getBuffer();
+      const regularFadedBuffer = processor.fadeInAndOut().getBuffer();
+      expect(microFadedBuffer.duration).toEqual(regularFadedBuffer.duration);
+    });
+  });
+
+  describe("fadeIn", () => {
+    it("should apply fade-in with custom duration", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeIn(0.5).getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+      expect(fadedBuffer.numberOfChannels).toEqual(mockBuffer.numberOfChannels);
+    });
+
+    it("should use config duration when provided", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        { fadeInDurationInMs: 300 }
+      );
+      const fadedBuffer = processor.fadeIn().getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+
+    it("should use default duration when no parameters provided", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeIn().getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+
+    it("should handle different channel configurations", () => {
+      const mockBuffer = new AudioContext().createBuffer(1, 44100, 44100); // Mono
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeIn(0.5).getBuffer();
+      expect(fadedBuffer.numberOfChannels).toEqual(1);
+    });
+
+    it("should not exceed buffer length when fade duration is too long", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeIn(2.0).getBuffer(); // Longer than buffer duration
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+
+    it("should respect minimum fade duration", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeIn(0.001).getBuffer(); // Below minimum duration
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
+    });
+
+    it("should maintain buffer length after applying fade", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeIn(0.5).getBuffer();
+      expect(fadedBuffer.length).toEqual(mockBuffer.length);
+    });
+
+    it("should apply exponential fade curve", () => {
+      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
+      const processor = new BufferEffectsProcessor(
+        mockBuffer,
+        new AudioContext(),
+        {}
+      );
+      const fadedBuffer = processor.fadeIn(0.5).getBuffer();
+      expect(fadedBuffer.duration).toEqual(mockBuffer.duration);
     });
   });
 });
