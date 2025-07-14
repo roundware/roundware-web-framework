@@ -7,14 +7,23 @@ export interface ISpeakerData {
   id: number;
   maxvolume: number;
   minvolume: number;
-  attenuation_border?: LineString;
-  boundary?: MultiLineString;
-  attenuation_distance: number;
   uri: string;
+  backupuri?: string;
+  attenuation_distance: number;
   shape?: MultiPolygon;
+  boundary?: MultiLineString;
+  attenuation_border?: LineString;
   parents?: number[];
   children?: number[];
+  activeyn?: boolean;
+  code?: string;
+  created?: string; // or Date
+  updated?: string; // or Date
+  fill_color?: string;
+  border_color?: string;
+  project_id?: number;
 }
+
 
 export interface ISpeakerFilters {}
 
