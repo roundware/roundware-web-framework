@@ -279,7 +279,7 @@ export class BufferEffectsProcessor {
     return this;
   }
 
-  getBuffer(): AudioBuffer {
+  getBuffer(): IAudioBuffer {
     return this.audioBuffer;
   }
 

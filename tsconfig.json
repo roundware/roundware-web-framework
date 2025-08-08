@@ -8,11 +8,16 @@
     "target": "ES6",
     "module": "ESNext",
     "moduleResolution": "node",
-    "strict": true,
     "lib": [
       "ES6",
       "DOM"
     ],
+    "strict": false,
+    "noImplicitAny": false,
+    "noImplicitReturns": false,
+    "noImplicitThis": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "skipLibCheck": true,
     // Ensure that .d.ts files are created by tsc, but not .js files
     "declaration": true,

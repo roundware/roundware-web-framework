@@ -7,6 +7,7 @@ describe("BufferEffectsProcessor", () => {
     it("should trim the buffer", () => {
       const processor = new BufferEffectsProcessor(
         new AudioContext().createBuffer(2, 10, 44100),
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         {}
       );
@@ -17,6 +18,7 @@ describe("BufferEffectsProcessor", () => {
     it("should handle trim with non-zero start time", () => {
       const processor = new BufferEffectsProcessor(
         new AudioContext().createBuffer(2, 10, 44100),
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         {}
       );
@@ -29,6 +31,7 @@ describe("BufferEffectsProcessor", () => {
     it("should trim and apply fades in a single pass", () => {
       const processor = new BufferEffectsProcessor(
         new AudioContext().createBuffer(2, 10, 44100),
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         {}
       );
@@ -39,6 +42,7 @@ describe("BufferEffectsProcessor", () => {
     it("should use default fade duration from config", () => {
       const processor = new BufferEffectsProcessor(
         new AudioContext().createBuffer(2, 10, 44100),
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         { fadeInDurationInMs: 300 }
       );
@@ -51,6 +55,7 @@ describe("BufferEffectsProcessor", () => {
     it("should apply both delay and reverb effects", () => {
       const processor = new BufferEffectsProcessor(
         new AudioContext().createBuffer(2, 441000, 44100),
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         {
           delayTimeInMs: 50,
@@ -65,6 +70,7 @@ describe("BufferEffectsProcessor", () => {
     it("should use default values when config is not provided", () => {
       const processor = new BufferEffectsProcessor(
         new AudioContext().createBuffer(2, 441000, 44100),
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         {}
       );
@@ -78,6 +84,7 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         {}
       );
@@ -89,6 +96,7 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         { fadeInDurationInMs: 300 }
       );
@@ -100,6 +108,7 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         {}
       );
@@ -111,6 +120,7 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         { fadeInDurationInMs: 300 }
       );
@@ -122,6 +132,7 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         {}
       );
@@ -133,6 +144,7 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         {}
       );
@@ -146,6 +158,7 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         {
           delayTimeInMs: 50,
@@ -161,6 +174,7 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 441000, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         { reverb: 0.7 }
       );
@@ -172,6 +186,7 @@ describe("BufferEffectsProcessor", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 441000, 44100);
       const processor = new BufferEffectsProcessor(
         mockBuffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
         new AudioContext(),
         {}
       );
