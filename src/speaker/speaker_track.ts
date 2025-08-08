@@ -171,7 +171,12 @@ export class SpeakerTrack extends EventEmitter<{
       const volumeGradient =
         this.minVolume + range * this.attenuationRatio(listenerPoint);
 
-      return volumeGradient;
+      // Clamp within [minVolume, maxVolume]
+      const clamped = Math.max(
+        this.minVolume,
+        Math.min(this.maxVolume, volumeGradient)
+      );
+      return clamped;
     } else {
       return this.minVolume;
     }
@@ -293,15 +298,25 @@ export class SpeakerTrack extends EventEmitter<{
 
     if (!this.gainNode) {
       this.gainNode = this.audioContext.createGain();
-      this.gainNode.gain.value = this.calculatedVolume;
+      const MIN_AUDIBLE = 0.05;
+      const initial = Number.isFinite(this.calculatedVolume)
+        ? Math.max(MIN_AUDIBLE, this.calculatedVolume)
+        : MIN_AUDIBLE;
+      this.gainNode.gain.value = initial;
     }
 
     // connections:
     this.bufferSource.connect(this.gainNode);
-    const panner = this.audioContext.createStereoPanner();
-    panner.pan.value = pan;
-    this.gainNode.connect(panner);
-    panner.connect(this.audioContext.destination);
+    // TEMP: bypass panning to test if StereoPannerNode churn contributes to dropouts
+    const BYPASS_PANNER_FOR_TEST = true;
+    if (BYPASS_PANNER_FOR_TEST) {
+      this.gainNode.connect(this.audioContext.destination);
+    } else {
+      const panner = this.audioContext.createStereoPanner();
+      panner.pan.value = pan;
+      this.gainNode.connect(panner);
+      panner.connect(this.audioContext.destination);
+    }
 
     const bufferSource = this.bufferSource;
 
@@ -419,9 +434,16 @@ export class SpeakerTrack extends EventEmitter<{
     }
 
     this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
+    // Ensure target is safe positive and bounded
+    const MIN_AUDIBLE = 0.05; // test floor to avoid full mutes
+    const safeTarget = Math.max(
+      MIN_AUDIBLE,
+      Math.min(1, Number.isFinite(volume) ? volume : 0)
+    );
+    const RAMP_SECONDS_TEST = 0.6; // shorter ramp to reduce long dips
     this.gainNode.gain.exponentialRampToValueAtTime(
-      volume || NEARLY_ZERO,
-      this.audioContext.currentTime + FADE_DURATION_SECONDS
+      safeTarget,
+      this.audioContext.currentTime + RAMP_SECONDS_TEST
     );
   }
 

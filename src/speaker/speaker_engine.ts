@@ -35,6 +35,8 @@ export class SpeakerEngine extends EventEmitter<{
   speakers: SpeakerTrack[] = [];
   audioContext: IAudioContext;
   playingTracks: (number | null)[] = [];
+  private debugStatusElement: HTMLElement | null = null;
+  private debugInterval: NodeJS.Timeout | null = null;
 
   group: Map<number, number | null> = new Map();
 
@@ -44,6 +46,7 @@ export class SpeakerEngine extends EventEmitter<{
     config: SpeakerConfig
   ) {
     super();
+    this.createDebugStatusDisplay();
     this.speakers = speakersData.map(
       (data) =>
         new SpeakerTrack({
@@ -81,6 +84,75 @@ export class SpeakerEngine extends EventEmitter<{
     });
   }
 
+  private createDebugStatusDisplay() {
+    // Only create if we're in a browser environment
+    if (typeof document === "undefined") return;
+
+    // Remove existing display if any
+    const existing = document.getElementById("roundware-debug-status");
+    if (existing) existing.remove();
+
+    this.debugStatusElement = document.createElement("div");
+    this.debugStatusElement.id = "roundware-debug-status";
+    this.debugStatusElement.style.cssText = `
+      position: fixed;
+      top: 5px;
+      left: 5px;
+      width: 80%;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 8px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 10px;
+      line-height: 1.2;
+      z-index: 9999;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    `;
+    document.body.appendChild(this.debugStatusElement);
+
+    // Update status every second
+    this.debugInterval = setInterval(() => {
+      this.updateDebugStatus();
+    }, 1000);
+  }
+
+  private updateDebugStatus() {
+    if (!this.debugStatusElement) return;
+
+    try {
+      const ctx = this.audioContext;
+      const baseTrackId = this.currentBaseTrackId;
+      const baseTrack = baseTrackId
+        ? this.getSpeakerTrackById(baseTrackId)
+        : null;
+      const bufferSourcePlaying = baseTrack?.bufferSourcePlaying || false;
+      const currentBaseVolume =
+        (baseTrack as any)?.gainNode?.gain?.value ?? null;
+
+      this.debugStatusElement.innerHTML = `
+        <div><strong>Roundware Debug v5</strong></div>
+        <div>Audio: ${ctx.state}</div>
+        <div>Time: ${ctx.currentTime.toFixed(1)}s</div>
+        <div>Playing: ${this.playing}</div>
+        <div>Base: ${baseTrackId || "none"}</div>
+        <div>Buffer: ${bufferSourcePlaying ? "yes" : "no"}</div>
+        <div>BaseVol: ${
+          currentBaseVolume !== null
+            ? Number(currentBaseVolume).toFixed(2)
+            : "n/a"
+        }</div>
+        <div>Tracks: ${
+          this.playingTracks.filter((t) => t !== null).length
+        }</div>
+        <div>Speakers: ${this.speakers.length}</div>
+      `;
+    } catch (e) {
+      this.debugStatusElement.innerHTML = `<div>Error: ${e.message}</div>`;
+    }
+  }
+
   playing = false;
   public async play(): Promise<void> {
     console.log(this.loadingStrategy, this.mode);
@@ -113,7 +185,19 @@ export class SpeakerEngine extends EventEmitter<{
     });
     this.playing = false;
     this.playingTracks = [];
+    this.cleanupDebugDisplay();
     this.emit("stop");
+  }
+
+  private cleanupDebugDisplay() {
+    if (this.debugInterval) {
+      clearInterval(this.debugInterval);
+      this.debugInterval = null;
+    }
+    if (this.debugStatusElement) {
+      this.debugStatusElement.remove();
+      this.debugStatusElement = null;
+    }
   }
 
   updateParams(params: IMixParams) {
@@ -175,9 +259,14 @@ export class SpeakerEngine extends EventEmitter<{
           // new base track selected
           if (!baseTrack?.buffer) {
             baseTrack?.loadBuffer();
-            baseTrack?.on("loaded", () => {
+            // attach a one-time loaded listener to avoid duplicate callbacks across frequent updates
+            const onLoaded = () => {
+              try {
+                baseTrack?.off("loaded", onLoaded);
+              } catch {}
               this.playAsBaseTrack(baseTrack, false);
-            });
+            };
+            baseTrack?.on("loaded", onLoaded);
           } else {
             this.playAsBaseTrack(baseTrack, false);
           }
@@ -418,7 +507,11 @@ export class SpeakerEngine extends EventEmitter<{
 
         if (!newSpeaker.buffer) {
           let now = this.audioContext.currentTime;
-          newSpeaker.on("loaded", () => {
+          // attach a one-time loaded listener to avoid duplicate callbacks across frequent updates
+          const onLoaded = () => {
+            try {
+              newSpeaker.off("loaded", onLoaded);
+            } catch {}
             if (!this.playingTracks.some((t) => t === newSpeaker.data.id))
               return;
             // offset;
@@ -432,7 +525,8 @@ export class SpeakerEngine extends EventEmitter<{
               times: Math.ceil(baseTrackDuration / duration),
               pan: panPosition,
             });
-          });
+          };
+          newSpeaker.on("loaded", onLoaded);
           newSpeaker.loadBuffer();
         }
         // playing the new speaker
