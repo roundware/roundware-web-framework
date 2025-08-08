@@ -19,8 +19,7 @@ const fastGeolocationPositionOptions = {
 // subsequent position monitoring should be high-accuracy
 const accurateGeolocationPositionOptions = {
   enableHighAccuracy: true,
-  timeout: Infinity,
-  maximumAge: 0,
+  timeout: 10000,
 };
 
 /** Responsible for tracking the user's position, when geo listening is enabled and the browser is capable
@@ -38,6 +37,7 @@ export class GeoPosition {
   private _initialGeolocationPromise: Promise<Coordinates>;
   private defaultCoords: Coordinates;
   private _lastCoords: Coordinates;
+  private _lastUpdateTime: number | null = null;
   geolocation: Geolocation;
   isEnabled: boolean;
   updateCallback: CallableFunction;
@@ -55,6 +55,7 @@ export class GeoPosition {
     this._initialGeolocationPromise = Promise.resolve(initialCoords);
     this.defaultCoords = initialCoords;
     this._lastCoords = initialCoords;
+    this._lastUpdateTime = null;
     this.geolocation = navigator.geolocation;
     this.isEnabled =
       navigator.geolocation && geoListenMode === GeoListenMode.AUTOMATIC;
@@ -143,9 +144,25 @@ export class GeoPosition {
       }, fastGeolocationPositionOptions.timeout + 1000);
     });
 
+    console.log('🚨 FRAMEWORK: About to call watchPosition with options:', accurateGeolocationPositionOptions);
+
     this._geoWatchID = geolocation.watchPosition(
       (updatedPosition) => {
         const { coords } = updatedPosition;
+        const now = Date.now();
+        const timeSinceLastUpdate = this._lastUpdateTime ? now - this._lastUpdateTime : 0;
+
+        console.log(`🚨 LOCATION UPDATE: ${timeSinceLastUpdate}ms since last update`);
+
+        // Only process updates every 3 seconds
+        if (timeSinceLastUpdate < 3000 && this._lastUpdateTime) {
+          console.log(`🚨 THROTTLED: Ignoring update (too soon)`);
+          return;
+        }
+
+        console.log(`🚨 COORDS: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`);
+
+        this._lastUpdateTime = now;
         this._lastCoords = coords;
         this._geoPositionStatus = true;
         logger.info("Received updated geolocation:", coords);
@@ -157,7 +174,6 @@ export class GeoPosition {
         );
         this._geoPositionStatus = error.code;
       },
-
       accurateGeolocationPositionOptions
     );
   }
