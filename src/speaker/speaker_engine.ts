@@ -8,6 +8,8 @@ import { FADE_IN_DURATION_SECONDS, isNearlyZero } from "../utils";
 import { SpeakerTrack } from "./speaker_track";
 import { LoadingStrategy, SpeakerUtils } from "./speaker_utils";
 
+const DEBUG_SPEAKER_DISPLAY = false;
+
 export class SpeakerEngine extends EventEmitter<{
   init: () => void;
   play: () => void;
@@ -46,7 +48,9 @@ export class SpeakerEngine extends EventEmitter<{
     config: SpeakerConfig
   ) {
     super();
-    this.createDebugStatusDisplay();
+    if (DEBUG_SPEAKER_DISPLAY) {
+      this.createDebugStatusDisplay();
+    }
     this.speakers = speakersData.map(
       (data) =>
         new SpeakerTrack({
