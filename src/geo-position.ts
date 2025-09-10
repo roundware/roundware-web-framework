@@ -3,6 +3,7 @@ import { logger } from "./shims";
 import { Coordinates, GeoPositionOptions } from "./types";
 
 const initialGeoTimeoutSeconds = 6;
+const geoUpdateThrottleMs = 0;
 
 const frameworkDefaultCoords: Coordinates = {
   latitude: 42.3140089,
@@ -162,7 +163,7 @@ export class GeoPosition {
         );
 
         // Only process updates every 3 seconds
-        if (timeSinceLastUpdate < 3000 && this._lastUpdateTime) {
+        if (timeSinceLastUpdate < geoUpdateThrottleMs && this._lastUpdateTime) {
           console.log(`🚨 THROTTLED: Ignoring update (too soon)`);
           return;
         }
