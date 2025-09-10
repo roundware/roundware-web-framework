@@ -1,5 +1,5 @@
-import { logger } from "./shims";
 import { GeoListenMode } from "./mixer";
+import { logger } from "./shims";
 import { Coordinates, GeoPositionOptions } from "./types";
 
 const initialGeoTimeoutSeconds = 6;
@@ -144,15 +144,22 @@ export class GeoPosition {
       }, fastGeolocationPositionOptions.timeout + 1000);
     });
 
-    console.log('🚨 FRAMEWORK: About to call watchPosition with options:', accurateGeolocationPositionOptions);
+    console.log(
+      "🚨 FRAMEWORK: About to call watchPosition with options:",
+      accurateGeolocationPositionOptions
+    );
 
     this._geoWatchID = geolocation.watchPosition(
       (updatedPosition) => {
         const { coords } = updatedPosition;
         const now = Date.now();
-        const timeSinceLastUpdate = this._lastUpdateTime ? now - this._lastUpdateTime : 0;
+        const timeSinceLastUpdate = this._lastUpdateTime
+          ? now - this._lastUpdateTime
+          : 0;
 
-        console.log(`🚨 LOCATION UPDATE: ${timeSinceLastUpdate}ms since last update`);
+        console.log(
+          `🚨 LOCATION UPDATE: ${timeSinceLastUpdate}ms since last update`
+        );
 
         // Only process updates every 3 seconds
         if (timeSinceLastUpdate < 3000 && this._lastUpdateTime) {
@@ -160,7 +167,11 @@ export class GeoPosition {
           return;
         }
 
-        console.log(`🚨 COORDS: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`);
+        console.log(
+          `🚨 COORDS: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(
+            6
+          )}`
+        );
 
         this._lastUpdateTime = now;
         this._lastCoords = coords;
