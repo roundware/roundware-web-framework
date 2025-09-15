@@ -411,6 +411,9 @@ export class SpeakerEngine extends EventEmitter<{
   }
 
   updateNonBaseTracks() {
+    // First, ensure all available always-on speakers are playing
+    this.ensureAlwaysOnSpeakersArePlaying();
+
     // loopPointUpdateProbability; should ignore this call?
     const loopPointUpdateProbability =
       this.mixParams.speakerConfig?.loopPointUpdateProbability || 1;
@@ -442,22 +445,31 @@ export class SpeakerEngine extends EventEmitter<{
       return;
     }
 
+    // Get available speakers that are not already playing and not always-on
     let availableSpeakers = this.speakers
       .filter((speaker) => {
         return (
           speaker.calculatedVolume > speaker.minVolume &&
-          !this.playingTracks.includes(speaker.data.id)
+          !this.playingTracks.includes(speaker.data.id) &&
+          !this.isAlwaysOnSpeaker(speaker.data.id) // exclude always-on speakers
         );
       })
       .map((s) => s.data.id);
 
     for (let i = 1; i < this.mode.maxRandom; i++) {
+      const speakerId = this.playingTracks[i];
+      const speaker = speakerId ? this.getSpeakerTrackById(speakerId) : null;
+
+      // Skip probabilistic logic for always-on speakers - they should always play when available
+      if (speaker && this.isAlwaysOnSpeaker(speaker.data.id)) {
+        // Just repeat the loop for always-on speakers
+        this.repeatLoopOnLoopPoint(speaker);
+        continue;
+      }
+
       // slotConsiderationProbability
       const slotConsiderationProbability =
         this.mixParams.speakerConfig?.slotConsiderationProbability || 1;
-
-      const speakerId = this.playingTracks[i];
-      const speaker = speakerId ? this.getSpeakerTrackById(speakerId) : null;
 
       // return if should not update
       if (
@@ -722,6 +734,95 @@ export class SpeakerEngine extends EventEmitter<{
     return found;
   }
 
+  /**
+   * Check if a speaker is configured to always play when available
+   */
+  private isAlwaysOnSpeaker(speakerId: number): boolean {
+    const alwaysOnSpeakers =
+      this.mixParams.speakerConfig?.alwaysOnWhenAvailable || [];
+    return alwaysOnSpeakers.includes(speakerId);
+  }
+
+  /**
+   * Ensure all available always-on speakers are playing
+   */
+  private ensureAlwaysOnSpeakersArePlaying() {
+    const alwaysOnSpeakers =
+      this.mixParams.speakerConfig?.alwaysOnWhenAvailable || [];
+
+    // Find available always-on speakers that are not currently playing
+    const availableAlwaysOnSpeakers = this.speakers.filter((speaker) => {
+      return (
+        alwaysOnSpeakers.includes(speaker.data.id) &&
+        speaker.calculatedVolume > speaker.minVolume &&
+        !this.playingTracks.includes(speaker.data.id)
+      );
+    });
+
+    // Add available always-on speakers to playing tracks
+    for (const speaker of availableAlwaysOnSpeakers) {
+      // Find an available slot (skip slot 0 which is for base track)
+      let availableSlot = -1;
+      for (let i = 1; i < this.mode.maxRandom; i++) {
+        if (this.playingTracks[i] === null) {
+          availableSlot = i;
+          break;
+        }
+      }
+
+      if (availableSlot !== -1) {
+        this.playingTracks[availableSlot] = speaker.data.id;
+        this.emit("newSpeaker", speaker);
+
+        // Start playing the speaker
+        if (!this.playingTracks[0]) {
+          throw new Error(`Base track not found`);
+        }
+
+        const baseTrack = this.getSpeakerTrackById(this.playingTracks[0]);
+        if (!baseTrack?.buffer) throw new Error(`Base track buffer not found`);
+
+        const baseTrackDuration = baseTrack.buffer.duration;
+        const lengths = this.mixParams.speakerConfig?.loopFractions ?? [1];
+        const randomLength = sample(lengths);
+        if (!randomLength) throw new Error(`Random length not found`);
+
+        const duration = baseTrackDuration * randomLength;
+        const panPosition =
+          this.mixParams.speakerConfig?.effects?.pan?.[availableSlot - 1] ?? 0;
+
+        if (!speaker.buffer) {
+          let now = this.audioContext.currentTime;
+          const onLoaded = () => {
+            try {
+              speaker.off("loaded", onLoaded);
+            } catch {}
+            if (!this.playingTracks.some((t) => t === speaker.data.id)) return;
+            const currentTime = this.audioContext.currentTime;
+            const offset = currentTime - now;
+            speaker.playWithConfig({
+              duration,
+              offset,
+              fadeInDuration: FADE_IN_DURATION_SECONDS,
+              times: Math.ceil(baseTrackDuration / duration),
+              pan: panPosition,
+            });
+          };
+          speaker.on("loaded", onLoaded);
+          speaker.loadBuffer();
+        } else {
+          speaker.playWithConfig({
+            duration,
+            offset: 0,
+            times: Math.ceil(baseTrackDuration / duration),
+            fadeInDuration: FADE_IN_DURATION_SECONDS,
+            pan: panPosition,
+          });
+        }
+      }
+    }
+  }
+
   get latestBaseTrack() {
     this.calculateVolumesByLocation();
     // find speakers available in this region
@@ -734,11 +835,25 @@ export class SpeakerEngine extends EventEmitter<{
       availableSpeakers.map((s) => s.data.id)
     );
 
-    // find base speaker
-    const baseSpeaker = SpeakerUtils.findBaseSpeaker(
-      availableSpeakers.map((s) => s.data),
-      this.listenerPoint
+    // prioritize always-on speakers for base track selection
+    const alwaysOnAvailable = availableSpeakers.filter((speaker) =>
+      this.isAlwaysOnSpeaker(speaker.data.id)
     );
+
+    let baseSpeaker;
+    if (alwaysOnAvailable.length > 0) {
+      // if there are always-on speakers available, use them for base track selection
+      baseSpeaker = SpeakerUtils.findBaseSpeaker(
+        alwaysOnAvailable.map((s) => s.data),
+        this.listenerPoint
+      );
+    } else {
+      // fall back to normal base speaker selection
+      baseSpeaker = SpeakerUtils.findBaseSpeaker(
+        availableSpeakers.map((s) => s.data),
+        this.listenerPoint
+      );
+    }
 
     // find base track
     const baseTrack = this.speakers.find(

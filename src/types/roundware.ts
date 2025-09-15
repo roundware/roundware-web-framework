@@ -74,4 +74,7 @@ export type SpeakerConfig = {
   minVariantLoops?: number; // default: 2
   maxVariantLoops?: number; // default: 4
   variantCrossfadeDurationMs?: number; // default: 1000
+
+  // always-on speakers - these speakers will always play when available (in range)
+  alwaysOnWhenAvailable?: number[]; // array of speaker IDs that should always play when available
 };
