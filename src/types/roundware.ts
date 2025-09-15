@@ -69,4 +69,9 @@ export type SpeakerConfig = {
 
   // distance before starting the fetch
   prefetchDistanceMeters?: number;
+
+  // variant URI configuration
+  minVariantLoops?: number; // default: 2
+  maxVariantLoops?: number; // default: 4
+  variantCrossfadeDurationMs?: number; // default: 1000
 };

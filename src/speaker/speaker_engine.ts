@@ -32,6 +32,7 @@ export class SpeakerEngine extends EventEmitter<{
     newTimes: number;
   }) => void;
   fadingOutLoop: (track: number) => void;
+  variantChanged: (speakerId: number, newUri: string) => void;
 }> {
   mixParams: IMixParams = {};
   speakers: SpeakerTrack[] = [];
@@ -367,9 +368,25 @@ export class SpeakerEngine extends EventEmitter<{
 
     this.updateNonBaseTracks();
 
+    // Process variant switching for all playing tracks including base track
     this.playingTracks.forEach((track) => {
       const speaker = track ? this.getSpeakerTrackById(track) : null;
       if (!speaker) return;
+
+      // Check for variant switching on all tracks
+      speaker.incrementVariantLoopCount();
+      if (speaker.shouldSwitchVariant()) {
+        const newVariantUri = speaker.selectNextVariant();
+        this.emit("variantChanged", speaker.data.id, newVariantUri);
+
+        // Force restart the track with the new variant buffer
+        if (speaker.bufferSourcePlaying) {
+          speaker.abortBufferSource();
+          // Restart the track immediately with the new variant
+          this.repeatLoopOnLoopPoint(speaker);
+        }
+      }
+
       speaker?.fadeBufferSourceToVolume(speaker.calculatedVolume);
     });
 

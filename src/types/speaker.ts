@@ -1,7 +1,6 @@
+import { LineString, MultiLineString, MultiPolygon } from "geojson";
 import { IAudioContext } from "standardized-audio-context";
 import { SpeakerConfig } from "./roundware";
-import { LineString, MultiLineString, MultiPolygon } from "geojson";
-import { IMixParams } from "./index";
 
 export interface ISpeakerData {
   id: number;
@@ -9,6 +8,7 @@ export interface ISpeakerData {
   minvolume: number;
   uri: string;
   backupuri?: string;
+  varianturis?: string[];
   attenuation_distance: number;
   shape?: MultiPolygon;
   boundary?: MultiLineString;
@@ -23,7 +23,6 @@ export interface ISpeakerData {
   border_color?: string;
   project_id?: number;
 }
-
 
 export interface ISpeakerFilters {}
 

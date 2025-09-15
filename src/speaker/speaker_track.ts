@@ -81,6 +81,16 @@ export class SpeakerTrack extends EventEmitter<{
     times?: number;
   } = {};
 
+  // Variant URI tracking
+  private variantUris: string[] = [];
+  private currentVariantIndex: number = 0;
+  private variantLoopCount: number = 0;
+  private variantLoopTarget: number = 0;
+  private variantBuffers: Map<string, IAudioBuffer> = new Map();
+  private currentVariantUri: string = "";
+  private variantLoadingPromises: Map<string, Promise<IAudioBuffer>> =
+    new Map();
+
   constructor({
     data,
     audioContext,
@@ -101,6 +111,7 @@ export class SpeakerTrack extends EventEmitter<{
       boundary,
       attenuation_distance: attenuationDistance,
       uri,
+      varianturis,
     } = data;
 
     this.config = config;
@@ -134,6 +145,9 @@ export class SpeakerTrack extends EventEmitter<{
     this.calculatedVolume = NEARLY_ZERO;
 
     this.groupId = groupId;
+
+    // Initialize variant tracking
+    this.initializeVariants(varianturis);
   }
 
   outerBoundaryContains(point: Coord) {
@@ -183,7 +197,7 @@ export class SpeakerTrack extends EventEmitter<{
   }
 
   request: XMLHttpRequest | null = null;
-  loadBuffer() {
+  async loadBuffer() {
     if (this.request) {
       return;
     }
@@ -192,9 +206,12 @@ export class SpeakerTrack extends EventEmitter<{
       return;
     }
 
+    // Load the current URI (either variant or fallback to uri)
+    const uriToLoad = this.getCurrentUri();
+
     this.request = new XMLHttpRequest();
     this.log("Fetching audio");
-    this.request.open("GET", this.uri, true);
+    this.request.open("GET", uriToLoad, true);
     this.request.timeout = Infinity;
     this.request.responseType = "arraybuffer";
     this.request.onprogress = (ev) => {
@@ -226,6 +243,13 @@ export class SpeakerTrack extends EventEmitter<{
     };
 
     this.request.send();
+
+    // If this speaker has variants, load all of them in the background
+    if (this.variantUris.length > 0) {
+      this.loadAllVariantBuffers().catch((error) => {
+        this.log(`Failed to load some variant buffers: ${error.message}`);
+      });
+    }
   }
 
   unload() {
@@ -236,6 +260,9 @@ export class SpeakerTrack extends EventEmitter<{
     this.loadedPercentage = 0;
     this.request?.abort();
     this.request = null;
+
+    // Unload variant buffers when speaker becomes "far"
+    this.unloadVariantBuffers();
   }
 
   startedAtContextTime = 0;
@@ -259,7 +286,11 @@ export class SpeakerTrack extends EventEmitter<{
     this.loopConfig.times = times;
     this.loopConfig.pan = pan;
 
-    if (!this.buffer) {
+    // Use variant buffer if available, otherwise fall back to main buffer
+    const bufferToUse =
+      this.getVariantBuffer(this.currentVariantUri) || this.buffer;
+
+    if (!bufferToUse) {
       throw new Error("Track is not loaded");
     }
 
@@ -283,10 +314,18 @@ export class SpeakerTrack extends EventEmitter<{
     this.bufferSource = this.audioContext.createBufferSource();
     this.bufferSource.loop = false;
 
+    // Use variant crossfade duration for micro-fades if this is a variant switch
+    const effectsConfig = { ...this.config?.effects };
+    if (this.variantUris.length > 0 && this.currentVariantUri !== this.uri) {
+      // This is a variant track, use the variant crossfade duration for micro-fades
+      effectsConfig.microFadeInDurationInMs =
+        this.config.variantCrossfadeDurationMs ?? 1000;
+    }
+
     const bP = new BufferEffectsProcessor(
-      this.buffer,
+      bufferToUse,
       this.audioContext,
-      this.config?.effects || {}
+      effectsConfig
     ).composeBuffer({
       duration,
       times,
@@ -449,6 +488,139 @@ export class SpeakerTrack extends EventEmitter<{
 
   log(string: string) {
     speakerLog(`${this.data.id}] ` + string);
+  }
+
+  // Variant URI methods
+  private initializeVariants(varianturis?: string[]) {
+    if (varianturis && varianturis.length > 0) {
+      this.variantUris = [...varianturis];
+      this.shuffleVariantArray();
+      this.currentVariantIndex = 0;
+      this.currentVariantUri = this.variantUris[0];
+      this.setVariantLoopTarget();
+    } else {
+      this.currentVariantUri = this.uri;
+    }
+  }
+
+  private shuffleVariantArray() {
+    for (let i = this.variantUris.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.variantUris[i], this.variantUris[j]] = [
+        this.variantUris[j],
+        this.variantUris[i],
+      ];
+    }
+  }
+
+  private setVariantLoopTarget() {
+    const minLoops = this.config.minVariantLoops ?? 2;
+    const maxLoops = this.config.maxVariantLoops ?? 4;
+    this.variantLoopTarget =
+      Math.floor(Math.random() * (maxLoops - minLoops + 1)) + minLoops;
+  }
+
+  public getCurrentUri(): string {
+    return this.currentVariantUri;
+  }
+
+  public shouldSwitchVariant(): boolean {
+    if (this.variantUris.length <= 1) return false;
+    return this.variantLoopCount >= this.variantLoopTarget;
+  }
+
+  public selectNextVariant(): string {
+    if (this.variantUris.length <= 1) return this.currentVariantUri;
+
+    this.variantLoopCount = 0;
+    this.currentVariantIndex =
+      (this.currentVariantIndex + 1) % this.variantUris.length;
+
+    // If we've completed a full cycle, reshuffle
+    if (this.currentVariantIndex === 0) {
+      this.shuffleVariantArray();
+    }
+
+    this.currentVariantUri = this.variantUris[this.currentVariantIndex];
+    this.setVariantLoopTarget();
+
+    return this.currentVariantUri;
+  }
+
+  public incrementVariantLoopCount() {
+    this.variantLoopCount++;
+  }
+
+  public async loadAllVariantBuffers(): Promise<void> {
+    if (this.variantUris.length === 0) return;
+
+    const loadPromises = this.variantUris.map((uri) =>
+      this.loadVariantBuffer(uri)
+    );
+    await Promise.all(loadPromises);
+  }
+
+  private async loadVariantBuffer(uri: string): Promise<IAudioBuffer> {
+    if (this.variantBuffers.has(uri)) {
+      return this.variantBuffers.get(uri)!;
+    }
+
+    if (this.variantLoadingPromises.has(uri)) {
+      return this.variantLoadingPromises.get(uri)!;
+    }
+
+    const loadPromise = this.loadAudioBuffer(uri);
+    this.variantLoadingPromises.set(uri, loadPromise);
+
+    try {
+      const buffer = await loadPromise;
+      this.variantBuffers.set(uri, buffer);
+      this.variantLoadingPromises.delete(uri);
+      return buffer;
+    } catch (error) {
+      this.variantLoadingPromises.delete(uri);
+      // Remove failed URI from rotation
+      const index = this.variantUris.indexOf(uri);
+      if (index > -1) {
+        this.variantUris.splice(index, 1);
+        // Adjust current index if necessary
+        if (this.currentVariantIndex >= this.variantUris.length) {
+          this.currentVariantIndex = 0;
+        }
+      }
+      throw error;
+    }
+  }
+
+  private async loadAudioBuffer(uri: string): Promise<IAudioBuffer> {
+    return new Promise((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open("GET", uri, true);
+      request.timeout = Infinity;
+      request.responseType = "arraybuffer";
+
+      request.onload = () => {
+        const audioData = request.response;
+        this.audioContext.decodeAudioData(
+          audioData,
+          (buffer) => resolve(buffer),
+          (error) => reject(error)
+        );
+      };
+
+      request.onerror = () =>
+        reject(new Error(`Failed to load audio from ${uri}`));
+      request.send();
+    });
+  }
+
+  public unloadVariantBuffers() {
+    this.variantBuffers.clear();
+    this.variantLoadingPromises.clear();
+  }
+
+  public getVariantBuffer(uri: string): IAudioBuffer | null {
+    return this.variantBuffers.get(uri) || null;
   }
 
   toString() {
