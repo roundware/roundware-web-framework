@@ -66,6 +66,8 @@ export type SpeakerConfig = {
   slotConsiderationProbability?: number;
   loopPointUpdateProbability?: number;
   // list of fractions from which app will select randomly one of
+  // negative values will play the audio in reverse for the specified fraction
+  // e.g., [1/2, 1/1, -1/2, 1/8] - negative values play backwards
   loopFractions?: number[];
   effects?: EffectsConfig;
 

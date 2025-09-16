@@ -721,7 +721,9 @@ export class SpeakerEngine extends EventEmitter<{
         if (!baseTrack?.buffer) throw new Error(`Base track buffer not found`);
 
         const baseTrackDuration = baseTrack.buffer.duration;
-        const duration = baseTrackDuration * randomLength;
+        // Check if this is a reverse playback (negative fraction)
+        const isReverse = randomLength < 0;
+        const duration = baseTrackDuration * Math.abs(randomLength);
 
         const panPosition =
           this.mixParams.speakerConfig?.effects?.pan?.[i - 1] ?? 0;
@@ -745,6 +747,7 @@ export class SpeakerEngine extends EventEmitter<{
               fadeInDuration: FADE_IN_DURATION_SECONDS,
               times: Math.ceil(baseTrackDuration / duration),
               pan: panPosition,
+              isReverse,
             });
           };
           newSpeaker.on("loaded", onLoaded);
@@ -758,6 +761,7 @@ export class SpeakerEngine extends EventEmitter<{
             times: Math.ceil(baseTrackDuration / duration),
             fadeInDuration: FADE_IN_DURATION_SECONDS,
             pan: panPosition,
+            isReverse,
           });
       } else {
         this.playingTracks[i] = null;
@@ -798,6 +802,7 @@ export class SpeakerEngine extends EventEmitter<{
       offset: isNearlyZero(remainingDuration, 0.015) ? 0 : playedDuration,
       pan: speaker.loopConfig.pan,
       times: 1,
+      isReverse: speaker.loopConfig.isReverse,
     });
     if (speaker.bufferSourcePlaying) speaker.fadeOutAndStopBufferSource();
   }
@@ -892,6 +897,7 @@ export class SpeakerEngine extends EventEmitter<{
         offset: exceededDuration,
         pan: track.loopConfig.pan,
         times: newTimes,
+        isReverse: track.loopConfig.isReverse,
       });
     } else {
       this.emit("repeatingTrack", {
@@ -905,6 +911,7 @@ export class SpeakerEngine extends EventEmitter<{
         fadeInDuration: 0,
         pan: track.loopConfig.pan,
         times: baseTrackDuration / track.loopConfig.duration,
+        isReverse: track.loopConfig.isReverse,
       });
     }
   }
@@ -975,7 +982,9 @@ export class SpeakerEngine extends EventEmitter<{
         const randomLength = sample(lengths);
         if (!randomLength) throw new Error(`Random length not found`);
 
-        const duration = baseTrackDuration * randomLength;
+        // Check if this is a reverse playback (negative fraction)
+        const isReverse = randomLength < 0;
+        const duration = baseTrackDuration * Math.abs(randomLength);
         const panPosition =
           this.mixParams.speakerConfig?.effects?.pan?.[availableSlot - 1] ?? 0;
 
@@ -994,6 +1003,7 @@ export class SpeakerEngine extends EventEmitter<{
               fadeInDuration: FADE_IN_DURATION_SECONDS,
               times: Math.ceil(baseTrackDuration / duration),
               pan: panPosition,
+              isReverse,
             });
           };
           speaker.on("loaded", onLoaded);
@@ -1005,6 +1015,7 @@ export class SpeakerEngine extends EventEmitter<{
             times: Math.ceil(baseTrackDuration / duration),
             fadeInDuration: FADE_IN_DURATION_SECONDS,
             pan: panPosition,
+            isReverse,
           });
         }
       }

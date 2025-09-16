@@ -81,6 +81,7 @@ export class SpeakerTrack extends EventEmitter<{
     pan?: number;
     duration?: number;
     times?: number;
+    isReverse?: boolean;
   } = {};
 
   // Variant URI tracking
@@ -283,16 +284,19 @@ export class SpeakerTrack extends EventEmitter<{
     offset,
     fadeInDuration,
     pan,
+    isReverse = false,
   }: {
     duration: number;
     offset: number;
     times: number;
     fadeInDuration: number;
     pan: number;
+    isReverse?: boolean;
   }) {
     this.loopConfig.duration = duration;
     this.loopConfig.times = times;
     this.loopConfig.pan = pan;
+    this.loopConfig.isReverse = isReverse;
 
     // Use variant buffer if available, otherwise fall back to main buffer
     const bufferToUse =
@@ -339,6 +343,7 @@ export class SpeakerTrack extends EventEmitter<{
       times,
       fadeInDuration,
       fadeInStartVolume,
+      isReverse,
     });
 
     this.bufferSource.buffer = bP.getBuffer();

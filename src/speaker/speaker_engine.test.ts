@@ -323,6 +323,26 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
   beforeEach(() => {
     mockAudioContext = {
       currentTime: 0,
+      createGain: jest.fn().mockReturnValue({
+        gain: { value: 1 },
+        connect: jest.fn(),
+        disconnect: jest.fn(),
+      }),
+      createBufferSource: jest.fn().mockReturnValue({
+        buffer: null,
+        loop: false,
+        connect: jest.fn(),
+        disconnect: jest.fn(),
+        start: jest.fn(),
+        stop: jest.fn(),
+      }),
+      createBuffer: jest.fn().mockReturnValue({
+        duration: 10,
+        length: 441000,
+        sampleRate: 44100,
+        numberOfChannels: 2,
+        getChannelData: jest.fn().mockReturnValue(new Float32Array(441000)),
+      }),
       // ... other necessary mock implementations
     } as unknown as IAudioContext;
 

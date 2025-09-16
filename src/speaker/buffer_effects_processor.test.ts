@@ -1,6 +1,5 @@
-import { IAudioBuffer, IAudioContext } from "standardized-audio-context";
-import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { AudioContext } from "standardized-audio-context-mock";
+import { BufferEffectsProcessor } from "./buffer_effects_processor";
 
 describe("BufferEffectsProcessor", () => {
   describe("trim", () => {
@@ -35,7 +34,9 @@ describe("BufferEffectsProcessor", () => {
         new AudioContext(),
         {}
       );
-      const processedBuffer = processor.trimAndFadeInAndOut(0.2, 0.7, 0.1).getBuffer();
+      const processedBuffer = processor
+        .trimAndFadeInAndOut(0.2, 0.7, 0.1)
+        .getBuffer();
       expect(processedBuffer.duration).toBeCloseTo(0.5, 1);
     });
 
@@ -46,7 +47,9 @@ describe("BufferEffectsProcessor", () => {
         new AudioContext(),
         { fadeInDurationInMs: 300 }
       );
-      const processedBuffer = processor.trimAndFadeInAndOut(0.2, 0.7).getBuffer();
+      const processedBuffer = processor
+        .trimAndFadeInAndOut(0.2, 0.7)
+        .getBuffer();
       expect(processedBuffer.duration).toBeCloseTo(0.5, 1);
     });
   });
@@ -60,7 +63,7 @@ describe("BufferEffectsProcessor", () => {
         {
           delayTimeInMs: 50,
           feedback: 0.5,
-          reverb: 0.5
+          reverb: 0.5,
         }
       );
       const processedBuffer = processor.delayReverbClip().getBuffer();
@@ -192,6 +195,247 @@ describe("BufferEffectsProcessor", () => {
       );
       const processedBuffer = processor.reverbAndClip().getBuffer();
       expect(processedBuffer.duration).toBeCloseTo(10, 1);
+    });
+  });
+
+  describe("reverse", () => {
+    it("should reverse the audio buffer data", () => {
+      const audioContext = new AudioContext();
+      const buffer = audioContext.createBuffer(1, 4, 44100);
+      const channelData = buffer.getChannelData(0);
+
+      // Set up test data: [1, 2, 3, 4]
+      channelData[0] = 1;
+      channelData[1] = 2;
+      channelData[2] = 3;
+      channelData[3] = 4;
+
+      const processor = new BufferEffectsProcessor(
+        buffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
+        audioContext,
+        {}
+      );
+
+      const reversedBuffer = processor.reverse().getBuffer();
+      const reversedChannelData = reversedBuffer.getChannelData(0);
+
+      // Should be reversed: [4, 3, 2, 1]
+      expect(reversedChannelData[0]).toBeCloseTo(4, 5);
+      expect(reversedChannelData[1]).toBeCloseTo(3, 5);
+      expect(reversedChannelData[2]).toBeCloseTo(2, 5);
+      expect(reversedChannelData[3]).toBeCloseTo(1, 5);
+    });
+
+    it("should reverse multi-channel audio buffer", () => {
+      const audioContext = new AudioContext();
+      const buffer = audioContext.createBuffer(2, 3, 44100);
+      const leftChannel = buffer.getChannelData(0);
+      const rightChannel = buffer.getChannelData(1);
+
+      // Set up test data
+      leftChannel[0] = 1;
+      rightChannel[0] = 10;
+      leftChannel[1] = 2;
+      rightChannel[1] = 20;
+      leftChannel[2] = 3;
+      rightChannel[2] = 30;
+
+      const processor = new BufferEffectsProcessor(
+        buffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
+        audioContext,
+        {}
+      );
+
+      const reversedBuffer = processor.reverse().getBuffer();
+      const reversedLeftChannel = reversedBuffer.getChannelData(0);
+      const reversedRightChannel = reversedBuffer.getChannelData(1);
+
+      // Both channels should be reversed
+      expect(reversedLeftChannel[0]).toBeCloseTo(3, 5);
+      expect(reversedLeftChannel[1]).toBeCloseTo(2, 5);
+      expect(reversedLeftChannel[2]).toBeCloseTo(1, 5);
+
+      expect(reversedRightChannel[0]).toBeCloseTo(30, 5);
+      expect(reversedRightChannel[1]).toBeCloseTo(20, 5);
+      expect(reversedRightChannel[2]).toBeCloseTo(10, 5);
+    });
+
+    it("should handle odd-length buffers correctly", () => {
+      const audioContext = new AudioContext();
+      const buffer = audioContext.createBuffer(1, 5, 44100);
+      const channelData = buffer.getChannelData(0);
+
+      // Set up test data: [1, 2, 3, 4, 5]
+      for (let i = 0; i < 5; i++) {
+        channelData[i] = i + 1;
+      }
+
+      const processor = new BufferEffectsProcessor(
+        buffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
+        audioContext,
+        {}
+      );
+
+      const reversedBuffer = processor.reverse().getBuffer();
+      const reversedChannelData = reversedBuffer.getChannelData(0);
+
+      // Should be reversed: [5, 4, 3, 2, 1]
+      for (let i = 0; i < 5; i++) {
+        expect(reversedChannelData[i]).toBeCloseTo(5 - i, 5);
+      }
+    });
+  });
+
+  describe("composeBuffer with reverse", () => {
+    it("should apply reverse when isReverse is true", () => {
+      const audioContext = new AudioContext();
+      const buffer = audioContext.createBuffer(1, 4, 44100);
+      const channelData = buffer.getChannelData(0);
+
+      // Set up test data: [1, 2, 3, 4]
+      channelData[0] = 1;
+      channelData[1] = 2;
+      channelData[2] = 3;
+      channelData[3] = 4;
+
+      const processor = new BufferEffectsProcessor(
+        buffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
+        audioContext,
+        { microFadeInDurationInMs: 0 } // Disable micro-fades for testing
+      );
+
+      const composedBuffer = processor
+        .composeBuffer({
+          duration: 4 / 44100, // Full duration
+          times: 1,
+          isReverse: true,
+          fadeInDuration: 0, // Disable fade-in for testing
+        })
+        .getBuffer();
+
+      const composedChannelData = composedBuffer.getChannelData(0);
+
+      // Should be reversed: [4, 3, 2, 1]
+      expect(composedChannelData[0]).toBeCloseTo(4, 5);
+      expect(composedChannelData[1]).toBeCloseTo(3, 5);
+      expect(composedChannelData[2]).toBeCloseTo(2, 5);
+      expect(composedChannelData[3]).toBeCloseTo(1, 5);
+    });
+
+    it("should not apply reverse when isReverse is false", () => {
+      const audioContext = new AudioContext();
+      const buffer = audioContext.createBuffer(1, 4, 44100);
+      const channelData = buffer.getChannelData(0);
+
+      // Set up test data: [1, 2, 3, 4]
+      channelData[0] = 1;
+      channelData[1] = 2;
+      channelData[2] = 3;
+      channelData[3] = 4;
+
+      const processor = new BufferEffectsProcessor(
+        buffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
+        audioContext,
+        { microFadeInDurationInMs: 0 } // Disable micro-fades for testing
+      );
+
+      const composedBuffer = processor
+        .composeBuffer({
+          duration: 4 / 44100, // Full duration
+          times: 1,
+          isReverse: false,
+          fadeInDuration: 0, // Disable fade-in for testing
+        })
+        .getBuffer();
+
+      const composedChannelData = composedBuffer.getChannelData(0);
+
+      // Should remain unchanged: [1, 2, 3, 4]
+      expect(composedChannelData[0]).toBeCloseTo(1, 5);
+      expect(composedChannelData[1]).toBeCloseTo(2, 5);
+      expect(composedChannelData[2]).toBeCloseTo(3, 5);
+      expect(composedChannelData[3]).toBeCloseTo(4, 5);
+    });
+
+    it("should apply reverse and then trim to partial duration", () => {
+      const audioContext = new AudioContext();
+      const buffer = audioContext.createBuffer(1, 4, 44100);
+      const channelData = buffer.getChannelData(0);
+
+      // Set up test data: [1, 2, 3, 4]
+      channelData[0] = 1;
+      channelData[1] = 2;
+      channelData[2] = 3;
+      channelData[3] = 4;
+
+      const processor = new BufferEffectsProcessor(
+        buffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
+        audioContext,
+        { microFadeInDurationInMs: 0 } // Disable micro-fades for testing
+      );
+
+      // Test case: -1/2 (reverse full buffer, then take first half)
+      const composedBuffer = processor
+        .composeBuffer({
+          duration: 2 / 44100, // Half duration
+          times: 1,
+          isReverse: true,
+          fadeInDuration: 0, // Disable fade-in for testing
+        })
+        .getBuffer();
+
+      const composedChannelData = composedBuffer.getChannelData(0);
+
+      // Should be reversed and trimmed: [4, 3] (first half of reversed [4, 3, 2, 1])
+      expect(composedChannelData[0]).toBeCloseTo(4, 5);
+      expect(composedChannelData[1]).toBeCloseTo(3, 5);
+      expect(composedChannelData.length).toBe(2);
+    });
+  });
+
+  describe("reverse consistency in loops", () => {
+    it("should maintain reverse state across multiple repetitions", () => {
+      const audioContext = new AudioContext();
+      const buffer = audioContext.createBuffer(1, 4, 44100);
+      const channelData = buffer.getChannelData(0);
+
+      // Set up test data: [1, 2, 3, 4]
+      channelData[0] = 1;
+      channelData[1] = 2;
+      channelData[2] = 3;
+      channelData[3] = 4;
+
+      const processor = new BufferEffectsProcessor(
+        buffer,
+        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
+        audioContext,
+        { microFadeInDurationInMs: 0 } // Disable micro-fades for testing
+      );
+
+      // Test case: reverse with multiple repetitions
+      const composedBuffer = processor
+        .composeBuffer({
+          duration: 2 / 44100, // Half duration
+          times: 2, // Two repetitions
+          isReverse: true,
+          fadeInDuration: 0, // Disable fade-in for testing
+        })
+        .getBuffer();
+
+      const composedChannelData = composedBuffer.getChannelData(0);
+
+      // Should be: [4, 3, 4, 3] (reversed half repeated twice)
+      expect(composedChannelData[0]).toBeCloseTo(4, 5); // First repetition, first sample
+      expect(composedChannelData[1]).toBeCloseTo(3, 5); // First repetition, second sample
+      expect(composedChannelData[2]).toBeCloseTo(4, 5); // Second repetition, first sample
+      expect(composedChannelData[3]).toBeCloseTo(3, 5); // Second repetition, second sample
+      expect(composedChannelData.length).toBe(4);
     });
   });
 });
