@@ -70,6 +70,8 @@ export class SpeakerTrack extends EventEmitter<{
 
   private bufferSource?: IAudioBufferSourceNode<IAudioContext> | null = null;
   private gainNode?: IGainNode<IAudioContext> | null = null;
+  private masterMixerNode: IGainNode<IAudioContext> | undefined;
+  private masterEffectsSendNode: IGainNode<IAudioContext> | undefined;
 
   groupId: number;
 
@@ -96,11 +98,15 @@ export class SpeakerTrack extends EventEmitter<{
     audioContext,
     config,
     groupId,
+    masterMixerNode,
+    masterEffectsSendNode,
   }: {
     data: ISpeakerData;
     audioContext: IAudioContext;
     config: SpeakerConfig;
     groupId: number;
+    masterMixerNode?: IGainNode<IAudioContext>;
+    masterEffectsSendNode?: IGainNode<IAudioContext>;
   }) {
     super();
     const {
@@ -117,6 +123,8 @@ export class SpeakerTrack extends EventEmitter<{
     this.config = config;
     this.audioContext = audioContext;
     this.data = data;
+    this.masterMixerNode = masterMixerNode;
+    this.masterEffectsSendNode = masterEffectsSendNode;
 
     this.maxVolume = maxVolume;
     this.minVolume = minVolume;
@@ -347,14 +355,24 @@ export class SpeakerTrack extends EventEmitter<{
     // connections:
     this.bufferSource.connect(this.gainNode);
     // TEMP: bypass panning to test if StereoPannerNode churn contributes to dropouts
-    const BYPASS_PANNER_FOR_TEST = true;
+    const BYPASS_PANNER_FOR_TEST = false;
+    const dryDestination =
+      this.masterMixerNode || this.audioContext.destination;
+    const effectsDestination = this.masterEffectsSendNode;
+
     if (BYPASS_PANNER_FOR_TEST) {
-      this.gainNode.connect(this.audioContext.destination);
+      this.gainNode.connect(dryDestination);
+      if (effectsDestination) {
+        this.gainNode.connect(effectsDestination);
+      }
     } else {
       const panner = this.audioContext.createStereoPanner();
       panner.pan.value = pan;
       this.gainNode.connect(panner);
-      panner.connect(this.audioContext.destination);
+      panner.connect(dryDestination);
+      if (effectsDestination) {
+        panner.connect(effectsDestination);
+      }
     }
 
     const bufferSource = this.bufferSource;

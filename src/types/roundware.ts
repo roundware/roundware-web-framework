@@ -42,7 +42,9 @@ export type EffectsConfig = {
   fadeInDurationInMs?: number;
   delayTimeInMs?: number;
   feedback?: number;
-  reverb?: number;
+  wetDryRatio?: number; // Wet vs dry ratio (0-1, 0=no reverb, 1=all wet)
+  reverbRoomSize?: number; // Room size (0-1)
+  reverbDamping?: number; // High frequency damping (0-1)
   pan?: number[];
 };
 

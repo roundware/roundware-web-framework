@@ -367,6 +367,9 @@ export class BufferEffectsProcessor {
 
     this.audioBuffer = newBuffer;
 
+    // Note: Delay, feedback, and reverb effects are now applied centrally
+    // in the SpeakerEngine's master mixer, not per-speaker for efficiency
+
     if (timeEnd) {
       this.trim(timeEnd, duration);
     }
