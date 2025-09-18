@@ -16,6 +16,32 @@ import { SpeakerTrack } from "./speaker_track";
 import { LoadingStrategy, SpeakerUtils } from "./speaker_utils";
 
 const DEBUG_SPEAKER_DISPLAY = false;
+const DEBUG_LOOP_SYNC = true; // Enable detailed loop sync debugging
+const SYNC_DEBUG_PREFIX = "[SYNC_DEBUG]"; // Consistent prefix for all sync debugging
+
+// Expose debug flag globally for SpeakerTrack access
+if (typeof window !== "undefined") {
+  (window as any).DEBUG_LOOP_SYNC = DEBUG_LOOP_SYNC;
+
+  // Add method to toggle debug mode
+  (window as any).toggleLoopSyncDebug = (enabled?: boolean) => {
+    const currentValue = (window as any).DEBUG_LOOP_SYNC;
+    const newValue = enabled !== undefined ? enabled : !currentValue;
+    (window as any).DEBUG_LOOP_SYNC = newValue;
+    console.log(
+      `${SYNC_DEBUG_PREFIX} Loop sync debugging ${
+        newValue ? "enabled" : "disabled"
+      }`
+    );
+    return newValue;
+  };
+
+  // Add method to test debug output
+  (window as any).testSyncDebug = () => {
+    console.log(`${SYNC_DEBUG_PREFIX} TEST: Debug output is working!`);
+    return true;
+  };
+}
 
 export class SpeakerEngine extends EventEmitter<{
   init: () => void;
@@ -47,6 +73,10 @@ export class SpeakerEngine extends EventEmitter<{
   playingTracks: (number | null)[] = [];
   private debugStatusElement: HTMLElement | null = null;
   private debugInterval: NodeJS.Timeout | null = null;
+  private timingCheckInterval: NodeJS.Timeout | null = null;
+  private lastTimingCheck: number = 0;
+  private driftHistory: number[] = [];
+  private maxDriftHistory = 10;
 
   group: Map<number, number | null> = new Map();
 
@@ -112,6 +142,13 @@ export class SpeakerEngine extends EventEmitter<{
     );
 
     this.emit("init");
+
+    // Log that SpeakerEngine is initialized with debug info
+    if (DEBUG_LOOP_SYNC) {
+      console.log(
+        `${SYNC_DEBUG_PREFIX} INIT: SpeakerEngine initialized with ${this.speakers.length} speakers`
+      );
+    }
 
     // prefetch all speakers
     if (this.loadingStrategy === LoadingStrategy.PREFETCH) {
@@ -359,6 +396,12 @@ export class SpeakerEngine extends EventEmitter<{
 
     this.playing = true;
 
+    if (DEBUG_LOOP_SYNC) {
+      console.log(
+        `${SYNC_DEBUG_PREFIX} PLAY: Starting playback with ${this.speakers.length} speakers`
+      );
+    }
+
     if (this.loadingStrategy === LoadingStrategy.PREFETCH) {
       // prefech requires all speakers to be loaded
       if (!this.speakers.every((speaker) => speaker.buffer))
@@ -372,6 +415,12 @@ export class SpeakerEngine extends EventEmitter<{
     }
 
     this.emit("play");
+
+    // Start timing check for debugging
+    if (DEBUG_LOOP_SYNC) {
+      this.startTimingCheck();
+      this.monitorAudioContextState();
+    }
   }
 
   public async stop(): Promise<void> {
@@ -388,6 +437,7 @@ export class SpeakerEngine extends EventEmitter<{
     this.playing = false;
     this.playingTracks = [];
     this.cleanupDebugDisplay();
+    this.stopTimingCheck();
     this.emit("stop");
   }
 
@@ -509,14 +559,31 @@ export class SpeakerEngine extends EventEmitter<{
     }
 
     const currentTime = this.audioContext.currentTime;
+    const groupStartTime = this.group.get(track.groupId) ?? currentTime;
 
     const timeUntilNextLoop = SpeakerUtils.timeUntilClosestLoopPoint({
       currentTime,
-      startTime: this.group.get(track.groupId) ?? currentTime,
+      startTime: groupStartTime,
       duration: track.buffer.duration,
     });
 
     let offset = track.buffer.duration - timeUntilNextLoop;
+
+    if (DEBUG_LOOP_SYNC) {
+      console.log(
+        `${SYNC_DEBUG_PREFIX} PLAY_BASE_TRACK: Speaker ${
+          track.data.id
+        }, continued: ${isContinued}, currentTime: ${currentTime.toFixed(
+          6
+        )}s, groupStart: ${groupStartTime.toFixed(
+          6
+        )}s, duration: ${track.buffer.duration.toFixed(
+          6
+        )}s, timeUntilNext: ${timeUntilNextLoop.toFixed(6)}s, offset: ${(
+          offset * 1000
+        ).toFixed(2)}ms`
+      );
+    }
 
     if (isNearlyZero(offset, 0.015)) {
       offset = 0;
@@ -529,11 +596,26 @@ export class SpeakerEngine extends EventEmitter<{
         );
       }
     } else {
-      console.log(
-        `🎵 SYNC: Group ${track.groupId} offset: ${(offset * 1000).toFixed(
-          1
-        )}ms (not synced)`
-      );
+      // Check if offset is too large (more than half a loop duration)
+      const maxAcceptableOffset = track.buffer.duration * 0.5;
+      if (Math.abs(offset) > maxAcceptableOffset) {
+        if (DEBUG_LOOP_SYNC) {
+          console.log(
+            `${SYNC_DEBUG_PREFIX} SYNC_RESET: Large offset detected ${(
+              offset * 1000
+            ).toFixed(2)}ms, resetting group start time`
+          );
+        }
+        // Reset group start time to get back in sync
+        this.group.set(track.groupId, currentTime);
+        offset = 0;
+      } else {
+        console.log(
+          `🎵 SYNC: Group ${track.groupId} offset: ${(offset * 1000).toFixed(
+            1
+          )}ms (not synced)`
+        );
+      }
     }
 
     // playing the base track
@@ -553,12 +635,57 @@ export class SpeakerEngine extends EventEmitter<{
   onLoopPoint() {
     if (!this.playing) return;
 
+    const loopPointTime = this.audioContext.currentTime;
+
+    if (DEBUG_LOOP_SYNC) {
+      console.log(
+        `${SYNC_DEBUG_PREFIX} LOOP_POINT: Starting loop point processing at ${loopPointTime.toFixed(
+          6
+        )}s`
+      );
+
+      // Log group timing information
+      this.group.forEach((startTime, groupId) => {
+        if (startTime !== null) {
+          const timeSinceStart = loopPointTime - startTime;
+          const baseTrackId = this.playingTracks[0];
+          const baseTrack = baseTrackId
+            ? this.getSpeakerTrackById(baseTrackId)
+            : null;
+          const baseDuration = baseTrack?.buffer?.duration;
+
+          if (baseDuration) {
+            const expectedLoopPoint =
+              Math.floor(timeSinceStart / baseDuration) * baseDuration;
+            const actualOffset = timeSinceStart - expectedLoopPoint;
+            console.log(
+              `${SYNC_DEBUG_PREFIX} GROUP_${groupId}: Start=${startTime.toFixed(
+                6
+              )}s, TimeSinceStart=${timeSinceStart.toFixed(
+                6
+              )}s, ExpectedLoop=${expectedLoopPoint.toFixed(6)}s, Offset=${(
+                actualOffset * 1000
+              ).toFixed(2)}ms`
+            );
+          }
+        }
+      });
+    }
+
     this.calculateVolumesByLocation();
 
     const latestBaseTrack = this.latestBaseTrack;
     const currentBaseTrackId = this.currentBaseTrackId;
 
     if (this.latestBaseTrack?.data.id != this.currentBaseTrackId) {
+      if (DEBUG_LOOP_SYNC) {
+        console.log(
+          `${SYNC_DEBUG_PREFIX} BASE_TRACK_CHANGE: Switching from ${currentBaseTrackId} to ${
+            latestBaseTrack?.data.id
+          } at ${loopPointTime.toFixed(6)}s`
+        );
+      }
+
       if (currentBaseTrackId) {
         const currentBaseTrack = this.getSpeakerTrackById(currentBaseTrackId);
         currentBaseTrack.clearListeners("trackFinished");
@@ -570,6 +697,13 @@ export class SpeakerEngine extends EventEmitter<{
       this.playingTracks = [latestBaseTrack?.data.id || null];
     } else if (currentBaseTrackId) {
       // continue with current base track;
+      if (DEBUG_LOOP_SYNC) {
+        console.log(
+          `${SYNC_DEBUG_PREFIX} BASE_TRACK_CONTINUE: Continuing base track ${currentBaseTrackId} at ${loopPointTime.toFixed(
+            6
+          )}s`
+        );
+      }
       const currentBaseTrack = this.getSpeakerTrackById(currentBaseTrackId);
       this.playAsBaseTrack(currentBaseTrack, true);
     }
@@ -582,9 +716,31 @@ export class SpeakerEngine extends EventEmitter<{
       if (!speaker) return;
 
       // Check for variant switching on all tracks
+      const previousLoopCount = speaker.getVariantLoopCount();
+      const previousVariantUri = speaker.getCurrentUri();
       speaker.incrementVariantLoopCount();
+
+      if (DEBUG_LOOP_SYNC) {
+        console.log(
+          `${SYNC_DEBUG_PREFIX} VARIANT_CHECK: Speaker ${
+            speaker.data.id
+          } loop count: ${previousLoopCount} -> ${speaker.getVariantLoopCount()}, target: ${speaker.getVariantLoopTarget()}, current: ${previousVariantUri}`
+        );
+      }
+
       if (speaker.shouldSwitchVariant()) {
         const newVariantUri = speaker.selectNextVariant();
+
+        if (DEBUG_LOOP_SYNC) {
+          console.log(
+            `${SYNC_DEBUG_PREFIX} VARIANT_SWITCH: Speaker ${
+              speaker.data.id
+            } switching from ${previousVariantUri} to ${newVariantUri} at ${loopPointTime.toFixed(
+              6
+            )}s`
+          );
+        }
+
         this.emit("variantChanged", speaker.data.id, newVariantUri);
 
         // Try to use preprocessed variant buffer first
@@ -913,6 +1069,16 @@ export class SpeakerEngine extends EventEmitter<{
     const baseTrackDuration = baseTrack?.buffer?.duration;
     if (typeof baseTrackDuration !== "number") {
       throw new Error(`Base track duration not found`);
+    }
+
+    if (DEBUG_LOOP_SYNC) {
+      console.log(
+        `${SYNC_DEBUG_PREFIX} REPEAT_LOOP: Speaker ${
+          track.data.id
+        } repeating loop at ${this.audioContext.currentTime.toFixed(
+          6
+        )}s, baseDuration: ${baseTrackDuration.toFixed(6)}s`
+      );
     }
 
     if (typeof track.loopConfig.pan !== "number") {
@@ -1303,7 +1469,20 @@ export class SpeakerEngine extends EventEmitter<{
       speaker.data.id
     );
     if (!preprocessedBuffer) {
+      if (DEBUG_LOOP_SYNC) {
+        console.log(
+          `${SYNC_DEBUG_PREFIX} VARIANT_APPLY: No preprocessed buffer available for speaker ${speaker.data.id}`
+        );
+      }
       return false; // No preprocessed buffer available
+    }
+
+    if (DEBUG_LOOP_SYNC) {
+      console.log(
+        `${SYNC_DEBUG_PREFIX} VARIANT_APPLY: Applying preprocessed buffer for speaker ${
+          speaker.data.id
+        } at ${this.audioContext.currentTime.toFixed(6)}s`
+      );
     }
 
     // Clear the preprocessed buffer
@@ -1397,6 +1576,11 @@ export class SpeakerEngine extends EventEmitter<{
       : null;
 
     if (!baseTrack?.buffer) {
+      if (DEBUG_LOOP_SYNC) {
+        console.log(
+          `${SYNC_DEBUG_PREFIX} VARIANT_SCHEDULE: No base track buffer for speaker ${speaker.data.id}`
+        );
+      }
       return; // No base track to sync with
     }
 
@@ -1406,10 +1590,28 @@ export class SpeakerEngine extends EventEmitter<{
       duration: baseTrack.buffer.duration,
     });
 
+    if (DEBUG_LOOP_SYNC) {
+      console.log(
+        `${SYNC_DEBUG_PREFIX} VARIANT_SCHEDULE: Speaker ${
+          speaker.data.id
+        }, timeUntilNext: ${timeUntilNextLoop.toFixed(
+          6
+        )}s, preprocessingTime: ${this.VARIANT_PREPROCESSING_TIME}s`
+      );
+    }
+
     // Only schedule if we have enough time for preprocessing
     if (timeUntilNextLoop > this.VARIANT_PREPROCESSING_TIME) {
       const preprocessingDelay =
         (timeUntilNextLoop - this.VARIANT_PREPROCESSING_TIME) * 1000;
+
+      if (DEBUG_LOOP_SYNC) {
+        console.log(
+          `${SYNC_DEBUG_PREFIX} VARIANT_SCHEDULE: Scheduling preprocessing for speaker ${
+            speaker.data.id
+          } in ${preprocessingDelay.toFixed(1)}ms`
+        );
+      }
 
       const timer = setTimeout(() => {
         this.preprocessVariantSwitch(speaker);
@@ -1417,6 +1619,16 @@ export class SpeakerEngine extends EventEmitter<{
       }, preprocessingDelay);
 
       this.variantPreprocessingTimers.set(speaker.data.id, timer);
+    } else {
+      if (DEBUG_LOOP_SYNC) {
+        console.log(
+          `${SYNC_DEBUG_PREFIX} VARIANT_SCHEDULE: Not enough time for preprocessing speaker ${
+            speaker.data.id
+          } (${timeUntilNextLoop.toFixed(6)}s <= ${
+            this.VARIANT_PREPROCESSING_TIME
+          }s)`
+        );
+      }
     }
   }
 
@@ -1431,6 +1643,164 @@ export class SpeakerEngine extends EventEmitter<{
     }
     // Also clear any preprocessed buffer
     this.preprocessedVariantBuffers.delete(speakerId);
+  }
+
+  /**
+   * Start periodic timing check to detect audio context drift
+   */
+  private startTimingCheck() {
+    this.stopTimingCheck();
+    this.lastTimingCheck = this.audioContext.currentTime;
+
+    this.timingCheckInterval = setInterval(() => {
+      const currentTime = this.audioContext.currentTime;
+      const expectedTime = this.lastTimingCheck + 0.1; // 100ms intervals
+      const drift = currentTime - expectedTime;
+
+      // Track drift history for analysis
+      this.driftHistory.push(drift);
+      if (this.driftHistory.length > this.maxDriftHistory) {
+        this.driftHistory.shift();
+      }
+
+      if (Math.abs(drift) > 0.005) {
+        // More than 5ms drift
+        const avgDrift =
+          this.driftHistory.reduce((a, b) => a + b, 0) /
+          this.driftHistory.length;
+        const maxDrift = Math.max(...this.driftHistory.map(Math.abs));
+        const minDrift = Math.min(...this.driftHistory.map(Math.abs));
+
+        console.log(
+          `${SYNC_DEBUG_PREFIX} TIMING_DRIFT: Audio context drift detected: ${(
+            drift * 1000
+          ).toFixed(2)}ms at ${currentTime.toFixed(6)}s (avg: ${(
+            avgDrift * 1000
+          ).toFixed(2)}ms, max: ${(maxDrift * 1000).toFixed(2)}ms, min: ${(
+            minDrift * 1000
+          ).toFixed(2)}ms)`
+        );
+
+        // If we detect a large drift, it might indicate audio context issues
+        if (Math.abs(drift) > 0.05) {
+          // 50ms or more
+          console.log(
+            `${SYNC_DEBUG_PREFIX} TIMING_DRIFT: LARGE DRIFT DETECTED! This may indicate audio context suspension, browser tab switching, or system audio issues.`
+          );
+        }
+      }
+
+      this.lastTimingCheck = currentTime;
+    }, 100);
+  }
+
+  /**
+   * Stop timing check
+   */
+  private stopTimingCheck() {
+    if (this.timingCheckInterval) {
+      clearInterval(this.timingCheckInterval);
+      this.timingCheckInterval = null;
+    }
+  }
+
+  /**
+   * Monitor audio context state changes
+   */
+  private monitorAudioContextState() {
+    if (this.audioContext.state) {
+      console.log(
+        `${SYNC_DEBUG_PREFIX} AUDIO_CONTEXT: Initial state: ${this.audioContext.state}`
+      );
+
+      // Prevent audio context suspension by keeping it active
+      this.preventAudioContextSuspension();
+
+      // Monitor state changes
+      const checkState = () => {
+        if (this.audioContext.state === "suspended") {
+          console.log(
+            `${SYNC_DEBUG_PREFIX} AUDIO_CONTEXT: Context suspended! This will cause timing issues.`
+          );
+          // Try to resume the context
+          if (this.audioContext.resume) {
+            this.audioContext
+              .resume()
+              .then(() => {
+                console.log(
+                  `${SYNC_DEBUG_PREFIX} AUDIO_CONTEXT: Successfully resumed audio context.`
+                );
+              })
+              .catch((error) => {
+                console.log(
+                  `${SYNC_DEBUG_PREFIX} AUDIO_CONTEXT: Failed to resume audio context:`,
+                  error
+                );
+              });
+          }
+        } else if (this.audioContext.state === "running") {
+          // Only log occasionally to reduce spam
+          if (Math.random() < 0.1) {
+            // 10% chance to log
+            console.log(
+              `${SYNC_DEBUG_PREFIX} AUDIO_CONTEXT: Context running normally.`
+            );
+          }
+        }
+      };
+
+      // Check state every 500ms
+      setInterval(checkState, 500);
+    }
+  }
+
+  /**
+   * Prevent audio context suspension by keeping it active
+   */
+  private preventAudioContextSuspension() {
+    // Create a silent audio buffer to keep the context active
+    const buffer = this.audioContext.createBuffer(
+      1,
+      1,
+      this.audioContext.sampleRate
+    );
+    let source = this.audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.audioContext.destination);
+
+    // Play silent audio every 10 seconds to keep context active
+    const keepAlive = () => {
+      if (this.audioContext.state === "running") {
+        source.start();
+        // Create a new source for next time
+        const newSource = this.audioContext.createBufferSource();
+        newSource.buffer = buffer;
+        newSource.connect(this.audioContext.destination);
+        source = newSource;
+      }
+    };
+
+    // Start keep-alive interval
+    setInterval(keepAlive, 10000); // Every 10 seconds
+
+    // Also keep alive on user interaction
+    const userInteractionEvents = [
+      "click",
+      "touchstart",
+      "keydown",
+      "mousemove",
+    ];
+    userInteractionEvents.forEach((event) => {
+      document.addEventListener(
+        event,
+        () => {
+          if (this.audioContext.state === "suspended") {
+            this.audioContext.resume();
+          }
+        },
+        { once: true }
+      );
+    });
   }
 
   toString() {

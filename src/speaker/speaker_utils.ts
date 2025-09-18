@@ -1,9 +1,9 @@
 import centerOfMass from "@turf/center-of-mass";
 import distance from "@turf/distance";
-import { Feature, LineString, MultiPolygon, Point, Polygon } from "geojson";
+import { Point } from "geojson";
 
-import { ISpeakerData } from "../types/speaker";
 import { SpeakerConfig } from "../types/roundware";
+import { ISpeakerData } from "../types/speaker";
 
 export class SpeakerUtils {
   static findBaseSpeaker(speakers: ISpeakerData[], currentLocation: Point) {
@@ -72,39 +72,46 @@ export class SpeakerUtils {
     };
   }
 
-
-  static findRemainingTime(currentTime: number,
-      startedAt: number,
-    duration: number) {
+  static findRemainingTime(
+    currentTime: number,
+    startedAt: number,
+    duration: number
+  ) {
     const remainingTime = duration - (currentTime - startedAt);
     return remainingTime;
   }
 
-
-  static shouldDoSomethingWithProbability(probability: number, taskName?: string) {
+  static shouldDoSomethingWithProbability(
+    probability: number,
+    taskName?: string
+  ) {
     const random = Math.random();
 
-    if(taskName) {  
-      console.debug(`${
-        random < probability ? '✅' : '❌'
-      } ${taskName} probability: ${random} < ${probability} `);
+    if (taskName) {
+      console.debug(
+        `${
+          random < probability ? "✅" : "❌"
+        } ${taskName} probability: ${random} < ${probability} `
+      );
     }
 
     return random < probability;
   }
-  
 
-  static getRootForSpeaker(speaker: Pick<ISpeakerData,'id' | 'parents'>, speakers: Pick<ISpeakerData,'id' | 'parents'>[]): ISpeakerData['id'] {
+  static getRootForSpeaker(
+    speaker: Pick<ISpeakerData, "id" | "parents">,
+    speakers: Pick<ISpeakerData, "id" | "parents">[]
+  ): ISpeakerData["id"] {
     const directParents = speaker.parents;
-    
+
     // If no parents, return current speaker's ID
     if (!directParents || directParents.length === 0) {
       return speaker.id;
     }
 
     // Get the first parent speaker object
-    const parentSpeaker = speakers.find(s => s.id === directParents[0]);
-    
+    const parentSpeaker = speakers.find((s) => s.id === directParents[0]);
+
     // If parent not found, return current speaker's ID
     if (!parentSpeaker) {
       return speaker.id;
@@ -114,30 +121,50 @@ export class SpeakerUtils {
     return this.getRootForSpeaker(parentSpeaker, speakers);
   }
 
-
-  static timeUntilClosestLoopPoint(
-    {
-      currentTime,
-      startTime,
-      duration,
-    }:{
-      currentTime: number;
-      startTime: number;
-      duration: number;
-    }
-  ) {
+  static timeUntilClosestLoopPoint({
+    currentTime,
+    startTime,
+    duration,
+  }: {
+    currentTime: number;
+    startTime: number;
+    duration: number;
+  }) {
     // Calculate how much time has passed since the start
     const timeSinceStart = currentTime - startTime;
-    
+
     // Calculate where we are within the current loop cycle
     const positionInLoop = timeSinceStart % duration;
-    
+
     // The time until next loop point is the duration minus our position in the current loop
     const timeUntilNextLoop = duration - positionInLoop;
-    
+
+    // Debug logging for sync issues
+    if (typeof window !== "undefined" && (window as any).DEBUG_LOOP_SYNC) {
+      const expectedLoopPoint =
+        Math.floor(timeSinceStart / duration) * duration;
+      const actualOffset = timeSinceStart - expectedLoopPoint;
+      console.log(
+        `[SYNC_DEBUG] LOOP_CALC: currentTime=${currentTime.toFixed(
+          6
+        )}s, startTime=${startTime.toFixed(
+          6
+        )}s, timeSinceStart=${timeSinceStart.toFixed(
+          6
+        )}s, duration=${duration.toFixed(
+          6
+        )}s, positionInLoop=${positionInLoop.toFixed(
+          6
+        )}s, timeUntilNext=${timeUntilNextLoop.toFixed(
+          6
+        )}s, expectedLoop=${expectedLoopPoint.toFixed(6)}s, actualOffset=${(
+          actualOffset * 1000
+        ).toFixed(2)}ms`
+      );
+    }
+
     return timeUntilNextLoop;
   }
-
 }
 
 export enum LoadingStrategy {

@@ -404,8 +404,28 @@ export class SpeakerTrack extends EventEmitter<{
         remainingTime <= NEARLY_ZERO ||
         Math.abs(bufferSource.buffer.duration - remainingTime) <= NEARLY_ZERO
       ) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_LOOP_SYNC) {
+          console.log(
+            `[SYNC_DEBUG] TRACK_FINISHED: Speaker ${
+              this.data.id
+            } finished at ${this.audioContext.currentTime.toFixed(
+              6
+            )}s, started at ${this.startedAtContextTime.toFixed(
+              6
+            )}s, duration: ${bufferSource.buffer.duration.toFixed(6)}s`
+          );
+        }
         this.emit("trackFinished");
       } else {
+        if (typeof window !== "undefined" && (window as any).DEBUG_LOOP_SYNC) {
+          console.log(
+            `[SYNC_DEBUG] TRACK_ABORTED: Speaker ${
+              this.data.id
+            } aborted at ${this.audioContext.currentTime.toFixed(
+              6
+            )}s, remaining: ${remainingTime.toFixed(6)}s`
+          );
+        }
         this.emit("trackAborted", remainingTime);
       }
     };
@@ -443,6 +463,19 @@ export class SpeakerTrack extends EventEmitter<{
       this.bufferSource.start(when, offset);
       this.bufferSourcePlaying = true;
       this.startedAtContextTime = when - offset;
+
+      if (typeof window !== "undefined" && (window as any).DEBUG_LOOP_SYNC) {
+        console.log(
+          `[SYNC_DEBUG] TRACK_START: Speaker ${
+            this.data.id
+          } starting at ${when.toFixed(6)}s with offset ${offset.toFixed(
+            6
+          )}s, startedAtContextTime: ${this.startedAtContextTime.toFixed(
+            6
+          )}s, variant: ${this.getCurrentUri()}`
+        );
+      }
+
       this.emit("startingBufferSource", {
         when,
         offset,
@@ -545,6 +578,14 @@ export class SpeakerTrack extends EventEmitter<{
 
   public getCurrentUri(): string {
     return this.currentVariantUri;
+  }
+
+  public getVariantLoopCount(): number {
+    return this.variantLoopCount;
+  }
+
+  public getVariantLoopTarget(): number {
+    return this.variantLoopTarget;
   }
 
   public shouldSwitchVariant(): boolean {
