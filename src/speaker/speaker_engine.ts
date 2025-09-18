@@ -11,6 +11,7 @@ import { EventEmitter } from "../event_emitter";
 import { EffectsConfig, IMixParams, SpeakerConfig } from "../types/index";
 import { ISpeakerData } from "../types/speaker";
 import { FADE_IN_DURATION_SECONDS, isNearlyZero } from "../utils";
+import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { SpeakerTrack } from "./speaker_track";
 import { LoadingStrategy, SpeakerUtils } from "./speaker_utils";
 
@@ -57,6 +58,12 @@ export class SpeakerEngine extends EventEmitter<{
   private masterDryGainNode: IGainNode<IAudioContext>;
   private masterWetGainNode: IGainNode<IAudioContext>;
   private masterEffectsSendNode: IGainNode<IAudioContext>;
+
+  // Variant preprocessing for reduced loop point drift
+  private variantPreprocessingTimers: Map<number, NodeJS.Timeout> = new Map();
+  private preprocessedVariantBuffers: Map<number, IAudioBuffer> = new Map();
+  private readonly VARIANT_PREPROCESSING_TIME = 0.05; // 50ms before loop point
+  private readonly MICRO_FADE_DURATION = 0.05; // 50ms micro-fade
 
   constructor(
     speakersData: ISpeakerData[],
@@ -375,6 +382,8 @@ export class SpeakerEngine extends EventEmitter<{
       if (track.bufferSourcePlaying) {
         track.abortBufferSource();
       }
+      // Clear variant preprocessing timers
+      this.clearVariantPreprocessingTimer(track.data.id);
     });
     this.playing = false;
     this.playingTracks = [];
@@ -513,7 +522,18 @@ export class SpeakerEngine extends EventEmitter<{
       offset = 0;
       if (this.group.get(track.groupId) === null) {
         this.group.set(track.groupId, currentTime);
+        console.log(
+          `🎵 SYNC: Setting group ${
+            track.groupId
+          } start time to ${currentTime.toFixed(3)}s`
+        );
       }
+    } else {
+      console.log(
+        `🎵 SYNC: Group ${track.groupId} offset: ${(offset * 1000).toFixed(
+          1
+        )}ms (not synced)`
+      );
     }
 
     // playing the base track
@@ -567,15 +587,34 @@ export class SpeakerEngine extends EventEmitter<{
         const newVariantUri = speaker.selectNextVariant();
         this.emit("variantChanged", speaker.data.id, newVariantUri);
 
-        // Force restart the track with the new variant buffer
+        // Try to use preprocessed variant buffer first
         if (speaker.bufferSourcePlaying) {
-          speaker.abortBufferSource();
-          // Restart the track immediately with the new variant
-          this.repeatLoopOnLoopPoint(speaker);
+          const preprocessedApplied = this.applyPreprocessedVariant(speaker);
+
+          if (preprocessedApplied) {
+            console.log(
+              `🎵 VARIANT: Applied preprocessed buffer for speaker ${speaker.data.id}`
+            );
+          } else {
+            console.log(
+              `🎵 VARIANT: Fallback to old method for speaker ${speaker.data.id}`
+            );
+            // Fall back to current method if no preprocessed buffer available
+            speaker.abortBufferSource();
+            this.repeatLoopOnLoopPoint(speaker);
+          }
         }
       }
 
       speaker?.fadeBufferSourceToVolume(speaker.calculatedVolume);
+
+      // Schedule preprocessing for next potential variant switch
+      if (speaker.getVariantUris().length > 0) {
+        console.log(
+          `🎵 VARIANT: Scheduling preprocessing for speaker ${speaker.data.id}`
+        );
+        this.scheduleVariantPreprocessing(speaker);
+      }
     });
 
     this.speakers.forEach((speaker) => {
@@ -1083,6 +1122,260 @@ export class SpeakerEngine extends EventEmitter<{
       this.mixParams.speakerConfig?.mode ||
         "progressive-sync-basePlusMax5Random"
     );
+  }
+
+  /**
+   * Preprocess variant switching to reduce loop point drift
+   * This method processes the new variant buffer 50ms before the loop point
+   */
+  private preprocessVariantSwitch(speaker: SpeakerTrack) {
+    if (!speaker.shouldSwitchVariant()) {
+      return; // No variant switch needed
+    }
+
+    const newVariantUri = speaker.selectNextVariant();
+    const newVariantBuffer = speaker.getVariantBuffer(newVariantUri);
+
+    if (!newVariantBuffer) {
+      console.warn(
+        `Variant buffer not found for ${newVariantUri}, falling back to current method`
+      );
+      return;
+    }
+
+    // Get current loop configuration
+    const { duration, times, isReverse } = speaker.loopConfig;
+    if (!duration || !times) {
+      console.warn("Missing loop configuration for variant preprocessing");
+      return;
+    }
+
+    // Process the new variant buffer with current configuration
+    const effectsConfig = { ...speaker.config?.effects };
+    if (speaker.getVariantUris().length > 0 && newVariantUri !== speaker.uri) {
+      effectsConfig.microFadeInDurationInMs =
+        speaker.config.variantCrossfadeDurationMs ?? 1000;
+    }
+
+    try {
+      const processedBuffer = new BufferEffectsProcessor(
+        newVariantBuffer,
+        this.audioContext,
+        effectsConfig
+      )
+        .composeBuffer({
+          duration,
+          times,
+          fadeInDuration: 0, // No fade for preprocessing
+          fadeInStartVolume: 1.0,
+          isReverse,
+        })
+        .getBuffer();
+
+      // Store the preprocessed buffer
+      this.preprocessedVariantBuffers.set(speaker.data.id, processedBuffer);
+      console.log(
+        `🎵 VARIANT: Preprocessed buffer for speaker ${speaker.data.id} (${newVariantUri})`
+      );
+
+      // Schedule the micro-fade down to happen only 15ms before loop point
+      this.scheduleMicroFadeDown(speaker);
+    } catch (error) {
+      console.error("Error preprocessing variant buffer:", error);
+    }
+  }
+
+  /**
+   * Schedule micro-fade down to happen 15ms before loop point
+   */
+  private scheduleMicroFadeDown(speaker: SpeakerTrack) {
+    // Calculate time until next loop point
+    const currentTime = this.audioContext.currentTime;
+    const baseTrackId = this.playingTracks[0];
+    const baseTrack = baseTrackId
+      ? this.getSpeakerTrackById(baseTrackId)
+      : null;
+
+    if (!baseTrack?.buffer) {
+      return; // No base track to sync with
+    }
+
+    const timeUntilNextLoop = SpeakerUtils.timeUntilClosestLoopPoint({
+      currentTime,
+      startTime: this.group.get(baseTrack.groupId) ?? currentTime,
+      duration: baseTrack.buffer.duration,
+    });
+
+    // Schedule fade-down to start 15ms before loop point
+    const fadeDownDelay = (timeUntilNextLoop - this.MICRO_FADE_DURATION) * 1000;
+
+    if (fadeDownDelay > 0) {
+      setTimeout(() => {
+        this.startMicroFadeDown(speaker);
+      }, fadeDownDelay);
+    } else {
+      // If we're too close to loop point, start fade immediately
+      this.startMicroFadeDown(speaker);
+    }
+  }
+
+  /**
+   * Start micro-fade down of current variant before loop point
+   */
+  private startMicroFadeDown(speaker: SpeakerTrack) {
+    if (!speaker.bufferSourcePlaying || !speaker.getGainNode()) {
+      return;
+    }
+
+    const gainNode = speaker.getGainNode()!;
+    const currentVolume = gainNode.gain.value;
+    const targetVolume = 0.001; // Nearly zero
+
+    // Schedule micro-fade down
+    gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
+    gainNode.gain.setValueAtTime(currentVolume, this.audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(
+      targetVolume,
+      this.audioContext.currentTime + this.MICRO_FADE_DURATION
+    );
+  }
+
+  /**
+   * Apply preprocessed variant buffer at loop point
+   */
+  private applyPreprocessedVariant(speaker: SpeakerTrack) {
+    const preprocessedBuffer = this.preprocessedVariantBuffers.get(
+      speaker.data.id
+    );
+    if (!preprocessedBuffer) {
+      return false; // No preprocessed buffer available
+    }
+
+    // Clear the preprocessed buffer
+    this.preprocessedVariantBuffers.delete(speaker.data.id);
+
+    // Abort current buffer source
+    if (speaker.bufferSourcePlaying) {
+      speaker.abortBufferSource();
+    }
+
+    // Create new buffer source with preprocessed buffer
+    const newBufferSource = this.audioContext.createBufferSource();
+    newBufferSource.buffer = preprocessedBuffer;
+    newBufferSource.loop = false;
+    speaker.setBufferSource(newBufferSource);
+
+    // Reconnect audio graph
+    const gainNode = speaker.getGainNode();
+    if (gainNode) {
+      newBufferSource.connect(gainNode);
+    }
+
+    // Start playback immediately
+    const currentTime = this.audioContext.currentTime;
+    newBufferSource.start(currentTime);
+    speaker.bufferSourcePlaying = true;
+    speaker.startedAtContextTime = currentTime;
+
+    // Set up track finished handler
+    newBufferSource.onended = () => {
+      if (!newBufferSource || !newBufferSource.buffer) {
+        throw new Error(
+          "Previously playing source was not cleared before track ended"
+        );
+      }
+      speaker.bufferSourcePlaying = false;
+      const remainingTime = SpeakerUtils.findRemainingTime(
+        this.audioContext.currentTime,
+        speaker.startedAtContextTime,
+        newBufferSource.buffer.duration
+      );
+      speaker.clearBufferSourcePublic();
+      if (
+        remainingTime <= 0.05 ||
+        Math.abs(newBufferSource.buffer.duration - remainingTime) <= 0.05
+      ) {
+        speaker.emit("trackFinished");
+      } else {
+        speaker.emit("trackAborted", remainingTime);
+      }
+    };
+
+    // Micro-fade up
+    this.startMicroFadeUp(speaker);
+
+    return true;
+  }
+
+  /**
+   * Start micro-fade up of new variant after loop point
+   */
+  private startMicroFadeUp(speaker: SpeakerTrack) {
+    const gainNode = speaker.getGainNode();
+    if (!gainNode) {
+      return;
+    }
+
+    const targetVolume = speaker.calculatedVolume;
+
+    // Schedule micro-fade up
+    gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
+    gainNode.gain.setValueAtTime(0.001, this.audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(
+      targetVolume,
+      this.audioContext.currentTime + this.MICRO_FADE_DURATION
+    );
+  }
+
+  /**
+   * Schedule variant preprocessing for a speaker
+   */
+  private scheduleVariantPreprocessing(speaker: SpeakerTrack) {
+    // Clear any existing timer
+    this.clearVariantPreprocessingTimer(speaker.data.id);
+
+    // Calculate time until next loop point
+    const currentTime = this.audioContext.currentTime;
+    const baseTrackId = this.playingTracks[0];
+    const baseTrack = baseTrackId
+      ? this.getSpeakerTrackById(baseTrackId)
+      : null;
+
+    if (!baseTrack?.buffer) {
+      return; // No base track to sync with
+    }
+
+    const timeUntilNextLoop = SpeakerUtils.timeUntilClosestLoopPoint({
+      currentTime,
+      startTime: this.group.get(baseTrack.groupId) ?? currentTime,
+      duration: baseTrack.buffer.duration,
+    });
+
+    // Only schedule if we have enough time for preprocessing
+    if (timeUntilNextLoop > this.VARIANT_PREPROCESSING_TIME) {
+      const preprocessingDelay =
+        (timeUntilNextLoop - this.VARIANT_PREPROCESSING_TIME) * 1000;
+
+      const timer = setTimeout(() => {
+        this.preprocessVariantSwitch(speaker);
+        this.variantPreprocessingTimers.delete(speaker.data.id);
+      }, preprocessingDelay);
+
+      this.variantPreprocessingTimers.set(speaker.data.id, timer);
+    }
+  }
+
+  /**
+   * Clear variant preprocessing timer for a speaker
+   */
+  private clearVariantPreprocessingTimer(speakerId: number) {
+    const timer = this.variantPreprocessingTimers.get(speakerId);
+    if (timer) {
+      clearTimeout(timer);
+      this.variantPreprocessingTimers.delete(speakerId);
+    }
+    // Also clear any preprocessed buffer
+    this.preprocessedVariantBuffers.delete(speakerId);
   }
 
   toString() {

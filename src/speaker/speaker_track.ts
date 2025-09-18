@@ -646,6 +646,29 @@ export class SpeakerTrack extends EventEmitter<{
     return this.variantBuffers.get(uri) || null;
   }
 
+  // Public methods for variant preprocessing
+  public getVariantUris(): string[] {
+    return this.variantUris;
+  }
+
+  public getGainNode(): IGainNode<IAudioContext> | null {
+    return this.gainNode || null;
+  }
+
+  public getBufferSource(): IAudioBufferSourceNode<IAudioContext> | null {
+    return this.bufferSource || null;
+  }
+
+  public setBufferSource(
+    bufferSource: IAudioBufferSourceNode<IAudioContext> | null
+  ) {
+    this.bufferSource = bufferSource;
+  }
+
+  public clearBufferSourcePublic() {
+    this.clearBufferSource();
+  }
+
   toString() {
     const {
       data: { id },
