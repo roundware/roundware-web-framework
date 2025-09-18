@@ -65,6 +65,9 @@ export type SpeakerConfig = {
   replaceWithNoneProbability?: number;
   slotConsiderationProbability?: number;
   loopPointUpdateProbability?: number;
+  // probability that each individual speaker slot will rotate to a different available speaker
+  // 0.0 = never rotate, 1.0 = always rotate (not recommended)
+  speakerRotationProbability?: number;
   // list of fractions from which app will select randomly one of
   // negative values will play the audio in reverse for the specified fraction
   // e.g., [1/2, 1/1, -1/2, 1/8] - negative values play backwards

@@ -672,16 +672,20 @@ export class SpeakerEngine extends EventEmitter<{
       return;
     }
 
-    // Get available speakers that are not already playing and not always-on
-    let availableSpeakers = this.speakers
+    // Get all available speakers (not just unplayed ones)
+    const allAvailableSpeakers = this.speakers
       .filter((speaker) => {
         return (
           speaker.calculatedVolume > speaker.minVolume &&
-          !this.playingTracks.includes(speaker.data.id) &&
           !this.isAlwaysOnSpeaker(speaker.data.id) // exclude always-on speakers
         );
       })
       .map((s) => s.data.id);
+
+    // Get speakers that are not currently playing (for new selections)
+    const unplayedAvailableSpeakers = allAvailableSpeakers.filter(
+      (id) => !this.playingTracks.includes(id)
+    );
 
     for (let i = 1; i < this.mode.maxRandom; i++) {
       const speakerId = this.playingTracks[i];
@@ -694,7 +698,53 @@ export class SpeakerEngine extends EventEmitter<{
         continue;
       }
 
-      // slotConsiderationProbability
+      // Check if we should rotate this specific speaker
+      const speakerRotationProbability =
+        this.mixParams.speakerConfig?.speakerRotationProbability || 0;
+      const shouldRotate = SpeakerUtils.shouldDoSomethingWithProbability(
+        speakerRotationProbability,
+        "rotate speaker"
+      );
+
+      // Check if current speaker is still available
+      const isCurrentSpeakerStillAvailable =
+        speaker &&
+        speaker.calculatedVolume > speaker.minVolume &&
+        !this.isAlwaysOnSpeaker(speaker.data.id);
+
+      if (isCurrentSpeakerStillAvailable && !shouldRotate) {
+        // Current speaker is still available and we're not rotating - just update its loop configuration
+        // This prevents ping-pong effect while allowing fractional/random updates
+        const lengths = this.mixParams.speakerConfig?.loopFractions ?? [1];
+        const randomLength = sample(lengths);
+        if (!randomLength) throw new Error(`Random length not found`);
+
+        if (!this.playingTracks[0]) {
+          throw new Error(`Base track not found`);
+        }
+
+        const baseTrack = this.getSpeakerTrackById(this.playingTracks[0]);
+        if (!baseTrack?.buffer) throw new Error(`Base track buffer not found`);
+
+        const baseTrackDuration = baseTrack.buffer.duration;
+        const isReverse = randomLength < 0;
+        const duration = baseTrackDuration * Math.abs(randomLength);
+        const panPosition =
+          this.mixParams.speakerConfig?.effects?.pan?.[i - 1] ?? 0;
+
+        // Update the speaker with new loop configuration
+        speaker.playWithConfig({
+          duration,
+          offset: 0,
+          times: Math.ceil(baseTrackDuration / duration),
+          fadeInDuration: 0, // No fade since it's continuing
+          pan: panPosition,
+          isReverse,
+        });
+        continue;
+      }
+
+      // Current speaker is no longer available, doesn't exist, or we're rotating it - need to replace
       const slotConsiderationProbability =
         this.mixParams.speakerConfig?.slotConsiderationProbability || 1;
 
@@ -707,7 +757,7 @@ export class SpeakerEngine extends EventEmitter<{
       ) {
         this.emit("skippingSlot");
 
-        // repeat the loop
+        // repeat the loop if speaker exists
         if (speaker) this.repeatLoopOnLoopPoint(speaker);
 
         continue;
@@ -734,8 +784,7 @@ export class SpeakerEngine extends EventEmitter<{
       }
 
       // replace with new speaker
-      const newSpeakerId = sample(availableSpeakers);
-
+      const newSpeakerId = sample(unplayedAvailableSpeakers);
       const newSpeaker = this.speakers.find((s) => s.data.id === newSpeakerId);
 
       if (newSpeaker) {
@@ -746,7 +795,13 @@ export class SpeakerEngine extends EventEmitter<{
 
         this.playingTracks[i] = newSpeaker.data.id;
         this.emit("newSpeaker", newSpeaker);
-        availableSpeakers = availableSpeakers.filter((s) => s !== newSpeakerId);
+
+        // Remove from unplayed list
+        const index = unplayedAvailableSpeakers.indexOf(newSpeakerId);
+        if (index > -1) {
+          unplayedAvailableSpeakers.splice(index, 1);
+        }
+
         // find a new random length;
         const lengths = this.mixParams.speakerConfig?.loopFractions ?? [1];
         const randomLength = sample(lengths);
