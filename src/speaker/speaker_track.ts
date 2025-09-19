@@ -26,7 +26,7 @@ import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { SpeakerUtils } from "./speaker_utils";
 const convertLinesToPolygon = (shape: LineString | MultiLineString) =>
   lineToPolygon(shape);
-const FADE_DURATION_SECONDS = 3;
+const FADE_DURATION_SECONDS = 4;
 const NEARLY_ZERO = 0.05;
 
 /** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners.
@@ -346,7 +346,21 @@ export class SpeakerTrack extends EventEmitter<{
       isReverse,
     });
 
-    this.bufferSource.buffer = bP.getBuffer();
+    const finalBuffer = bP.getBuffer();
+    this.bufferSource.buffer = finalBuffer;
+
+    // Debug logging to investigate half-speed issue
+    if (typeof window !== "undefined" && (window as any).DEBUG_LOOP_SYNC) {
+      console.log(
+        `[SYNC_DEBUG] BUFFER_INFO: Speaker ${
+          this.data.id
+        } - requestedDuration=${duration.toFixed(
+          3
+        )}s, times=${times}, finalBufferDuration=${finalBuffer.duration.toFixed(
+          3
+        )}s, originalBufferDuration=${(this.buffer?.duration || 0).toFixed(3)}s`
+      );
+    }
 
     if (!this.gainNode) {
       this.gainNode = this.audioContext.createGain();

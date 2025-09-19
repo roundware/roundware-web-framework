@@ -71,6 +71,10 @@ export class SpeakerEngine extends EventEmitter<{
   speakers: SpeakerTrack[] = [];
   audioContext: IAudioContext;
   playingTracks: (number | null)[] = [];
+
+  // Track speakers that are currently fading out due to being out of range
+  private fadingOutSpeakers: Set<number> = new Set();
+
   private debugStatusElement: HTMLElement | null = null;
   private debugInterval: NodeJS.Timeout | null = null;
   private timingCheckInterval: NodeJS.Timeout | null = null;
@@ -849,8 +853,27 @@ export class SpeakerEngine extends EventEmitter<{
 
       // Skip probabilistic logic for always-on speakers - they should always play when available
       if (speaker && this.isAlwaysOnSpeaker(speaker.data.id)) {
-        // Just repeat the loop for always-on speakers
-        this.repeatLoopOnLoopPoint(speaker);
+        // Check if always-on speaker is still in range
+        if (speaker.calculatedVolume > speaker.minVolume) {
+          // Just repeat the loop for always-on speakers that are still in range
+          this.repeatLoopOnLoopPoint(speaker);
+        } else {
+          // Always-on speaker is out of range - start graceful fade-out
+          if (!this.fadingOutSpeakers.has(speaker.data.id)) {
+            if (DEBUG_LOOP_SYNC) {
+              console.log(
+                `${SYNC_DEBUG_PREFIX} SPEAKER_OUT_OF_RANGE: Always-on speaker ${
+                  speaker.data.id
+                } is out of range (volume: ${speaker.calculatedVolume.toFixed(
+                  3
+                )}, min: ${speaker.minVolume.toFixed(
+                  3
+                )}) - starting graceful fade-out`
+              );
+            }
+            this.startGracefulFadeOut(speaker, i);
+          }
+        }
         continue;
       }
 
@@ -863,10 +886,22 @@ export class SpeakerEngine extends EventEmitter<{
       );
 
       // Check if current speaker is still available
+      // Always-on speakers should only be considered available if they're actually in range
       const isCurrentSpeakerStillAvailable =
-        speaker &&
-        speaker.calculatedVolume > speaker.minVolume &&
-        !this.isAlwaysOnSpeaker(speaker.data.id);
+        speaker && speaker.calculatedVolume > speaker.minVolume;
+
+      // Debug logging for speaker availability
+      if (speaker && DEBUG_LOOP_SYNC) {
+        console.log(
+          `${SYNC_DEBUG_PREFIX} SPEAKER_AVAILABILITY: Speaker ${
+            speaker.data.id
+          } - volume: ${speaker.calculatedVolume.toFixed(
+            3
+          )}, min: ${speaker.minVolume.toFixed(
+            3
+          )}, available: ${isCurrentSpeakerStillAvailable}, shouldRotate: ${shouldRotate}`
+        );
+      }
 
       if (isCurrentSpeakerStillAvailable && !shouldRotate) {
         // Current speaker is still available and we're not rotating - just update its loop configuration
@@ -889,10 +924,24 @@ export class SpeakerEngine extends EventEmitter<{
           this.mixParams.speakerConfig?.effects?.pan?.[i - 1] ?? 0;
 
         // Update the speaker with new loop configuration
+        const calculatedTimes = Math.ceil(baseTrackDuration / duration);
+
+        if (DEBUG_LOOP_SYNC) {
+          console.log(
+            `${SYNC_DEBUG_PREFIX} LOOP_CONFIG: Speaker ${
+              speaker.data.id
+            } - randomLength=${randomLength}, duration=${duration.toFixed(
+              3
+            )}s, baseDuration=${baseTrackDuration.toFixed(
+              3
+            )}s, times=${calculatedTimes}, isReverse=${isReverse}`
+          );
+        }
+
         speaker.playWithConfig({
           duration,
           offset: 0,
-          times: Math.ceil(baseTrackDuration / duration),
+          times: calculatedTimes,
           fadeInDuration: 0, // No fade since it's continuing
           pan: panPosition,
           isReverse,
@@ -1181,12 +1230,74 @@ export class SpeakerEngine extends EventEmitter<{
       speaker.calculatedVolume = speaker.volumeByLocation(this.listenerPoint);
       return speaker.calculatedVolume > speaker.minVolume;
     });
+
+    // Apply volume changes to all currently playing speakers
+    // This ensures speakers fade out when listener moves away, even if they're not selected for updates
+    this.playingTracks.forEach((trackId, index) => {
+      if (trackId !== null) {
+        const speaker = this.getSpeakerTrackById(trackId);
+        if (speaker && speaker.bufferSourcePlaying) {
+          // If speaker volume has dropped to minVolume, start graceful fade-out
+          if (
+            speaker.calculatedVolume <= speaker.minVolume &&
+            !this.fadingOutSpeakers.has(speaker.data.id)
+          ) {
+            if (DEBUG_LOOP_SYNC) {
+              console.log(
+                `${SYNC_DEBUG_PREFIX} SPEAKER_VOLUME_MIN: Speaker ${
+                  speaker.data.id
+                } volume dropped to min (${speaker.calculatedVolume.toFixed(
+                  3
+                )}) - starting graceful fade-out`
+              );
+            }
+            // Start graceful fade-out process
+            this.startGracefulFadeOut(speaker, index);
+          } else if (speaker.calculatedVolume > speaker.minVolume) {
+            // Apply the new volume (only if not fading out)
+            if (DEBUG_LOOP_SYNC) {
+              console.log(
+                `${SYNC_DEBUG_PREFIX} VOLUME_UPDATE: Speaker ${
+                  speaker.data.id
+                } volume updated to ${speaker.calculatedVolume.toFixed(3)}`
+              );
+            }
+            speaker.fadeBufferSourceToVolume(speaker.calculatedVolume);
+          }
+        }
+      }
+    });
   }
 
   getSpeakerTrackById(id: number) {
     const found = this.speakers.find((s) => s.data.id === id);
     if (!found) throw new Error(`Speaker track not found: ${id}`);
     return found;
+  }
+
+  /**
+   * Start a graceful 4-second fade-out for a speaker that has gone out of range
+   */
+  private startGracefulFadeOut(speaker: SpeakerTrack, slotIndex: number) {
+    // Mark speaker as fading out
+    this.fadingOutSpeakers.add(speaker.data.id);
+
+    // Start the fade-out process
+    speaker.fadeOutAndStopBufferSource();
+
+    // Set up cleanup after fade completes
+    setTimeout(() => {
+      // Remove from playing tracks and clean up
+      this.playingTracks[slotIndex] = null;
+      this.fadingOutSpeakers.delete(speaker.data.id);
+      this.emit("replacingWithNone", speaker.data.id);
+
+      if (DEBUG_LOOP_SYNC) {
+        console.log(
+          `${SYNC_DEBUG_PREFIX} SPEAKER_FADE_COMPLETE: Speaker ${speaker.data.id} fade-out completed - removed from playing tracks`
+        );
+      }
+    }, 4000); // 4-second fade duration
   }
 
   /**
