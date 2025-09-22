@@ -84,6 +84,9 @@ export class SpeakerTrack extends EventEmitter<{
     isReverse?: boolean;
   } = {};
 
+  // Debounce volume updates to prevent rapid gain changes
+  private volumeUpdateTimeout: NodeJS.Timeout | null = null;
+
   // Variant URI tracking
   private variantUris: string[] = [];
   private currentVariantIndex: number = 0;
@@ -312,6 +315,12 @@ export class SpeakerTrack extends EventEmitter<{
       this.stopTimeout = null;
     }
 
+    // Clear any pending volume update
+    if (this.volumeUpdateTimeout) {
+      clearTimeout(this.volumeUpdateTimeout);
+      this.volumeUpdateTimeout = null;
+    }
+
     if (this.bufferSource) {
       this.stopBufferSource();
       this.clearBufferSource();
@@ -514,6 +523,12 @@ export class SpeakerTrack extends EventEmitter<{
 
   private clearBufferSource() {
     try {
+      // Clear volume update timeout
+      if (this.volumeUpdateTimeout) {
+        clearTimeout(this.volumeUpdateTimeout);
+        this.volumeUpdateTimeout = null;
+      }
+
       if (this.bufferSource) {
         this.bufferSource.onended = null;
         this.bufferSource.disconnect();
@@ -537,23 +552,42 @@ export class SpeakerTrack extends EventEmitter<{
       return;
     }
 
-    if (this.stopTimeout) {
-      clearTimeout(this.stopTimeout);
-      this.stopTimeout = null;
+    // Clear any pending volume update
+    if (this.volumeUpdateTimeout) {
+      clearTimeout(this.volumeUpdateTimeout);
+      this.volumeUpdateTimeout = null;
     }
 
-    this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
-    // Ensure target is safe positive and bounded
-    const MIN_AUDIBLE = 0.05; // test floor to avoid full mutes
-    const safeTarget = Math.max(
-      MIN_AUDIBLE,
-      Math.min(1, Number.isFinite(volume) ? volume : 0)
-    );
-    const RAMP_SECONDS_TEST = 0.6; // shorter ramp to reduce long dips
-    this.gainNode.gain.exponentialRampToValueAtTime(
-      safeTarget,
-      this.audioContext.currentTime + RAMP_SECONDS_TEST
-    );
+    // Debounce volume updates to prevent rapid gain changes that cause stuttering
+    this.volumeUpdateTimeout = setTimeout(() => {
+      if (!this.gainNode) {
+        return;
+      }
+
+      if (this.stopTimeout) {
+        clearTimeout(this.stopTimeout);
+        this.stopTimeout = null;
+      }
+
+      // Only cancel and hold if we're not already in a transition
+      const currentGain = this.gainNode.gain.value;
+      const targetGain = Math.max(
+        0.05, // MIN_AUDIBLE
+        Math.min(1, Number.isFinite(volume) ? volume : 0)
+      );
+
+      // Only update if the change is significant (prevents micro-adjustments)
+      if (Math.abs(currentGain - targetGain) > 0.01) {
+        this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
+        const RAMP_SECONDS_TEST = 0.6; // shorter ramp to reduce long dips
+        this.gainNode.gain.exponentialRampToValueAtTime(
+          targetGain,
+          this.audioContext.currentTime + RAMP_SECONDS_TEST
+        );
+      }
+
+      this.volumeUpdateTimeout = null;
+    }, 50); // 50ms debounce
   }
 
   log(string: string) {

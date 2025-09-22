@@ -75,6 +75,9 @@ export class SpeakerEngine extends EventEmitter<{
   // Track speakers that are currently fading out due to being out of range
   private fadingOutSpeakers: Set<number> = new Set();
 
+  // Track consecutive low volume readings to prevent premature fade-outs
+  private lowVolumeCounts: Map<number, number> = new Map();
+
   private debugStatusElement: HTMLElement | null = null;
   private debugInterval: NodeJS.Timeout | null = null;
   private timingCheckInterval: NodeJS.Timeout | null = null;
@@ -423,7 +426,6 @@ export class SpeakerEngine extends EventEmitter<{
     // Start timing check for debugging
     if (DEBUG_LOOP_SYNC) {
       this.startTimingCheck();
-      this.monitorAudioContextState();
     }
   }
 
@@ -988,7 +990,21 @@ export class SpeakerEngine extends EventEmitter<{
         continue;
       }
 
-      // replace with new speaker
+      // replace with new speaker - but only if there are unplayed speakers available
+      if (unplayedAvailableSpeakers.length === 0) {
+        // No unplayed speakers available - keep current speaker if it's still available
+        if (speaker && speaker.calculatedVolume > speaker.minVolume) {
+          this.repeatLoopOnLoopPoint(speaker);
+        } else {
+          // Current speaker is out of range and no replacements available - fade out gracefully
+          if (speaker) {
+            this.fadeOutLoopFromLoopPoint(speaker);
+          }
+          this.playingTracks[i] = null;
+        }
+        continue;
+      }
+
       const newSpeakerId = sample(unplayedAvailableSpeakers);
       const newSpeaker = this.speakers.find((s) => s.data.id === newSpeakerId);
 
@@ -1237,23 +1253,10 @@ export class SpeakerEngine extends EventEmitter<{
       if (trackId !== null) {
         const speaker = this.getSpeakerTrackById(trackId);
         if (speaker && speaker.bufferSourcePlaying) {
-          // If speaker volume has dropped to minVolume, start graceful fade-out
-          if (
-            speaker.calculatedVolume <= speaker.minVolume &&
-            !this.fadingOutSpeakers.has(speaker.data.id)
-          ) {
-            if (DEBUG_LOOP_SYNC) {
-              console.log(
-                `${SYNC_DEBUG_PREFIX} SPEAKER_VOLUME_MIN: Speaker ${
-                  speaker.data.id
-                } volume dropped to min (${speaker.calculatedVolume.toFixed(
-                  3
-                )}) - starting graceful fade-out`
-              );
-            }
-            // Start graceful fade-out process
-            this.startGracefulFadeOut(speaker, index);
-          } else if (speaker.calculatedVolume > speaker.minVolume) {
+          // Reset low volume count if speaker volume is above minVolume
+          if (speaker.calculatedVolume > speaker.minVolume) {
+            this.lowVolumeCounts.delete(speaker.data.id);
+
             // Apply the new volume (only if not fading out)
             if (DEBUG_LOOP_SYNC) {
               console.log(
@@ -1263,6 +1266,40 @@ export class SpeakerEngine extends EventEmitter<{
               );
             }
             speaker.fadeBufferSourceToVolume(speaker.calculatedVolume);
+          } else if (
+            speaker.calculatedVolume <= speaker.minVolume &&
+            !this.fadingOutSpeakers.has(speaker.data.id)
+          ) {
+            // Increment low volume count
+            const currentCount = this.lowVolumeCounts.get(speaker.data.id) || 0;
+            const newCount = currentCount + 1;
+            this.lowVolumeCounts.set(speaker.data.id, newCount);
+
+            // Only start graceful fade-out after 3 consecutive low volume readings
+            // This prevents premature fade-outs due to GPS accuracy issues
+            if (newCount >= 3) {
+              if (DEBUG_LOOP_SYNC) {
+                console.log(
+                  `${SYNC_DEBUG_PREFIX} SPEAKER_VOLUME_MIN: Speaker ${
+                    speaker.data.id
+                  } volume dropped to min for ${newCount} consecutive readings (${speaker.calculatedVolume.toFixed(
+                    3
+                  )}) - starting graceful fade-out`
+                );
+              }
+              // Start graceful fade-out process
+              this.startGracefulFadeOut(speaker, index);
+            } else {
+              if (DEBUG_LOOP_SYNC) {
+                console.log(
+                  `${SYNC_DEBUG_PREFIX} SPEAKER_VOLUME_LOW: Speaker ${
+                    speaker.data.id
+                  } volume low (${speaker.calculatedVolume.toFixed(
+                    3
+                  )}) - count: ${newCount}/3`
+                );
+              }
+            }
           }
         }
       }
@@ -1290,6 +1327,7 @@ export class SpeakerEngine extends EventEmitter<{
       // Remove from playing tracks and clean up
       this.playingTracks[slotIndex] = null;
       this.fadingOutSpeakers.delete(speaker.data.id);
+      this.lowVolumeCounts.delete(speaker.data.id); // Clean up low volume count
       this.emit("replacingWithNone", speaker.data.id);
 
       if (DEBUG_LOOP_SYNC) {
@@ -1813,105 +1851,6 @@ export class SpeakerEngine extends EventEmitter<{
       clearInterval(this.timingCheckInterval);
       this.timingCheckInterval = null;
     }
-  }
-
-  /**
-   * Monitor audio context state changes
-   */
-  private monitorAudioContextState() {
-    if (this.audioContext.state) {
-      console.log(
-        `${SYNC_DEBUG_PREFIX} AUDIO_CONTEXT: Initial state: ${this.audioContext.state}`
-      );
-
-      // Prevent audio context suspension by keeping it active
-      this.preventAudioContextSuspension();
-
-      // Monitor state changes
-      const checkState = () => {
-        if (this.audioContext.state === "suspended") {
-          console.log(
-            `${SYNC_DEBUG_PREFIX} AUDIO_CONTEXT: Context suspended! This will cause timing issues.`
-          );
-          // Try to resume the context
-          if (this.audioContext.resume) {
-            this.audioContext
-              .resume()
-              .then(() => {
-                console.log(
-                  `${SYNC_DEBUG_PREFIX} AUDIO_CONTEXT: Successfully resumed audio context.`
-                );
-              })
-              .catch((error) => {
-                console.log(
-                  `${SYNC_DEBUG_PREFIX} AUDIO_CONTEXT: Failed to resume audio context:`,
-                  error
-                );
-              });
-          }
-        } else if (this.audioContext.state === "running") {
-          // Only log occasionally to reduce spam
-          if (Math.random() < 0.1) {
-            // 10% chance to log
-            console.log(
-              `${SYNC_DEBUG_PREFIX} AUDIO_CONTEXT: Context running normally.`
-            );
-          }
-        }
-      };
-
-      // Check state every 500ms
-      setInterval(checkState, 500);
-    }
-  }
-
-  /**
-   * Prevent audio context suspension by keeping it active
-   */
-  private preventAudioContextSuspension() {
-    // Create a silent audio buffer to keep the context active
-    const buffer = this.audioContext.createBuffer(
-      1,
-      1,
-      this.audioContext.sampleRate
-    );
-    let source = this.audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(this.audioContext.destination);
-
-    // Play silent audio every 10 seconds to keep context active
-    const keepAlive = () => {
-      if (this.audioContext.state === "running") {
-        source.start();
-        // Create a new source for next time
-        const newSource = this.audioContext.createBufferSource();
-        newSource.buffer = buffer;
-        newSource.connect(this.audioContext.destination);
-        source = newSource;
-      }
-    };
-
-    // Start keep-alive interval
-    setInterval(keepAlive, 10000); // Every 10 seconds
-
-    // Also keep alive on user interaction
-    const userInteractionEvents = [
-      "click",
-      "touchstart",
-      "keydown",
-      "mousemove",
-    ];
-    userInteractionEvents.forEach((event) => {
-      document.addEventListener(
-        event,
-        () => {
-          if (this.audioContext.state === "suspended") {
-            this.audioContext.resume();
-          }
-        },
-        { once: true }
-      );
-    });
   }
 
   toString() {
