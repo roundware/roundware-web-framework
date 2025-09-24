@@ -84,4 +84,7 @@ export type SpeakerConfig = {
 
   // always-on speakers - these speakers will always play when available (in range)
   alwaysOnWhenAvailable?: number[]; // array of speaker IDs that should always play when available
+
+  // new speaker fade-in configuration
+  newSpeakerFadeInDurationMs?: number; // default: 2000 (2 seconds)
 };

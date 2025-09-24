@@ -631,6 +631,7 @@ export class SpeakerEngine extends EventEmitter<{
       fadeInDuration: isContinued ? 0 : FADE_IN_DURATION_SECONDS,
       times: 1,
       pan: 0,
+      isNewSpeaker: false, // Base track is not a new speaker
     });
     if (!isContinued) {
       track.on("trackFinished", this.onLoopPointBound);
@@ -947,6 +948,7 @@ export class SpeakerEngine extends EventEmitter<{
           fadeInDuration: 0, // No fade since it's continuing
           pan: panPosition,
           isReverse,
+          isNewSpeaker: false, // This is a continuation, not a new speaker
         });
         continue;
       }
@@ -1063,6 +1065,7 @@ export class SpeakerEngine extends EventEmitter<{
               times: Math.ceil(baseTrackDuration / duration),
               pan: panPosition,
               isReverse,
+              isNewSpeaker: true,
             });
           };
           newSpeaker.on("loaded", onLoaded);
@@ -1077,6 +1080,7 @@ export class SpeakerEngine extends EventEmitter<{
             fadeInDuration: FADE_IN_DURATION_SECONDS,
             pan: panPosition,
             isReverse,
+            isNewSpeaker: true,
           });
       } else {
         this.playingTracks[i] = null;
@@ -1118,6 +1122,7 @@ export class SpeakerEngine extends EventEmitter<{
       pan: speaker.loopConfig.pan,
       times: 1,
       isReverse: speaker.loopConfig.isReverse,
+      isNewSpeaker: false, // This is a fade-out scenario, not a new speaker
     });
     if (speaker.bufferSourcePlaying) speaker.fadeOutAndStopBufferSource();
   }
@@ -1223,6 +1228,7 @@ export class SpeakerEngine extends EventEmitter<{
         pan: track.loopConfig.pan,
         times: newTimes,
         isReverse: track.loopConfig.isReverse,
+        isNewSpeaker: false, // This is a track repetition, not a new speaker
       });
     } else {
       this.emit("repeatingTrack", {
@@ -1237,6 +1243,7 @@ export class SpeakerEngine extends EventEmitter<{
         pan: track.loopConfig.pan,
         times: baseTrackDuration / track.loopConfig.duration,
         isReverse: track.loopConfig.isReverse,
+        isNewSpeaker: false, // This is a track repetition, not a new speaker
       });
     }
   }
@@ -1413,6 +1420,7 @@ export class SpeakerEngine extends EventEmitter<{
               times: Math.ceil(baseTrackDuration / duration),
               pan: panPosition,
               isReverse,
+              isNewSpeaker: true,
             });
           };
           speaker.on("loaded", onLoaded);
@@ -1425,6 +1433,7 @@ export class SpeakerEngine extends EventEmitter<{
             fadeInDuration: FADE_IN_DURATION_SECONDS,
             pan: panPosition,
             isReverse,
+            isNewSpeaker: true,
           });
         }
       }

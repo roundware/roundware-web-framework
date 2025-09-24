@@ -288,6 +288,7 @@ export class SpeakerTrack extends EventEmitter<{
     fadeInDuration,
     pan,
     isReverse = false,
+    isNewSpeaker = false,
   }: {
     duration: number;
     offset: number;
@@ -295,6 +296,7 @@ export class SpeakerTrack extends EventEmitter<{
     fadeInDuration: number;
     pan: number;
     isReverse?: boolean;
+    isNewSpeaker?: boolean;
   }) {
     this.loopConfig.duration = duration;
     this.loopConfig.times = times;
@@ -373,12 +375,16 @@ export class SpeakerTrack extends EventEmitter<{
 
     if (!this.gainNode) {
       this.gainNode = this.audioContext.createGain();
-      const MIN_AUDIBLE = 0.05;
-      const initial = Number.isFinite(this.calculatedVolume)
-        ? Math.max(MIN_AUDIBLE, this.calculatedVolume)
-        : MIN_AUDIBLE;
-      this.gainNode.gain.value = initial;
     }
+
+    const MIN_AUDIBLE = 0.05;
+    const initial = Number.isFinite(this.calculatedVolume)
+      ? Math.max(MIN_AUDIBLE, this.calculatedVolume)
+      : MIN_AUDIBLE;
+
+    // For new speakers, always start at NEARLY_ZERO to enable fade-in
+    // For existing speakers, start at calculated volume
+    this.gainNode.gain.value = isNewSpeaker ? NEARLY_ZERO : initial;
 
     // connections:
     this.bufferSource.connect(this.gainNode);
@@ -406,6 +412,14 @@ export class SpeakerTrack extends EventEmitter<{
     const bufferSource = this.bufferSource;
 
     this.startBufferSource(this.audioContext.currentTime, offset || 0);
+
+    // Apply new speaker fade-in if this is a new speaker
+    if (isNewSpeaker) {
+      console.debug(
+        `Speaker ${this.data.id} starting as new speaker (audio context state: ${this.audioContext.state})`
+      );
+      this.fadeInNewSpeaker();
+    }
 
     const startedAtContextTime = this.startedAtContextTime;
 
@@ -479,6 +493,54 @@ export class SpeakerTrack extends EventEmitter<{
       console.debug("Stopping from timeout");
       this.stopBufferSource();
     }, FADE_DURATION_SECONDS * 1000);
+  }
+
+  /**
+   * Start a graceful fade-in for a new speaker
+   * This applies a gain-node level fade-in over the specified duration
+   */
+  fadeInNewSpeaker() {
+    if (!this.gainNode) {
+      throw new Error("Gain node not found");
+    }
+
+    // Check audio context state before attempting fade-in
+    if (this.audioContext.state === "suspended") {
+      console.warn(
+        `Speaker ${this.data.id} fade-in aborted: Audio context is suspended`
+      );
+      return;
+    }
+
+    // Get fade-in duration from config, default to 2 seconds
+    const fadeInDurationMs = this.config?.newSpeakerFadeInDurationMs ?? 2000;
+    const fadeInDurationSeconds = fadeInDurationMs / 1000;
+
+    // Calculate target volume
+    const MIN_AUDIBLE = 0.05;
+    const targetVolume = Number.isFinite(this.calculatedVolume)
+      ? Math.max(MIN_AUDIBLE, this.calculatedVolume)
+      : MIN_AUDIBLE;
+
+    // Fade in from current volume (NEARLY_ZERO) to target volume
+    // Mobile-safe: avoid cancelAndHoldAtTime; explicitly set starting value and schedule a linear ramp with a tiny epsilon
+    const now = this.audioContext.currentTime;
+    const EPSILON_S = 0.02; // 20ms scheduling guard
+    this.gainNode.gain.setValueAtTime(NEARLY_ZERO, now);
+    this.gainNode.gain.linearRampToValueAtTime(
+      targetVolume,
+      now + fadeInDurationSeconds + EPSILON_S
+    );
+
+    console.debug(
+      `Speaker ${
+        this.data.id
+      } fading in from ${NEARLY_ZERO} to ${targetVolume.toFixed(
+        3
+      )} over ${fadeInDurationSeconds}s (audio context state: ${
+        this.audioContext.state
+      })`
+    );
   }
 
   startBufferSource(when: number, offset: number) {

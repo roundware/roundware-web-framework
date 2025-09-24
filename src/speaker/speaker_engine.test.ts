@@ -427,6 +427,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
       offset: 0,
       pan: mockSpeakerTrack.loopConfig.pan,
       times: expect.any(Number),
+      isNewSpeaker: false, // This is a track repetition, not a new speaker
     });
   });
 
@@ -839,5 +840,184 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
 
     expect(firstCall.offset).toBe(0); // 15 % 10 = 5
     expect(secondCall.offset).toBe(0); // 25 % 10 = 5
+  });
+});
+
+describe("SpeakerTrack - New Speaker Fade-In", () => {
+  let mockAudioContext: IAudioContext;
+  let mockSpeakerData: ISpeakerData;
+  let mockConfig: SpeakerConfig;
+
+  beforeEach(() => {
+    // Create mock audio context
+    mockAudioContext = {
+      currentTime: 0,
+      createBufferSource: jest.fn(() => ({
+        buffer: null,
+        loop: false,
+        start: jest.fn(),
+        stop: jest.fn(),
+        onended: null,
+        connect: jest.fn(),
+        disconnect: jest.fn(),
+      })),
+      createGain: jest.fn(() => ({
+        gain: {
+          value: 0,
+          cancelAndHoldAtTime: jest.fn(),
+          exponentialRampToValueAtTime: jest.fn(),
+          linearRampToValueAtTime: jest.fn(),
+          setValueAtTime: jest.fn(),
+        },
+        connect: jest.fn(),
+        disconnect: jest.fn(),
+      })),
+      createStereoPanner: jest.fn(() => ({
+        pan: { value: 0 },
+        connect: jest.fn(),
+        disconnect: jest.fn(),
+      })),
+      createBuffer: jest.fn(() => ({
+        duration: 10,
+        sampleRate: 44100,
+        numberOfChannels: 2,
+        length: 441000,
+        getChannelData: jest.fn(() => new Float32Array(441000)),
+      })),
+      destination: {},
+    } as any;
+
+    // Create mock speaker data
+    mockSpeakerData = {
+      id: 1,
+      maxvolume: 0.8,
+      minvolume: 0.1,
+      uri: "test-audio.mp3",
+      varianturis: [],
+      attenuation_distance: 50,
+      shape: {
+        type: "Feature",
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [0, 0],
+              [1, 0],
+              [1, 1],
+              [0, 1],
+              [0, 0],
+            ],
+          ],
+        },
+        properties: {},
+      } as any,
+    };
+
+    // Create mock config with new speaker fade-in duration
+    mockConfig = {
+      mode: "progressive-sync-basePlusMax5Random",
+      newSpeakerFadeInDurationMs: 2000, // 2 seconds
+    };
+  });
+
+  it("should use configured fade-in duration", () => {
+    const speakerTrack = new SpeakerTrack({
+      data: mockSpeakerData,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      groupId: 1,
+    });
+
+    // Mock gain node
+    const mockGainNode = {
+      gain: {
+        value: 0,
+        cancelAndHoldAtTime: jest.fn(),
+        exponentialRampToValueAtTime: jest.fn(),
+        linearRampToValueAtTime: jest.fn(),
+        setValueAtTime: jest.fn(),
+      },
+    };
+    (speakerTrack as any).gainNode = mockGainNode;
+    (speakerTrack as any).calculatedVolume = 0.5;
+
+    // Call fadeInNewSpeaker
+    speakerTrack.fadeInNewSpeaker();
+
+    // Verify it uses configured 2000ms (2 seconds)
+    expect(mockGainNode.gain.setValueAtTime).toHaveBeenCalledWith(0.05, 0); // NEARLY_ZERO at current time
+    expect(mockGainNode.gain.linearRampToValueAtTime).toHaveBeenCalledWith(
+      0.5, // target volume
+      0 + 2 + 0.02 // current time + 2 seconds + epsilon
+    );
+  });
+
+  it("should use default fade-in duration when not configured", () => {
+    // Create config without newSpeakerFadeInDurationMs
+    const configWithoutFadeIn = {
+      mode: "progressive-sync-basePlusMax5Random" as const,
+    };
+
+    const speakerTrack = new SpeakerTrack({
+      data: mockSpeakerData,
+      config: configWithoutFadeIn,
+      audioContext: mockAudioContext,
+      groupId: 1,
+    });
+
+    // Mock gain node
+    const mockGainNode = {
+      gain: {
+        value: 0,
+        cancelAndHoldAtTime: jest.fn(),
+        exponentialRampToValueAtTime: jest.fn(),
+        linearRampToValueAtTime: jest.fn(),
+        setValueAtTime: jest.fn(),
+      },
+    };
+    (speakerTrack as any).gainNode = mockGainNode;
+    (speakerTrack as any).calculatedVolume = 0.5;
+
+    // Call fadeInNewSpeaker
+    speakerTrack.fadeInNewSpeaker();
+
+    // Verify it uses default 2000ms (2 seconds)
+    expect(mockGainNode.gain.setValueAtTime).toHaveBeenCalledWith(0.05, 0); // NEARLY_ZERO at current time
+    expect(mockGainNode.gain.linearRampToValueAtTime).toHaveBeenCalledWith(
+      0.5, // target volume
+      0 + 2 + 0.02 // current time + 2 seconds + epsilon
+    );
+  });
+
+  it("should start gain at 0 and fade to target volume", () => {
+    const speakerTrack = new SpeakerTrack({
+      data: mockSpeakerData,
+      config: mockConfig,
+      audioContext: mockAudioContext,
+      groupId: 1,
+    });
+
+    // Mock gain node
+    const mockGainNode = {
+      gain: {
+        value: 0,
+        cancelAndHoldAtTime: jest.fn(),
+        exponentialRampToValueAtTime: jest.fn(),
+        linearRampToValueAtTime: jest.fn(),
+        setValueAtTime: jest.fn(),
+      },
+    };
+    (speakerTrack as any).gainNode = mockGainNode;
+    (speakerTrack as any).calculatedVolume = 0.8;
+
+    // Call fadeInNewSpeaker
+    speakerTrack.fadeInNewSpeaker();
+
+    // Verify it fades from current volume to target volume
+    expect(mockGainNode.gain.setValueAtTime).toHaveBeenCalledWith(0.05, 0); // NEARLY_ZERO at current time
+    expect(mockGainNode.gain.linearRampToValueAtTime).toHaveBeenCalledWith(
+      0.8, // target volume (calculatedVolume)
+      0 + 2 + 0.02 // current time + 2 seconds + epsilon
+    );
   });
 });
