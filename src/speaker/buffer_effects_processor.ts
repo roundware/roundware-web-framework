@@ -171,7 +171,7 @@ export class BufferEffectsProcessor {
   delayReverbClip(): BufferEffectsProcessor {
     const delayTime = this.config.delayTimeInMs || 50;
     const feedback = this.config.feedback || 0.5;
-    const reverb = this.config.reverb || 0.5;
+    const reverb = this.config.reverbRoomSize || 0.5;
 
     const delaySamples = Math.floor(
       (delayTime / 1000) * this.audioBuffer.sampleRate
@@ -250,7 +250,7 @@ export class BufferEffectsProcessor {
   }
 
   reverbAndClip(): BufferEffectsProcessor {
-    const reverb = this.config.reverb || 0.5;
+    const reverb = this.config.reverbRoomSize || 0.5;
     const numberOfChannels = this.audioBuffer.numberOfChannels;
     const newBuffer = this.context.createBuffer(
       numberOfChannels,
