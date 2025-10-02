@@ -679,6 +679,46 @@ export class SpeakerEngine extends EventEmitter<{
       });
     }
 
+    // PRIORITY: Process variant switching IMMEDIATELY to minimize delay
+    this.playingTracks.forEach((track) => {
+      const speaker = track ? this.getSpeakerTrackById(track) : null;
+      if (!speaker) return;
+
+      // Check for variant switching on all tracks
+      const previousLoopCount = speaker.getVariantLoopCount();
+      const previousVariantUri = speaker.getCurrentUri();
+      speaker.incrementVariantLoopCount();
+
+      if (DEBUG_LOOP_SYNC) {
+        console.log(
+          `${SYNC_DEBUG_PREFIX} VARIANT_CHECK: Speaker ${
+            speaker.data.id
+          } loop count: ${previousLoopCount} -> ${speaker.getVariantLoopCount()}, target: ${speaker.getVariantLoopTarget()}, current: ${previousVariantUri}`
+        );
+      }
+
+      if (speaker.shouldSwitchVariant()) {
+        const newVariantUri = speaker.selectNextVariant();
+
+        if (DEBUG_LOOP_SYNC) {
+          console.log(
+            `${SYNC_DEBUG_PREFIX} VARIANT_SWITCH: Speaker ${
+              speaker.data.id
+            } switching from ${previousVariantUri} to ${newVariantUri} at ${loopPointTime.toFixed(
+              6
+            )}s`
+          );
+        }
+
+        this.emit("variantChanged", speaker.data.id, newVariantUri);
+
+        // Synchronous variant switching - no preprocessing delays
+        if (speaker.bufferSourcePlaying) {
+          this.switchVariantSynchronously(speaker, newVariantUri);
+        }
+      }
+    });
+
     this.calculateVolumesByLocation();
 
     const latestBaseTrack = this.latestBaseTrack;
@@ -717,67 +757,11 @@ export class SpeakerEngine extends EventEmitter<{
 
     this.updateNonBaseTracks();
 
-    // Process variant switching for all playing tracks including base track
+    // Apply volume updates to all playing tracks
     this.playingTracks.forEach((track) => {
       const speaker = track ? this.getSpeakerTrackById(track) : null;
       if (!speaker) return;
-
-      // Check for variant switching on all tracks
-      const previousLoopCount = speaker.getVariantLoopCount();
-      const previousVariantUri = speaker.getCurrentUri();
-      speaker.incrementVariantLoopCount();
-
-      if (DEBUG_LOOP_SYNC) {
-        console.log(
-          `${SYNC_DEBUG_PREFIX} VARIANT_CHECK: Speaker ${
-            speaker.data.id
-          } loop count: ${previousLoopCount} -> ${speaker.getVariantLoopCount()}, target: ${speaker.getVariantLoopTarget()}, current: ${previousVariantUri}`
-        );
-      }
-
-      if (speaker.shouldSwitchVariant()) {
-        const newVariantUri = speaker.selectNextVariant();
-
-        if (DEBUG_LOOP_SYNC) {
-          console.log(
-            `${SYNC_DEBUG_PREFIX} VARIANT_SWITCH: Speaker ${
-              speaker.data.id
-            } switching from ${previousVariantUri} to ${newVariantUri} at ${loopPointTime.toFixed(
-              6
-            )}s`
-          );
-        }
-
-        this.emit("variantChanged", speaker.data.id, newVariantUri);
-
-        // Try to use preprocessed variant buffer first
-        if (speaker.bufferSourcePlaying) {
-          const preprocessedApplied = this.applyPreprocessedVariant(speaker);
-
-          if (preprocessedApplied) {
-            console.log(
-              `🎵 VARIANT: Applied preprocessed buffer for speaker ${speaker.data.id}`
-            );
-          } else {
-            console.log(
-              `🎵 VARIANT: Fallback to old method for speaker ${speaker.data.id}`
-            );
-            // Fall back to current method if no preprocessed buffer available
-            speaker.abortBufferSource();
-            this.repeatLoopOnLoopPoint(speaker);
-          }
-        }
-      }
-
       speaker?.fadeBufferSourceToVolume(speaker.calculatedVolume);
-
-      // Schedule preprocessing for next potential variant switch
-      if (speaker.getVariantUris().length > 0) {
-        console.log(
-          `🎵 VARIANT: Scheduling preprocessing for speaker ${speaker.data.id}`
-        );
-        this.scheduleVariantPreprocessing(speaker);
-      }
     });
 
     this.speakers.forEach((speaker) => {
@@ -1859,6 +1843,88 @@ export class SpeakerEngine extends EventEmitter<{
     if (this.timingCheckInterval) {
       clearInterval(this.timingCheckInterval);
       this.timingCheckInterval = null;
+    }
+  }
+
+  /**
+   * Switch variant synchronously at loop point - no preprocessing delays
+   */
+  private switchVariantSynchronously(
+    speaker: SpeakerTrack,
+    newVariantUri: string
+  ) {
+    if (DEBUG_LOOP_SYNC) {
+      console.log(
+        `${SYNC_DEBUG_PREFIX} VARIANT_SYNC: Switching speaker ${
+          speaker.data.id
+        } to ${newVariantUri} at ${this.audioContext.currentTime.toFixed(6)}s`
+      );
+    }
+
+    // Get the new variant buffer
+    const newVariantBuffer = speaker.getVariantBuffer(newVariantUri);
+    if (!newVariantBuffer) {
+      console.warn(
+        `Variant buffer not found for ${newVariantUri}, falling back to repeatLoopOnLoopPoint`
+      );
+      speaker.abortBufferSource();
+      this.repeatLoopOnLoopPoint(speaker);
+      return;
+    }
+
+    // Abort current buffer source
+    if (speaker.bufferSourcePlaying) {
+      speaker.abortBufferSource();
+    }
+
+    // Create new buffer source with the new variant
+    const newBufferSource = this.audioContext.createBufferSource();
+    newBufferSource.buffer = newVariantBuffer;
+    newBufferSource.loop = false;
+    speaker.setBufferSource(newBufferSource);
+
+    // Reconnect audio graph
+    const gainNode = speaker.getGainNode();
+    if (gainNode) {
+      newBufferSource.connect(gainNode);
+    }
+
+    // Start playback immediately at current time
+    const currentTime = this.audioContext.currentTime;
+    newBufferSource.start(currentTime);
+    speaker.bufferSourcePlaying = true;
+    speaker.startedAtContextTime = currentTime;
+
+    // Set up track finished handler
+    newBufferSource.onended = () => {
+      if (!newBufferSource || !newBufferSource.buffer) {
+        throw new Error(
+          "Previously playing source was not cleared before track ended"
+        );
+      }
+      speaker.bufferSourcePlaying = false;
+      const remainingTime = SpeakerUtils.findRemainingTime(
+        this.audioContext.currentTime,
+        speaker.startedAtContextTime,
+        newBufferSource.buffer.duration
+      );
+      speaker.clearBufferSourcePublic();
+      if (
+        remainingTime <= 0.05 ||
+        Math.abs(newBufferSource.buffer.duration - remainingTime) <= 0.05
+      ) {
+        speaker.emit("trackFinished");
+      } else {
+        speaker.emit("trackAborted", remainingTime);
+      }
+    };
+
+    if (DEBUG_LOOP_SYNC) {
+      console.log(
+        `${SYNC_DEBUG_PREFIX} VARIANT_SYNC: Speaker ${
+          speaker.data.id
+        } started new variant at ${currentTime.toFixed(6)}s`
+      );
     }
   }
 
