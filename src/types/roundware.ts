@@ -87,4 +87,8 @@ export type SpeakerConfig = {
 
   // new speaker fade-in configuration
   newSpeakerFadeInDurationMs?: number; // default: 2000 (2 seconds)
+
+  // newly submitted speaker priority configuration
+  prioritizeNewlySubmitted?: boolean; // default: true - whether to prioritize newly submitted speakers
+  newlySubmittedPriorityDurationMs?: number; // default: 30000 (30 seconds) - how long to prioritize newly submitted speakers
 };

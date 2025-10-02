@@ -991,7 +991,40 @@ export class SpeakerEngine extends EventEmitter<{
         continue;
       }
 
-      const newSpeakerId = sample(unplayedAvailableSpeakers);
+      // Prioritize newly submitted speakers if enabled
+      let newSpeakerId: number;
+      const prioritizeNewlySubmitted =
+        this.mixParams.speakerConfig?.prioritizeNewlySubmitted ?? true;
+
+      if (prioritizeNewlySubmitted && unplayedAvailableSpeakers.length > 0) {
+        const priorityDurationMs =
+          this.mixParams.speakerConfig?.newlySubmittedPriorityDurationMs ??
+          30000; // 30 seconds default
+        const now = Date.now();
+        const priorityThreshold = now - priorityDurationMs;
+
+        // Find newly submitted speakers (within priority window)
+        const newlySubmittedSpeakers = unplayedAvailableSpeakers.filter(
+          (speakerId) => {
+            const speaker = this.speakers.find((s) => s.data.id === speakerId);
+            if (!speaker) return false;
+            const created = new Date(speaker.data.created || 0).getTime();
+            return created > priorityThreshold;
+          }
+        );
+
+        // If there are newly submitted speakers, prioritize them
+        if (newlySubmittedSpeakers.length > 0) {
+          newSpeakerId = sample(newlySubmittedSpeakers);
+        } else {
+          // Fall back to random selection from all available speakers
+          newSpeakerId = sample(unplayedAvailableSpeakers);
+        }
+      } else {
+        // Original behavior: random selection
+        newSpeakerId = sample(unplayedAvailableSpeakers);
+      }
+
       const newSpeaker = this.speakers.find((s) => s.data.id === newSpeakerId);
 
       if (newSpeaker) {
