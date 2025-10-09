@@ -81,6 +81,12 @@ export interface IAudioData extends Blob {
 export interface GeoPositionOptions {
   defaultCoords: Coordinates;
   geoListenMode: GeoListenModeType;
+  geoSmoothingEnabled?: boolean;
+  geoSmoothingAlpha?: number;
+  geoSmoothingMinAccuracyMeters?: number;
+  geoSmoothingMinEmitDeltaMeters?: number;
+  geoSmoothingResetJumpMeters?: number;
+  geoUpdateThrottleMs?: number;
 }
 
 export interface IGeoPosition {
