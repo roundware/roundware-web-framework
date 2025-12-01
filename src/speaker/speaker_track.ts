@@ -490,7 +490,6 @@ export class SpeakerTrack extends EventEmitter<{
     );
 
     this.stopTimeout = setTimeout(() => {
-      console.debug("Stopping from timeout");
       this.stopBufferSource();
     }, FADE_DURATION_SECONDS * 1000);
   }
@@ -531,16 +530,6 @@ export class SpeakerTrack extends EventEmitter<{
       targetVolume,
       now + fadeInDurationSeconds + EPSILON_S
     );
-
-    console.debug(
-      `Speaker ${
-        this.data.id
-      } fading in from ${NEARLY_ZERO} to ${targetVolume.toFixed(
-        3
-      )} over ${fadeInDurationSeconds}s (audio context state: ${
-        this.audioContext.state
-      })`
-    );
   }
 
   startBufferSource(when: number, offset: number) {
@@ -571,7 +560,6 @@ export class SpeakerTrack extends EventEmitter<{
   stopBufferSource() {
     if (this.bufferSource) {
       this.bufferSource.stop();
-      console.trace("stopBufferSource");
       this.bufferSourcePlaying = false;
     }
   }
