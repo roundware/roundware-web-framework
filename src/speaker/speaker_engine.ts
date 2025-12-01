@@ -182,15 +182,8 @@ export class SpeakerEngine extends EventEmitter<{
   private initializeMasterEffects(effects?: EffectsConfig) {
     if (!effects) return;
 
-    console.log("🎵 Initializing master effects:", effects);
-
     // Create delay effect if configured (only if delayTimeInMs > 0)
     if (effects.delayTimeInMs && effects.delayTimeInMs > 0) {
-      console.log("🎵 Creating delay effect:", {
-        delayTime: effects.delayTimeInMs || 50,
-        feedback: effects.feedback || 0.5,
-      });
-
       this.masterDelayNode = this.audioContext.createDelay(1.0); // Max 1 second delay
       this.masterDelayNode.delayTime.value =
         (effects.delayTimeInMs || 50) / 1000;
@@ -208,19 +201,11 @@ export class SpeakerEngine extends EventEmitter<{
 
       // Connect delay output to wet gain
       this.masterDelayNode.connect(this.masterWetGainNode);
-
-      console.log("🎵 Delay effect connected");
     }
 
     // Create reverb effect if configured
     if (effects.wetDryRatio && effects.wetDryRatio > 0) {
       const wetDryRatio = effects.wetDryRatio;
-
-      console.log("🎵 Creating reverb effect:", {
-        wetDryRatio: wetDryRatio,
-        reverbRoomSize: effects.reverbRoomSize || 0.5,
-        reverbDamping: effects.reverbDamping || 0.5,
-      });
 
       // Create reverb convolver node
       this.masterReverbNode = this.audioContext.createConvolver();
@@ -232,11 +217,6 @@ export class SpeakerEngine extends EventEmitter<{
       // Connect effects send to reverb
       this.masterEffectsSendNode.connect(this.masterReverbNode);
       this.masterReverbNode.connect(this.masterWetGainNode);
-
-      console.log("🎵 Reverb effect connected");
-      console.log(
-        "🎵 Reverb routing: EffectsSend -> Reverb -> WetGain -> MasterGain"
-      );
     }
   }
 
@@ -275,11 +255,6 @@ export class SpeakerEngine extends EventEmitter<{
     if (this.masterWetGainNode && this.masterDryGainNode) {
       this.masterWetGainNode.gain.value = wetDryRatio;
       this.masterDryGainNode.gain.value = 1 - wetDryRatio;
-      console.log("🎵 Wet/Dry ratio updated:", {
-        wetDryRatio,
-        wetLevel: wetDryRatio,
-        dryLevel: 1 - wetDryRatio,
-      });
     }
   }
 
@@ -293,13 +268,6 @@ export class SpeakerEngine extends EventEmitter<{
     const sampleRate = this.audioContext.sampleRate;
     const length = Math.floor(sampleRate * roomSize * 3); // 3 seconds max for more obvious reverb
     const impulse = this.audioContext.createBuffer(2, length, sampleRate);
-
-    console.log("🎵 Creating reverb impulse response:", {
-      roomSize,
-      damping,
-      length,
-      sampleRate,
-    });
 
     for (let channel = 0; channel < 2; channel++) {
       const channelData = impulse.getChannelData(channel);
@@ -318,14 +286,11 @@ export class SpeakerEngine extends EventEmitter<{
       }
     }
 
-    console.log("🎵 Reverb impulse response created with length:", length);
     return impulse;
   }
 
   playing = false;
   public async play(): Promise<void> {
-    console.log(this.loadingStrategy, this.mode);
-
     this.playing = true;
 
     if (DEBUG_LOOP_SYNC) {
@@ -508,11 +473,6 @@ export class SpeakerEngine extends EventEmitter<{
       offset = 0;
       if (this.group.get(track.groupId) === null) {
         this.group.set(track.groupId, currentTime);
-        console.log(
-          `🎵 SYNC: Setting group ${
-            track.groupId
-          } start time to ${currentTime.toFixed(3)}s`
-        );
       }
     } else {
       // Check if offset is too large (more than half a loop duration)
@@ -528,12 +488,6 @@ export class SpeakerEngine extends EventEmitter<{
         // Reset group start time to get back in sync
         this.group.set(track.groupId, currentTime);
         offset = 0;
-      } else {
-        console.log(
-          `🎵 SYNC: Group ${track.groupId} offset: ${(offset * 1000).toFixed(
-            1
-          )}ms (not synced)`
-        );
       }
     }
 
