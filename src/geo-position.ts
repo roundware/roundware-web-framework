@@ -69,7 +69,6 @@ export class GeoPosition {
   disable(): void {
     this.isEnabled = false;
     if (this._geoWatchID) {
-      console.log("Canceling geoposition watch", this._geoWatchID);
       this.geolocation.clearWatch(this._geoWatchID);
       delete this._geoWatchID;
     }
@@ -109,7 +108,6 @@ export class GeoPosition {
       _navigator: { geolocation },
     } = this;
 
-    console.log("Initializing geolocation system");
     this.isEnabled = true;
     this._initialGeolocationPromise = new Promise((resolve, reject) => {
       geolocation.getCurrentPosition(
@@ -117,7 +115,6 @@ export class GeoPosition {
           const { coords } = initialPosition;
           this._geoPositionStatus = true;
           this._lastCoords = coords;
-          console.info("Received initial geolocation:", coords);
           this.updateCallback(coords);
           resolve(coords);
         },
@@ -145,11 +142,6 @@ export class GeoPosition {
       }, fastGeolocationPositionOptions.timeout + 1000);
     });
 
-    console.log(
-      "🚨 FRAMEWORK: About to call watchPosition with options:",
-      accurateGeolocationPositionOptions
-    );
-
     this._geoWatchID = geolocation.watchPosition(
       (updatedPosition) => {
         const { coords } = updatedPosition;
@@ -158,21 +150,10 @@ export class GeoPosition {
           ? now - this._lastUpdateTime
           : 0;
 
-        console.log(
-          `🚨 LOCATION UPDATE: ${timeSinceLastUpdate}ms since last update`
-        );
-
         // Only process updates every 3 seconds
         if (timeSinceLastUpdate < geoUpdateThrottleMs && this._lastUpdateTime) {
-          console.log(`🚨 THROTTLED: Ignoring update (too soon)`);
           return;
         }
-
-        console.log(
-          `🚨 COORDS: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(
-            6
-          )}`
-        );
 
         this._lastUpdateTime = now;
         this._lastCoords = coords;
