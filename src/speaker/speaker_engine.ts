@@ -15,6 +15,7 @@ import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { SpeakerTrack } from "./speaker_track";
 import { LoadingStrategy, SpeakerUtils } from "./speaker_utils";
 
+const DEBUG_SPEAKER_DISPLAY = false;
 const DEBUG_LOOP_SYNC = true; // Enable detailed loop sync debugging
 const SYNC_DEBUG_PREFIX = "[SYNC_DEBUG]"; // Consistent prefix for all sync debugging
 
@@ -77,6 +78,8 @@ export class SpeakerEngine extends EventEmitter<{
   // Track consecutive low volume readings to prevent premature fade-outs
   private lowVolumeCounts: Map<number, number> = new Map();
 
+  private debugStatusElement: HTMLElement | null = null;
+  private debugInterval: NodeJS.Timeout | null = null;
   private timingCheckInterval: NodeJS.Timeout | null = null;
   private lastTimingCheck: number = 0;
   private driftHistory: number[] = [];
@@ -130,6 +133,9 @@ export class SpeakerEngine extends EventEmitter<{
       this.updateWetDryRatio(config.effects.wetDryRatio);
     }
 
+    if (DEBUG_SPEAKER_DISPLAY) {
+      this.createDebugStatusDisplay();
+    }
     this.speakers = speakersData.map(
       (data) =>
         new SpeakerTrack({
@@ -289,6 +295,75 @@ export class SpeakerEngine extends EventEmitter<{
     return impulse;
   }
 
+  private createDebugStatusDisplay() {
+    // Only create if we're in a browser environment
+    if (typeof document === "undefined") return;
+
+    // Remove existing display if any
+    const existing = document.getElementById("roundware-debug-status");
+    if (existing) existing.remove();
+
+    this.debugStatusElement = document.createElement("div");
+    this.debugStatusElement.id = "roundware-debug-status";
+    this.debugStatusElement.style.cssText = `
+      position: fixed;
+      top: 5px;
+      left: 5px;
+      width: 80%;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 8px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 10px;
+      line-height: 1.2;
+      z-index: 9999;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    `;
+    document.body.appendChild(this.debugStatusElement);
+
+    // Update status every second
+    this.debugInterval = setInterval(() => {
+      this.updateDebugStatus();
+    }, 1000);
+  }
+
+  private updateDebugStatus() {
+    if (!this.debugStatusElement) return;
+
+    try {
+      const ctx = this.audioContext;
+      const baseTrackId = this.currentBaseTrackId;
+      const baseTrack = baseTrackId
+        ? this.getSpeakerTrackById(baseTrackId)
+        : null;
+      const bufferSourcePlaying = baseTrack?.bufferSourcePlaying || false;
+      const currentBaseVolume =
+        (baseTrack as any)?.gainNode?.gain?.value ?? null;
+
+      this.debugStatusElement.innerHTML = `
+        <div><strong>Roundware Debug v5</strong></div>
+        <div>Audio: ${ctx.state}</div>
+        <div>Time: ${ctx.currentTime.toFixed(1)}s</div>
+        <div>Playing: ${this.playing}</div>
+        <div>Base: ${baseTrackId || "none"}</div>
+        <div>Buffer: ${bufferSourcePlaying ? "yes" : "no"}</div>
+        <div>BaseVol: ${
+          currentBaseVolume !== null
+            ? Number(currentBaseVolume).toFixed(2)
+            : "n/a"
+        }</div>
+        <div>Tracks: ${
+          this.playingTracks.filter((t) => t !== null).length
+        }</div>
+        <div>Speakers: ${this.speakers.length}</div>
+      `;
+    } catch (e) {
+      this.debugStatusElement.innerHTML = `<div>Error: ${e.message}</div>`;
+    }
+  }
+
   playing = false;
   public async play(): Promise<void> {
     this.playing = true;
@@ -332,8 +407,20 @@ export class SpeakerEngine extends EventEmitter<{
     });
     this.playing = false;
     this.playingTracks = [];
+    this.cleanupDebugDisplay();
     this.stopTimingCheck();
     this.emit("stop");
+  }
+
+  private cleanupDebugDisplay() {
+    if (this.debugInterval) {
+      clearInterval(this.debugInterval);
+      this.debugInterval = null;
+    }
+    if (this.debugStatusElement) {
+      this.debugStatusElement.remove();
+      this.debugStatusElement = null;
+    }
   }
 
   updateParams(params: IMixParams) {
