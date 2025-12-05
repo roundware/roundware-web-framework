@@ -17,6 +17,18 @@ export interface IOptions {
   deviceId: string;
   clientType?: string;
   geoListenMode: GeoListenModeType;
+  /** Enable EMA-based geo smoothing (default: false) */
+  geoSmoothingEnabled?: boolean;
+  /** EMA alpha in [0,1], lower = more smoothing (default: 0.15) */
+  geoSmoothingAlpha?: number;
+  /** Discard updates with accuracy worse than this (meters). Default: 20 */
+  geoSmoothingMinAccuracyMeters?: number;
+  /** Minimum movement before emitting new point (meters). Default: 0 (disabled) */
+  geoSmoothingMinEmitDeltaMeters?: number;
+  /** Reset EMA if jump exceeds this (meters). Default: 50 */
+  geoSmoothingResetJumpMeters?: number;
+  /** Throttle geolocation update handling (ms). Default: 0 (no throttle) */
+  geoUpdateThrottleMs?: number;
 }
 export interface IRoundwareConstructorOptions extends IOptions {
   serverUrl: string;
@@ -87,4 +99,16 @@ export type SpeakerConfig = {
 
   // new speaker fade-in configuration
   newSpeakerFadeInDurationMs?: number; // default: 2000 (2 seconds)
+
+  // newly submitted speaker priority configuration
+  prioritizeNewlySubmitted?: boolean; // default: true - whether to prioritize newly submitted speakers
+  newlySubmittedPriorityDurationMs?: number; // default: 30000 (30 seconds) - how long to prioritize newly submitted speakers
+
+  // GPS smoothing configuration
+  geoSmoothingEnabled?: boolean; // Enable EMA-based geo smoothing (default: false)
+  geoSmoothingAlpha?: number; // EMA alpha in [0,1], lower = more smoothing (default: 0.15)
+  geoSmoothingMinAccuracyMeters?: number; // Discard updates with accuracy worse than this (meters). Default: 20
+  geoSmoothingMinEmitDeltaMeters?: number; // Minimum movement before emitting new point (meters). Default: 0 (disabled)
+  geoSmoothingResetJumpMeters?: number; // Reset EMA if jump exceeds this (meters). Default: 50
+  geoUpdateThrottleMs?: number; // Throttle geolocation update handling (ms). Default: 0 (no throttle)
 };

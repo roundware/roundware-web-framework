@@ -24,13 +24,11 @@ import {
   Coordinates,
   GeoListenModeType,
   IAudioData,
-  IInitialParams,
   IMixParams,
   ITimedAssetData,
   IUiConfig,
 } from "./types";
-import { IAssetFilters } from "./types/asset";
-import { IAssetData } from "./types/asset";
+import { IAssetData, IAssetFilters } from "./types/asset";
 import { IAudioTrackData } from "./types/audioTrack";
 import { IEnvelopeData } from "./types/envelope";
 import { IOptions, IRoundwareConstructorOptions } from "./types/roundware";
@@ -38,10 +36,11 @@ import { ISpeakerData, ISpeakerFilters } from "./types/speaker";
 import { User } from "./user";
 
 export * from "./assetFilters";
+export { GeoListenMode, Roundware };
 
-import { multiPolygon, featureCollection } from "@turf/helpers";
 import bbox from "@turf/bbox";
 import buffer from "@turf/buffer";
+import { featureCollection, multiPolygon } from "@turf/helpers";
 import { ListenHistory } from "./listenHistory";
 
 /** This class is the primary integration point between Roundware's server and your application
@@ -197,6 +196,13 @@ class Roundware {
       new GeoPosition(navigator, {
         geoListenMode: newOptions.geoListenMode,
         defaultCoords: listenerLocation,
+        geoSmoothingEnabled: newOptions.geoSmoothingEnabled,
+        geoSmoothingAlpha: newOptions.geoSmoothingAlpha,
+        geoSmoothingMinAccuracyMeters: newOptions.geoSmoothingMinAccuracyMeters,
+        geoSmoothingMinEmitDeltaMeters:
+          newOptions.geoSmoothingMinEmitDeltaMeters,
+        geoSmoothingResetJumpMeters: newOptions.geoSmoothingResetJumpMeters,
+        geoUpdateThrottleMs: newOptions.geoUpdateThrottleMs,
       });
     this._session =
       session ||
@@ -636,4 +642,3 @@ class Roundware {
     };
   }
 }
-export { GeoListenMode, Roundware };

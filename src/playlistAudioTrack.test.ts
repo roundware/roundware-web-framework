@@ -1,10 +1,12 @@
+import { IAudioContext, IGainNode } from 'standardized-audio-context';
+import { RoundwareEvents } from './events';
+import { Playlist } from './playlist';
 import { PlaylistAudiotrack } from './playlistAudioTrack';
 import { Roundware } from './roundware';
-import { Playlist } from './playlist';
-import { IAudioContext, IGainNode } from 'standardized-audio-context';
-import { IAudioTrackData } from './types/audioTrack';
 import { IDecoratedAsset } from './types/asset';
+import { IAudioTrackData } from './types/audioTrack';
 import { ITrackStates } from './types/track-states';
+import { silenceAudioBase64 } from './utils';
 
 jest.mock('standardized-audio-context');
 jest.mock('./roundware');
@@ -297,15 +299,6 @@ describe('PlaylistAudiotrack', () => {
         status: 'paused',
         activeRegionLength: 0,
         activeRegionLowerBound: 0,
-        start_time: 0,
-        end_time: 0,
-        audio_length_in_seconds: 0,
-        session_id: 0,
-        language_id: 0,
-        activeRegionUpperBound: 0,
-        description: '',
-        filename: '',
-        updated: '',
         locationPoint: {
           type: 'Feature',
           geometry: {
@@ -326,6 +319,16 @@ describe('PlaylistAudiotrack', () => {
         file: '',
         volume: 0,
         created: '',
+        updated: '',
+        description: '',
+        language_id: 0,
+        user: null,
+        session_id: 0,
+        start_time: 0,
+        end_time: 0,
+        activeRegionUpperBound: 0,
+        filename: '',
+        audio_length_in_seconds: 0,
         description_loc_ids: [],
         alt_text_loc_ids: []
       };
@@ -476,6 +479,85 @@ describe('PlaylistAudiotrack', () => {
       expect(newPlaylistAudiotrack.playing).toBe(false);
       expect(newPlaylistAudiotrack.played).toBe(false);
     });
+
+    it('should handle playing event when playlist is not playing', () => {
+      const mockAsset: IDecoratedAsset = {
+        id: 123,
+        status: 'paused',
+        activeRegionLength: 0,
+        activeRegionLowerBound: 0,
+        locationPoint: {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [0, 0]
+          },
+          properties: {}
+        },
+        playCount: 0,
+        envelope_ids: [],
+        latitude: 0,
+        longitude: 0,
+        submitted: false,
+        weight: 0,
+        tag_ids: [],
+        project_id: 0,
+        media_type: '',
+        file: '',
+        volume: 0,
+        created: '',
+        updated: '',
+        description: '',
+        language_id: 0,
+        user: null,
+        session_id: 0,
+        start_time: 0,
+        end_time: 0,
+        activeRegionUpperBound: 0,
+        filename: '',
+        audio_length_in_seconds: 0,
+        description_loc_ids: [],
+        alt_text_loc_ids: []
+      };
+      
+      const newPlaylistAudiotrack = new PlaylistAudiotrack({
+        audioContext: mockAudioContext,
+        audioData: mockAudioData,
+        playlist: mockPlaylist,
+        client: mockClient,
+      });
+
+      newPlaylistAudiotrack.isSafeToPlay = true;
+      newPlaylistAudiotrack.currentAsset = mockAsset;
+      newPlaylistAudiotrack.playlist.playing = false;
+
+      const playingEvent = new Event('playing');
+      newPlaylistAudiotrack.audioElement.dispatchEvent(playingEvent);
+
+      expect(mockAsset.status).toBe('paused');
+      expect(mockClient?.events?.logAssetStart).not.toHaveBeenCalled();
+      expect(newPlaylistAudiotrack.playing).toBe(false);
+      expect(newPlaylistAudiotrack.played).toBe(false);
+    });
+
+    it('should handle playing event when currentAsset is null', () => {
+      const newPlaylistAudiotrack = new PlaylistAudiotrack({
+        audioContext: mockAudioContext,
+        audioData: mockAudioData,
+        playlist: mockPlaylist,
+        client: mockClient,
+      });
+
+      newPlaylistAudiotrack.isSafeToPlay = true;
+      newPlaylistAudiotrack.currentAsset = null;
+      newPlaylistAudiotrack.playlist.playing = true;
+
+      const playingEvent = new Event('playing');
+      newPlaylistAudiotrack.audioElement.dispatchEvent(playingEvent);
+
+      expect(newPlaylistAudiotrack.playing).toBe(false);
+      expect(newPlaylistAudiotrack.played).toBe(false);
+    });
   });
 
   describe('setInitialTrackState', () => {
@@ -520,7 +602,107 @@ describe('PlaylistAudiotrack', () => {
         updateParams: jest.fn(),
       } as unknown as ITrackStates;
       playlistAudiotrack.state = mockState;
+      playlistAudiotrack.updateParams({ tagIds: [1, 2] });
+      expect(mockState.updateParams).toHaveBeenCalled();
+    });
+
+    it('should handle undefined mixParams', () => {
+      playlistAudiotrack.mixParams = undefined;
       playlistAudiotrack.updateParams({ listenTagIds: [1, 2] });
+      expect(playlistAudiotrack.mixParams).toBeDefined();
+    });
+
+    it('should handle undefined listenTagIds in mixParams', () => {
+      const mockState = {
+        updateParams: jest.fn(),
+      } as unknown as ITrackStates;
+      playlistAudiotrack.state = mockState;
+      playlistAudiotrack.mixParams = undefined;
+      playlistAudiotrack.updateParams({ listenTagIds: [1, 2] });
+      expect(mockState.updateParams).toHaveBeenCalled();
+    });
+
+    it('should handle existing listenTagIds in mixParams', () => {
+      const mockState = {
+        updateParams: jest.fn(),
+      } as unknown as ITrackStates;
+      playlistAudiotrack.state = mockState;
+      playlistAudiotrack.mixParams = { listenTagIds: [3, 4] } as any;
+      playlistAudiotrack.updateParams({ listenTagIds: [1, 2] });
+      expect(mockState.updateParams).toHaveBeenCalled();
+    });
+
+    it('should handle updateParams when both mixParams and listenTagIds exist', () => {
+      const mockState = {
+        updateParams: jest.fn(),
+      } as unknown as ITrackStates;
+      playlistAudiotrack.state = mockState;
+      playlistAudiotrack.mixParams = { listenTagIds: [3, 4] } as any;
+      
+      playlistAudiotrack.updateParams({ listenTagIds: [1, 2] });
+      
+      expect(playlistAudiotrack.mixParams).toBeDefined();
+      expect(mockState.updateParams).toHaveBeenCalled();
+    });
+
+    it('should handle updateParams when state is undefined', () => {
+      playlistAudiotrack.state = undefined;
+      playlistAudiotrack.mixParams = { listenTagIds: [3, 4] } as any;
+      
+      playlistAudiotrack.updateParams({ listenTagIds: [1, 2] });
+      
+      expect(playlistAudiotrack.mixParams).toBeDefined();
+      // Should not throw any errors when state is undefined
+    });
+
+    it('should concatenate existing and new listenTagIds', () => {
+      const mockState = {
+        updateParams: jest.fn(),
+      } as unknown as ITrackStates;
+      playlistAudiotrack.state = mockState;
+      playlistAudiotrack.mixParams = { listenTagIds: [3, 4] } as any;
+      
+      playlistAudiotrack.updateParams({ listenTagIds: [1, 2] });
+      
+      expect(mockState.updateParams).toHaveBeenCalled();
+    });
+
+    it('should handle updateParams with existing listenTagIds', () => {
+      const mockState = {
+        updateParams: jest.fn(),
+      } as unknown as ITrackStates;
+      playlistAudiotrack.state = mockState;
+      playlistAudiotrack.mixParams = { listenTagIds: [3, 4] } as any;
+      
+      playlistAudiotrack.updateParams({ listenTagIds: [1, 2] });
+      
+      expect(playlistAudiotrack.mixParams?.listenTagIds).toEqual([3, 4]);
+      expect(mockState.updateParams).toHaveBeenCalled();
+    });
+
+    it('should handle updateParams when mixParams exists but listenTagIds is undefined', () => {
+      const mockState = {
+        updateParams: jest.fn(),
+      } as unknown as ITrackStates;
+      playlistAudiotrack.state = mockState;
+      playlistAudiotrack.mixParams = { someOtherParam: 'value' } as any;
+      
+      playlistAudiotrack.updateParams({ listenTagIds: [1, 2] });
+      
+      expect(playlistAudiotrack.mixParams).toBeDefined();
+      expect(mockState.updateParams).toHaveBeenCalled();
+    });
+
+    it('should handle updateParams with no parameters', () => {
+      const mockState = {
+        updateParams: jest.fn(),
+      } as unknown as ITrackStates;
+      playlistAudiotrack.state = mockState;
+      playlistAudiotrack.mixParams = { someParam: 'value' } as any;
+      
+      playlistAudiotrack.updateParams();
+      
+      expect(playlistAudiotrack.mixParams).toBeDefined();
       expect(mockState.updateParams).toHaveBeenCalled();
     });
   });
@@ -880,29 +1062,97 @@ describe('PlaylistAudiotrack', () => {
       playlistAudiotrack.pause();
       expect(mockState.pause).toHaveBeenCalled();
     });
+
+    it('should not call state.pause() if state is undefined', () => {
+      playlistAudiotrack.state = undefined;
+      playlistAudiotrack.pause();
+      expect(mockAudioElement.pause).not.toHaveBeenCalled();
+    });
   });
 
   describe('playAudio', () => {
-    it('should play audio successfully', async () => {
-      await playlistAudiotrack.playAudio();
-      expect(mockAudioElement.play).toHaveBeenCalled();
-    });
-
     it('should resume audio context if not running', async () => {
-      Object.defineProperty(mockAudioContext, 'state', {
-        get: () => 'suspended'
-      });
-      
+      playlistAudiotrack.audioContext = {
+        state: 'suspended',
+        resume: jest.fn().mockResolvedValue(undefined),
+      } as any;
+      playlistAudiotrack.audioElement = {
+        src: 'test.mp3',
+        play: jest.fn().mockResolvedValue(undefined),
+      } as any;
+
       await playlistAudiotrack.playAudio();
-      
-      expect(mockAudioContext.resume).toHaveBeenCalled();
-      expect(mockAudioElement.play).toHaveBeenCalled();
+
+      expect(playlistAudiotrack.audioContext.resume).toHaveBeenCalled();
+      expect(playlistAudiotrack.audioElement.play).toHaveBeenCalled();
     });
 
-    it('should handle play error', async () => {
-      (mockAudioElement.play as jest.Mock).mockRejectedValueOnce(new Error('Play failed'));
+    it('should not resume audio context if already running', async () => {
+      playlistAudiotrack.audioContext = {
+        state: 'running',
+        resume: jest.fn().mockResolvedValue(undefined),
+      } as any;
+      playlistAudiotrack.audioElement = {
+        src: 'test.mp3',
+        play: jest.fn().mockResolvedValue(undefined),
+      } as any;
+
       await playlistAudiotrack.playAudio();
-      expect(playlistAudiotrack.state).toBeDefined();
+
+      expect(playlistAudiotrack.audioContext.resume).not.toHaveBeenCalled();
+      expect(playlistAudiotrack.audioElement.play).toHaveBeenCalled();
+    });
+
+    it('should set silence audio when source is empty', async () => {
+      playlistAudiotrack.audioContext = {
+        state: 'running',
+        resume: jest.fn().mockResolvedValue(undefined),
+      } as any;
+      playlistAudiotrack.audioElement = {
+        src: '',
+        play: jest.fn().mockResolvedValue(undefined),
+      } as any;
+
+      await playlistAudiotrack.playAudio();
+
+      expect(playlistAudiotrack.audioElement.src).toBe(silenceAudioBase64);
+      expect(playlistAudiotrack.audioElement.play).toHaveBeenCalled();
+    });
+
+    it('should handle play error and reset state', async () => {
+      const mockState = {
+        play: jest.fn(),
+        finish: jest.fn(),
+      } as unknown as ITrackStates;
+
+      playlistAudiotrack.audioContext = {
+        state: 'running',
+        resume: jest.fn().mockResolvedValue(undefined),
+      } as any;
+      playlistAudiotrack.audioElement = {
+        src: 'test.mp3',
+        play: jest.fn().mockRejectedValue(new Error('Play failed')),
+      } as any;
+      playlistAudiotrack.state = mockState;
+      playlistAudiotrack.audioData = {
+        id: 1,
+      } as IAudioTrackData;
+
+      // Ensure state is properly set up before the error
+      playlistAudiotrack.setInitialTrackState = jest.fn().mockImplementation(() => {
+        playlistAudiotrack.state = mockState;
+      });
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const setInitialTrackStateSpy = jest.spyOn(playlistAudiotrack, 'setInitialTrackState');
+
+      await playlistAudiotrack.playAudio();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('1', expect.any(Error));
+      expect(setInitialTrackStateSpy).toHaveBeenCalled();
+      expect(mockState.finish).toHaveBeenCalled();
+      expect(mockState.play).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
     });
   });
 
@@ -917,33 +1167,139 @@ describe('PlaylistAudiotrack', () => {
   });
 
   describe('skip', () => {
-    it('should skip current track and load next', () => {
-      const mockAsset = {
-        audio_length_in_seconds: 10,
-        id: 1,
-      } as IDecoratedAsset;
-      playlistAudiotrack.currentAsset = mockAsset;
-      mockGainNode.gain.value = 1;
-      (playlistAudiotrack as any).gainNode = mockGainNode;
-      (playlistAudiotrack as any).audioElement = mockAudioElement;
-      (playlistAudiotrack as any).trackOptions = {
+    it('should set initial track state and return early when playlist is not playing', () => {
+      const mockState = {
+        play: jest.fn(),
+        finish: jest.fn(),
+      } as unknown as ITrackStates;
+
+      const mockEvents = {
+        logAssetEnd: jest.fn(),
+      } as unknown as RoundwareEvents;
+
+      playlistAudiotrack.playlist = {
+        playing: false,
+      } as any;
+      playlistAudiotrack.state = mockState;
+      playlistAudiotrack.gainNode = mockGainNode;
+      playlistAudiotrack.trackOptions = {
         fadeOutLowerBound: 1,
-      };
-      (playlistAudiotrack as any).listenEvents = mockClient.events!;
-      
+      } as any;
+      playlistAudiotrack.currentAsset = {
+        id: 123,
+        audio_length_in_seconds: 10,
+      } as IDecoratedAsset;
+      playlistAudiotrack.listenEvents = mockEvents;
+
+      const setInitialTrackStateSpy = jest.spyOn(playlistAudiotrack, 'setInitialTrackState');
+      const fadeOutSpy = jest.spyOn(playlistAudiotrack, 'fadeOut');
+      const pauseAudioSpy = jest.spyOn(playlistAudiotrack, 'pauseAudio');
+      const logAssetEndSpy = jest.spyOn(mockEvents, 'logAssetEnd');
+
+      playlistAudiotrack.skip();
+
+      expect(setInitialTrackStateSpy).toHaveBeenCalled();
+      expect(fadeOutSpy).not.toHaveBeenCalled();
+      expect(pauseAudioSpy).not.toHaveBeenCalled();
+      expect(logAssetEndSpy).not.toHaveBeenCalled();
+      expect(mockState.play).not.toHaveBeenCalled();
+      expect(mockState.finish).not.toHaveBeenCalled();
+    });
+
+    it('should fade out, pause, log end, and transition when playlist is playing', () => {
+      const mockOldState = {
+        play: jest.fn(),
+        finish: jest.fn(),
+      } as unknown as ITrackStates;
+
+      const mockNewState = {
+        play: jest.fn(),
+        finish: jest.fn(),
+      } as unknown as ITrackStates;
+
+      const mockEvents = {
+        logAssetEnd: jest.fn(),
+      } as unknown as RoundwareEvents;
+
+      playlistAudiotrack.playlist = {
+        playing: true,
+      } as any;
+      playlistAudiotrack.state = mockOldState;
+      playlistAudiotrack.gainNode = mockGainNode;
+      playlistAudiotrack.trackOptions = {
+        fadeOutLowerBound: 1,
+      } as any;
+      playlistAudiotrack.currentAsset = {
+        id: 123,
+        audio_length_in_seconds: 10,
+      } as IDecoratedAsset;
+      playlistAudiotrack.listenEvents = mockEvents;
+
+      const setInitialTrackStateSpy = jest.spyOn(playlistAudiotrack, 'setInitialTrackState');
+      const fadeOutSpy = jest.spyOn(playlistAudiotrack, 'fadeOut').mockReturnValue(true);
+      const pauseAudioSpy = jest.spyOn(playlistAudiotrack, 'pauseAudio');
+      const logAssetEndSpy = jest.spyOn(mockEvents, 'logAssetEnd');
+      jest.spyOn(require('./TrackStates'), 'makeInitialTrackState').mockReturnValue(mockNewState);
+
       jest.useFakeTimers();
       playlistAudiotrack.skip();
-      jest.advanceTimersByTime(1000);
-      expect(mockClient.events!.logAssetEnd).toHaveBeenCalledWith(mockAsset.id);
+      jest.advanceTimersByTime(playlistAudiotrack.trackOptions.fadeOutLowerBound * 1000);
+
+      expect(setInitialTrackStateSpy).not.toHaveBeenCalled();
+      expect(fadeOutSpy).toHaveBeenCalledWith(playlistAudiotrack.trackOptions.fadeOutLowerBound);
+      expect(pauseAudioSpy).toHaveBeenCalled();
+      expect(logAssetEndSpy).toHaveBeenCalledWith(123);
+      expect(mockOldState.finish).toHaveBeenCalled();
+      expect(mockNewState.play).toHaveBeenCalled();
       jest.useRealTimers();
     });
 
-    it('should set initial state when playlist is not playing', () => {
-      mockPlaylist.playing = false;
-      (playlistAudiotrack as any).playlist = mockPlaylist;
-      
+    it('should not transition if playlist stops playing during fade out', () => {
+      const mockOldState = {
+        play: jest.fn(),
+        finish: jest.fn(),
+      } as unknown as ITrackStates;
+
+      const mockNewState = {
+        play: jest.fn(),
+        finish: jest.fn(),
+      } as unknown as ITrackStates;
+
+      const mockEvents = {
+        logAssetEnd: jest.fn(),
+      } as unknown as RoundwareEvents;
+
+      playlistAudiotrack.playlist = {
+        playing: true,
+      } as any;
+      playlistAudiotrack.state = mockOldState;
+      playlistAudiotrack.gainNode = mockGainNode;
+      playlistAudiotrack.trackOptions = {
+        fadeOutLowerBound: 1,
+      } as any;
+      playlistAudiotrack.currentAsset = {
+        id: 123,
+        audio_length_in_seconds: 10,
+      } as IDecoratedAsset;
+      playlistAudiotrack.listenEvents = mockEvents;
+
+      const fadeOutSpy = jest.spyOn(playlistAudiotrack, 'fadeOut').mockReturnValue(true);
+      const pauseAudioSpy = jest.spyOn(playlistAudiotrack, 'pauseAudio');
+      const logAssetEndSpy = jest.spyOn(mockEvents, 'logAssetEnd');
+      jest.spyOn(require('./TrackStates'), 'makeInitialTrackState').mockReturnValue(mockNewState);
+
+      jest.useFakeTimers();
       playlistAudiotrack.skip();
-      expect(playlistAudiotrack.state).toBeDefined();
+      // Simulate playlist stopping during fade out
+      playlistAudiotrack.playlist.playing = false;
+      jest.advanceTimersByTime(playlistAudiotrack.trackOptions.fadeOutLowerBound * 1000);
+
+      expect(fadeOutSpy).toHaveBeenCalled();
+      expect(pauseAudioSpy).toHaveBeenCalled();
+      expect(logAssetEndSpy).toHaveBeenCalled();
+      expect(mockOldState.finish).not.toHaveBeenCalled();
+      expect(mockNewState.play).not.toHaveBeenCalled();
+      jest.useRealTimers();
     });
   });
 
@@ -956,34 +1312,112 @@ describe('PlaylistAudiotrack', () => {
       playlistAudiotrack.replay();
       expect(mockState.replay).toHaveBeenCalled();
     });
+
+    it('should not call state.replay() if state is undefined', () => {
+      playlistAudiotrack.state = undefined;
+      playlistAudiotrack.replay();
+      expect(mockAudioElement.play).not.toHaveBeenCalled();
+    });
+
+    it('should handle undefined state', () => {
+      const playlistTrackLogSpy = jest.spyOn(require('./utils'), 'playlistTrackLog').mockImplementation();
+      playlistAudiotrack.state = undefined;
+      playlistAudiotrack.replay();
+      expect(playlistTrackLogSpy).toHaveBeenCalledWith(`Replaying ${playlistAudiotrack}`);
+      playlistTrackLogSpy.mockRestore();
+    });
   });
 
   describe('transition', () => {
-    it('should transition to new state', () => {
-      const mockOldState = {
-        finish: jest.fn(),
-      } as unknown as ITrackStates;
-      const mockNewState = {
-        play: jest.fn(),
-      } as unknown as ITrackStates;
-      playlistAudiotrack.state = mockOldState;
-      playlistAudiotrack.transition(mockNewState);
-      expect(mockOldState.finish).toHaveBeenCalled();
-      expect(mockNewState.play).toHaveBeenCalled();
-    });
-
     it('should handle transition when state is undefined', () => {
       const mockNewState = {
         play: jest.fn(),
+        finish: jest.fn(),
       } as unknown as ITrackStates;
+
       playlistAudiotrack.state = undefined;
+      playlistAudiotrack.playlist = {
+        playing: true,
+        elapsedTimeMs: 5000,
+      } as any;
+
+      const playlistTrackLogSpy = jest.spyOn(require('./utils'), 'playlistTrackLog');
+
       playlistAudiotrack.transition(mockNewState);
+
+      expect(playlistTrackLogSpy).toHaveBeenCalled();
+      expect(mockNewState.play).not.toHaveBeenCalled();
+      expect(mockNewState.finish).not.toHaveBeenCalled();
+    });
+
+    it('should transition to new state and play when playlist is playing', () => {
+      const mockOldState = {
+        play: jest.fn(),
+        finish: jest.fn(),
+      } as unknown as ITrackStates;
+
+      const mockNewState = {
+        play: jest.fn(),
+        finish: jest.fn(),
+      } as unknown as ITrackStates;
+
+      playlistAudiotrack.state = mockOldState;
+      playlistAudiotrack.playlist = {
+        playing: true,
+        elapsedTimeMs: 5000,
+      } as any;
+
+      const playlistTrackLogSpy = jest.spyOn(require('./utils'), 'playlistTrackLog');
+
+      playlistAudiotrack.transition(mockNewState);
+
+      expect(playlistTrackLogSpy).toHaveBeenCalled();
+      expect(mockOldState.finish).toHaveBeenCalled();
+      expect(mockNewState.play).toHaveBeenCalled();
+      expect(playlistAudiotrack.state).toBe(mockNewState);
+    });
+
+    it('should transition to new state but not play when playlist is not playing', () => {
+      const mockOldState = {
+        play: jest.fn(),
+        finish: jest.fn(),
+      } as unknown as ITrackStates;
+
+      const mockNewState = {
+        play: jest.fn(),
+        finish: jest.fn(),
+      } as unknown as ITrackStates;
+
+      playlistAudiotrack.state = mockOldState;
+      playlistAudiotrack.playlist = {
+        playing: false,
+        elapsedTimeMs: 5000,
+      } as any;
+
+      const playlistTrackLogSpy = jest.spyOn(require('./utils'), 'playlistTrackLog');
+
+      playlistAudiotrack.transition(mockNewState);
+
+      expect(playlistTrackLogSpy).toHaveBeenCalled();
+      expect(mockOldState.finish).toHaveBeenCalled();
+      expect(mockNewState.play).not.toHaveBeenCalled();
+      expect(playlistAudiotrack.state).toBe(mockNewState);
     });
   });
 
   describe('toString', () => {
     it('should return correct string representation', () => {
       expect(playlistAudiotrack.toString()).toBe('Track #1');
+    });
+
+    it('should return correct string representation with different track ID', () => {
+      const newPlaylistAudiotrack = new PlaylistAudiotrack({
+        audioContext: mockAudioContext,
+        audioData: { ...mockAudioData, id: 2 },
+        playlist: mockPlaylist,
+        client: mockClient,
+      });
+      expect(newPlaylistAudiotrack.toString()).toBe('Track #2');
     });
   });
 });

@@ -1,8 +1,10 @@
+import { GeoEmaSmoother } from "./geo_smoothing";
 import { GeoListenMode } from "./mixer";
 import { logger } from "./shims";
 import { Coordinates, GeoPositionOptions } from "./types";
 
 const initialGeoTimeoutSeconds = 6;
+// default; can be overridden by options on Roundware instantiation
 const geoUpdateThrottleMs = 0;
 
 const frameworkDefaultCoords: Coordinates = {
@@ -44,6 +46,7 @@ export class GeoPosition {
   updateCallback: CallableFunction;
   private _geoWatchID?: number | null;
   private _geoPositionStatus: true | number = 3;
+  private _smoother?: GeoEmaSmoother;
 
   constructor(navigator: Window[`navigator`], options: GeoPositionOptions) {
     this._navigator = navigator;
@@ -62,6 +65,24 @@ export class GeoPosition {
       navigator.geolocation && geoListenMode === GeoListenMode.AUTOMATIC;
     this.updateCallback = () => {};
     this._geoWatchID = null;
+
+    // Setup optional smoother
+    const {
+      geoSmoothingEnabled = false,
+      geoSmoothingAlpha = 0.15,
+      geoSmoothingMinAccuracyMeters = 20,
+      geoSmoothingMinEmitDeltaMeters = 0,
+      geoSmoothingResetJumpMeters = 50,
+    } = options;
+    if (geoSmoothingEnabled) {
+      this._smoother = new GeoEmaSmoother({
+        enabled: geoSmoothingEnabled,
+        alpha: geoSmoothingAlpha,
+        minAccuracyMeters: geoSmoothingMinAccuracyMeters,
+        minEmitDeltaMeters: geoSmoothingMinEmitDeltaMeters,
+        resetJumpMeters: geoSmoothingResetJumpMeters,
+      });
+    }
 
     //console.info({ defaultCoords: this.defaultCoords });
   }
@@ -155,11 +176,29 @@ export class GeoPosition {
           return;
         }
 
+        // Optionally smooth before forwarding; always emit as simple Coordinates
+        let coordsToSend: Coordinates = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        };
+        if (this._smoother) {
+          const smoothed = this._smoother.update(updatedPosition);
+          if (smoothed) {
+            coordsToSend = {
+              latitude: smoothed.latitude,
+              longitude: smoothed.longitude,
+            };
+          } else {
+            // rejected by smoothing (poor accuracy or within deadband)
+            return;
+          }
+        }
+
         this._lastUpdateTime = now;
-        this._lastCoords = coords;
+        this._lastCoords = coordsToSend;
         this._geoPositionStatus = true;
-        logger.info("Received updated geolocation:", coords);
-        this.updateCallback(coords);
+        logger.info("Received updated geolocation:", coordsToSend);
+        this.updateCallback(coordsToSend);
       },
       (error) => {
         logger.warn(
