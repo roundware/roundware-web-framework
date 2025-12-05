@@ -1,6 +1,6 @@
 import { GeoPosition } from "./geo-position";
 import { GeoListenMode } from "./mixer";
-import { Coordinates } from "./types";
+import { Coordinates, GeoPositionOptions } from "./types";
 
 describe("GeoPosition", () => {
   let geoPosition: GeoPosition;
@@ -149,5 +149,133 @@ describe("GeoPosition", () => {
   
     expect(mockGeolocation.watchPosition).toHaveBeenCalled();
     expect(geoPosition.getLastCoords()).toEqual(mockDefaultCoords);
+  });
+
+  it("should handle watchPosition errors and update _geoPositionStatus", () => {
+    const mockError = {
+      code: 1,
+      message: "Permission denied",
+    };
+
+    (mockGeolocation.getCurrentPosition as jest.Mock).mockImplementationOnce(
+      (success) => {
+        success({ coords: mockDefaultCoords });
+      }
+    );
+
+    (mockGeolocation.watchPosition as jest.Mock).mockImplementationOnce(
+      (success, error) => {
+        error(mockError);
+        return 123;
+      }
+    );
+
+    geoPosition.enable();
+
+    expect(mockGeolocation.watchPosition).toHaveBeenCalled();
+    expect(geoPosition["_geoPositionStatus"]).toBe(mockError.code);
+  });
+
+  it("should handle timeout in initial geolocation promise", async () => {
+    jest.useFakeTimers();
+
+    const mockError = {
+      code: 2,
+      message: "Position unavailable",
+    };
+
+    // Mock getCurrentPosition to not call success or error
+    (mockGeolocation.getCurrentPosition as jest.Mock).mockImplementationOnce(
+      () => {
+        // Don't call success or error to trigger timeout
+      }
+    );
+
+    // Set a non-true status to trigger the else branch
+    geoPosition["_geoPositionStatus"] = 2;
+
+    // Call enable to start the geolocation process
+    geoPosition.enable();
+    const promise = geoPosition.waitForInitialGeolocation();
+    
+    // Fast-forward timers to trigger the timeout
+    jest.advanceTimersByTime(7000); // fastGeolocationPositionOptions.timeout + 1000
+
+    await expect(promise).rejects.toEqual({ code: 2 });
+
+    jest.useRealTimers();
+  });
+
+  it("should use framework default coordinates when defaultCoords is empty", () => {
+    const geoPositionWithoutDefaults = new GeoPosition(mockNavigator, {
+      defaultCoords: {},
+      geoListenMode: GeoListenMode.AUTOMATIC,
+    });
+
+    expect(geoPositionWithoutDefaults.getLastCoords()).toEqual({});
+  });
+
+  it("should use provided coordinates when defaultCoords is provided", () => {
+    const customCoords = { latitude: 0, longitude: 0 };
+    const geoPositionWithDefaults = new GeoPosition(mockNavigator, {
+      defaultCoords: customCoords,
+      geoListenMode: GeoListenMode.AUTOMATIC,
+    });
+
+    expect(geoPositionWithDefaults.getLastCoords()).toEqual(customCoords);
+  });
+
+  it("should not enable geolocation when isEnabled is false in connect", () => {
+    geoPosition.isEnabled = false;
+    geoPosition.connect(() => {});
+    expect(mockGeolocation.getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  it("should resolve with lastCoords when _geoPositionStatus is true in timeout", async () => {
+    jest.useFakeTimers();
+
+    // Mock getCurrentPosition to not call success or error
+    (mockGeolocation.getCurrentPosition as jest.Mock).mockImplementationOnce(
+      () => {
+        // Don't call success or error to trigger timeout
+      }
+    );
+
+    // Set status to true to trigger the if branch
+    geoPosition["_geoPositionStatus"] = true;
+    geoPosition["_lastCoords"] = { latitude: 30, longitude: 40 };
+
+    // Call enable to start the geolocation process
+    geoPosition.enable();
+    const promise = geoPosition.waitForInitialGeolocation();
+    
+    // Fast-forward timers to trigger the timeout
+    jest.advanceTimersByTime(7000); // fastGeolocationPositionOptions.timeout + 1000
+
+    const result = await promise;
+    expect(result).toEqual({ latitude: 30, longitude: 40 });
+
+    jest.useRealTimers();
+  });
+
+  it("should log defaultCoords when initialized", () => {
+    const consoleSpy = jest.spyOn(console, 'info');
+    const customCoords = { latitude: 0, longitude: 0 };
+    
+    new GeoPosition(mockNavigator, {
+      defaultCoords: customCoords,
+      geoListenMode: GeoListenMode.AUTOMATIC,
+    });
+
+    consoleSpy.mockRestore();
+  });
+
+  it("should set _initialGeolocationPromise with framework default coords when defaultCoords is not provided", async () => {
+    const geoPositionWithoutDefaults = new GeoPosition(mockNavigator, {
+      geoListenMode: GeoListenMode.AUTOMATIC,
+    } as GeoPositionOptions);
+
+    const result = await geoPositionWithoutDefaults["_initialGeolocationPromise"];
+    expect(result).toEqual({ latitude: 42.3140089, longitude: -71.2504676 });
   });
 });

@@ -107,4 +107,40 @@ describe('EventEmitter', () => {
       // Should not throw any errors
     });
   });
+
+  describe('clearListeners', () => {
+    it('should clear all listeners for a given event', () => {
+      const listener1 = jest.fn();
+      const listener2 = jest.fn();
+      emitter.on('test', listener1);
+      emitter.on('test', listener2);
+      
+      emitter.clearListeners('test');
+      emitter.emit('test', 'hello');
+      
+      expect(listener1).not.toHaveBeenCalled();
+      expect(listener2).not.toHaveBeenCalled();
+    });
+
+    it('should handle clearing listeners for non-existent events', () => {
+      expect(() => {
+        emitter.clearListeners('nonexistent' as keyof TestEvents);
+      }).not.toThrow();
+    });
+
+    it('should only clear listeners for the specified event', () => {
+      const testListener = jest.fn();
+      const numberListener = jest.fn();
+      
+      emitter.on('test', testListener);
+      emitter.on('number', numberListener);
+      
+      emitter.clearListeners('test');
+      emitter.emit('test', 'hello');
+      emitter.emit('number', 42);
+      
+      expect(testListener).not.toHaveBeenCalled();
+      expect(numberListener).toHaveBeenCalledWith(42);
+    });
+  });
 });

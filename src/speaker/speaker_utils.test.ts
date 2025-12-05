@@ -1,6 +1,6 @@
-import { SpeakerUtils, LoadingStrategy, PlayingMode } from "./speaker_utils";
+import { MultiPolygon, Point } from "geojson";
 import { ISpeakerData } from "../types/speaker";
-import { Point, MultiPolygon } from "geojson";
+import { LoadingStrategy, PlayingMode, SpeakerUtils } from "./speaker_utils";
 
 describe("SpeakerUtils", () => {
   describe("findBaseSpeaker", () => {
@@ -256,6 +256,66 @@ describe("SpeakerUtils", () => {
         duration: 3
       });
       expect(result).toBeCloseTo(0.01, 2);
+    });
+  });
+
+  describe("shouldDoSomethingWithProbability", () => {
+    beforeEach(() => {
+      // Mock console.debug to track calls
+      jest.spyOn(console, 'debug').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should return true when random number is less than probability", () => {
+      // Mock Math.random to return 0.3
+      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      
+      const result = SpeakerUtils.shouldDoSomethingWithProbability(0.5);
+      expect(result).toBe(true);
+    });
+
+    it("should return false when random number is greater than probability", () => {
+      // Mock Math.random to return 0.7
+      jest.spyOn(Math, 'random').mockReturnValue(0.7);
+      
+      const result = SpeakerUtils.shouldDoSomethingWithProbability(0.5);
+      expect(result).toBe(false);
+    });
+
+    it("should log debug message with task name when provided", () => {
+      // Mock Math.random to return 0.3
+      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      
+      const taskName = "testTask";
+      SpeakerUtils.shouldDoSomethingWithProbability(0.5, taskName);
+      
+      expect(console.debug).toHaveBeenCalledWith(
+        expect.stringContaining("✅ testTask probability: 0.3 < 0.5")
+      );
+    });
+
+    it("should not log debug message when task name is not provided", () => {
+      // Mock Math.random to return 0.3
+      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      
+      SpeakerUtils.shouldDoSomethingWithProbability(0.5);
+      
+      expect(console.debug).not.toHaveBeenCalled();
+    });
+
+    it("should log ❌ when probability check fails", () => {
+      // Mock Math.random to return 0.7
+      jest.spyOn(Math, 'random').mockReturnValue(0.7);
+      
+      const taskName = "testTask";
+      SpeakerUtils.shouldDoSomethingWithProbability(0.5, taskName);
+      
+      expect(console.debug).toHaveBeenCalledWith(
+        expect.stringContaining("❌ testTask probability: 0.7 < 0.5")
+      );
     });
   });
 });
