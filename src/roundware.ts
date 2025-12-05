@@ -519,7 +519,7 @@ class Roundware {
     return this.timedAssetData || [];
   }
 
-  audiotracks(): IAudioTrackData[] | [] {
+  audiotracks(): IAudioTrackData[] {
     return this._audioTracksData || [];
   }
 
