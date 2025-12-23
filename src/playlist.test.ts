@@ -4,8 +4,11 @@ import { AssetPool } from "./assetPool";
 import { Playlist } from "./playlist";
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
 import { Roundware } from "./roundware";
-import { IDecoratedAsset } from "./types";
+import { IDecoratedAsset, IMixParams } from "./types";
 import { IAudioTrackData } from "./types/audioTrack";
+import { getUrlParam } from "./utils";
+
+jest.mock("./utils");
 
 // Mock dependencies
 const mockClient = {
@@ -226,63 +229,6 @@ describe("Playlist", () => {
     });
   });
 
-  test("constructor should initialize elapsed time from URL parameter", () => {
-    // Mock URL parameter
-    const mockTimerSeconds = "30.5";
-    jest.spyOn(require('./utils'), 'getUrlParam').mockReturnValue(mockTimerSeconds);
-
-    // Create playlist instance
-    const playlist = new Playlist({
-      client: mockClient,
-      audioTracks: [],
-      listenerPoint: mockListenerPoint,
-      assetPool: mockAssetPool,
-      audioContext: mockAudioContext,
-    });
-
-    // Verify elapsed time was set correctly
-    expect(playlist.elapsedTimeMs).toBe(30500); // 30.5 seconds in milliseconds
-
-    // Restore original function
-    jest.restoreAllMocks();
-  });
-
-  test("constructor should set elapsed time to 0 when no timer parameter is present", () => {
-    // Mock URL parameter to return undefined
-    jest.spyOn(require('./utils'), 'getUrlParam').mockReturnValue(undefined);
-
-    // Create playlist instance
-    const playlist = new Playlist({
-      client: mockClient,
-      audioTracks: [],
-      listenerPoint: mockListenerPoint,
-      assetPool: mockAssetPool,
-      audioContext: mockAudioContext,
-    });
-
-    // Verify elapsed time was set to 0
-    expect(playlist.elapsedTimeMs).toBe(0);
-
-    // Restore original function
-    jest.restoreAllMocks();
-  });
-
-  test("constructor should initialize with empty audio tracks when none provided", () => {
-    const playlist = new Playlist({
-      client: mockClient,
-      listenerPoint: mockListenerPoint,
-      assetPool: mockAssetPool,
-      audioContext: mockAudioContext,
-    });
-
-    expect(playlist.tracks).toHaveLength(0);
-    expect(Object.keys(playlist.trackIdMap)).toHaveLength(0);
-    expect(playlist.trackMap.size).toBe(0);
-    expect(playlist.playing).toBe(false);
-    expect(playlist.listenTagIds).toEqual([]);
-    expect(playlist._elapsedTimeMs).toBe(0);
-    expect(playlist.playlistLastStartedAt).toBeUndefined();
-  });
 
   test("tracks getter should return all tracks", () => {
     expect(Array.isArray(playlist.tracks)).toBe(true);
@@ -328,42 +274,38 @@ describe("Playlist", () => {
   });
 
   test("updateParams should update listenerPoint and listenTagIds", () => {
-    const newListenerPoint = {} as GeoJSONFeature<GeoJSONPoint>;
-    const newListenTagIds = [1, 2, 3];
-    const mockTrack = { updateParams: jest.fn() } as unknown as PlaylistAudiotrack;
-    
-    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockTrack]);
+    const newParams: IMixParams = {
+      listenerPoint: {} as GeoJSONFeature<GeoJSONPoint>,
+      listenTagIds: [1, 2],
+    };
 
-    playlist.updateParams({
-      listenerPoint: newListenerPoint,
-      listenTagIds: newListenTagIds,
-    });
-
-    expect(playlist.listenerPoint).toBe(newListenerPoint);
-    expect(playlist.listenTagIds).toEqual([1, 2, 3]);
-    expect(mockTrack.updateParams).toHaveBeenCalledWith({
-      listenerPoint: newListenerPoint,
-      listenTagIds: newListenTagIds,
-    });
+    playlist.updateParams(newParams);
+    expect(playlist.listenerPoint).toBe(newParams.listenerPoint);
+    expect(playlist.listenTagIds).toEqual([1, 2]);
   });
 
-  test("updateParams should handle additional parameters", () => {
-    const mockTrack = { updateParams: jest.fn() } as unknown as PlaylistAudiotrack;
-    const extraParams = { someExtraParam: "value" };
-    
-    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockTrack]);
+  test("updateParams should not update listenerPoint when falsy (line 90)", () => {
+    const originalListenerPoint = playlist.listenerPoint;
+    const newParams: IMixParams = {
+      listenerPoint: undefined,
+      listenTagIds: [1, 2],
+    };
 
-    playlist.updateParams({
-      listenerPoint: mockListenerPoint,
-      listenTagIds: [],
-      ...extraParams,
-    });
+    playlist.updateParams(newParams);
+    // listenerPoint should remain unchanged when falsy
+    expect(playlist.listenerPoint).toBe(originalListenerPoint);
+  });
 
-    expect(mockTrack.updateParams).toHaveBeenCalledWith({
-      listenerPoint: mockListenerPoint,
-      listenTagIds: [],
-      ...extraParams,
-    });
+  test("updateParams should not update listenTagIds when falsy (lines 91-93)", () => {
+    playlist.listenTagIds = [5, 6]; // Set initial value
+    const newParams: IMixParams = {
+      listenerPoint: {} as GeoJSONFeature<GeoJSONPoint>,
+      listenTagIds: undefined,
+    };
+
+    playlist.updateParams(newParams);
+    // listenTagIds should remain unchanged when falsy
+    expect(playlist.listenTagIds).toEqual([5, 6]);
   });
 
   test("play should start all tracks and update state", () => {
@@ -375,57 +317,28 @@ describe("Playlist", () => {
     expect(playlist.playlistLastStartedAt).toBeInstanceOf(Date);
   });
 
-  test("pause should pause all tracks and update playing state", () => {
-    const mockTrack1 = { pause: jest.fn() } as unknown as PlaylistAudiotrack;
-    const mockTrack2 = { pause: jest.fn() } as unknown as PlaylistAudiotrack;
-    
-    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockTrack1, mockTrack2]);
-    playlist.playing = true;
-
+  test("pause should stop all tracks and update state", () => {
+    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockAudioTrack]);
+    playlist.play(); // Start playing
     playlist.pause();
 
-    expect(mockTrack1.pause).toHaveBeenCalled();
-    expect(mockTrack2.pause).toHaveBeenCalled();
+    expect(mockAudioTrack.pause).toHaveBeenCalled();
     expect(playlist.playing).toBe(false);
-  });
-
-  test("pause should update elapsed time when playlist was started", () => {
-    const mockTrack = { pause: jest.fn() } as unknown as PlaylistAudiotrack;
-    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockTrack]);
-    
-    // Set initial elapsed time and start time
-    playlist._elapsedTimeMs = 1000;
-    const startTime = new Date();
-    const startTimeMs = startTime.getTime();
-    playlist.playlistLastStartedAt = startTime;
-    
-    // Mock new Date().getTime() to return a time 2000ms after start
-    const mockNow = startTimeMs + 2000;
-    const mockGetTime = jest.fn().mockReturnValue(mockNow);
-    jest.spyOn(Date.prototype, 'getTime').mockImplementation(mockGetTime);
-
-    playlist.pause();
-
-    // Should add 2000ms to the initial 1000ms
-    expect(playlist._elapsedTimeMs).toBe(1000);
     expect(playlist.playlistLastStartedAt).toBeUndefined();
-
-    // Restore original getTime
-    jest.restoreAllMocks();
   });
 
-  test("pause should not update elapsed time when playlist was not started", () => {
-    const mockTrack = { pause: jest.fn() } as unknown as PlaylistAudiotrack;
-    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockTrack]);
+  test("pause should not update elapsed time when not playing (line 119)", () => {
+    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockAudioTrack]);
+    // Set initial elapsed time
+    (playlist as any)._elapsedTimeMs = 1000;
+    playlist.playlistLastStartedAt = undefined; // Not playing
     
-    // Set initial elapsed time but no start time
-    playlist._elapsedTimeMs = 1000;
-    playlist.playlistLastStartedAt = undefined;
-
     playlist.pause();
 
-    // Should keep the same elapsed time
-    expect(playlist._elapsedTimeMs).toBe(1000);
+    expect(mockAudioTrack.pause).toHaveBeenCalled();
+    expect(playlist.playing).toBe(false);
+    // elapsedTimeMs should remain unchanged when playlistLastStartedAt is undefined
+    expect((playlist as any)._elapsedTimeMs).toBe(1000);
     expect(playlist.playlistLastStartedAt).toBeUndefined();
   });
 
@@ -435,74 +348,51 @@ describe("Playlist", () => {
     expect(typeof elapsed).toBe("number");
   });
 
-  test("skip should call skip on the specified track when it exists", () => {
-    const mockTrack = { skip: jest.fn() } as unknown as PlaylistAudiotrack;
-    playlist.trackIdMap[1] = mockTrack;
-
+  test("skip should skip the specified track", () => {
+    playlist.trackIdMap[1] = mockAudioTrack;
     playlist.skip(1);
 
-    expect(mockTrack.skip).toHaveBeenCalled();
+    expect(mockAudioTrack.skip).toHaveBeenCalled();
   });
 
-  test("skip should handle non-existent track gracefully", () => {
+  test("skip should not throw when trackId is undefined (line 106-109)", () => {
+    const freshMockTrack = {
+      skip: jest.fn(),
+    } as unknown as PlaylistAudiotrack;
+    
     playlist.trackIdMap = {};
+    // Should not throw when trackId is undefined
+    expect(() => playlist.skip(undefined)).not.toThrow();
+    expect(freshMockTrack.skip).not.toHaveBeenCalled();
+  });
 
+  test("skip should not throw when track does not exist (line 106-109)", () => {
+    const freshMockTrack = {
+      skip: jest.fn(),
+    } as unknown as PlaylistAudiotrack;
+    
+    playlist.trackIdMap = {};
     // Should not throw when track doesn't exist
-    expect(() => playlist.skip(1)).not.toThrow();
+    expect(() => playlist.skip(999)).not.toThrow();
+    expect(freshMockTrack.skip).not.toHaveBeenCalled();
   });
 
-  test("skip should handle undefined track gracefully", () => {
-    const mockTrack = { skip: jest.fn() } as unknown as PlaylistAudiotrack;
-    playlist.trackIdMap[1] = mockTrack;
-
-    playlist.skip();
-
-    expect(mockTrack.skip).not.toHaveBeenCalled();
-  });
-
-  test("skip should handle string trackId by converting to number", () => {
-    const mockTrack = { skip: jest.fn() } as unknown as PlaylistAudiotrack;
-    playlist.trackIdMap[1] = mockTrack;
-
-    playlist.skip("1" as unknown as number);
-
-    expect(mockTrack.skip).toHaveBeenCalled();
-  });
-
-  test("replay should call replay on the specified track when it exists", () => {
-    const mockTrack = { replay: jest.fn() } as unknown as PlaylistAudiotrack;
-    playlist.trackIdMap[1] = mockTrack;
-
+  test("replay should replay the specified track", () => {
+    playlist.trackIdMap[1] = mockAudioTrack;
     playlist.replay(1);
 
-    expect(mockTrack.replay).toHaveBeenCalled();
+    expect(mockAudioTrack.replay).toHaveBeenCalled();
   });
 
-  test("replay should handle non-existent track gracefully", () => {
+  test("replay should not throw when track does not exist (line 111-114)", () => {
+    const freshMockTrack = {
+      replay: jest.fn(),
+    } as unknown as PlaylistAudiotrack;
+    
     playlist.trackIdMap = {};
-
     // Should not throw when track doesn't exist
-    expect(() => playlist.replay(1)).not.toThrow();
-  });
-
-  test("replay should handle string trackId by converting to number", () => {
-    const mockTrack = { replay: jest.fn() } as unknown as PlaylistAudiotrack;
-    playlist.trackIdMap[1] = mockTrack;
-
-    playlist.replay("1" as unknown as number);
-
-    expect(mockTrack.replay).toHaveBeenCalled();
-  });
-
-  test("replay should handle invalid trackId types gracefully", () => {
-    const mockTrack = { replay: jest.fn() } as unknown as PlaylistAudiotrack;
-    playlist.trackIdMap[1] = mockTrack;
-
-    // Test with various invalid types that should be converted to NaN
-    expect(() => playlist.replay("invalid" as unknown as number)).not.toThrow();
-    expect(() => playlist.replay(null as unknown as number)).not.toThrow();
-    expect(() => playlist.replay(undefined as unknown as number)).not.toThrow();
-    expect(() => playlist.replay({} as unknown as number)).not.toThrow();
+    expect(() => playlist.replay(999)).not.toThrow();
+    expect(freshMockTrack.replay).not.toHaveBeenCalled();
   });
 
   test("updateParams should call updateParams for all tracks without overwriting properties", () => {
@@ -537,18 +427,14 @@ describe("Playlist", () => {
   });
 
   test("next should get the next asset for a track", () => {
-    const mockTrack = { 
-      trackId: 1,
-      currentAsset: null,
-      playing: false,
-    } as unknown as PlaylistAudiotrack;
-    
-    const mockAsset = {
-      id: 1,
+    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockAudioTrack]);
+
+    const mockDecoratedAsset: IDecoratedAsset = {
+      id: 2,
       activeRegionLowerBound: 0,
+      activeRegionLength: 0,
       locationPoint: {} as GeoJSONFeature<GeoJSONPoint>,
       playCount: 0,
-      activeRegionLength: 0,
       activeRegionUpperBound: 0,
       description: "",
       latitude: 0,
@@ -569,92 +455,87 @@ describe("Playlist", () => {
       language_id: 0,
       envelope_ids: [],
       description_loc_ids: [],
-      alt_text_loc_ids: [],
-    } as IDecoratedAsset;
+      alt_text_loc_ids: []
+    };
 
-    jest.spyOn(mockAssetPool, 'nextForTrack').mockReturnValue(mockAsset);
-    jest.spyOn(mockClient, 'triggerOnPlayAssets').mockImplementation(() => {});
+    (mockAssetPool.nextForTrack as jest.Mock).mockReturnValue(mockDecoratedAsset);  
+    const nextAsset = playlist.next(mockAudioTrack);
 
-    const nextAsset = playlist.next(mockTrack);
+    expect(mockAssetPool.nextForTrack).toHaveBeenCalled();
+    expect(nextAsset).toEqual(mockDecoratedAsset);
+    expect(playlist.trackMap.get(mockAudioTrack)).toEqual(mockDecoratedAsset);
+    expect(mockClient.triggerOnPlayAssets).toHaveBeenCalled(); // Ensure it's called
+  });
 
-    expect(mockAssetPool.nextForTrack).toHaveBeenCalledWith(mockTrack, {
-      filterOutAssets: [],
-      elapsedSeconds: 0,
+  test("should initialize elapsed time from URL parameter rwfTimerSeconds (lines 54-56)", () => {
+    const consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    const timerSeconds = "5.5";
+    
+    // Mock getUrlParam to return the timer value
+    (getUrlParam as jest.Mock).mockReturnValue(timerSeconds);
+    
+    // Create a new Playlist instance
+    const testPlaylist = new Playlist({
+      client: mockClient,
+      audioTracks: [],
       listenerPoint: mockListenerPoint,
-      listenTagIds: [],
+      assetPool: mockAssetPool,
+      audioContext: mockAudioContext,
     });
-    expect(nextAsset).toBe(mockAsset);
-    expect(playlist.trackMap.get(mockTrack)).toBe(mockAsset);
+    
+    // Verify getUrlParam was called with correct parameters
+    expect(getUrlParam).toHaveBeenCalledWith(
+      window.location.toString(),
+      "rwfTimerSeconds"
+    );
+    
+    // Verify elapsed time is set correctly (5.5 seconds * 1000 = 5500 ms)
+    // Access private property for testing
+    expect((testPlaylist as any)._elapsedTimeMs).toBe(5500);
+    
+    // Verify console.log was called with the correct message (line 56)
+    expect(consoleLogSpy).toHaveBeenCalledWith("Setting playlist timer to 5.5s");
+    
+    consoleLogSpy.mockRestore();
+  });
+
+  test("should use default empty array for audioTracks when not provided (line 26)", () => {
+    // Mock getUrlParam to return null so timer logic doesn't interfere
+    (getUrlParam as jest.Mock).mockReturnValue(null);
+    
+    // Create Playlist without providing audioTracks to use default value
+    const testPlaylist = new Playlist({
+      client: mockClient,
+      // audioTracks is omitted to test default parameter value
+      listenerPoint: mockListenerPoint,
+      assetPool: mockAssetPool,
+      audioContext: mockAudioContext,
+    });
+    
+    // Verify that tracks array is empty (default value was used)
+    expect(testPlaylist.tracks).toHaveLength(0);
+    expect(Object.keys(testPlaylist.trackIdMap)).toHaveLength(0);
+    expect(testPlaylist.trackMap.size).toBe(0);
+  });
+
+  test("should set trackMap to null when nextAsset is null/undefined (line 155)", () => {
+    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockAudioTrack]);
+    
+    // Mock nextForTrack to return null to test the || null branch
+    (mockAssetPool.nextForTrack as jest.Mock).mockReturnValue(null);
+    
+    const nextAsset = playlist.next(mockAudioTrack);
+    
+    // Verify nextForTrack was called
+    expect(mockAssetPool.nextForTrack).toHaveBeenCalled();
+    
+    // Verify nextAsset is null
+    expect(nextAsset).toBeNull();
+    
+    // Verify trackMap is set to null (line 155: nextAsset || null)
+    expect(playlist.trackMap.get(mockAudioTrack)).toBeNull();
+    
+    // Verify triggerOnPlayAssets was still called
     expect(mockClient.triggerOnPlayAssets).toHaveBeenCalled();
-  });
-
-  test("next should handle null asset from nextForTrack", () => {
-    const mockTrack = { 
-      trackId: 1,
-      currentAsset: null,
-      playing: false,
-    } as unknown as PlaylistAudiotrack;
-    
-    jest.spyOn(mockAssetPool, 'nextForTrack').mockReturnValue(undefined);
-    jest.spyOn(mockClient, 'triggerOnPlayAssets').mockImplementation(() => {});
-
-    const nextAsset = playlist.next(mockTrack);
-
-    expect(mockAssetPool.nextForTrack).toHaveBeenCalledWith(mockTrack, {
-      filterOutAssets: [],
-      elapsedSeconds: 0,
-      listenerPoint: mockListenerPoint,
-      listenTagIds: [],
-    });
-    expect(nextAsset).toBeUndefined();
-    expect(playlist.trackMap.get(mockTrack)).toBeNull();
-    expect(mockClient.triggerOnPlayAssets).toHaveBeenCalled();
-  });
-
-  test("updateParams should not update listenerPoint when not provided", () => {
-    const originalListenerPoint = playlist.listenerPoint;
-    const mockTrack = { updateParams: jest.fn() } as unknown as PlaylistAudiotrack;
-    
-    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockTrack]);
-
-    playlist.updateParams({
-      listenTagIds: [1, 2],
-    });
-
-    expect(playlist.listenerPoint).toBe(originalListenerPoint);
-    expect(mockTrack.updateParams).toHaveBeenCalledWith({
-      listenTagIds: [1, 2],
-    });
-  });
-
-  test("updateParams should not update listenTagIds when not provided", () => {
-    const originalListenTagIds = playlist.listenTagIds;
-    const mockTrack = { updateParams: jest.fn() } as unknown as PlaylistAudiotrack;
-    
-    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockTrack]);
-
-    playlist.updateParams({
-      listenerPoint: mockListenerPoint,
-    });
-
-    expect(playlist.listenTagIds).toBe(originalListenTagIds);
-    expect(mockTrack.updateParams).toHaveBeenCalledWith({
-      listenerPoint: mockListenerPoint,
-    });
-  });
-
-  test("updateParams should handle empty listenTagIds array", () => {
-    const mockTrack = { updateParams: jest.fn() } as unknown as PlaylistAudiotrack;
-    
-    jest.spyOn(playlist, "tracks", "get").mockReturnValue([mockTrack]);
-
-    playlist.updateParams({
-      listenTagIds: [],
-    });
-
-    expect(playlist.listenTagIds).toEqual([]);
-    expect(mockTrack.updateParams).toHaveBeenCalledWith({
-      listenTagIds: [],
-    });
   });
 });

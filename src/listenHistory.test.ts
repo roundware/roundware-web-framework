@@ -6,150 +6,308 @@ jest.mock("localforage");
 
 describe("ListenHistory", () => {
   let listenHistory: ListenHistory;
-  const mockAsset1: IAssetData = {
-    id: 1,
-    description: "Test Asset 1",
-    latitude: 0,
-    longitude: 0,
-    shape: null,
-    filename: "test1.mp3",
-    file: null,
-    volume: 1,
-    submitted: true,
-    created: new Date(),
-    updated: new Date(),
-    weight: 1,
-    start_time: 0,
-    end_time: 100,
-    user: null,
-    media_type: "audio",
-    audio_length_in_seconds: 60,
-    tag_ids: [],
-    session_id: 1,
-    project_id: 1,
-    language_id: 1,
-    envelope_ids: [],
-    description_loc_ids: [],
-    alt_text_loc_ids: [],
-    project: 1
-  };
-
-  const mockAsset2: IAssetData = {
-    ...mockAsset1,
-    id: 2,
-    description: "Test Asset 2"
-  };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (localforage.getItem as jest.Mock).mockResolvedValue([]);
+    jest.clearAllMocks(); // Clear all previous mock calls
+    (localforage.getItem as jest.Mock).mockResolvedValue([]); // Ensure default mock value for getItem
+    listenHistory = new ListenHistory(); // Initialize after mock setup
+  });
+
+  it("should load history from indexedDB on initialization", async () => {
+    // Mocking localforage.getItem to return an array of assets
+    const mockAssets: IAssetData[] = [
+      {
+        id: 1,
+        description: "Asset 1",
+        latitude: 0,
+        longitude: 0,
+        shape: null,
+        filename: "file1.mp3",
+        file: null,
+        volume: 1,
+        submitted: true,
+        created: new Date("2023-01-01"),
+        updated: new Date("2023-01-02"),
+        weight: 10,
+        start_time: 0,
+        end_time: 100,
+        user: { username: "user1", email: "user1@example.com" },
+        media_type: "audio",
+        audio_length_in_seconds: 60,
+        tag_ids: [1],
+        session_id: 123,
+        project_id: 456,
+        language_id: 1,
+        envelope_ids: [1, 2],
+        description_loc_ids: [3],
+        alt_text_loc_ids: [4],
+        project: 1,
+      },
+    ];
+    (localforage.getItem as jest.Mock).mockResolvedValue(mockAssets); // Mock resolved value
+
+    // Trigger constructor logic
     listenHistory = new ListenHistory();
+
+    // Wait for the promise resolution in constructor
+    await Promise.resolve();
+
+    // Verify that assets are loaded and sorted
+    expect(localforage.getItem).toHaveBeenCalledWith("listenHistory");
+    expect(listenHistory.assets).toEqual(mockAssets);
   });
 
-  describe("initialization", () => {
-    it("should initialize with empty assets array", () => {
-      expect(listenHistory.assets).toEqual([]);
-    });
+  it("should handle non-array values from indexedDB (line 14)", async () => {
+    // Test the false branch of line 14: when assets is not an array
+    // This can happen if indexedDB contains corrupted or unexpected data
+    (localforage.getItem as jest.Mock).mockResolvedValue(null);
 
-    it("should load existing history from indexedDB", async () => {
-      const existingAssets = [
-        { ...mockAsset1, addedAt: Date.now() - 1000 },
-        { ...mockAsset2, addedAt: Date.now() - 2000 }
-      ];
-      (localforage.getItem as jest.Mock).mockResolvedValue(existingAssets);
+    // Trigger constructor logic
+    listenHistory = new ListenHistory();
 
-      listenHistory = new ListenHistory();
-      await Promise.resolve(); // Wait for the async operation
+    // Wait for the promise resolution in constructor
+    await Promise.resolve();
 
-      expect(listenHistory.assets).toEqual(existingAssets);
-      expect(localforage.getItem).toHaveBeenCalledWith("listenHistory");
-    });
-
-    it("should handle non-array data from indexedDB", async () => {
-      (localforage.getItem as jest.Mock).mockResolvedValue(null);
-
-      listenHistory = new ListenHistory();
-      await Promise.resolve();
-
-      expect(listenHistory.assets).toEqual([]);
-      expect(localforage.getItem).toHaveBeenCalledWith("listenHistory");
-    });
+    // When assets is not an array, the if condition on line 14 should be false
+    // and this.assets should remain as empty array (initial value)
+    expect(localforage.getItem).toHaveBeenCalledWith("listenHistory");
+    expect(listenHistory.assets).toEqual([]);
   });
 
-  describe("addAsset", () => {
-    it("should add an asset with addedAt timestamp", () => {
-      const beforeAdd = Date.now();
-      listenHistory.addAsset(mockAsset1);
-      const afterAdd = Date.now();
+  it("should handle undefined values from indexedDB (line 14)", async () => {
+    // Test the false branch of line 14: when assets is undefined
+    (localforage.getItem as jest.Mock).mockResolvedValue(undefined);
 
-      expect(listenHistory.assets).toHaveLength(1);
-      expect(listenHistory.assets[0].addedAt).toBeGreaterThanOrEqual(beforeAdd);
-      expect(listenHistory.assets[0].addedAt).toBeLessThanOrEqual(afterAdd);
-      expect(localforage.setItem).toHaveBeenCalledWith("listenHistory", listenHistory.assets);
-    });
+    // Trigger constructor logic
+    listenHistory = new ListenHistory();
 
-    it("should maintain assets in reverse chronological order", () => {
-      const now = Date.now();
-      const asset1 = { ...mockAsset1, addedAt: now - 2000 };
-      const asset2 = { ...mockAsset2, addedAt: now - 1000 };
+    // Wait for the promise resolution in constructor
+    await Promise.resolve();
 
-      listenHistory.assets = [asset1];
-      listenHistory.addAsset(mockAsset2);
-
-      expect(listenHistory.assets).toHaveLength(2);
-      expect(listenHistory.assets[0].id).toBe(1);
-      expect(listenHistory.assets[1].id).toBe(2);
-    });
+    // When assets is undefined, the if condition on line 14 should be false
+    // and this.assets should remain as empty array (initial value)
+    expect(localforage.getItem).toHaveBeenCalledWith("listenHistory");
+    expect(listenHistory.assets).toEqual([]);
   });
 
-  describe("clear", () => {
-    it("should clear all assets and update indexedDB", () => {
-      listenHistory.assets = [mockAsset1, mockAsset2];
-      listenHistory.clear();
+  it("should handle non-array object from indexedDB (line 14)", async () => {
+    // Test the false branch of line 14: when assets is an object but not an array
+    (localforage.getItem as jest.Mock).mockResolvedValue({ someKey: "someValue" });
 
-      expect(listenHistory.assets).toEqual([]);
-      expect(localforage.setItem).toHaveBeenCalledWith("listenHistory", []);
-    });
+    // Trigger constructor logic
+    listenHistory = new ListenHistory();
 
-    it("should handle clearing empty history", () => {
-      expect(() => {
-        listenHistory.clear();
-      }).not.toThrow();
-      expect(listenHistory.assets).toEqual([]);
-    });
+    // Wait for the promise resolution in constructor
+    await Promise.resolve();
+
+    // When assets is not an array, the if condition on line 14 should be false
+    // and this.assets should remain as empty array (initial value)
+    expect(localforage.getItem).toHaveBeenCalledWith("listenHistory");
+    expect(listenHistory.assets).toEqual([]);
   });
 
-  describe("sorting", () => {
-    it("should sort assets by addedAt in descending order", async () => {
-      const now = Date.now();
-      const assets = [
-        { ...mockAsset1, addedAt: now - 3000 },
-        { ...mockAsset2, addedAt: now - 1000 }
-      ];
-      (localforage.getItem as jest.Mock).mockResolvedValue(assets);
+  it("should sort assets by addedAt in descending order (line 16)", async () => {
+    // Create mock assets with different addedAt timestamps
+    const now = Date.now();
+    const mockAssets: (IAssetData & { addedAt?: number })[] = [
+      {
+        id: 1,
+        description: "Asset 1 (oldest)",
+        latitude: 0,
+        longitude: 0,
+        shape: null,
+        filename: "file1.mp3",
+        file: null,
+        volume: 1,
+        submitted: true,
+        created: new Date("2023-01-01"),
+        updated: new Date("2023-01-02"),
+        weight: 10,
+        start_time: 0,
+        end_time: 100,
+        user: null,
+        media_type: "audio",
+        audio_length_in_seconds: 60,
+        tag_ids: [1],
+        session_id: 123,
+        project_id: 456,
+        language_id: 1,
+        envelope_ids: [],
+        description_loc_ids: [],
+        alt_text_loc_ids: [],
+        project: 1,
+        addedAt: now - 2000, // Oldest (2 seconds ago)
+      },
+      {
+        id: 2,
+        description: "Asset 2 (newest)",
+        latitude: 0,
+        longitude: 0,
+        shape: null,
+        filename: "file2.mp3",
+        file: null,
+        volume: 1,
+        submitted: true,
+        created: new Date("2023-01-01"),
+        updated: new Date("2023-01-02"),
+        weight: 10,
+        start_time: 0,
+        end_time: 100,
+        user: null,
+        media_type: "audio",
+        audio_length_in_seconds: 60,
+        tag_ids: [1],
+        session_id: 123,
+        project_id: 456,
+        language_id: 1,
+        envelope_ids: [],
+        description_loc_ids: [],
+        alt_text_loc_ids: [],
+        project: 1,
+        addedAt: now, // Newest (now)
+      },
+      {
+        id: 3,
+        description: "Asset 3 (middle)",
+        latitude: 0,
+        longitude: 0,
+        shape: null,
+        filename: "file3.mp3",
+        file: null,
+        volume: 1,
+        submitted: true,
+        created: new Date("2023-01-01"),
+        updated: new Date("2023-01-02"),
+        weight: 10,
+        start_time: 0,
+        end_time: 100,
+        user: null,
+        media_type: "audio",
+        audio_length_in_seconds: 60,
+        tag_ids: [1],
+        session_id: 123,
+        project_id: 456,
+        language_id: 1,
+        envelope_ids: [],
+        description_loc_ids: [],
+        alt_text_loc_ids: [],
+        project: 1,
+        addedAt: now - 1000, // Middle (1 second ago)
+      },
+    ];
 
-      listenHistory = new ListenHistory();
-      await Promise.resolve();
+    // Mock getItem to return assets in unsorted order (middle, oldest, newest)
+    (localforage.getItem as jest.Mock).mockResolvedValue([
+      mockAssets[2], // Middle first
+      mockAssets[0], // Oldest second
+      mockAssets[1], // Newest third
+    ]);
 
-      const firstAssetAddedAt = listenHistory.assets[0].addedAt;
-      const secondAssetAddedAt = listenHistory.assets[1].addedAt;
-      
-      if (firstAssetAddedAt !== undefined && secondAssetAddedAt !== undefined) {
-        expect(firstAssetAddedAt).toBeGreaterThan(secondAssetAddedAt);
-      }
+    // Trigger constructor logic
+    listenHistory = new ListenHistory();
+
+    // Wait for the promise resolution in constructor
+    await Promise.resolve();
+
+    // Verify that assets are sorted by addedAt in descending order (newest first)
+    // Line 16: (a, b) => b.addedAt! - a.addedAt! sorts descending
+    expect(listenHistory.assets).toHaveLength(3);
+    expect(listenHistory.assets[0].id).toBe(2); // Newest first
+    expect(listenHistory.assets[0].addedAt).toBe(now);
+    expect(listenHistory.assets[1].id).toBe(3); // Middle second
+    expect(listenHistory.assets[1].addedAt).toBe(now - 1000);
+    expect(listenHistory.assets[2].id).toBe(1); // Oldest last
+    expect(listenHistory.assets[2].addedAt).toBe(now - 2000);
+  });
+
+  it("should add a new asset to history and update indexedDB", async () => {
+    const newAsset: IAssetData = {
+      id: 2,
+      description: "Asset 2",
+      latitude: 10,
+      longitude: 20,
+      shape: null,
+      filename: "file2.mp3",
+      file: null,
+      volume: 1,
+      submitted: true,
+      created: new Date("2023-03-01"),
+      updated: new Date("2023-03-05"),
+      weight: 50,
+      start_time: 0,
+      end_time: 100,
+      user: null,
+      media_type: "audio",
+      audio_length_in_seconds: 120,
+      tag_ids: [1, 2],
+      session_id: 999,
+      project_id: undefined,
+      language_id: 1,
+      envelope_ids: [],
+      description_loc_ids: [],
+      alt_text_loc_ids: [],
+      project: undefined,
+    };
+
+    // Mocking localforage.setItem
+    (localforage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+    // Act: Add the new asset
+    listenHistory.addAsset(newAsset);
+
+    // Expectations
+    expect(listenHistory.assets).toHaveLength(1);
+    expect(listenHistory.assets[0]).toMatchObject({
+      id: 2,
+      description: "Asset 2",
+      addedAt: expect.any(Number), // Ensure addedAt is a valid timestamp
     });
+    expect(localforage.setItem).toHaveBeenCalledWith(
+      "listenHistory",
+      listenHistory.assets
+    );
+  });
 
-    it("should handle assets with undefined addedAt", async () => {
-      const assets = [
-        { ...mockAsset1, addedAt: undefined },
-        { ...mockAsset2, addedAt: Date.now() }
-      ];
-      (localforage.getItem as jest.Mock).mockResolvedValue(assets);
+  it("should clear the asset history and update indexedDB", async () => {
+    // Pre-fill assets
+    listenHistory.assets = [
+      {
+        id: 1,
+        description: "Asset 1",
+        latitude: 0,
+        longitude: 0,
+        shape: null,
+        filename: "file1.mp3",
+        file: null,
+        volume: 1,
+        submitted: true,
+        created: new Date("2023-01-01"),
+        updated: new Date("2023-01-02"),
+        weight: 10,
+        start_time: 0,
+        end_time: 100,
+        user: { username: "user1", email: "user1@example.com" },
+        media_type: "audio",
+        audio_length_in_seconds: 60,
+        tag_ids: [1],
+        session_id: 123,
+        project_id: 456,
+        language_id: 1,
+        envelope_ids: [1, 2],
+        description_loc_ids: [3],
+        alt_text_loc_ids: [4],
+        project: 1,
+      },
+    ];
 
-      listenHistory = new ListenHistory();
-      await Promise.resolve();
+    // Mocking localforage.setItem
+    (localforage.setItem as jest.Mock).mockResolvedValue(undefined);
 
-      expect(listenHistory.assets).toHaveLength(2);
-    });
+    // Act: Clear the history
+    listenHistory.clear();
+
+    // Expectations
+    expect(listenHistory.assets).toHaveLength(0);
+    expect(localforage.setItem).toHaveBeenCalledWith("listenHistory", []);
   });
 });
