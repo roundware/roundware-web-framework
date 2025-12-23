@@ -213,6 +213,28 @@ describe("SpeakerUtils", () => {
   });
 
   describe("timeUntilClosestLoopPoint", () => {
+    let consoleLogSpy: jest.SpyInstance;
+    let originalWindow: typeof window | undefined;
+
+    beforeEach(() => {
+      consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
+      originalWindow = (global as any).window;
+    });
+
+    afterEach(() => {
+      consoleLogSpy.mockRestore();
+      // Restore original window
+      if (originalWindow !== undefined) {
+        Object.defineProperty(global, "window", {
+          value: originalWindow,
+          writable: true,
+          configurable: true,
+        });
+      } else {
+        delete (global as any).window;
+      }
+    });
+
     it("should calculate correct time until next loop point - example 1", () => {
       const result = SpeakerUtils.timeUntilClosestLoopPoint({
         currentTime: 8,
@@ -257,65 +279,244 @@ describe("SpeakerUtils", () => {
       });
       expect(result).toBeCloseTo(0.01, 2);
     });
+
+    it("should log debug info when DEBUG_LOOP_SYNC is enabled", () => {
+      // Mock window object with DEBUG_LOOP_SYNC flag
+      Object.defineProperty(global, "window", {
+        value: {
+          DEBUG_LOOP_SYNC: true,
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      const currentTime = 8.5;
+      const startTime = 0;
+      const duration = 3;
+
+      const result = SpeakerUtils.timeUntilClosestLoopPoint({
+        currentTime,
+        startTime,
+        duration,
+      });
+
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[SYNC_DEBUG] LOOP_CALC:")
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`currentTime=${currentTime.toFixed(6)}s`)
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`startTime=${startTime.toFixed(6)}s`)
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`duration=${duration.toFixed(6)}s`)
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/timeSinceStart=\d+\.\d+s/)
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/positionInLoop=\d+\.\d+s/)
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/timeUntilNext=\d+\.\d+s/)
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/expectedLoop=\d+\.\d+s/)
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/actualOffset=-?\d+\.\d+ms/)
+      );
+      expect(result).toBe(0.5);
+    });
+
+    it("should not log when DEBUG_LOOP_SYNC is not set", () => {
+      // Mock window object without DEBUG_LOOP_SYNC flag
+      Object.defineProperty(global, "window", {
+        value: {},
+        writable: true,
+        configurable: true,
+      });
+
+      SpeakerUtils.timeUntilClosestLoopPoint({
+        currentTime: 8,
+        startTime: 0,
+        duration: 3,
+      });
+
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+    });
+
+    it("should not log when DEBUG_LOOP_SYNC is false", () => {
+      // Mock window object with DEBUG_LOOP_SYNC set to false
+      Object.defineProperty(global, "window", {
+        value: {
+          DEBUG_LOOP_SYNC: false,
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      SpeakerUtils.timeUntilClosestLoopPoint({
+        currentTime: 8,
+        startTime: 0,
+        duration: 3,
+      });
+
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+    });
+
+    it("should not log when window is undefined (Node.js environment)", () => {
+      // Remove window object to simulate Node.js environment
+      delete (global as any).window;
+
+      SpeakerUtils.timeUntilClosestLoopPoint({
+        currentTime: 8,
+        startTime: 0,
+        duration: 3,
+      });
+
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+    });
+
+    it("should log correct debug values with specific inputs", () => {
+      Object.defineProperty(global, "window", {
+        value: {
+          DEBUG_LOOP_SYNC: true,
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      const currentTime = 10.5;
+      const startTime = 6;
+      const duration = 3;
+
+      SpeakerUtils.timeUntilClosestLoopPoint({
+        currentTime,
+        startTime,
+        duration,
+      });
+
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+      const logMessage = consoleLogSpy.mock.calls[0][0];
+      
+      // Verify all expected values are present in the log message
+      expect(logMessage).toContain(`currentTime=${currentTime.toFixed(6)}s`);
+      expect(logMessage).toContain(`startTime=${startTime.toFixed(6)}s`);
+      expect(logMessage).toContain(`duration=${duration.toFixed(6)}s`);
+      
+      // Verify calculated values
+      const timeSinceStart = currentTime - startTime; // 4.5
+      const positionInLoop = timeSinceStart % duration; // 1.5
+      const timeUntilNext = duration - positionInLoop; // 1.5
+      const expectedLoopPoint = Math.floor(timeSinceStart / duration) * duration; // 3
+      const actualOffset = timeSinceStart - expectedLoopPoint; // 1.5
+      
+      expect(logMessage).toContain(`timeSinceStart=${timeSinceStart.toFixed(6)}s`);
+      expect(logMessage).toContain(`positionInLoop=${positionInLoop.toFixed(6)}s`);
+      expect(logMessage).toContain(`timeUntilNext=${timeUntilNext.toFixed(6)}s`);
+      expect(logMessage).toContain(`expectedLoop=${expectedLoopPoint.toFixed(6)}s`);
+      expect(logMessage).toContain(`actualOffset=${(actualOffset * 1000).toFixed(2)}ms`);
+    });
   });
 
   describe("shouldDoSomethingWithProbability", () => {
+    let consoleDebugSpy: jest.SpyInstance;
+    let mathRandomSpy: jest.SpyInstance;
+
     beforeEach(() => {
-      // Mock console.debug to track calls
-      jest.spyOn(console, 'debug').mockImplementation(() => {});
+      consoleDebugSpy = jest.spyOn(console, "debug").mockImplementation();
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      consoleDebugSpy.mockRestore();
+      if (mathRandomSpy) {
+        mathRandomSpy.mockRestore();
+      }
     });
 
-    it("should return true when random number is less than probability", () => {
-      // Mock Math.random to return 0.3
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
-      
-      const result = SpeakerUtils.shouldDoSomethingWithProbability(0.5);
+    it("should log with ✅ when random < probability and taskName is provided", () => {
+      const randomValue = 0.3;
+      const probability = 0.5;
+      mathRandomSpy = jest.spyOn(Math, "random").mockReturnValue(randomValue);
+
+      const result = SpeakerUtils.shouldDoSomethingWithProbability(
+        probability,
+        "testTask"
+      );
+
+      expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("✅")
+      );
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("testTask")
+      );
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/testTask probability: 0\.3 < 0\.5/)
+      );
       expect(result).toBe(true);
     });
 
-    it("should return false when random number is greater than probability", () => {
-      // Mock Math.random to return 0.7
-      jest.spyOn(Math, 'random').mockReturnValue(0.7);
-      
-      const result = SpeakerUtils.shouldDoSomethingWithProbability(0.5);
+    it("should log with ❌ when random >= probability and taskName is provided", () => {
+      const randomValue = 0.7;
+      const probability = 0.5;
+      mathRandomSpy = jest.spyOn(Math, "random").mockReturnValue(randomValue);
+
+      const result = SpeakerUtils.shouldDoSomethingWithProbability(
+        probability,
+        "testTask"
+      );
+
+      expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("❌")
+      );
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("testTask")
+      );
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/testTask probability: 0\.7 < 0\.5/)
+      );
       expect(result).toBe(false);
     });
 
-    it("should log debug message with task name when provided", () => {
-      // Mock Math.random to return 0.3
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
-      
-      const taskName = "testTask";
-      SpeakerUtils.shouldDoSomethingWithProbability(0.5, taskName);
-      
-      expect(console.debug).toHaveBeenCalledWith(
-        expect.stringContaining("✅ testTask probability: 0.3 < 0.5")
-      );
+    it("should not log when taskName is not provided", () => {
+      const randomValue = 0.3;
+      const probability = 0.5;
+      mathRandomSpy = jest.spyOn(Math, "random").mockReturnValue(randomValue);
+
+      const result = SpeakerUtils.shouldDoSomethingWithProbability(probability);
+
+      expect(consoleDebugSpy).not.toHaveBeenCalled();
+      expect(result).toBe(true);
     });
 
-    it("should not log debug message when task name is not provided", () => {
-      // Mock Math.random to return 0.3
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
-      
-      SpeakerUtils.shouldDoSomethingWithProbability(0.5);
-      
-      expect(console.debug).not.toHaveBeenCalled();
+    it("should not log when taskName is empty string", () => {
+      const randomValue = 0.3;
+      const probability = 0.5;
+      mathRandomSpy = jest.spyOn(Math, "random").mockReturnValue(randomValue);
+
+      const result = SpeakerUtils.shouldDoSomethingWithProbability(
+        probability,
+        ""
+      );
+
+      expect(consoleDebugSpy).not.toHaveBeenCalled();
+      expect(result).toBe(true);
     });
 
-    it("should log ❌ when probability check fails", () => {
-      // Mock Math.random to return 0.7
-      jest.spyOn(Math, 'random').mockReturnValue(0.7);
-      
-      const taskName = "testTask";
-      SpeakerUtils.shouldDoSomethingWithProbability(0.5, taskName);
-      
-      expect(console.debug).toHaveBeenCalledWith(
-        expect.stringContaining("❌ testTask probability: 0.7 < 0.5")
-      );
+    it("should return correct boolean value based on probability comparison", () => {
+      mathRandomSpy = jest.spyOn(Math, "random").mockReturnValue(0.4);
+
+      const result1 = SpeakerUtils.shouldDoSomethingWithProbability(0.5);
+      expect(result1).toBe(true);
+
+      mathRandomSpy.mockReturnValue(0.6);
+      const result2 = SpeakerUtils.shouldDoSomethingWithProbability(0.5);
+      expect(result2).toBe(false);
     });
   });
 });
