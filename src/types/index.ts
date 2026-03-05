@@ -60,8 +60,15 @@ export interface IUiConfig {
 export type ILookupTable = object;
 
 export type ITimedAssetData = {
+  id?: number;
   asset_id: string | number;
+  start_sec?: number;
+  end_sec?: number;
+  project_id?: number;
+
+  /** @deprecated v2 field name — use start_sec */
   start?: number;
+  /** @deprecated v2 field name — use end_sec */
   end?: number;
 };
 
@@ -121,3 +128,4 @@ export * from "./roundware";
 export * from "./speaker";
 export * from "./track-states";
 export * from "./user";
+export * from "./participant";

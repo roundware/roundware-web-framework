@@ -4,24 +4,35 @@ import { SpeakerConfig } from "./roundware";
 
 export interface ISpeakerData {
   id: number;
-  maxvolume: number;
-  minvolume: number;
+  max_volume: number;
+  min_volume: number;
   uri: string;
-  backupuri?: string;
-  varianturis?: string[];
+  backup_uri?: string;
+  variant_uris?: string[];
   attenuation_distance: number;
   shape?: MultiPolygon;
   boundary?: MultiLineString;
   attenuation_border?: LineString;
   parents?: number[];
   children?: number[];
-  activeyn?: boolean;
+  is_active?: boolean;
   code?: string;
-  created?: string; // or Date
-  updated?: string; // or Date
+  created_at?: string;
+  updated_at?: string;
   fill_color?: string;
   border_color?: string;
   project_id?: number;
+
+  /** @deprecated v2 field name — use max_volume */
+  maxvolume?: number;
+  /** @deprecated v2 field name — use min_volume */
+  minvolume?: number;
+  /** @deprecated v2 field name — use backup_uri */
+  backupuri?: string;
+  /** @deprecated v2 field name — use variant_uris */
+  varianturis?: string[];
+  /** @deprecated v2 field name — use is_active */
+  activeyn?: boolean;
 }
 
 export interface ISpeakerFilters {}
