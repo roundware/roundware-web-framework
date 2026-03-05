@@ -145,7 +145,7 @@ export class ApiClient {
   /** Set the authorization token to use as the header for future API requests. Most Roundware API calls require an auth token to be set.
    * @param {String} authToken - characters to use in the authorization header **/
   set authToken(tokenStr: string) {
-    this._authToken = `token ${tokenStr}`;
+    this._authToken = `Bearer ${tokenStr}`;
   }
 }
 

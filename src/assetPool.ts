@@ -187,15 +187,15 @@ export function assetDecorationMapper(timedAssets: ITimedAssetData[]) {
       activeRegionUpperBound,
       activeRegionLowerBound,
       ...asset,
-      created: asset.created ? new Date(asset.created) : new Date(),
+      created_at: asset.created_at ? new Date(asset.created_at) : new Date(),
       file: mp3Url,
     };
 
     const timedAsset = timedAssetLookup[asset.id!];
 
     if (timedAsset) {
-      decoratedAsset.timedAssetStart = timedAsset.start!;
-      decoratedAsset.timedAssetEnd = timedAsset.end!;
+      decoratedAsset.timedAssetStart = timedAsset.start_sec!;
+      decoratedAsset.timedAssetEnd = timedAsset.end_sec!;
     }
 
     return decoratedAsset;

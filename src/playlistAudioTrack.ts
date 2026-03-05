@@ -51,7 +51,7 @@ import {
 
  {
   alt_text_loc_ids: []
-  audio_length_in_seconds: 14.4
+  audio_length_sec: 14.4
   created: "2019-03-13T20:09:34.237155"
   description: ""
   description_loc_ids: []
@@ -232,12 +232,12 @@ export class PlaylistAudiotrack {
       listenTagIds: audioData.tag_filters,
     };
 
-    const { minpanpos, maxpanpos, minpanduration, maxpanduration } = audioData;
+    const { min_pan_pos, max_pan_pos, min_pan_duration, max_pan_duration } = audioData;
     this.audioPanner = new AudioPanner(
-      minpanpos,
-      maxpanpos,
-      minpanduration,
-      maxpanduration,
+      min_pan_pos,
+      max_pan_pos,
+      min_pan_duration,
+      max_pan_duration,
       panNode,
       audioContext
     );
@@ -314,11 +314,11 @@ export class PlaylistAudiotrack {
   fadeOut(fadeOutDurationSeconds: number): boolean {
     if (
       fadeOutDurationSeconds >
-      this.currentAsset?.audio_length_in_seconds! -
+      this.currentAsset?.audio_length_sec! -
         this.audioElement.currentTime
     )
       fadeOutDurationSeconds =
-        this.currentAsset?.audio_length_in_seconds! -
+        this.currentAsset?.audio_length_sec! -
         this.audioElement.currentTime;
     return this.rampGain(0, fadeOutDurationSeconds);
   }

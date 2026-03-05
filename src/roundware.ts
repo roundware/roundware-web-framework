@@ -14,6 +14,7 @@ import {
 import { RoundwareEvents } from "./events";
 import { GeoPosition } from "./geo-position";
 import { GeoListenMode, Mixer } from "./mixer";
+import { Participant } from "./participant";
 import { Project } from "./project";
 import { Session } from "./session";
 import { logger } from "./shims";
@@ -46,7 +47,7 @@ import { ListenHistory } from "./listenHistory";
 /** This class is the primary integration point between Roundware's server and your application
 
    @example
-   var roundwareServerUrl = "http://localhost:8888/api/2";
+   var roundwareServerUrl = "http://localhost:8888/api/3";
    var roundwareProjectId = 1;
 
    var roundware = new Roundware(window,{
@@ -86,6 +87,8 @@ class Roundware {
   private _assetUpdateInterval: number;
   apiClient: ApiClient;
 
+  participant: Participant;
+  /** @deprecated Use `participant` instead. Kept for backwards compatibility. */
   user: User;
   geoPosition: GeoPosition;
   private _session: Session;
@@ -183,7 +186,14 @@ class Roundware {
 
     let navigator = window.navigator;
 
-    // TODO need to reorganize/refactor these classes
+    // Participant replaces User for v3 API
+    this.participant = new Participant({
+      apiClient: newOptions.apiClient,
+      clientType: newOptions.clientType,
+      deviceId: newOptions.deviceId,
+    });
+
+    // Keep backwards-compatible user reference
     this.user =
       user ||
       new User({
@@ -191,6 +201,7 @@ class Roundware {
         clientType: newOptions.clientType,
         deviceId: newOptions.deviceId,
       });
+
     this.geoPosition =
       geoPosition ||
       new GeoPosition(navigator, {
@@ -310,7 +321,12 @@ class Roundware {
 
       logger.info(`Initializing Roundware for project ID ${this._projectId}`);
 
-      await this.user?.connect();
+      // v3 flow: participant.connect() → session.connect() → parallel fetches
+      await this.participant.connect(this._projectId);
+
+      // Link participant to the session
+      this._session.participantId = this.participant.id;
+
       const sessionId = await this._session.connect();
 
       this._sessionId = sessionId;
@@ -327,7 +343,7 @@ class Roundware {
       ] = [
         this.project.connect(sessionId),
         this.project
-          .uiconfig(sessionId)
+          .fetchUIConfig(sessionId)
           .then((uiConfig) => (this.uiConfig = uiConfig)),
         this._speaker
           .connect(this._speakerFilters)
@@ -566,14 +582,18 @@ class Roundware {
     return undefined;
   }
 
+  /** Submit a vote on an asset.
+   * v3 uses top-level POST /votes/ instead of nested POST /assets/{id}/votes/
+   */
   async vote(
     assetId: number,
     voteType: string,
     value?: unknown
   ): Promise<void> {
-    return this.apiClient.post(`/assets/${assetId}/votes/`, {
+    return this.apiClient.post(`/votes/`, {
       session_id: this._sessionId,
-      vote_type: voteType,
+      asset_id: assetId,
+      type: voteType,
       value,
     });
   }

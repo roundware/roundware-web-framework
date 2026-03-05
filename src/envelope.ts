@@ -2,7 +2,8 @@ import { ApiClient } from "./api-client";
 import { GeoPosition } from "./geo-position";
 import { Roundware } from "./roundware";
 import { Coordinates, IAudioData } from "./types";
-import { join } from "lodash";
+import { IAssetData } from "./types/asset";
+
 export class Envelope {
   _envelopeId: string;
   _sessionId: number | string;
@@ -49,7 +50,11 @@ export class Envelope {
       });
   }
 
-  /** Sends an audio file to the server
+  /** Sends an audio file to the server via POST /assets/ (v3 API).
+   *
+   * v2 uploaded via PATCH /envelopes/{id}/, but v3 creates assets directly
+   * via POST /assets/ with the envelope_id in the form data.
+   *
    * @param {blob} audioData
    * @param {string} fileName - name of the file
    * @return {Promise} - represents the API call */
@@ -62,10 +67,7 @@ export class Envelope {
       tag_ids?: number[];
       media_type?: string;
     } = {}
-  ): Promise<{
-    detail: string;
-    envelope_ids: number[];
-  }> {
+  ): Promise<IAssetData> {
     if (!this._envelopeId) {
       return Promise.reject(
         "cannot upload audio without first connecting this envelope to the server"
@@ -83,50 +85,46 @@ export class Envelope {
       };
     }
 
+    // v3: POST /assets/ requires project_id and envelope_id
+    formData.append("project_id", this._roundware["_projectId"].toString());
     formData.append("session_id", this._sessionId.toString());
+    formData.append("envelope_id", this._envelopeId.toString());
     formData.append("file", audioData);
     formData.append("latitude", coordinates.latitude!.toString());
     formData.append("longitude", coordinates.longitude!.toString());
 
     if (Array.isArray(data.tag_ids)) {
-      formData.append("tag_ids", JSON.stringify(data.tag_ids).slice(1, -1));
-    } else if (data.tag_ids)
+      // v3 expects comma-separated string: "1,2,3"
+      formData.append("tag_ids", data.tag_ids.join(","));
+    } else if (data.tag_ids) {
       formData.append("tag_ids", JSON.stringify(data.tag_ids));
+    }
     if (data.media_type) {
       formData.append("media_type", data.media_type);
     }
 
-    let path = `/envelopes/${this._envelopeId}/`;
-
-    console.info(`Uploading ${fileName} to envelope ${path}`);
+    console.info(
+      `Uploading ${fileName} to envelope ${this._envelopeId} via POST /assets/`
+    );
 
     let options = {
       contentType: "multipart/form-data",
     };
 
-    const res = await this._apiClient.patch<{
-      detail: string;
-      envelope_ids: number[];
-    }>(path, formData, options);
+    // v3: Upload goes to POST /assets/ instead of PATCH /envelopes/{id}/
+    const asset = await this._apiClient.post<IAssetData>(
+      "/assets/",
+      formData,
+      options
+    );
 
-    if (res.detail) {
-      throw new Error(res.detail);
-    } else {
-      // Update the asset pool to include the newly uploaded asset
-      await this._roundware.updateAssetPool();
+    // Update the asset pool to include the newly uploaded asset
+    await this._roundware.updateAssetPool();
 
-      // get the posted asset;
-      const asset = this._roundware.assetData?.find((a) =>
-        a.envelope_ids.some((e) => res.envelope_ids.includes(e))
-      );
+    this._roundware.events?.logEvent(`upload_asset`, {
+      data: `asset_id:${asset.id}`,
+    });
 
-      if (asset) {
-        this._roundware.events?.logEvent(`upload_asset`, {
-          data: `asset_id:${asset.id}`,
-        });
-      }
-
-      return res;
-    }
+    return asset;
   }
 }

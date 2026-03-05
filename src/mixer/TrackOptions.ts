@@ -17,12 +17,12 @@ export class TrackOptions {
     urlParamLookup: (param: string) => string | number,
     params: IAudioTrackData
   ) {
-    this.volumeRange = [params.minvolume, params.maxvolume];
-    this.duration = [params.minduration, params.maxduration];
-    this.deadAir = [params.mindeadair, params.maxdeadair];
-    this.fadeInTime = [params.minfadeintime, params.maxfadeintime];
-    this.fadeOutTime = [params.minfadeouttime, params.maxfadeouttime];
-    this.repeatRecordings = !!params.repeatrecordings;
+    this.volumeRange = [params.min_volume, params.max_volume];
+    this.duration = [params.min_duration, params.max_duration];
+    this.deadAir = [params.min_dead_air, params.max_dead_air];
+    this.fadeInTime = [params.min_fade_in_time, params.max_fade_in_time];
+    this.fadeOutTime = [params.min_fade_out_time, params.max_fade_out_time];
+    this.repeatRecordings = !!params.repeat_recordings;
     this.tags = params.tag_filters;
     this.bannedDuration =
       typeof params.banned_duration != "number" ? 600 : params.banned_duration;

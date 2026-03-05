@@ -1,27 +1,27 @@
-/* This is what audiotracks data looks like:
+/* This is what audiotracks data looks like (v3 API):
 [{
 	"id": 8,
-	"minvolume": 0.7,
-	"maxvolume": 0.7,
-	"minduration": 200.0,
-	"maxduration": 250.0,
-	"mindeadair": 1.0,
-	"maxdeadair": 3.0,
-	"minfadeintime": 2.0,
-	"maxfadeintime": 4.0,
-	"minfadeouttime": 0.3,
-	"maxfadeouttime": 1.0,
-	"minpanpos": 0.0,
-	"maxpanpos": 0.0,
-	"minpanduration": 10.0,
-	"maxpanduration": 20.0,
-	"repeatrecordings": false,
-	"active": true,
+	"min_volume": 0.7,
+	"max_volume": 0.7,
+	"min_duration": 200.0,
+	"max_duration": 250.0,
+	"min_dead_air": 1.0,
+	"max_dead_air": 3.0,
+	"min_fade_in_time": 2.0,
+	"max_fade_in_time": 4.0,
+	"min_fade_out_time": 0.3,
+	"max_fade_out_time": 1.0,
+	"min_pan_pos": 0.0,
+	"max_pan_pos": 0.0,
+	"min_pan_duration": 10.0,
+	"max_pan_duration": 20.0,
+	"repeat_recordings": false,
+	"is_active": true,
 	"start_with_silence": false,
 	"banned_duration": 600,
 	"tag_filters": [],
 	"project_id": 9
-}] 
+}]
 */
 
 import { ApiClient } from "./api-client";

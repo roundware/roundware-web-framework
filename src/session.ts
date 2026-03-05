@@ -8,12 +8,15 @@ export class Session {
   projectId: number | undefined;
   geoListenEnabled: boolean;
   apiClient: ApiClient;
+  participantId?: number;
+
   /** Create a new Session
    * @param {object} navigator - provides access to the userAgent string
    * @param {Number} newProjectId - identifies the Roundware project to associate with this session
    * @param {Boolean} geoListenEnablement - whether the server should enable geo listening features
    * @param {Object} options - Various configuration parameters for this session
    * @param {apiClient} options.apiClient - the API client object to use for server API calls
+   * @param {number} [options.participantId] - optional participant ID to link this session to
    **/
   constructor(
     navigator: Window[`navigator`],
@@ -21,6 +24,7 @@ export class Session {
     geoListenEnablement: boolean,
     options: {
       apiClient: ApiClient;
+      participantId?: number;
     }
   ) {
     this.clientSystem = navigator.userAgent;
@@ -34,6 +38,7 @@ export class Session {
     this.geoListenEnabled = geoListenEnablement;
 
     this.apiClient = options.apiClient;
+    this.participantId = options.participantId;
   }
 
   /** @returns {String} human-readable representation of this session **/
@@ -45,11 +50,15 @@ export class Session {
    * @return {Promise} sessionId
    **/
   async connect(): Promise<number> {
-    const requestData = {
+    const requestData: Record<string, any> = {
       project_id: this.projectId,
       geo_listen_enabled: this.geoListenEnabled,
       client_system: this.clientSystem,
     };
+
+    if (this.participantId !== undefined) {
+      requestData.participant_id = this.participantId;
+    }
 
     const data = await this.apiClient.post<{ id: number }>(
       "/sessions/",

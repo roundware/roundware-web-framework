@@ -962,7 +962,7 @@ export class SpeakerEngine extends EventEmitter<{
           (speakerId) => {
             const speaker = this.speakers.find((s) => s.data.id === speakerId);
             if (!speaker) return false;
-            const created = new Date(speaker.data.created || 0).getTime();
+            const created = new Date(speaker.data.created_at || 0).getTime();
             return created > priorityThreshold;
           }
         );

@@ -48,7 +48,7 @@ export class LoadingState implements ICommonStateProperties {
     let newState: FadingInState | WaitingForAssetState;
 
     if (asset) {
-      debugLogger("Asset Length: " + asset?.audio_length_in_seconds);
+      debugLogger("Asset Length: " + asset?.audio_length_sec);
       const assetEnvelope = new AssetEnvelope(trackOptions, asset);
       newState = new FadingInState(track, trackOptions, { assetEnvelope });
 

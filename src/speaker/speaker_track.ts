@@ -115,13 +115,13 @@ export class SpeakerTrack extends EventEmitter<{
     super();
     const {
       id: speakerId,
-      maxvolume: maxVolume,
-      minvolume: minVolume,
+      max_volume: maxVolume,
+      min_volume: minVolume,
       attenuation_border,
       boundary,
       attenuation_distance: attenuationDistance,
       uri,
-      varianturis,
+      variant_uris,
     } = data;
 
     this.config = config;
@@ -159,7 +159,7 @@ export class SpeakerTrack extends EventEmitter<{
     this.groupId = groupId;
 
     // Initialize variant tracking
-    this.initializeVariants(varianturis);
+    this.initializeVariants(variant_uris);
   }
 
   outerBoundaryContains(point: Coord) {
@@ -645,9 +645,9 @@ export class SpeakerTrack extends EventEmitter<{
   }
 
   // Variant URI methods
-  private initializeVariants(varianturis?: string[]) {
-    if (varianturis && varianturis.length > 0) {
-      this.variantUris = [...varianturis];
+  private initializeVariants(variant_uris?: string[]) {
+    if (variant_uris && variant_uris.length > 0) {
+      this.variantUris = [...variant_uris];
       this.shuffleVariantArray();
       this.currentVariantIndex = 0;
       this.currentVariantUri = this.variantUris[0];

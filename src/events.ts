@@ -41,16 +41,16 @@ export class RoundwareEvents {
   ): Promise<void> {
     this._apiClient
       .post<{ id: number }>(LISTEN_EVENTS, {
-        starttime: startTime,
-        session: this._sessionId,
-        asset: assetId,
+        started_at: startTime.toISOString(),
+        session_id: this._sessionId,
+        asset_id: assetId,
       })
       .then(({ id }) => (this._startedAssets[assetId] = { startTime, id }));
   }
 
   /**
    *
-   * Calculates duration in seconds from when started, and sends patch request to givena assetId
+   * Calculates duration in seconds from when started, and sends patch request to given assetId
    * @param {number} assetId - id of the asset
    * @return {Promise} Promise of Response
    * @memberof RoundwareEvents
@@ -60,10 +60,10 @@ export class RoundwareEvents {
 
     const startedAsset = this._startedAssets[assetId];
 
-    const duration_in_seconds =
+    const duration_sec =
       (new Date().getTime() - startedAsset.startTime.getTime()) / 1000;
-    return this._apiClient.patch(LISTEN_EVENTS + startedAsset.id, {
-      duration_in_seconds,
+    return this._apiClient.patch(LISTEN_EVENTS + startedAsset.id + "/", {
+      duration_sec,
     });
   }
 
