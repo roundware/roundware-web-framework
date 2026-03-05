@@ -86,5 +86,10 @@
     "anyBranch": true,
     "tests": false,
     "yarn": false
+  },
+  "pnpm": {
+    "overrides": {
+      "serialize-javascript": ">=6.0.3"
+    }
   }
 }
