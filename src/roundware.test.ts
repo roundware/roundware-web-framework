@@ -1,6 +1,7 @@
 import { Roundware, GeoListenMode } from './roundware';
 import { ApiClient } from './api-client';
 import { User } from './user';
+import { Participant } from './participant';
 import { GeoPosition } from './geo-position';
 import { Session } from './session';
 import { Project } from './project';
@@ -21,6 +22,7 @@ import { noAssetData } from './constants/warning';
 // Mock all the dependencies
 jest.mock('./api-client');
 jest.mock('./user');
+jest.mock('./participant');
 jest.mock('./geo-position');
 jest.mock('./session');
 jest.mock('./project');
@@ -37,6 +39,7 @@ describe('Roundware', () => {
   let roundware: Roundware;
   let mockApiClient: jest.Mocked<ApiClient>;
   let mockUser: jest.Mocked<User>;
+  let mockParticipant: jest.Mocked<Participant>;
   let mockGeoPosition: jest.Mocked<GeoPosition>;
   let mockSession: jest.Mocked<Session>;
   let mockProject: jest.Mocked<Project>;
@@ -70,6 +73,7 @@ describe('Roundware', () => {
     // Setup mock implementations
     mockApiClient = new ApiClient(mockOptions.serverUrl) as jest.Mocked<ApiClient>;
     mockUser = new User({ apiClient: mockApiClient }) as jest.Mocked<User>;
+    mockParticipant = new Participant({ apiClient: mockApiClient }) as jest.Mocked<Participant>;
     mockGeoPosition = new GeoPosition(window.navigator, {
       defaultCoords: mockLocation,
       geoListenMode: mockOptions.geoListenMode
@@ -91,6 +95,7 @@ describe('Roundware', () => {
     // Mock constructor implementations
     (ApiClient as jest.Mock).mockImplementation(() => mockApiClient);
     (User as jest.Mock).mockImplementation(() => mockUser);
+    (Participant as jest.Mock).mockImplementation(() => mockParticipant);
     (GeoPosition as jest.Mock).mockImplementation(() => mockGeoPosition);
     (Session as jest.Mock).mockImplementation(() => mockSession);
     (Project as jest.Mock).mockImplementation(() => mockProject);
@@ -162,42 +167,43 @@ describe('Roundware', () => {
   });
 
   describe('connect', () => {
-    it('should connect successfully', async () => {
-      const mockSessionId = 123;
+    // Helper to set up all mocks needed for a successful connect flow
+    function setupConnectMocks(sessionId = 123) {
       const mockUiConfig = { listen: [], speak: [] };
-      const mockSpeakerData = [{ id: 1, name: 'Speaker 1' }];
-      const mockAudioTracksData = [{ id: 1, name: 'Track 1' }];
 
-      mockUser.connect.mockResolvedValue({});
-      mockSession.connect.mockResolvedValue(mockSessionId);
+      mockParticipant.connect.mockImplementation(async () => {
+        mockParticipant.id = 1;
+        return { id: 1, device_id: 'test-device', client_type: 'web', participant_token: 'test-token', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' };
+      });
+      mockSession.connect.mockResolvedValue(sessionId);
       mockProject.connect.mockResolvedValue(1);
-      mockProject.uiconfig.mockResolvedValue(mockUiConfig);
+      mockProject.fetchUIConfig = jest.fn().mockResolvedValue(mockUiConfig);
       mockSpeaker.connect.mockResolvedValue([{
         id: 1,
-        maxvolume: 1,
-        minvolume: 0,
+        max_volume: 1,
+        min_volume: 0,
         attenuation_distance: 100,
         uri: 'test.mp3'
       }]);
       mockAudiotrack.connect.mockResolvedValue([{
         id: 1,
         fadeout_when_filtered: true,
-        minvolume: 0,
-        maxvolume: 1,
-        minduration: 0,
-        maxduration: 0,
-        mindeadair: 0,
-        maxdeadair: 0,
-        minfadeintime: 0,
-        maxfadeintime: 0,
-        minfadeouttime: 0,
-        maxfadeouttime: 0,
-        minpanpos: 0,
-        maxpanpos: 0,
-        minpanduration: 0,
-        maxpanduration: 0,
-        repeatrecordings: false,
-        active: true,
+        min_volume: 0,
+        max_volume: 1,
+        min_duration: 0,
+        max_duration: 0,
+        min_dead_air: 0,
+        max_dead_air: 0,
+        min_fade_in_time: 0,
+        max_fade_in_time: 0,
+        min_fade_out_time: 0,
+        max_fade_out_time: 0,
+        min_pan_pos: 0,
+        max_pan_pos: 0,
+        min_pan_duration: 0,
+        max_pan_duration: 0,
+        repeat_recordings: false,
+        is_active: true,
         start_with_silence: false,
         banned_duration: 0,
         tag_filters: [],
@@ -205,17 +211,27 @@ describe('Roundware', () => {
         timed_asset_priority: "discard"
       }]);
 
+      return { mockUiConfig };
+    }
+
+    it('should connect successfully', async () => {
+      const mockSessionId = 123;
+      const { mockUiConfig } = setupConnectMocks(mockSessionId);
+
       const result = await roundware.connect();
 
-      expect(mockUser.connect).toHaveBeenCalled();
+      expect(mockParticipant.connect).toHaveBeenCalledWith(mockOptions.projectId);
       expect(mockSession.connect).toHaveBeenCalled();
       expect(mockProject.connect).toHaveBeenCalledWith(mockSessionId);
+      expect(mockProject.fetchUIConfig).toHaveBeenCalledWith(mockSessionId);
       expect(mockSpeaker.connect).toHaveBeenCalled();
       expect(mockAudiotrack.connect).toHaveBeenCalled();
       expect(result).toEqual({ uiConfig: mockUiConfig });
     });
 
     it('should setup geolocation callback on connect', async () => {
+      setupConnectMocks();
+
       const mockCallback = jest.fn();
       mockGeoPosition.connect.mockImplementation((callback: any) => {
         // Store the callback for later verification
@@ -225,17 +241,17 @@ describe('Roundware', () => {
       await roundware.connect();
 
       expect(mockGeoPosition.connect).toHaveBeenCalledWith(expect.any(Function));
-      
+
       // Verify the callback updates location when called
       const newLocation = { latitude: 41.7128, longitude: -75.0060 };
       mockCallback(newLocation);
-      
+
       expect(roundware.listenerLocation).toEqual(newLocation);
       expect(mockMixer.updateParams).toHaveBeenCalledWith({ listenerLocation: newLocation });
     });
 
     it('should handle connection errors', async () => {
-      mockUser.connect.mockRejectedValue(new Error('Connection failed'));
+      mockParticipant.connect.mockRejectedValue(new Error('Connection failed'));
 
       await expect(roundware.connect()).rejects.toThrow('Sorry, we were unable to connect to Roundware. Please try again.');
     });
@@ -434,9 +450,10 @@ describe('Roundware', () => {
 
       await roundware.vote(assetId, voteType, value);
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/assets/1/votes/', {
+      expect(mockApiClient.post).toHaveBeenCalledWith('/votes/', {
         session_id: undefined,
-        vote_type: voteType,
+        asset_id: assetId,
+        type: voteType,
         value
       });
     });
@@ -447,28 +464,21 @@ describe('Roundware', () => {
     description: 'Test asset',
     latitude: 0,
     longitude: 0,
-    filename: 'test.mp3',
     file: 'test.mp3',
     volume: 1,
     submitted: true,
-    created: '2023-01-01',
-    updated: '2023-01-01',
+    created_at: '2023-01-01',
+    updated_at: '2023-01-01',
     weight: 1,
     start_time: 0,
     end_time: 0,
-    user: {
-      username: 'testuser',
-      email: 'test@test.com'
-    },
     media_type: 'audio',
-    audio_length_in_seconds: 0,
+    audio_length_sec: 0,
     tag_ids: [],
     project_id: 1,
     language_id: 1,
-    envelope_ids: [],
-    session_id: 1,
-    description_loc_ids: [],
-    alt_text_loc_ids: []
+    envelope_id: null,
+    session_id: 1
   };
 
   describe('asset pool management', () => {
@@ -624,7 +634,6 @@ describe('Roundware', () => {
       const setIntervalCallback = setIntervalSpy.mock.calls[0][0];
       
       // Call the callback function
-      // @ts-expect-error - TimerHandler can be a function or string, but we know it's a function here
       await setIntervalCallback();
       
       expect(updateAssetPoolSpy).toHaveBeenCalled();
@@ -638,8 +647,8 @@ describe('Roundware', () => {
       const mockAssets = [mockAssetData];
       const mockTimedAssets: ITimedAssetData[] = [{
         asset_id: 1,
-        start: 0,
-        end: 100
+        start_sec: 0,
+        end_sec: 100
       }];
       
       // Set up mock pool with updateAssets method
@@ -657,8 +666,8 @@ describe('Roundware', () => {
       const mockAssets = [mockAssetData];
       const mockTimedAssets: ITimedAssetData[] = [{
         asset_id: 1,
-        start: 0,
-        end: 100
+        start_sec: 0,
+        end_sec: 100
       }];
       
       // Set up without pool
@@ -816,8 +825,8 @@ describe('Roundware', () => {
     it('should return speaker data array when available', () => {
       const mockSpeakerData: ISpeakerData[] = [{
         id: 1,
-        maxvolume: 1,
-        minvolume: 0,
+        max_volume: 1,
+        min_volume: 0,
         attenuation_distance: 100,
         uri: 'test.mp3'
       }];
@@ -838,8 +847,8 @@ describe('Roundware', () => {
     it('should return timed asset data array when available', () => {
       const mockTimedAssets: ITimedAssetData[] = [{
         asset_id: 1,
-        start: 0,
-        end: 100
+        start_sec: 0,
+        end_sec: 100
       }];
       roundware.timedAssetData = mockTimedAssets;
 
@@ -865,22 +874,22 @@ describe('Roundware', () => {
       const mockAudioTracksData: IAudioTrackData[] = [{
         id: 1,
         fadeout_when_filtered: true,
-        minvolume: 0,
-        maxvolume: 1,
-        minduration: 0,
-        maxduration: 0,
-        mindeadair: 0,
-        maxdeadair: 0,
-        minfadeintime: 0,
-        maxfadeintime: 0,
-        minfadeouttime: 0,
-        maxfadeouttime: 0,
-        minpanpos: 0,
-        maxpanpos: 0,
-        minpanduration: 0,
-        maxpanduration: 0,
-        repeatrecordings: false,
-        active: true,
+        min_volume: 0,
+        max_volume: 1,
+        min_duration: 0,
+        max_duration: 0,
+        min_dead_air: 0,
+        max_dead_air: 0,
+        min_fade_in_time: 0,
+        max_fade_in_time: 0,
+        min_fade_out_time: 0,
+        max_fade_out_time: 0,
+        min_pan_pos: 0,
+        max_pan_pos: 0,
+        min_pan_duration: 0,
+        max_pan_duration: 0,
+        repeat_recordings: false,
+        is_active: true,
         start_with_silence: false,
         banned_duration: 0,
         tag_filters: [],

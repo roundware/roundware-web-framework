@@ -655,7 +655,7 @@ describe("dateRangeFilter", () => {
       dateRangeFilter()(
         {
           ...getRandomDecoratedAssetData(1)[0],
-          created: testDate,
+          created_at: testDate,
         },
         {
           startDate: subDays(testDate, 1),
@@ -670,7 +670,7 @@ describe("dateRangeFilter", () => {
       dateRangeFilter()(
         {
           ...getRandomDecoratedAssetData(1)[0],
-          created: new Date(),
+          created_at: new Date(),
         },
         {
           startDate: addDays(new Date(), 1),
@@ -685,7 +685,7 @@ describe("dateRangeFilter", () => {
       dateRangeFilter()(
         {
           ...getRandomDecoratedAssetData(1)[0],
-          created: new Date(),
+          created_at: new Date(),
         },
         {
           startDate: subDays(new Date(), 2),
@@ -700,20 +700,20 @@ describe("dateRangeFilter", () => {
       dateRangeFilter()(
         {
           ...getRandomDecoratedAssetData(1)[0],
-          created: new Date(),
+          created_at: new Date(),
         },
         {}
       )
     ).toBe(ASSET_PRIORITIES.LOWEST);
   });
 
-  test("should convert created ISO string to date obejct", () => {
+  test("should convert created_at ISO string to date object", () => {
     const testDate = new Date();
     expect(
       dateRangeFilter()(
         {
           ...getRandomDecoratedAssetData(1)[0],
-          created: testDate.toISOString(),
+          created_at: testDate.toISOString(),
         },
         {
           startDate: subDays(testDate, 1),
@@ -723,13 +723,13 @@ describe("dateRangeFilter", () => {
     ).toBe(ASSET_PRIORITIES.NORMAL);
   });
 
-  test("should return lowest if no created", () => {
+  test("should return lowest if no created_at", () => {
     const testDate = new Date();
     expect(
       dateRangeFilter()(
         {
           ...getRandomDecoratedAssetData(1)[0],
-          created: undefined!,
+          created_at: undefined!,
         },
         {
           startDate: subDays(testDate, 1),

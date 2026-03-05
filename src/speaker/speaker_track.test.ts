@@ -91,8 +91,8 @@ describe('SpeakerTrack', () => {
     // Setup mock data
     mockData = {
       id: 1,
-      maxvolume: 1.0,
-      minvolume: 0.0,
+      max_volume: 1.0,
+      min_volume: 0.0,
       attenuation_border: {
         type: 'LineString',
         coordinates: [[0, 0], [1, 1]] as Position[],
@@ -125,8 +125,8 @@ describe('SpeakerTrack', () => {
 
   describe('constructor', () => {
     it('should initialize with correct properties', () => {
-      expect(speakerTrack.maxVolume).toBe(mockData.maxvolume);
-      expect(speakerTrack.minVolume).toBe(mockData.minvolume);
+      expect(speakerTrack.maxVolume).toBe(mockData.max_volume);
+      expect(speakerTrack.minVolume).toBe(mockData.min_volume);
       expect(speakerTrack.attenuationDistanceKm).toBe(mockData.attenuation_distance / 1000);
       expect(speakerTrack.uri).toBe(mockData.uri);
       expect(speakerTrack.calculatedVolume).toBe(0.05); // NEARLY_ZERO

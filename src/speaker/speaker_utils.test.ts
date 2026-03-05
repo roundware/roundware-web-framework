@@ -13,8 +13,8 @@ describe("SpeakerUtils", () => {
       const speakers: ISpeakerData[] = [
         {
           id: 1,
-          maxvolume: 1,
-          minvolume: 0,
+          max_volume: 1,
+          min_volume: 0,
           attenuation_distance: 100,
           uri: "test.mp3",
           shape: {
@@ -25,8 +25,8 @@ describe("SpeakerUtils", () => {
         },
         {
           id: 2,
-          maxvolume: 1,
-          minvolume: 0,
+          max_volume: 1,
+          min_volume: 0,
           attenuation_distance: 100,
           uri: "test.mp3",
           shape: {
@@ -46,8 +46,8 @@ describe("SpeakerUtils", () => {
       const speakers: ISpeakerData[] = [
         {
           id: 1,
-          maxvolume: 1,
-          minvolume: 0,
+          max_volume: 1,
+          min_volume: 0,
           attenuation_distance: 100,
           uri: "test.mp3",
           shape: {
@@ -58,8 +58,8 @@ describe("SpeakerUtils", () => {
         },
         {
           id: 2,
-          maxvolume: 1,
-          minvolume: 0,
+          max_volume: 1,
+          min_volume: 0,
           attenuation_distance: 100,
           uri: "test.mp3",
           shape: {
@@ -70,8 +70,8 @@ describe("SpeakerUtils", () => {
         },
         {
           id: 3,
-          maxvolume: 1,
-          minvolume: 0,
+          max_volume: 1,
+          min_volume: 0,
           attenuation_distance: 100,
           uri: "test.mp3",
           shape: {

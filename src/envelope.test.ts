@@ -42,6 +42,11 @@ describe('Envelope', () => {
     
     mockRoundware = new Roundware(mockOptions) as jest.Mocked<Roundware>;
 
+    // The upload() method accesses _projectId, updateAssetPool, and events on the roundware instance
+    (mockRoundware as any)._projectId = 1;
+    mockRoundware.updateAssetPool = jest.fn().mockResolvedValue(undefined);
+    mockRoundware.events = { logEvent: jest.fn() } as any;
+
     // Initialize the envelope
     envelope = new Envelope(123, mockApiClient, mockGeoPosition, mockRoundware);
   });
@@ -92,50 +97,46 @@ describe('Envelope', () => {
       // Reset any existing mock behavior
       jest.clearAllMocks();
       envelope['_envelopeId'] = '';
-      
+
       await expect(envelope.upload(mockAudioData, mockFileName))
         .rejects
         .toEqual('cannot upload audio without first connecting this envelope to the server');
-        
-      // Verify that the API client was never called
-      expect(mockApiClient.patch).not.toHaveBeenCalled();
+
+      // Verify that the API client was never called for upload
+      expect(mockApiClient.post).not.toHaveBeenCalled();
     });
 
     beforeEach(() => {
       envelope['_envelopeId'] = 'test-envelope-id';
       mockGeoPosition.getLastCoords.mockReturnValue(mockCoordinates);
-      mockApiClient.patch.mockResolvedValue({
-        detail: '',
-        envelope_ids: [1]
-      });
-      
-      // Create a minimal IAssetData object with all required properties
+
+      // Create a minimal IAssetData object with all required v3 properties
       const mockAsset: IAssetData = {
         id: 1,
         description: '',
         latitude: 0,
         longitude: 0,
-        filename: '',
         file: null,
         volume: 0,
         submitted: false,
-        created: '',
-        updated: '',
+        created_at: '',
+        updated_at: '',
         weight: 0,
         start_time: 0,
         end_time: 0,
         media_type: '',
-        audio_length_in_seconds: 0,
+        audio_length_sec: 0,
         tag_ids: [],
         session_id: 123,
         language_id: 1,
-        envelope_ids: [1],
-        description_loc_ids: [],
-        alt_text_loc_ids: []
+        envelope_id: 1
       };
-      
+
+      // v3: upload goes to POST /assets/ and returns the asset directly
+      mockApiClient.post.mockResolvedValue(mockAsset);
+
       mockRoundware.assetData = [mockAsset];
-      
+
       // Create a RoundwareEvents instance
       const mockEvents = new RoundwareEvents(123, mockApiClient);
       mockRoundware.events = mockEvents;
@@ -144,14 +145,16 @@ describe('Envelope', () => {
     it('should successfully upload audio with default coordinates', async () => {
       await envelope.upload(mockAudioData, mockFileName);
 
-      expect(mockApiClient.patch).toHaveBeenCalledWith(
-        '/envelopes/test-envelope-id/',
+      // v3: upload goes to POST /assets/ instead of PATCH /envelopes/{id}/
+      expect(mockApiClient.post).toHaveBeenCalledWith(
+        '/assets/',
         expect.any(FormData),
         { contentType: 'multipart/form-data' }
       );
 
-      const formData = mockApiClient.patch.mock.calls[0][1] as FormData;
+      const formData = mockApiClient.post.mock.calls[0][1] as FormData;
       expect(formData.get('session_id')).toBe('123');
+      expect(formData.get('envelope_id')).toBe('test-envelope-id');
       expect(formData.get('file')).toBe('[object Object]');
       expect(formData.get('latitude')).toBe(mockCoordinates.latitude.toString());
       expect(formData.get('longitude')).toBe(mockCoordinates.longitude.toString());
@@ -161,7 +164,11 @@ describe('Envelope', () => {
       const customCoords = { latitude: 51.5074, longitude: -0.1278 };
       await envelope.upload(mockAudioData, mockFileName, customCoords);
 
-      const formData = mockApiClient.patch.mock.calls[0][1] as FormData;
+      // Find the POST /assets/ call (skip the earlier POST /envelopes/ mock from connect)
+      const assetPostCalls = mockApiClient.post.mock.calls.filter(
+        (call) => call[0] === '/assets/'
+      );
+      const formData = assetPostCalls[0][1] as FormData;
       expect(formData.get('latitude')).toBe(customCoords.latitude.toString());
       expect(formData.get('longitude')).toBe(customCoords.longitude.toString());
     });
@@ -170,7 +177,10 @@ describe('Envelope', () => {
       const tagIds = [1, 2, 3];
       await envelope.upload(mockAudioData, mockFileName, { tag_ids: tagIds });
 
-      const formData = mockApiClient.patch.mock.calls[0][1] as FormData;
+      const assetPostCalls = mockApiClient.post.mock.calls.filter(
+        (call) => call[0] === '/assets/'
+      );
+      const formData = assetPostCalls[0][1] as FormData;
       expect(formData.get('tag_ids')).toBe('1,2,3');
     });
 
@@ -178,7 +188,10 @@ describe('Envelope', () => {
       const tagId = 1;
       await envelope.upload(mockAudioData, mockFileName, { tag_ids: tagId as any });
 
-      const formData = mockApiClient.patch.mock.calls[0][1] as FormData;
+      const assetPostCalls = mockApiClient.post.mock.calls.filter(
+        (call) => call[0] === '/assets/'
+      );
+      const formData = assetPostCalls[0][1] as FormData;
       expect(formData.get('tag_ids')).toBe('1');
     });
 
@@ -186,17 +199,19 @@ describe('Envelope', () => {
       const mediaType = 'audio/mp3';
       await envelope.upload(mockAudioData, mockFileName, { media_type: mediaType });
 
-      const formData = mockApiClient.patch.mock.calls[0][1] as FormData;
+      const assetPostCalls = mockApiClient.post.mock.calls.filter(
+        (call) => call[0] === '/assets/'
+      );
+      const formData = assetPostCalls[0][1] as FormData;
       expect(formData.get('media_type')).toBe(mediaType);
     });
 
     it('should throw error if envelope is not connected', async () => {
-      envelope['_envelopeId'] = '(unknown)';
-      mockApiClient.patch.mockRejectedValue(new Error('cannot upload audio without first connecting this envelope to the server'));
-      
+      envelope['_envelopeId'] = '';
+
       await expect(envelope.upload(mockAudioData, mockFileName))
         .rejects
-        .toThrow('cannot upload audio without first connecting this envelope to the server');
+        .toEqual('cannot upload audio without first connecting this envelope to the server');
     });
 
     it('should update asset pool and log event on successful upload', async () => {
@@ -204,40 +219,39 @@ describe('Envelope', () => {
       const mockLogEvent = jest.fn();
       mockRoundware.events = { logEvent: mockLogEvent } as any;
 
-      // Set up mock response with envelope_ids that match the mockAsset
-      mockApiClient.patch.mockResolvedValue({
-        detail: '',
-        envelope_ids: [1] // Matches mockAsset.envelope_ids
-      });
+      // v3: POST /assets/ returns the created asset directly
+      const createdAsset: IAssetData = {
+        id: 42,
+        description: '',
+        latitude: 0,
+        longitude: 0,
+        file: null,
+        volume: 0,
+        submitted: false,
+        created_at: '',
+        updated_at: '',
+        weight: 0,
+        start_time: 0,
+        end_time: 0,
+        media_type: '',
+        audio_length_sec: 0,
+        tag_ids: [],
+        session_id: 123,
+        language_id: 1,
+        envelope_id: 1
+      };
+      mockApiClient.post.mockResolvedValue(createdAsset);
 
       await envelope.upload(mockAudioData, mockFileName);
 
       expect(mockRoundware.updateAssetPool).toHaveBeenCalled();
       expect(mockLogEvent).toHaveBeenCalledWith('upload_asset', {
-        data: 'asset_id:1'
+        data: 'asset_id:42'
       });
-    });
-
-    it('should handle case when no asset is found after upload', async () => {
-      // Mock the events object with a jest mock function
-      const mockLogEvent = jest.fn();
-      mockRoundware.events = { logEvent: mockLogEvent } as any;
-      
-      // Set up mock response with envelope_ids that don't match any asset
-      mockApiClient.patch.mockResolvedValue({
-        detail: '',
-        envelope_ids: [999] // Different from mockAsset.envelope_ids
-      });
-
-      await envelope.upload(mockAudioData, mockFileName);
-
-      expect(mockRoundware.updateAssetPool).toHaveBeenCalled();
-      expect(mockLogEvent).not.toHaveBeenCalled();
     });
 
     it('should handle API errors', async () => {
-      const error = new Error('Upload failed');
-      mockApiClient.patch.mockResolvedValue({ detail: 'Upload failed', envelope_ids: [] });
+      mockApiClient.post.mockRejectedValue(new Error('Upload failed'));
 
       await expect(envelope.upload(mockAudioData, mockFileName))
         .rejects

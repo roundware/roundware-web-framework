@@ -83,26 +83,26 @@ describe('PlaylistAudiotrack', () => {
       id: 1,
       timed_asset_priority: "",
       tag_filters: [],
-      minpanpos: 0,
-      active: true,
+      min_pan_pos: 0,
+      is_active: true,
       start_with_silence: false,
       banned_duration: 0,
       project_id: 1,
-      minfadeintime: 0,
-      maxfadeintime: 10,
-      minfadeouttime: 0,
-      maxfadeouttime: 10,
+      min_fade_in_time: 0,
+      max_fade_in_time: 10,
+      min_fade_out_time: 0,
+      max_fade_out_time: 10,
       fadeout_when_filtered: false,
-      minvolume: 0,
-      maxvolume: 1,
-      minduration: 0,
-      maxduration: 100,
-      mindeadair: 0,
-      maxdeadair: 10,
-      repeatrecordings: false,
-      maxpanpos: 0,
-      minpanduration: 10,
-      maxpanduration: 20,
+      min_volume: 0,
+      max_volume: 1,
+      min_duration: 0,
+      max_duration: 100,
+      min_dead_air: 0,
+      max_dead_air: 10,
+      repeat_recordings: false,
+      max_pan_pos: 0,
+      min_pan_duration: 10,
+      max_pan_duration: 20,
     };
 
     mockAudioElement = {
@@ -157,13 +157,12 @@ describe('PlaylistAudiotrack', () => {
         activeRegionLowerBound: 0,
         start_time: 0,
         end_time: 0,
-        audio_length_in_seconds: 0,
+        audio_length_sec: 0,
         session_id: 0,
         language_id: 0,
         activeRegionUpperBound: 0,
         description: '',
-        filename: '',
-        updated: '',
+        updated_at: '',
         locationPoint: {
           type: 'Feature',
           geometry: {
@@ -173,7 +172,7 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_ids: [],
+        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -183,9 +182,7 @@ describe('PlaylistAudiotrack', () => {
         media_type: '',
         file: '',
         volume: 0,
-        created: '',
-        description_loc_ids: [],
-        alt_text_loc_ids: []
+        created_at: '',
       };
       
       const newPlaylistAudiotrack = new PlaylistAudiotrack({
@@ -227,13 +224,12 @@ describe('PlaylistAudiotrack', () => {
         activeRegionLowerBound: 0,
         start_time: 0,
         end_time: 0,
-        audio_length_in_seconds: 0,
+        audio_length_sec: 0,
         session_id: 0,
         language_id: 0,
         activeRegionUpperBound: 0,
         description: '',
-        filename: '',
-        updated: '',
+        updated_at: '',
         locationPoint: {
           type: 'Feature',
           geometry: {
@@ -243,7 +239,7 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_ids: [],
+        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -253,9 +249,7 @@ describe('PlaylistAudiotrack', () => {
         media_type: '',
         file: '',
         volume: 0,
-        created: '',
-        description_loc_ids: [],
-        alt_text_loc_ids: []
+        created_at: '',
       };
       
       const newPlaylistAudiotrack = new PlaylistAudiotrack({
@@ -308,7 +302,7 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_ids: [],
+        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -318,8 +312,8 @@ describe('PlaylistAudiotrack', () => {
         media_type: '',
         file: '',
         volume: 0,
-        created: '',
-        updated: '',
+        created_at: '',
+        updated_at: '',
         description: '',
         language_id: 0,
         user: null,
@@ -327,10 +321,7 @@ describe('PlaylistAudiotrack', () => {
         start_time: 0,
         end_time: 0,
         activeRegionUpperBound: 0,
-        filename: '',
-        audio_length_in_seconds: 0,
-        description_loc_ids: [],
-        alt_text_loc_ids: []
+        audio_length_sec: 0,
       };
       
       const newPlaylistAudiotrack = new PlaylistAudiotrack({
@@ -368,7 +359,7 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_ids: [],
+        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -378,8 +369,8 @@ describe('PlaylistAudiotrack', () => {
         media_type: '',
         file: '',
         volume: 0,
-        created: '',
-        updated: '',
+        created_at: '',
+        updated_at: '',
         description: '',
         language_id: 0,
         user: null,
@@ -387,10 +378,7 @@ describe('PlaylistAudiotrack', () => {
         start_time: 0,
         end_time: 0,
         activeRegionUpperBound: 0,
-        filename: '',
-        audio_length_in_seconds: 0,
-        description_loc_ids: [],
-        alt_text_loc_ids: []
+        audio_length_sec: 0,
       };
       
       const newPlaylistAudiotrack = new PlaylistAudiotrack({
@@ -421,7 +409,7 @@ describe('PlaylistAudiotrack', () => {
         locationPoint: [0, 0],
         playCount: 0,
         activeRegionLength: 0,
-        envelope_ids: [],
+        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -431,8 +419,8 @@ describe('PlaylistAudiotrack', () => {
         media_type: '',
         file: '',
         volume: 0,
-        created: '',
-        updated: '',
+        created_at: '',
+        updated_at: '',
         description: '',
         language_id: 0,
         user: null,
@@ -440,10 +428,7 @@ describe('PlaylistAudiotrack', () => {
         start_time: 0,
         end_time: 0,
         activeRegionUpperBound: 0,
-        filename: '',
-        audio_length_in_seconds: 0,
-        description_loc_ids: [],
-        alt_text_loc_ids: []
+        audio_length_sec: 0,
       };
       
       const newPlaylistAudiotrack = new PlaylistAudiotrack({
@@ -495,7 +480,7 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_ids: [],
+        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -505,8 +490,8 @@ describe('PlaylistAudiotrack', () => {
         media_type: '',
         file: '',
         volume: 0,
-        created: '',
-        updated: '',
+        created_at: '',
+        updated_at: '',
         description: '',
         language_id: 0,
         user: null,
@@ -514,10 +499,7 @@ describe('PlaylistAudiotrack', () => {
         start_time: 0,
         end_time: 0,
         activeRegionUpperBound: 0,
-        filename: '',
-        audio_length_in_seconds: 0,
-        description_loc_ids: [],
-        alt_text_loc_ids: []
+        audio_length_sec: 0,
       };
       
       const newPlaylistAudiotrack = new PlaylistAudiotrack({
@@ -758,7 +740,7 @@ describe('PlaylistAudiotrack', () => {
   describe('fadeOut', () => {
     it('should fade out with correct duration', () => {
       const mockAsset = {
-        audio_length_in_seconds: 10,
+        audio_length_sec: 10,
       } as IDecoratedAsset;
       playlistAudiotrack.currentAsset = mockAsset;
       const result = playlistAudiotrack.fadeOut(2);
@@ -767,7 +749,7 @@ describe('PlaylistAudiotrack', () => {
 
     it('should adjust fade out duration to remaining audio length', () => {
       const mockAsset = {
-        audio_length_in_seconds: 10,
+        audio_length_sec: 10,
       } as IDecoratedAsset;
       playlistAudiotrack.currentAsset = mockAsset;
       (playlistAudiotrack as any).audioElement.currentTime = 8;
@@ -821,13 +803,12 @@ describe('PlaylistAudiotrack', () => {
         activeRegionLength: 0,
         activeRegionLowerBound: 0,
         end_time: 0,
-        audio_length_in_seconds: 0,
+        audio_length_sec: 0,
         session_id: 0,
         language_id: 0,
         activeRegionUpperBound: 0,
         description: '',
-        filename: '',
-        updated: '',
+        updated_at: '',
         locationPoint: {
           type: 'Feature',
           geometry: {
@@ -837,7 +818,7 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_ids: [],
+        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -846,9 +827,7 @@ describe('PlaylistAudiotrack', () => {
         project_id: 0,
         media_type: '',
         volume: 0,
-        created: '',
-        description_loc_ids: [],
-        alt_text_loc_ids: []
+        created_at: '',
       };
       mockPlaylist.next.mockReturnValue(mockAsset);
       
@@ -878,13 +857,12 @@ describe('PlaylistAudiotrack', () => {
         activeRegionLength: 0,
         activeRegionLowerBound: 0,
         end_time: 0,
-        audio_length_in_seconds: 0,
+        audio_length_sec: 0,
         session_id: 0,
         language_id: 0,
         activeRegionUpperBound: 0,
         description: '',
-        filename: '',
-        updated: '',
+        updated_at: '',
         locationPoint: {
           type: 'Feature',
           geometry: {
@@ -894,7 +872,7 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_ids: [],
+        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -903,9 +881,7 @@ describe('PlaylistAudiotrack', () => {
         project_id: 0,
         media_type: '',
         volume: 0,
-        created: '',
-        description_loc_ids: [],
-        alt_text_loc_ids: []
+        created_at: '',
       };
       mockPlaylist.next.mockReturnValue(mockAsset);
       
@@ -936,13 +912,12 @@ describe('PlaylistAudiotrack', () => {
         activeRegionLength: 0,
         activeRegionLowerBound: 0,
         end_time: 0,
-        audio_length_in_seconds: 0,
+        audio_length_sec: 0,
         session_id: 0,
         language_id: 0,
         activeRegionUpperBound: 0,
         description: '',
-        filename: '',
-        updated: '',
+        updated_at: '',
         locationPoint: {
           type: 'Feature',
           geometry: {
@@ -952,7 +927,7 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_ids: [],
+        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -961,9 +936,7 @@ describe('PlaylistAudiotrack', () => {
         project_id: 0,
         media_type: '',
         volume: 0,
-        created: '',
-        description_loc_ids: [],
-        alt_text_loc_ids: []
+        created_at: '',
       };
       mockPlaylist.next.mockReturnValue(mockAsset);
       
@@ -1187,7 +1160,7 @@ describe('PlaylistAudiotrack', () => {
       } as any;
       playlistAudiotrack.currentAsset = {
         id: 123,
-        audio_length_in_seconds: 10,
+        audio_length_sec: 10,
       } as IDecoratedAsset;
       playlistAudiotrack.listenEvents = mockEvents;
 
@@ -1231,7 +1204,7 @@ describe('PlaylistAudiotrack', () => {
       } as any;
       playlistAudiotrack.currentAsset = {
         id: 123,
-        audio_length_in_seconds: 10,
+        audio_length_sec: 10,
       } as IDecoratedAsset;
       playlistAudiotrack.listenEvents = mockEvents;
 
@@ -1279,7 +1252,7 @@ describe('PlaylistAudiotrack', () => {
       } as any;
       playlistAudiotrack.currentAsset = {
         id: 123,
-        audio_length_in_seconds: 10,
+        audio_length_sec: 10,
       } as IDecoratedAsset;
       playlistAudiotrack.listenEvents = mockEvents;
 

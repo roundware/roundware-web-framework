@@ -23,26 +23,26 @@ describe('TrackOptions', () => {
 
     // Default params for testing
     defaultParams = {
-      minvolume: 0,
-      maxvolume: 1,
-      minduration: 10,
-      maxduration: 30,
-      mindeadair: 1,
-      maxdeadair: 5,
-      minfadeintime: 2,
-      maxfadeintime: 4,
-      minfadeouttime: 2,
-      maxfadeouttime: 4,
-      repeatrecordings: true,
+      min_volume: 0,
+      max_volume: 1,
+      min_duration: 10,
+      max_duration: 30,
+      min_dead_air: 1,
+      max_dead_air: 5,
+      min_fade_in_time: 2,
+      max_fade_in_time: 4,
+      min_fade_out_time: 2,
+      max_fade_out_time: 4,
+      repeat_recordings: true,
       tag_filters: ['tag1', 'tag2'],
       banned_duration: 300,
       start_with_silence: true,
       fadeout_when_filtered: true,
-      minpanpos: -1,
-      maxpanpos: 1,
-      minpanduration: 1,
-      maxpanduration: 5,
-      active: true,
+      min_pan_pos: -1,
+      max_pan_pos: 1,
+      min_pan_duration: 1,
+      max_pan_duration: 5,
+      is_active: true,
       project_id: 1,
       timed_asset_priority: "normal"
     };
@@ -89,28 +89,28 @@ describe('TrackOptions', () => {
       expect(trackOptions.randomVolume).toBe(0);
       expect(random).toHaveBeenCalledWith(0, 1);
       // Added expect statement to ensure mock is called with the correct bounds
-      expect(random).toHaveBeenCalledWith(defaultParams.minvolume, defaultParams.maxvolume);
+      expect(random).toHaveBeenCalledWith(defaultParams.min_volume, defaultParams.max_volume);
     });
 
     it('should return correct random dead air', () => {
       expect(trackOptions.randomDeadAir).toBe(1);
       expect(random).toHaveBeenCalledWith(1, 5);
       // Added expect statement to ensure mock is called with the correct bounds
-      expect(random).toHaveBeenCalledWith(defaultParams.mindeadair, defaultParams.maxdeadair);
+      expect(random).toHaveBeenCalledWith(defaultParams.min_dead_air, defaultParams.max_dead_air);
     });
 
     it('should return correct random fade in duration', () => {
       expect(trackOptions.randomFadeInDuration).toBe(2);
       expect(random).toHaveBeenCalledWith(2, 4);
       // Added expect statement to ensure mock is called with the correct bounds
-      expect(random).toHaveBeenCalledWith(defaultParams.minfadeintime, defaultParams.maxfadeintime);
+      expect(random).toHaveBeenCalledWith(defaultParams.min_fade_in_time, defaultParams.max_fade_in_time);
     });
 
     it('should return correct random fade out duration', () => {
       expect(trackOptions.randomFadeOutDuration).toBe(2);
       expect(random).toHaveBeenCalledWith(2, 4);
        // Added expect statement to ensure mock is called with the correct bounds
-       expect(random).toHaveBeenCalledWith(defaultParams.minfadeouttime, defaultParams.maxfadeouttime);
+       expect(random).toHaveBeenCalledWith(defaultParams.min_fade_out_time, defaultParams.max_fade_out_time);
     });
 
     it('should calculate correct duration halfway', () => {
@@ -141,21 +141,21 @@ describe('TrackOptions', () => {
         return true;
       });
 
-      const minimalParams: Omit<IAudioTrackData, "minpanduration" | "maxpanduration" | "repeatrecordings" | "active" | "start_with_silence" | "banned_duration" | "fadeout_when_filtered"> = {
-        minvolume: 0,
-        maxvolume: 1,
-        minduration: 10,
-        maxduration: 30,
-        mindeadair: 1,
-        maxdeadair: 5,
-        minfadeintime: 2,
-        maxfadeintime: 4,
-        minfadeouttime: 2,
-        maxfadeouttime: 4,
+      const minimalParams: Omit<IAudioTrackData, "min_pan_duration" | "max_pan_duration" | "repeat_recordings" | "is_active" | "start_with_silence" | "banned_duration" | "fadeout_when_filtered"> = {
+        min_volume: 0,
+        max_volume: 1,
+        min_duration: 10,
+        max_duration: 30,
+        min_dead_air: 1,
+        max_dead_air: 5,
+        min_fade_in_time: 2,
+        max_fade_in_time: 4,
+        min_fade_out_time: 2,
+        max_fade_out_time: 4,
         tag_filters: [],
         id: 1,
-        minpanpos: -1,
-        maxpanpos: 1,
+        min_pan_pos: -1,
+        max_pan_pos: 1,
         project_id: 1,
         timed_asset_priority: "normal",
       };

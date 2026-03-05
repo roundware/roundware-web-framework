@@ -2,7 +2,6 @@ import { Project } from "../../src/project";
 import { ApiClient } from "../../src/api-client";
 import { GeoListenMode } from "../../src/mixer";
 import { IProjectData } from "../../src/types/project";
-import { IUiConfig } from "../../src/types";
 
 jest.mock("../../src/api-client");
 
@@ -35,7 +34,7 @@ describe("Project", () => {
         name: "Test Project",
         legal_agreement: "Some Agreement",
         recording_radius: 50,
-        max_recording_length: 300,
+        max_recording_length_sec: 300,
         latitude: 40.7128,
         longitude: -74.006,
         geo_listen_enabled: true,
@@ -88,7 +87,7 @@ describe("Project", () => {
         name: "Test Project",
         legal_agreement: "Some Agreement",
         recording_radius: 100,
-        max_recording_length: 600,
+        max_recording_length_sec: 600,
         latitude: 20.5937,
         longitude: 78.9629,
         geo_listen_enabled: false,
@@ -154,7 +153,7 @@ describe("Project", () => {
         name: "Test Project",
         legal_agreement: "Some Agreement",
         recording_radius: 200,
-        max_recording_length: 400,
+        max_recording_length_sec: 400,
         latitude: 51.5074,
         longitude: -0.1278,
         geo_listen_enabled: true,
@@ -199,31 +198,74 @@ describe("Project", () => {
     });
   });
 
-  describe("uiconfig", () => {
-    it("should fetch and return the UI configuration", async () => {
-      const mockUiConfig: IUiConfig = {
+  describe("fetchUIConfig", () => {
+    it("should fetch uigroups and tags, then return transformed UI configuration", async () => {
+      const mockUIGroups = [
+        {
+          id: 1,
+          project_id: 123,
+          name: "speak-group",
+          ui_mode: "speak",
+          tag_category_id: 1,
+          select_type: "single",
+          is_active: true,
+          sort_index: 0,
+          header_text: "Speak Header",
+          ui_item_filter: null,
+          ui_items: [
+            {
+              id: 1,
+              ui_group_id: 1,
+              tag_id: 101,
+              sort_index: 0,
+              is_default: true,
+              is_active: true,
+              parent_id: null,
+            },
+          ],
+        },
+      ];
+
+      const mockTags = [
+        {
+          id: 101,
+          project_id: 123,
+          tag_category_id: 1,
+          value: "Tag 1",
+          description: null,
+          data: null,
+          filter: null,
+        },
+      ];
+
+      // fetchUIConfig calls get() twice: once for /uigroups/, once for /tags/
+      mockApiClient.get
+        .mockResolvedValueOnce(mockUIGroups)
+        .mockResolvedValueOnce(mockTags);
+
+      const uiConfig = await project.fetchUIConfig(42);
+
+      expect(mockApiClient.get).toHaveBeenCalledWith("/uigroups/", { project_id: 123 });
+      expect(mockApiClient.get).toHaveBeenCalledWith("/tags/", { project_id: 123 });
+
+      expect(uiConfig).toEqual({
         speak: [
           {
             display_items: [
               { id: 1, default_state: true, parent_id: null, tag_display_text: "Tag 1", tag_id: 101 },
             ],
             group_short_name: "speak-group",
+            header_display_text: "Speak Header",
+            uiitem_filter: "none",
           },
         ],
-      };
-
-      mockApiClient.get.mockResolvedValueOnce(mockUiConfig);
-
-      const uiConfig = await project.uiconfig(42);
-
-      expect(uiConfig).toEqual(mockUiConfig);
-      expect(mockApiClient.get).toHaveBeenCalledWith("/projects/123/uiconfig/", { session_id: 42 });
+      });
     });
 
     it("should handle API error gracefully while fetching UI config", async () => {
       mockApiClient.get.mockRejectedValueOnce(new Error("API Error"));
 
-      await expect(project.uiconfig(42)).rejects.toThrow("API Error");
+      await expect(project.fetchUIConfig(42)).rejects.toThrow("API Error");
     });
   });
 });

@@ -21,20 +21,20 @@ describe('AudioPanner', () => {
   });
 
   test('should initialize with correct parameters', () => {
-    expect(audioPanner.minpanpos).toBe(-1);
-    expect(audioPanner.maxpanpos).toBe(1);
-    expect(audioPanner.minpanduration).toBe(1);
-    expect(audioPanner.maxpanduration).toBe(2);
+    expect(audioPanner.min_pan_pos).toBe(-1);
+    expect(audioPanner.max_pan_pos).toBe(1);
+    expect(audioPanner.min_pan_duration).toBe(1);
+    expect(audioPanner.max_pan_duration).toBe(2);
     expect(audioPanner.panNode).toBe(panNode);
     expect(audioPanner.audioContext).toBe(audioContext);
   });
 
   test('should use default parameters when none provided', () => {
     const defaultPanner = new AudioPanner(undefined, undefined, undefined, undefined, panNode, audioContext);
-    expect(defaultPanner.minpanpos).toBe(0);
-    expect(defaultPanner.maxpanpos).toBe(0);
-    expect(defaultPanner.minpanduration).toBe(0);
-    expect(defaultPanner.maxpanduration).toBe(0);
+    expect(defaultPanner.min_pan_pos).toBe(0);
+    expect(defaultPanner.max_pan_pos).toBe(0);
+    expect(defaultPanner.min_pan_duration).toBe(0);
+    expect(defaultPanner.max_pan_duration).toBe(0);
   });
 
   test('should set initial pan value within range', () => {

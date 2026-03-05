@@ -31,9 +31,9 @@ describe("RoundwareEvents", () => {
       await roundwareEvents.logAssetStart(assetId, startTime);
 
       expect(mockApiClient.post).toHaveBeenCalledWith("/listenevents/", {
-        starttime: startTime,
-        session: 123,
-        asset: assetId,
+        started_at: startTime.toISOString(),
+        session_id: 123,
+        asset_id: assetId,
       });
 
       expect(roundwareEvents["_startedAssets"]).toHaveProperty(
@@ -51,9 +51,9 @@ describe("RoundwareEvents", () => {
       await roundwareEvents.logAssetStart(assetId);
 
       expect(mockApiClient.post).toHaveBeenCalledWith("/listenevents/", {
-        starttime: expect.any(Date),
-        session: 123,
-        asset: assetId,
+        started_at: expect.any(String),
+        session_id: 123,
+        asset_id: assetId,
       });
 
       expect(roundwareEvents["_startedAssets"]).toHaveProperty(
@@ -75,9 +75,9 @@ describe("RoundwareEvents", () => {
       await roundwareEvents.logAssetEnd(assetId);
 
       expect(mockApiClient.patch).toHaveBeenCalledWith(
-        "/listenevents/789",
+        "/listenevents/789/",
         expect.objectContaining({
-          duration_in_seconds: expect.any(Number),
+          duration_sec: expect.any(Number),
         })
       );
     });

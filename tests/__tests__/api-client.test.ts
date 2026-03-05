@@ -342,10 +342,10 @@ describe("Api Client", () => {
     });
 
     describe(".authToken", () => {
-      test("should set auth token with token appended", () => {
+      test("should set auth token with Bearer appended", () => {
         apiClient.authToken = `123`;
         // @ts-ignore
-        expect(apiClient._authToken).toBe(`token 123`);
+        expect(apiClient._authToken).toBe(`Bearer 123`);
       });
 
       test("should pass auth token in header", async () => {
@@ -360,7 +360,7 @@ describe("Api Client", () => {
             body: JSON.stringify(mockData),
             headers: {
               "Content-Type": "application/json",
-              Authorization: "token 123",
+              Authorization: "Bearer 123",
             },
             method: "PATCH",
             mode: "cors",

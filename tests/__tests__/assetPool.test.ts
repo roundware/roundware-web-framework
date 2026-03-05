@@ -40,8 +40,8 @@ describe("AssetPool", () => {
       {
         asset_id: testAssetData[0].id,
 
-        start: 23,
-        end: 10,
+        start_sec: 23,
+        end_sec: 10,
       },
     ];
     const decoratedAssets = testAssetData.map(
