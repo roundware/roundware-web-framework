@@ -180,7 +180,7 @@ describe("AssetPool", () => {
     const decoratedAssets = testAssetData.map(assetDecorationMapper([]));
 
     // Verify the warning was called
-    expect(console.warn).toHaveBeenCalledWith("assetUrl was undefined!");
+    expect(console.warn).toHaveBeenCalledWith("asset 1 has no file URL, skipping");
 
     // Restore console.warn
     console.warn = originalWarn;
