@@ -81,6 +81,12 @@ export class Mixer {
     }
     this.mixParams = { ...this.mixParams, ...params };
     this.playlist?.updateParams(params);
+
+    // Create the SpeakerEngine on the first location update so that
+    // nearby speaker audio can be prefetched before the user presses play.
+    // The AudioContext starts suspended but XHR downloads and decodeAudioData
+    // both work in that state — only actual playback requires a running context.
+    this.initSpeakers();
     this.speakerEngine?.updateParams?.(this.mixParams);
   }
   /**
@@ -105,7 +111,27 @@ export class Mixer {
   }
 
   /**
-   * Builds speaker tracks & playlist instance if it doesn't exist yet
+   * Creates the SpeakerEngine if it doesn't exist yet.
+   * Called from updateParams() so that speaker audio buffers begin
+   * prefetching as soon as the listener's position is known — well
+   * before the user presses play.
+   */
+  private initSpeakers() {
+    if (this.speakerEngine) return;
+    if (!this.mixParams.speakerConfig) return;
+    if (!this._client.speakers()?.length) return;
+
+    this.speakerEngine = new SpeakerEngine(
+      this._client.speakers(),
+      this.audioContext,
+      this.mixParams.speakerConfig
+    );
+    console.info(`SpeakerEngine initialized (pre-play prefetch enabled)`);
+  }
+
+  /**
+   * Builds the playlist instance if it doesn't exist yet.
+   * Also ensures the SpeakerEngine exists (idempotent).
    */
   initContext() {
     if (!this.playlist) {
@@ -135,11 +161,9 @@ export class Mixer {
         audioContext: this.audioContext,
       });
 
-      this.speakerEngine = new SpeakerEngine(
-        this._client.speakers(),
-        this.audioContext,
-        this.mixParams.speakerConfig!
-      );
+      // Ensure SpeakerEngine exists (may already have been created
+      // by updateParams during pre-play prefetching)
+      this.initSpeakers();
 
       this.updateParams(this.mixParams);
       console.info(`Mixer Activated`);

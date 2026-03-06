@@ -33,14 +33,14 @@ describe("Mixer", () => {
       assets: jest.fn().mockReturnValue([]),
       timedAssets: jest.fn().mockReturnValue([]),
       audiotracks: jest.fn().mockReturnValue([]),
-      speakers: jest.fn().mockReturnValue([]),
+      speakers: jest.fn().mockReturnValue([{ id: 1, uri: "test.mp3" }]),
       events: {
         logEvent: jest.fn(),
       },
     } as unknown as Roundware;
 
     listenerLocation = { latitude: 10, longitude: 20 };
-    mixParams = {};
+    mixParams = { speakerConfig: { mode: "stream" } } as IMixParams;
 
     (coordsToPoints as jest.Mock).mockReturnValue({ x: 10, y: 20 });
     (buildAudioContext as jest.Mock).mockReturnValue({} as any);
