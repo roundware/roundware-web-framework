@@ -24,13 +24,11 @@ import {
   Coordinates,
   GeoListenModeType,
   IAudioData,
-  IInitialParams,
   IMixParams,
   ITimedAssetData,
   IUiConfig,
 } from "./types";
-import { IAssetFilters } from "./types/asset";
-import { IAssetData } from "./types/asset";
+import { IAssetData, IAssetFilters } from "./types/asset";
 import { IAudioTrackData } from "./types/audioTrack";
 import { IEnvelopeData } from "./types/envelope";
 import { IOptions, IRoundwareConstructorOptions } from "./types/roundware";
@@ -38,11 +36,13 @@ import { ISpeakerData, ISpeakerFilters } from "./types/speaker";
 import { User } from "./user";
 
 export * from "./assetFilters";
-export { GeoListenMode } from "./mixer";
+export { GeoListenMode, Roundware };
 
-import { multiPolygon, featureCollection } from "@turf/helpers";
 import bbox from "@turf/bbox";
 import buffer from "@turf/buffer";
+import { featureCollection, multiPolygon } from "@turf/helpers";
+import { ListenHistory } from "./listenHistory";
+
 /** This class is the primary integration point between Roundware's server and your application
 
    @example
@@ -76,8 +76,7 @@ import buffer from "@turf/buffer";
   roundware.play(startListening).catch(handleError);
 **/
 
-export class Roundware {
-  readonly windowScope: Window;
+class Roundware {
   private _serverUrl: string;
   private _projectId: number;
   private _speakerFilters: ISpeakerFilters = {};
@@ -85,9 +84,9 @@ export class Roundware {
   listenerLocation: Coordinates;
   private _initialOptions: IOptions;
   private _assetUpdateInterval: number;
-  private _apiClient: ApiClient;
+  apiClient: ApiClient;
 
-  private _user: User;
+  user: User;
   geoPosition: GeoPosition;
   private _session: Session;
   project: Project;
@@ -107,7 +106,7 @@ export class Roundware {
   private _lastAssetUpdate: Date | undefined;
   timedAssetData: ITimedAssetData[] | null = null;
   private _assetDataTimer: NodeJS.Timeout | undefined;
-
+  listenHistory: ListenHistory;
   events?: RoundwareEvents;
   /** Initialize a new Roundware instance
    * @param {Object} windowScope - representing the context in which we are executing - provides references to window.navigator, window.console, etc.
@@ -118,19 +117,16 @@ export class Roundware {
    * @throws Will throw an error if serveUrl or projectId are missing
     TODO need to provide a more modern/ES6-aware architecture here vs burdening the constructor with all of these details **/
 
-  constructor(windowScope: Window, options: IRoundwareConstructorOptions) {
-    if (!windowScope)
-      throw new MissingArgumentError(
-        `windowScope`,
-        `instantiating Roundware`,
-        `window`
-      );
+  constructor(options: IRoundwareConstructorOptions) {
+    console.log("FW STEP A — Constructor Started");
+    console.log("Roundware framework loaded", { version: "0.13.1-alpha.1" });
+    console.log("Options =", options);
 
     if (typeof options !== "object")
       throw new MissingArgumentError(
         `options`,
         `instantiating Roundware`,
-        `IRoundwareConstructorOptions`
+        `IRoundwareConstructorOptions`,
       );
 
     const {
@@ -154,7 +150,7 @@ export class Roundware {
       throw new InvalidArgumentError(
         `options.serverUrl`,
         `string`,
-        `instantiating Roundware`
+        `instantiating Roundware`,
       );
     }
 
@@ -162,76 +158,84 @@ export class Roundware {
       throw new InvalidArgumentError(
         `options.serverUrl`,
         `string`,
-        `instantiating Roundware`
+        `instantiating Roundware`,
       );
     }
 
-    this.windowScope = windowScope;
     this._serverUrl = serverUrl;
     this._projectId = projectId;
     if (speakerFilters) this._speakerFilters = speakerFilters;
     this._assetFilters = assetFilters;
     if (
-      typeof listenerLocation.longitude !== "number" &&
+      typeof listenerLocation.longitude !== "number" ||
       typeof listenerLocation.latitude !== "number"
     )
       throw new InvalidArgumentError(
         `options.listenerLocation`,
         `Coordinates`,
-        `instantiating Roundware`
+        `instantiating Roundware`,
       );
     this.listenerLocation = listenerLocation;
     this._initialOptions = options;
     // By default, update the asset pool every 5 minutes.
     this._assetUpdateInterval = assetUpdateInterval || 300000;
 
-    this._apiClient = new ApiClient(this._serverUrl);
+    this.apiClient = new ApiClient(this._serverUrl);
 
-    options.apiClient = this._apiClient;
+    const newOptions: Required<IOptions> = options as Required<IOptions>;
+    newOptions.apiClient = this.apiClient;
 
-    let navigator = window.navigator;
+    let navigator: any = global.navigator || {};
 
     // TODO need to reorganize/refactor these classes
-    this._user =
+    this.user =
       user ||
       new User({
-        apiClient: options.apiClient,
-        clientType: options.clientType,
-        deviceId: options.deviceId,
+        apiClient: newOptions.apiClient,
+        clientType: newOptions.clientType,
+        deviceId: newOptions.deviceId,
       });
     this.geoPosition =
       geoPosition ||
       new GeoPosition(navigator, {
-        geoListenMode: options.geoListenMode,
+        geoListenMode: newOptions.geoListenMode,
         defaultCoords: listenerLocation,
       });
     this._session =
       session ||
       new Session(navigator, this._projectId, this.geoPosition.isEnabled, {
-        apiClient: this._apiClient,
+        apiClient: this.apiClient,
       });
 
-    this.project = project || new Project(this._projectId, options);
-    this._speaker = speaker || new Speaker(this._projectId, options);
-    this._asset = asset || new Asset(this._projectId, options);
+    this.project = project || new Project(this._projectId, newOptions);
+    this._speaker = speaker || new Speaker(this._projectId, newOptions);
+    this._asset = asset || new Asset(this._projectId, newOptions);
     if (!this._asset)
       throw new RoundwareFrameworkError(
-        "Failed to connect to assets! Please try again."
+        "Failed to connect to assets! Please try again.",
       );
-    this._timed_asset = timedAsset || new TimedAsset(this._projectId, options);
-    this._audiotrack = audiotrack || new Audiotrack(this._projectId, options);
+    this._timed_asset =
+      timedAsset || new TimedAsset(this._projectId, newOptions);
+    this._audiotrack =
+      audiotrack || new Audiotrack(this._projectId, newOptions);
     this.uiConfig = {};
+
+    console.log("FW STEP B — Before Mixer");
 
     const mixParams: IMixParams = {
       ...this.mixParams,
       ...this._initialOptions,
     };
+
+    console.log("FW STEP C — Creating Mixer");
     this.mixer = new Mixer({
       client: this,
-      windowScope: this.windowScope,
+
       listenerLocation: this.listenerLocation,
       mixParams,
     });
+    console.log("FW STEP D — Mixer Created");
+    this.listenHistory = new ListenHistory();
   }
 
   updateLocation(listenerLocation: Coordinates): void {
@@ -303,17 +307,17 @@ export class Roundware {
     try {
       // want to start this process as soon as possible, as it can take a few seconds
       this.geoPosition.connect((newLocation: Coordinates) =>
-        this.updateLocation(newLocation)
+        this.updateLocation(newLocation),
       );
 
       logger.info(`Initializing Roundware for project ID ${this._projectId}`);
 
-      await this._user.connect();
+      await this.user?.connect();
       const sessionId = await this._session.connect();
 
       this._sessionId = sessionId;
 
-      this.events = new RoundwareEvents(this._sessionId, this._apiClient);
+      this.events = new RoundwareEvents(this._sessionId, this.apiClient);
 
       this.events.logEvent(`start_session`);
 
@@ -321,7 +325,7 @@ export class Roundware {
         Promise<number | undefined>,
         Promise<IUiConfig>,
         Promise<ISpeakerData[]>,
-        Promise<IAudioTrackData[]>
+        Promise<IAudioTrackData[]>,
       ] = [
         this.project.connect(sessionId),
         this.project
@@ -353,7 +357,7 @@ export class Roundware {
     if (!options && this.assetData) {
       return this.assetData;
     } else {
-      return await this._apiClient.get<IAssetData[]>(`/assets/`, {
+      return await this.apiClient.get<IAssetData[]>(`/assets/`, {
         project_id: this._projectId,
         // Override default filters with unknown passed in options.
         ...this._assetFilters,
@@ -370,13 +374,13 @@ export class Roundware {
   /// Example: `getAssetsFromPool(allAssetFilter([distanceRangesFilter(), anyTagsFilter()]))`
   async getAssetsFromPool(
     assetFilter: (asset: IAssetData, mixParams: IMixParams) => boolean,
-    extraParams: IMixParams = {}
+    extraParams: IMixParams = {},
   ): Promise<IAssetData[]> {
     const pool = await this.loadAssetPool();
     const mixParams = { ...this.mixParams, ...extraParams };
 
     return pool.filter(
-      (a) => assetFilter(a, mixParams) != ASSET_PRIORITIES.DISCARD
+      (a) => assetFilter(a, mixParams) != ASSET_PRIORITIES.DISCARD,
     );
   }
 
@@ -427,7 +431,7 @@ export class Roundware {
       // Setup periodic retrieval of newly uploaded assets.
       this._assetDataTimer = setInterval(
         () => this.updateAssetPool(),
-        this._assetUpdateInterval
+        this._assetUpdateInterval,
       );
     }
 
@@ -537,15 +541,15 @@ export class Roundware {
   async makeEnvelope(): Promise<Envelope> {
     if (!this._sessionId) {
       throw new Error(
-        "can't save assets without first connecting to the server"
+        "can't save assets without first connecting to the server",
       );
     }
 
     let envelope = new Envelope(
       this._sessionId,
-      this._apiClient,
+      this.apiClient,
       this.geoPosition,
-      this
+      this,
     );
 
     await envelope.connect();
@@ -567,9 +571,9 @@ export class Roundware {
   async vote(
     assetId: number,
     voteType: string,
-    value?: unknown
+    value?: unknown,
   ): Promise<void> {
-    return this._apiClient.post(`/assets/${assetId}/votes/`, {
+    return this.apiClient.post(`/assets/${assetId}/votes/`, {
       session_id: this._sessionId,
       vote_type: voteType,
       value,
@@ -587,14 +591,14 @@ export class Roundware {
       }
     }
     // Otherwise, ask the server for the asset details.
-    return this._apiClient.get<IAssetData>(`/assets/${id}/`, {
+    return this.apiClient.get<IAssetData>(`/assets/${id}/`, {
       session_id: this._sessionId,
     });
   }
 
   /// @return Details about a particular envelope (which may contain multiple assets).
   async getEnvelope(id: number): Promise<IEnvelopeData> {
-    return this._apiClient.get<IEnvelopeData>(`/envelopes/${id}`, {
+    return this.apiClient.get<IEnvelopeData>(`/envelopes/${id}`, {
       session_id: this._sessionId,
     });
   }
@@ -608,9 +612,12 @@ export class Roundware {
     southwest: Coordinates;
     northeast: Coordinates;
   } {
+    const speakersHavingShape = this.speakers().filter(
+      (speaker) => !!speaker.shape,
+    ) as (ISpeakerData & Required<Pick<ISpeakerData, `shape`>>)[];
     // get polygons from all speakers
-    const polygons = this.speakers().map((s) =>
-      multiPolygon(s.shape.coordinates)
+    const polygons = speakersHavingShape.map((s) =>
+      multiPolygon(s.shape.coordinates),
     );
     let polygonCollection = featureCollection(polygons);
 
@@ -619,7 +626,7 @@ export class Roundware {
       (polygonCollection = buffer(
         polygonCollection,
         this.project.outOfRangeDistance,
-        { units: "meters" }
+        { units: "meters" },
       ));
 
     // order - [minX, minY, maxX, maxY]
