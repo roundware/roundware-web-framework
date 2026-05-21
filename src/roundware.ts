@@ -38,10 +38,10 @@ import { User } from "./user";
 export * from "./assetFilters";
 export { GeoListenMode, Roundware };
 
-import bbox from "@turf/bbox";
-import buffer from "@turf/buffer";
-import { featureCollection, multiPolygon } from "@turf/helpers";
-import { ListenHistory } from "./listenHistory";
+  import bbox from "@turf/bbox";
+  import buffer from "@turf/buffer";
+  import { featureCollection, multiPolygon } from "@turf/helpers";
+  import { ListenHistory } from "./listenHistory";
 
 /** This class is the primary integration point between Roundware's server and your application
 
@@ -118,6 +118,10 @@ class Roundware {
     TODO need to provide a more modern/ES6-aware architecture here vs burdening the constructor with all of these details **/
 
   constructor(options: IRoundwareConstructorOptions) {
+    console.log("FW STEP A — Constructor Started");
+    console.log("Roundware framework loaded", { version: "0.13.1-alpha.1" });
+    console.log("Options =", options);
+
     if (typeof options !== "object")
       throw new MissingArgumentError(
         `options`,
@@ -163,7 +167,7 @@ class Roundware {
     if (speakerFilters) this._speakerFilters = speakerFilters;
     this._assetFilters = assetFilters;
     if (
-      typeof listenerLocation.longitude !== "number" &&
+      typeof listenerLocation.longitude !== "number" ||
       typeof listenerLocation.latitude !== "number"
     )
       throw new InvalidArgumentError(
@@ -181,7 +185,7 @@ class Roundware {
     const newOptions: Required<IOptions> = options as Required<IOptions>;
     newOptions.apiClient = this.apiClient;
 
-    let navigator = window.navigator;
+    let navigator: any = global.navigator || {};
 
     // TODO need to reorganize/refactor these classes
     this.user =
@@ -223,16 +227,21 @@ class Roundware {
       audiotrack || new Audiotrack(this._projectId, newOptions);
     this.uiConfig = {};
 
+    console.log("FW STEP B — Before Mixer");
+
     const mixParams: IMixParams = {
       ...this.mixParams,
       ...this._initialOptions,
     };
+
+    console.log("FW STEP C — Creating Mixer");
     this.mixer = new Mixer({
       client: this,
 
       listenerLocation: this.listenerLocation,
       mixParams,
     });
+    console.log("FW STEP D — Mixer Created");
     this.listenHistory = new ListenHistory();
   }
 
