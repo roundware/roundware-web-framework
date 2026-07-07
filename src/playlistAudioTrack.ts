@@ -150,7 +150,7 @@ export class PlaylistAudiotrack {
   listenEvents?: RoundwareEvents;
   soundId?: number;
   audioContext: IAudioContext;
-  audioElement: HTMLAudioElement;
+  audioElement: HTMLAudioElement & { _sound?: any; _expoAudio?: any; _gainNode?: any; _panNode?: any };
   played: boolean = false;
   pausedAssetId: number | null = null;
   isSafeToPlay = false;
@@ -175,35 +175,91 @@ export class PlaylistAudiotrack {
     this.currentAsset = null;
     this.audioData = audioData;
 
-    const audioElement = new Audio();
-    audioElement.crossOrigin = "anonymous";
-    audioElement.loop = false;
-    audioElement.src = silenceAudioBase64;
-    const audioSrc = audioContext.createMediaElementSource(audioElement);
+    const expoCtx = audioContext as IAudioContext & {
+      __isExpoAv?: boolean;
+      createGain?: () => { gain: { value: number; setValueAtTime: (v: number, t: number) => void; exponentialRampToValueAtTime: (v: number, t: number) => void; cancelAndHoldAtTime: (t: number) => void }; connect: () => void };
+      createStereoPanner?: () => { pan: { value: number; linearRampToValueAtTime: (v: number, t: number) => void }; connect: () => void };
+      createExpoAvElement?: (gainNode: any, panNode: any) => any;
+    };
 
-    this.gainNode = audioContext.createGain();
-    const panNode = audioContext.createStereoPanner();
-
-    audioSrc
-      .connect(panNode)
-      .connect(this.gainNode)
-      .connect(audioContext.destination);
-
-    // LOGGABLE_AUDIO_ELEMENT_EVENTS.forEach((name) =>
-    //   audioElement.addEventListener(name, () =>
-    //     console.log(`\t[${this} audio ${name} event]`)
-    //   )
-    // );
-
-    audioElement.addEventListener("error", () => this.onAudioError());
-    audioElement.addEventListener("ended", () => this.onAudioEnded());
-
+    const urlGetter = () =>
+      typeof globalThis !== "undefined" && (globalThis as any).window?.location
+        ? (globalThis as any).window.location.toString()
+        : "";
     const trackOptions = new TrackOptions(
-      (param) => getUrlParam(window.location.toString(), param),
+      (param) => getUrlParam(urlGetter(), param),
       audioData
     );
 
-    audioElement.addEventListener("playing", () => {
+    if (expoCtx.__isExpoAv && expoCtx.createGain && expoCtx.createStereoPanner && expoCtx.createExpoAvElement) {
+      this.gainNode = expoCtx.createGain() as IGainNode<IAudioContext>;
+      const panNode = expoCtx.createStereoPanner();
+      this.audioElement = expoCtx.createExpoAvElement(this.gainNode, panNode) as any;
+      this.audioContext = audioContext;
+      this.trackOptions = trackOptions;
+      this.mixParams = {
+        timedAssetPriority: audioData.timed_asset_priority,
+        listenTagIds: audioData.tag_filters,
+      };
+      this.audioPanner = new AudioPanner(
+        audioData.minpanpos,
+        audioData.maxpanpos,
+        audioData.minpanduration,
+        audioData.maxpanduration,
+        panNode as any,
+        audioContext
+      );
+      this.audioPanner.start();
+      this.setInitialTrackState();
+      (this as any).isSafeToPlay = true;
+    } else {
+      const audioElement = new Audio();
+      audioElement.crossOrigin = "anonymous";
+      audioElement.loop = false;
+      audioElement.src = silenceAudioBase64;
+      const audioSrc = audioContext.createMediaElementSource(audioElement);
+
+      this.gainNode = audioContext.createGain();
+      const panNode = audioContext.createStereoPanner();
+
+      audioSrc
+        .connect(panNode)
+        .connect(this.gainNode)
+        .connect(audioContext.destination);
+
+      this.audioContext = audioContext;
+      this.audioElement = audioElement;
+
+      this.trackOptions = trackOptions;
+      this.mixParams = {
+        timedAssetPriority: audioData.timed_asset_priority,
+        listenTagIds: audioData.tag_filters,
+      };
+
+      const { minpanpos, maxpanpos, minpanduration, maxpanduration } = audioData;
+      this.audioPanner = new AudioPanner(
+        minpanpos,
+        maxpanpos,
+        minpanduration,
+        maxpanduration,
+        panNode,
+        audioContext
+      );
+      this.audioPanner.start();
+      this.setInitialTrackState();
+
+      const that = this;
+      // try to play silence audio to avoid NotAllowedError on iOS
+      makeAudioSafeToPlay(this.audioElement, this.audioContext, () => {
+        that.isSafeToPlay = true;
+        console.log(`successfully ${that.audioData.id} ${that.isSafeToPlay}`);
+      });
+    }
+
+    this.audioElement.addEventListener("error", () => this.onAudioError());
+    this.audioElement.addEventListener("ended", () => this.onAudioEnded());
+
+    this.audioElement.addEventListener("playing", () => {
       if (!this.isSafeToPlay) return;
       if (this.playlist.playing === false) return this.pauseAudio();
       if (this.currentAsset) this.currentAsset.status = undefined;
@@ -214,42 +270,14 @@ export class PlaylistAudiotrack {
       }
     });
 
-    audioElement.addEventListener("pause", () => {
+    this.audioElement.addEventListener("pause", () => {
       this.playing = false;
       this.listenEvents?.logAssetEnd(this.currentAsset?.id!);
     });
 
-    audioElement.addEventListener("end", () =>
+    this.audioElement.addEventListener("end", () =>
       this.listenEvents?.logAssetEnd(this.currentAsset?.id!)
     );
-
-    this.audioContext = audioContext;
-    this.audioElement = audioElement;
-
-    this.trackOptions = trackOptions;
-    this.mixParams = {
-      timedAssetPriority: audioData.timed_asset_priority,
-      listenTagIds: audioData.tag_filters,
-    };
-
-    const { minpanpos, maxpanpos, minpanduration, maxpanduration } = audioData;
-    this.audioPanner = new AudioPanner(
-      minpanpos,
-      maxpanpos,
-      minpanduration,
-      maxpanduration,
-      panNode,
-      audioContext
-    );
-    this.audioPanner.start();
-    this.setInitialTrackState();
-
-    const that = this;
-    // try to play silence audio to avoid NotAllowedError on iOS
-    makeAudioSafeToPlay(this.audioElement, this.audioContext, () => {
-      that.isSafeToPlay = true;
-      console.log(`successfully ${that.audioData.id} ${that.isSafeToPlay}`);
-    });
   }
 
   setInitialTrackState() {

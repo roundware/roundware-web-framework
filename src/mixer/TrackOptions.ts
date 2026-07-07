@@ -14,7 +14,7 @@ export class TrackOptions {
   fadeOutWhenFiltered: boolean;
   fadeOutMultiplier: number;
   constructor(
-    urlParamLookup: (param: string) => string | number,
+    urlParamLookup: (param: string) => string | number | null,
     params: IAudioTrackData
   ) {
     this.volumeRange = [params.minvolume, params.maxvolume];

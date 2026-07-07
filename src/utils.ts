@@ -47,6 +47,7 @@ export const cleanAudioURL = (
  * @param {number[]} coordinates
  */
 export const normalizeCoords = (coordinates: number[]) => {
+  if (coordinates == null || !Array.isArray(coordinates)) return [];
   for (let i = 0; i < coordinates.length; i++) {
     if (coordinates[i] > 180) coordinates[i] = (coordinates[i] % 180) - 180;
     else if (coordinates[i] < -180)
@@ -145,10 +146,20 @@ export const timestamp = {
   },
 };
 
-export const getUrlParam = (urlStr: string, paramName: string): string => {
-  const url = new URL(urlStr);
-  const params = new URLSearchParams(url.search);
-  return params.get(paramName) as string;
+export const getUrlParam = (
+  urlStr: string,
+  paramName: string
+): string | null => {
+  if (!urlStr) {
+    return null;
+  }
+  try {
+    const url = new URL(urlStr);
+    const params = new URLSearchParams(url.search);
+    return params.get(paramName);
+  } catch {
+    return null;
+  }
 };
 
 export const NO_OP = () => {};

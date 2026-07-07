@@ -1,11 +1,8 @@
-import { GeoEmaSmoother } from "./geo_smoothing";
 import { GeoListenMode } from "./mixer";
 import { logger } from "./shims";
 import { Coordinates, GeoPositionOptions } from "./types";
 
 const initialGeoTimeoutSeconds = 6;
-// default; can be overridden by options on Roundware instantiation
-const geoUpdateThrottleMs = 0;
 
 const frameworkDefaultCoords: Coordinates = {
   latitude: 42.3140089,
@@ -22,7 +19,8 @@ const fastGeolocationPositionOptions = {
 // subsequent position monitoring should be high-accuracy
 const accurateGeolocationPositionOptions = {
   enableHighAccuracy: true,
-  timeout: 10000,
+  timeout: Infinity,
+  maximumAge: 0,
 };
 
 /** Responsible for tracking the user's position, when geo listening is enabled and the browser is capable
@@ -40,13 +38,11 @@ export class GeoPosition {
   private _initialGeolocationPromise: Promise<Coordinates>;
   private defaultCoords: Coordinates;
   private _lastCoords: Coordinates;
-  private _lastUpdateTime: number | null = null;
   geolocation: Geolocation;
   isEnabled: boolean;
   updateCallback: CallableFunction;
   private _geoWatchID?: number | null;
   private _geoPositionStatus: true | number = 3;
-  private _smoother?: GeoEmaSmoother;
 
   constructor(navigator: Window[`navigator`], options: GeoPositionOptions) {
     this._navigator = navigator;
@@ -59,30 +55,11 @@ export class GeoPosition {
     this._initialGeolocationPromise = Promise.resolve(initialCoords);
     this.defaultCoords = initialCoords;
     this._lastCoords = initialCoords;
-    this._lastUpdateTime = null;
     this.geolocation = navigator.geolocation;
     this.isEnabled =
       navigator.geolocation && geoListenMode === GeoListenMode.AUTOMATIC;
     this.updateCallback = () => {};
     this._geoWatchID = null;
-
-    // Setup optional smoother
-    const {
-      geoSmoothingEnabled = false,
-      geoSmoothingAlpha = 0.15,
-      geoSmoothingMinAccuracyMeters = 20,
-      geoSmoothingMinEmitDeltaMeters = 0,
-      geoSmoothingResetJumpMeters = 50,
-    } = options;
-    if (geoSmoothingEnabled) {
-      this._smoother = new GeoEmaSmoother({
-        enabled: geoSmoothingEnabled,
-        alpha: geoSmoothingAlpha,
-        minAccuracyMeters: geoSmoothingMinAccuracyMeters,
-        minEmitDeltaMeters: geoSmoothingMinEmitDeltaMeters,
-        resetJumpMeters: geoSmoothingResetJumpMeters,
-      });
-    }
 
     //console.info({ defaultCoords: this.defaultCoords });
   }
@@ -90,6 +67,7 @@ export class GeoPosition {
   disable(): void {
     this.isEnabled = false;
     if (this._geoWatchID) {
+      console.log("Canceling geoposition watch", this._geoWatchID);
       this.geolocation.clearWatch(this._geoWatchID);
       delete this._geoWatchID;
     }
@@ -166,39 +144,9 @@ export class GeoPosition {
     this._geoWatchID = geolocation.watchPosition(
       (updatedPosition) => {
         const { coords } = updatedPosition;
-        const now = Date.now();
-        const timeSinceLastUpdate = this._lastUpdateTime
-          ? now - this._lastUpdateTime
-          : 0;
-
-        // Only process updates every 3 seconds
-        if (timeSinceLastUpdate < geoUpdateThrottleMs && this._lastUpdateTime) {
-          return;
-        }
-
-        // Optionally smooth before forwarding; always emit as simple Coordinates
-        let coordsToSend: Coordinates = {
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-        };
-        if (this._smoother) {
-          const smoothed = this._smoother.update(updatedPosition);
-          if (smoothed) {
-            coordsToSend = {
-              latitude: smoothed.latitude,
-              longitude: smoothed.longitude,
-            };
-          } else {
-            // rejected by smoothing (poor accuracy or within deadband)
-            return;
-          }
-        }
-
-        this._lastUpdateTime = now;
-        this._lastCoords = coordsToSend;
+        this._lastCoords = coords;
         this._geoPositionStatus = true;
-        logger.info("Received updated geolocation:", coordsToSend);
-        this.updateCallback(coordsToSend);
+        this.updateCallback(coords);
       },
       (error) => {
         logger.warn(

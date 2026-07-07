@@ -69,7 +69,13 @@ export class Mixer {
       sortMethods,
       mixParams: this.mixParams,
     });
-    this.audioContext = buildAudioContext();
+
+    const createAudioContext = (this.mixParams as IMixParams & { createAudioContext?: () => IAudioContext })?.createAudioContext;
+    if (createAudioContext) {
+      this.audioContext = createAudioContext() as IAudioContext;
+    } else {
+      this.audioContext = buildAudioContext();
+    }
   }
 
   updateParams({ listenerLocation, ...params }: IMixParams) {
@@ -105,7 +111,7 @@ export class Mixer {
   }
 
   /**
-   * Builds speaker tracks & playlist instance if it doesn't exist yet
+   * Builds speaker tracks & playlist instance if it doesn't exist yet.
    */
   initContext() {
     if (!this.playlist) {
@@ -115,8 +121,13 @@ export class Mixer {
         );
       const listenerPoint = this.mixParams.listenerPoint;
 
+      const urlStr =
+        typeof globalThis !== "undefined" &&
+        (globalThis as any).window?.location
+          ? (globalThis as any).window.location.toString()
+          : "";
       let selectTrackId: string | number | null = getUrlParam(
-        window.location.toString(),
+        urlStr,
         "rwfSelectTrackId"
       );
       let audioTracks = this._client.audiotracks();
@@ -167,8 +178,6 @@ export class Mixer {
     if (this.audioContext.state === "suspended") {
       await this.audioContext.resume();
     }
-    // console.log(`playing`);
-    // consssole.log(this.audioContext.currentTime);
     if (this.playing === false) {
       this._client.events?.logEvent(`play_stream`);
     }

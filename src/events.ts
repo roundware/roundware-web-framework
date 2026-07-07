@@ -69,11 +69,15 @@ export class RoundwareEvents {
 
   async logEvent(eventType: EventType, payload?: EventPayload) {
     console.info(`event: ${eventType}`, payload);
-    return this._apiClient.post<EventPayload>(EVENTS_PATH, {
-      session_id: this._sessionId,
-      event_type: eventType,
-      client_time: new Date().toISOString(),
-      ...payload,
-    });
+    try {
+      return await this._apiClient.post<EventPayload>(EVENTS_PATH, {
+        session_id: this._sessionId,
+        event_type: eventType,
+        client_time: new Date().toISOString(),
+        ...payload,
+      });
+    } catch (err) {
+      console.warn(`Roundware event log failed (${eventType}):`, err);
+    }
   }
 }

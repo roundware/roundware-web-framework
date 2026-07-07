@@ -45,10 +45,12 @@ export class Playlist {
     this._client = client;
 
     let elapsedTimeMs = 0;
-    const timerSecs = getUrlParam(
-      window.location.toString(),
-      "rwfTimerSeconds"
-    );
+    const urlStr =
+      typeof globalThis !== "undefined" &&
+      (globalThis as any).window?.location
+        ? (globalThis as any).window.location.toString()
+        : "";
+    const timerSecs = getUrlParam(urlStr, "rwfTimerSeconds");
 
     if (timerSecs) {
       const elapsedSecs = Number(timerSecs);
