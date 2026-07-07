@@ -171,7 +171,7 @@ export class BufferEffectsProcessor {
   delayReverbClip(): BufferEffectsProcessor {
     const delayTime = this.config.delayTimeInMs || 50;
     const feedback = this.config.feedback || 0.5;
-    const reverb = this.config.reverbRoomSize || 0.5;
+    const reverb = this.config.reverb || 0.5;
 
     const delaySamples = Math.floor(
       (delayTime / 1000) * this.audioBuffer.sampleRate
@@ -250,7 +250,7 @@ export class BufferEffectsProcessor {
   }
 
   reverbAndClip(): BufferEffectsProcessor {
-    const reverb = this.config.reverbRoomSize || 0.5;
+    const reverb = this.config.reverb || 0.5;
     const numberOfChannels = this.audioBuffer.numberOfChannels;
     const newBuffer = this.context.createBuffer(
       numberOfChannels,
@@ -279,28 +279,6 @@ export class BufferEffectsProcessor {
     return this;
   }
 
-  /**
-   * Reverses the audio buffer data in place
-   * This method reverses the audio samples for all channels
-   */
-  reverse(): BufferEffectsProcessor {
-    const numberOfChannels = this.audioBuffer.numberOfChannels;
-    const length = this.audioBuffer.length;
-
-    for (let channel = 0; channel < numberOfChannels; channel++) {
-      const channelData = this.audioBuffer.getChannelData(channel);
-
-      // Reverse the audio data by swapping samples from start and end
-      for (let i = 0; i < Math.floor(length / 2); i++) {
-        const temp = channelData[i];
-        channelData[i] = channelData[length - 1 - i];
-        channelData[length - 1 - i] = temp;
-      }
-    }
-
-    return this;
-  }
-
   getBuffer(): IAudioBuffer {
     return this.audioBuffer;
   }
@@ -311,23 +289,15 @@ export class BufferEffectsProcessor {
     fadeInDuration,
     fadeInStartVolume,
     timeEnd,
-    isReverse = false,
   }: {
     duration: number;
     times: number;
     fadeInDuration?: number;
     fadeInStartVolume?: number;
     timeEnd?: number;
-    isReverse?: boolean;
   }): BufferEffectsProcessor {
     const NEARLY_ZERO = 0.001; // Define minimum starting volume
-
-    // If reverse playback is requested, reverse the entire buffer first
-    if (isReverse) {
-      this.reverse();
-    }
-
-    // Then trim the audio to the specified duration
+    // First trim the audio to the specified duration
     this.trim(0, duration);
 
     const sampleRate = this.audioBuffer.sampleRate;
@@ -359,7 +329,7 @@ export class BufferEffectsProcessor {
 
         // Apply micro fades between loops
         const microFadeSamples = Math.min(
-          (this.config.microFadeInDurationInMs !== undefined
+          (this.config.microFadeInDurationInMs
             ? this.config.microFadeInDurationInMs / 1000
             : 0.05) * sampleRate,
           originalLength
@@ -396,9 +366,6 @@ export class BufferEffectsProcessor {
     }
 
     this.audioBuffer = newBuffer;
-
-    // Note: Delay, feedback, and reverb effects are now applied centrally
-    // in the SpeakerEngine's master mixer, not per-speaker for efficiency
 
     if (timeEnd) {
       this.trim(timeEnd, duration);

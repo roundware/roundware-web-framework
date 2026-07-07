@@ -26,7 +26,7 @@ import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { SpeakerUtils } from "./speaker_utils";
 const convertLinesToPolygon = (shape: LineString | MultiLineString) =>
   lineToPolygon(shape);
-const FADE_DURATION_SECONDS = 4;
+const FADE_DURATION_SECONDS = 3;
 const NEARLY_ZERO = 0.05;
 
 /** A Roundware speaker under the control of the client-side mixer, representing 'A polygonal geographic zone within which an ambient audio stream broadcasts continuously to listeners.
@@ -70,8 +70,6 @@ export class SpeakerTrack extends EventEmitter<{
 
   private bufferSource?: IAudioBufferSourceNode<IAudioContext> | null = null;
   private gainNode?: IGainNode<IAudioContext> | null = null;
-  private masterMixerNode: IGainNode<IAudioContext> | undefined;
-  private masterEffectsSendNode: IGainNode<IAudioContext> | undefined;
 
   groupId: number;
 
@@ -81,36 +79,18 @@ export class SpeakerTrack extends EventEmitter<{
     pan?: number;
     duration?: number;
     times?: number;
-    isReverse?: boolean;
   } = {};
-
-  // Debounce volume updates to prevent rapid gain changes
-  private volumeUpdateTimeout: NodeJS.Timeout | null = null;
-
-  // Variant URI tracking
-  private variantUris: string[] = [];
-  private currentVariantIndex: number = 0;
-  private variantLoopCount: number = 0;
-  private variantLoopTarget: number = 0;
-  private variantBuffers: Map<string, IAudioBuffer> = new Map();
-  private currentVariantUri: string = "";
-  private variantLoadingPromises: Map<string, Promise<IAudioBuffer>> =
-    new Map();
 
   constructor({
     data,
     audioContext,
     config,
     groupId,
-    masterMixerNode,
-    masterEffectsSendNode,
   }: {
     data: ISpeakerData;
     audioContext: IAudioContext;
     config: SpeakerConfig;
     groupId: number;
-    masterMixerNode?: IGainNode<IAudioContext>;
-    masterEffectsSendNode?: IGainNode<IAudioContext>;
   }) {
     super();
     const {
@@ -121,14 +101,11 @@ export class SpeakerTrack extends EventEmitter<{
       boundary,
       attenuation_distance: attenuationDistance,
       uri,
-      varianturis,
     } = data;
 
     this.config = config;
     this.audioContext = audioContext;
     this.data = data;
-    this.masterMixerNode = masterMixerNode;
-    this.masterEffectsSendNode = masterEffectsSendNode;
 
     this.maxVolume = maxVolume;
     this.minVolume = minVolume;
@@ -149,7 +126,11 @@ export class SpeakerTrack extends EventEmitter<{
       }
     }
     try {
-      if (boundary) this.outerBoundary = convertLinesToPolygon(boundary);
+      if (boundary) {
+        this.outerBoundary = convertLinesToPolygon(boundary);
+      } else if (data.shape) {
+        this.outerBoundary = data.shape as any;
+      }
     } catch (e) {
       console.error("Error converting outer boundary to polygon:", e, data);
     }
@@ -157,9 +138,6 @@ export class SpeakerTrack extends EventEmitter<{
     this.calculatedVolume = NEARLY_ZERO;
 
     this.groupId = groupId;
-
-    // Initialize variant tracking
-    this.initializeVariants(varianturis);
   }
 
   outerBoundaryContains(point: Coord) {
@@ -197,19 +175,47 @@ export class SpeakerTrack extends EventEmitter<{
       const volumeGradient =
         this.minVolume + range * this.attenuationRatio(listenerPoint);
 
-      // Clamp within [minVolume, maxVolume]
-      const clamped = Math.max(
-        this.minVolume,
-        Math.min(this.maxVolume, volumeGradient)
-      );
-      return clamped;
+      return volumeGradient;
     } else {
       return this.minVolume;
     }
   }
 
   request: XMLHttpRequest | null = null;
-  async loadBuffer() {
+  private _expoSound: any = null;
+
+  loadBuffer() {
+    const expoCtx = this.audioContext as IAudioContext & {
+      __isExpoAv?: boolean;
+      __expoAvAudio?: { Sound: { createAsync: (source: { uri: string }, options?: any) => Promise<{ sound: any }> } };
+    };
+    if (expoCtx.__isExpoAv && expoCtx.__expoAvAudio) {
+      if (this._expoSound || this.buffer) return;
+      this.log("Loading audio (expo-av)");
+      const Audio = expoCtx.__expoAvAudio;
+      Audio.Sound.createAsync(
+        { uri: this.uri },
+        { shouldPlay: false }
+      ).then(({ sound }) => {
+        this._expoSound = sound;
+        sound.getStatusAsync().then((status: any) => {
+          const durationSec = status?.durationMillis ? status.durationMillis / 1000 : 0;
+          this.buffer = {
+            duration: durationSec,
+            numberOfChannels: 1,
+            length: 0,
+            sampleRate: 44100,
+            getChannelData: () => new Float32Array(0),
+          } as any;
+          this.request = null;
+          this.emit("loaded");
+        });
+      }).catch((e: Error) => {
+        this.log("Error loading audio " + (e?.message || String(e)));
+      });
+      return;
+    }
+
     if (this.request) {
       return;
     }
@@ -218,12 +224,9 @@ export class SpeakerTrack extends EventEmitter<{
       return;
     }
 
-    // Load the current URI (either variant or fallback to uri)
-    const uriToLoad = this.getCurrentUri();
-
     this.request = new XMLHttpRequest();
     this.log("Fetching audio");
-    this.request.open("GET", uriToLoad, true);
+    this.request.open("GET", this.uri, true);
     this.request.timeout = Infinity;
     this.request.responseType = "arraybuffer";
     this.request.onprogress = (ev) => {
@@ -255,16 +258,13 @@ export class SpeakerTrack extends EventEmitter<{
     };
 
     this.request.send();
-
-    // If this speaker has variants, load all of them in the background
-    if (this.variantUris.length > 0) {
-      this.loadAllVariantBuffers().catch((error) => {
-        this.log(`Failed to load some variant buffers: ${error.message}`);
-      });
-    }
   }
 
   unload() {
+    if (this._expoSound) {
+      this._expoSound.unloadAsync?.();
+      this._expoSound = null;
+    }
     if (this.buffer) {
       this.emit("unloaded");
     }
@@ -272,9 +272,6 @@ export class SpeakerTrack extends EventEmitter<{
     this.loadedPercentage = 0;
     this.request?.abort();
     this.request = null;
-
-    // Unload variant buffers when speaker becomes "far"
-    this.unloadVariantBuffers();
   }
 
   startedAtContextTime = 0;
@@ -287,27 +284,47 @@ export class SpeakerTrack extends EventEmitter<{
     offset,
     fadeInDuration,
     pan,
-    isReverse = false,
-    isNewSpeaker = false,
   }: {
     duration: number;
     offset: number;
     times: number;
     fadeInDuration: number;
     pan: number;
-    isReverse?: boolean;
-    isNewSpeaker?: boolean;
   }) {
     this.loopConfig.duration = duration;
     this.loopConfig.times = times;
     this.loopConfig.pan = pan;
-    this.loopConfig.isReverse = isReverse;
 
-    // Use variant buffer if available, otherwise fall back to main buffer
-    const bufferToUse =
-      this.getVariantBuffer(this.currentVariantUri) || this.buffer;
+    const expoCtx = this.audioContext as IAudioContext & {
+      __isExpoAv?: boolean;
+      __androidVolumeOnly?: boolean;
+    };
+    if (expoCtx.__isExpoAv && (this as any)._expoSound) {
+      const sound = (this as any)._expoSound;
+      const vol = Math.max(0, Math.min(1, this.calculatedVolume));
+      const panClamped = Math.max(-1, Math.min(1, pan));
+      // expo-av: no setPanAsync; pan is 2nd arg to setVolumeAsync on iOS. Android: use volume only.
+      const applyVol = expoCtx.__androidVolumeOnly
+        ? sound.setVolumeAsync(vol)
+        : sound.setVolumeAsync(vol, panClamped);
+      void applyVol.then(() =>
+        sound.playFromPositionAsync(Math.round((offset || 0) * 1000))
+      );
+      this.bufferSourcePlaying = true;
+      this.startedAtContextTime = (this.audioContext as any).currentTime - (offset || 0);
+      this.emit("playing");
+      sound.setOnPlaybackStatusUpdate((status: any) => {
+        if (!status?.isLoaded) return;
+        if (status.didJustFinishAndNotLoop) {
+          this.bufferSourcePlaying = false;
+          this.clearBufferSource();
+          this.emit("trackFinished");
+        }
+      });
+      return;
+    }
 
-    if (!bufferToUse) {
+    if (!this.buffer) {
       throw new Error("Track is not loaded");
     }
 
@@ -315,12 +332,6 @@ export class SpeakerTrack extends EventEmitter<{
     if (this.stopTimeout) {
       clearTimeout(this.stopTimeout);
       this.stopTimeout = null;
-    }
-
-    // Clear any pending volume update
-    if (this.volumeUpdateTimeout) {
-      clearTimeout(this.volumeUpdateTimeout);
-      this.volumeUpdateTimeout = null;
     }
 
     if (this.bufferSource) {
@@ -337,89 +348,34 @@ export class SpeakerTrack extends EventEmitter<{
     this.bufferSource = this.audioContext.createBufferSource();
     this.bufferSource.loop = false;
 
-    // Use variant crossfade duration for micro-fades if this is a variant switch
-    const effectsConfig = { ...this.config?.effects };
-    if (this.variantUris.length > 0 && this.currentVariantUri !== this.uri) {
-      // This is a variant track, use the variant crossfade duration for micro-fades
-      effectsConfig.microFadeInDurationInMs =
-        this.config.variantCrossfadeDurationMs ?? 1000;
-    }
-
     const bP = new BufferEffectsProcessor(
-      bufferToUse,
+      this.buffer,
       this.audioContext,
-      effectsConfig
+      this.config?.effects || {}
     ).composeBuffer({
       duration,
       times,
       fadeInDuration,
       fadeInStartVolume,
-      isReverse,
     });
 
-    const finalBuffer = bP.getBuffer();
-    this.bufferSource.buffer = finalBuffer;
-
-    // Debug logging to investigate half-speed issue
-    if (typeof window !== "undefined" && (window as any).DEBUG_LOOP_SYNC) {
-      console.log(
-        `[SYNC_DEBUG] BUFFER_INFO: Speaker ${
-          this.data.id
-        } - requestedDuration=${duration.toFixed(
-          3
-        )}s, times=${times}, finalBufferDuration=${finalBuffer.duration.toFixed(
-          3
-        )}s, originalBufferDuration=${(this.buffer?.duration || 0).toFixed(3)}s`
-      );
-    }
+    this.bufferSource.buffer = bP.getBuffer();
 
     if (!this.gainNode) {
       this.gainNode = this.audioContext.createGain();
+      this.gainNode.gain.value = this.calculatedVolume;
     }
-
-    const MIN_AUDIBLE = 0.05;
-    const initial = Number.isFinite(this.calculatedVolume)
-      ? Math.max(MIN_AUDIBLE, this.calculatedVolume)
-      : MIN_AUDIBLE;
-
-    // For new speakers, always start at NEARLY_ZERO to enable fade-in
-    // For existing speakers, start at calculated volume
-    this.gainNode.gain.value = isNewSpeaker ? NEARLY_ZERO : initial;
 
     // connections:
     this.bufferSource.connect(this.gainNode);
-    // TEMP: bypass panning to test if StereoPannerNode churn contributes to dropouts
-    const BYPASS_PANNER_FOR_TEST = false;
-    const dryDestination =
-      this.masterMixerNode || this.audioContext.destination;
-    const effectsDestination = this.masterEffectsSendNode;
-
-    if (BYPASS_PANNER_FOR_TEST) {
-      this.gainNode.connect(dryDestination);
-      if (effectsDestination) {
-        this.gainNode.connect(effectsDestination);
-      }
-    } else {
-      const panner = this.audioContext.createStereoPanner();
-      panner.pan.value = pan;
-      this.gainNode.connect(panner);
-      panner.connect(dryDestination);
-      if (effectsDestination) {
-        panner.connect(effectsDestination);
-      }
-    }
+    const panner = this.audioContext.createStereoPanner();
+    panner.pan.value = pan;
+    this.gainNode.connect(panner);
+    panner.connect(this.audioContext.destination);
 
     const bufferSource = this.bufferSource;
 
     this.startBufferSource(this.audioContext.currentTime, offset || 0);
-
-    // Apply new speaker fade-in if this is a new speaker
-    if (isNewSpeaker) {
-      console.debug(
-        `Speaker ${this.data.id} starting as new speaker (audio context state: ${this.audioContext.state})`
-      );
-      this.fadeInNewSpeaker();
-    }
 
     const startedAtContextTime = this.startedAtContextTime;
 
@@ -441,28 +397,8 @@ export class SpeakerTrack extends EventEmitter<{
         remainingTime <= NEARLY_ZERO ||
         Math.abs(bufferSource.buffer.duration - remainingTime) <= NEARLY_ZERO
       ) {
-        if (typeof window !== "undefined" && (window as any).DEBUG_LOOP_SYNC) {
-          console.log(
-            `[SYNC_DEBUG] TRACK_FINISHED: Speaker ${
-              this.data.id
-            } finished at ${this.audioContext.currentTime.toFixed(
-              6
-            )}s, started at ${this.startedAtContextTime.toFixed(
-              6
-            )}s, duration: ${bufferSource.buffer.duration.toFixed(6)}s`
-          );
-        }
         this.emit("trackFinished");
       } else {
-        if (typeof window !== "undefined" && (window as any).DEBUG_LOOP_SYNC) {
-          console.log(
-            `[SYNC_DEBUG] TRACK_ABORTED: Speaker ${
-              this.data.id
-            } aborted at ${this.audioContext.currentTime.toFixed(
-              6
-            )}s, remaining: ${remainingTime.toFixed(6)}s`
-          );
-        }
         this.emit("trackAborted", remainingTime);
       }
     };
@@ -472,6 +408,13 @@ export class SpeakerTrack extends EventEmitter<{
   stopTimeout: NodeJS.Timeout | null = null;
 
   fadeOutAndStopBufferSource() {
+    if ((this as any)._expoSound) {
+      (this as any)._expoSound.setVolumeAsync(0);
+      this.stopTimeout = setTimeout(() => {
+        this.stopBufferSource();
+      }, FADE_DURATION_SECONDS * 1000);
+      return;
+    }
     if (!this.gainNode || !this.bufferSource) {
       throw new Error("Buffer source or gain node not found");
     }
@@ -490,46 +433,9 @@ export class SpeakerTrack extends EventEmitter<{
     );
 
     this.stopTimeout = setTimeout(() => {
+      console.debug("Stopping from timeout");
       this.stopBufferSource();
     }, FADE_DURATION_SECONDS * 1000);
-  }
-
-  /**
-   * Start a graceful fade-in for a new speaker
-   * This applies a gain-node level fade-in over the specified duration
-   */
-  fadeInNewSpeaker() {
-    if (!this.gainNode) {
-      throw new Error("Gain node not found");
-    }
-
-    // Check audio context state before attempting fade-in
-    if (this.audioContext.state === "suspended") {
-      console.warn(
-        `Speaker ${this.data.id} fade-in aborted: Audio context is suspended`
-      );
-      return;
-    }
-
-    // Get fade-in duration from config, default to 2 seconds
-    const fadeInDurationMs = this.config?.newSpeakerFadeInDurationMs ?? 2000;
-    const fadeInDurationSeconds = fadeInDurationMs / 1000;
-
-    // Calculate target volume
-    const MIN_AUDIBLE = 0.05;
-    const targetVolume = Number.isFinite(this.calculatedVolume)
-      ? Math.max(MIN_AUDIBLE, this.calculatedVolume)
-      : MIN_AUDIBLE;
-
-    // Fade in from current volume (NEARLY_ZERO) to target volume
-    // Mobile-safe: avoid cancelAndHoldAtTime; explicitly set starting value and schedule a linear ramp with a tiny epsilon
-    const now = this.audioContext.currentTime;
-    const EPSILON_S = 0.02; // 20ms scheduling guard
-    this.gainNode.gain.setValueAtTime(NEARLY_ZERO, now);
-    this.gainNode.gain.linearRampToValueAtTime(
-      targetVolume,
-      now + fadeInDurationSeconds + EPSILON_S
-    );
   }
 
   startBufferSource(when: number, offset: number) {
@@ -537,19 +443,6 @@ export class SpeakerTrack extends EventEmitter<{
       this.bufferSource.start(when, offset);
       this.bufferSourcePlaying = true;
       this.startedAtContextTime = when - offset;
-
-      if (typeof window !== "undefined" && (window as any).DEBUG_LOOP_SYNC) {
-        console.log(
-          `[SYNC_DEBUG] TRACK_START: Speaker ${
-            this.data.id
-          } starting at ${when.toFixed(6)}s with offset ${offset.toFixed(
-            6
-          )}s, startedAtContextTime: ${this.startedAtContextTime.toFixed(
-            6
-          )}s, variant: ${this.getCurrentUri()}`
-        );
-      }
-
       this.emit("startingBufferSource", {
         when,
         offset,
@@ -558,8 +451,14 @@ export class SpeakerTrack extends EventEmitter<{
   }
 
   stopBufferSource() {
+    if ((this as any)._expoSound) {
+      (this as any)._expoSound.stopAsync?.();
+      this.bufferSourcePlaying = false;
+      return;
+    }
     if (this.bufferSource) {
       this.bufferSource.stop();
+      console.trace("stopBufferSource");
       this.bufferSourcePlaying = false;
     }
   }
@@ -573,12 +472,6 @@ export class SpeakerTrack extends EventEmitter<{
 
   private clearBufferSource() {
     try {
-      // Clear volume update timeout
-      if (this.volumeUpdateTimeout) {
-        clearTimeout(this.volumeUpdateTimeout);
-        this.volumeUpdateTimeout = null;
-      }
-
       if (this.bufferSource) {
         this.bufferSource.onended = null;
         this.bufferSource.disconnect();
@@ -602,210 +495,20 @@ export class SpeakerTrack extends EventEmitter<{
       return;
     }
 
-    // Clear any pending volume update
-    if (this.volumeUpdateTimeout) {
-      clearTimeout(this.volumeUpdateTimeout);
-      this.volumeUpdateTimeout = null;
+    if (this.stopTimeout) {
+      clearTimeout(this.stopTimeout);
+      this.stopTimeout = null;
     }
 
-    // Debounce volume updates to prevent rapid gain changes that cause stuttering
-    this.volumeUpdateTimeout = setTimeout(() => {
-      if (!this.gainNode) {
-        return;
-      }
-
-      if (this.stopTimeout) {
-        clearTimeout(this.stopTimeout);
-        this.stopTimeout = null;
-      }
-
-      // Only cancel and hold if we're not already in a transition
-      const currentGain = this.gainNode.gain.value;
-      const targetGain = Math.max(
-        0.05, // MIN_AUDIBLE
-        Math.min(1, Number.isFinite(volume) ? volume : 0)
-      );
-
-      // Only update if the change is significant (prevents micro-adjustments)
-      if (Math.abs(currentGain - targetGain) > 0.01) {
-        this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
-        const RAMP_SECONDS_TEST = 0.6; // shorter ramp to reduce long dips
-        this.gainNode.gain.exponentialRampToValueAtTime(
-          targetGain,
-          this.audioContext.currentTime + RAMP_SECONDS_TEST
-        );
-      }
-
-      this.volumeUpdateTimeout = null;
-    }, 50); // 50ms debounce
+    this.gainNode.gain.cancelAndHoldAtTime(this.audioContext.currentTime);
+    this.gainNode.gain.exponentialRampToValueAtTime(
+      volume || NEARLY_ZERO,
+      this.audioContext.currentTime + FADE_DURATION_SECONDS
+    );
   }
 
   log(string: string) {
     speakerLog(`${this.data.id}] ` + string);
-  }
-
-  // Variant URI methods
-  private initializeVariants(varianturis?: string[]) {
-    if (varianturis && varianturis.length > 0) {
-      this.variantUris = [...varianturis];
-      this.shuffleVariantArray();
-      this.currentVariantIndex = 0;
-      this.currentVariantUri = this.variantUris[0];
-      this.setVariantLoopTarget();
-    } else {
-      this.currentVariantUri = this.uri;
-    }
-  }
-
-  private shuffleVariantArray() {
-    for (let i = this.variantUris.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [this.variantUris[i], this.variantUris[j]] = [
-        this.variantUris[j],
-        this.variantUris[i],
-      ];
-    }
-  }
-
-  private setVariantLoopTarget() {
-    const minLoops = this.config.minVariantLoops ?? 2;
-    const maxLoops = this.config.maxVariantLoops ?? 4;
-    this.variantLoopTarget =
-      Math.floor(Math.random() * (maxLoops - minLoops + 1)) + minLoops;
-  }
-
-  public getCurrentUri(): string {
-    return this.currentVariantUri;
-  }
-
-  public getVariantLoopCount(): number {
-    return this.variantLoopCount;
-  }
-
-  public getVariantLoopTarget(): number {
-    return this.variantLoopTarget;
-  }
-
-  public shouldSwitchVariant(): boolean {
-    if (this.variantUris.length <= 1) return false;
-    return this.variantLoopCount >= this.variantLoopTarget;
-  }
-
-  public selectNextVariant(): string {
-    if (this.variantUris.length <= 1) return this.currentVariantUri;
-
-    this.variantLoopCount = 0;
-    this.currentVariantIndex =
-      (this.currentVariantIndex + 1) % this.variantUris.length;
-
-    // If we've completed a full cycle, reshuffle
-    if (this.currentVariantIndex === 0) {
-      this.shuffleVariantArray();
-    }
-
-    this.currentVariantUri = this.variantUris[this.currentVariantIndex];
-    this.setVariantLoopTarget();
-
-    return this.currentVariantUri;
-  }
-
-  public incrementVariantLoopCount() {
-    this.variantLoopCount++;
-  }
-
-  public async loadAllVariantBuffers(): Promise<void> {
-    if (this.variantUris.length === 0) return;
-
-    const loadPromises = this.variantUris.map((uri) =>
-      this.loadVariantBuffer(uri)
-    );
-    await Promise.all(loadPromises);
-  }
-
-  private async loadVariantBuffer(uri: string): Promise<IAudioBuffer> {
-    if (this.variantBuffers.has(uri)) {
-      return this.variantBuffers.get(uri)!;
-    }
-
-    if (this.variantLoadingPromises.has(uri)) {
-      return this.variantLoadingPromises.get(uri)!;
-    }
-
-    const loadPromise = this.loadAudioBuffer(uri);
-    this.variantLoadingPromises.set(uri, loadPromise);
-
-    try {
-      const buffer = await loadPromise;
-      this.variantBuffers.set(uri, buffer);
-      this.variantLoadingPromises.delete(uri);
-      return buffer;
-    } catch (error) {
-      this.variantLoadingPromises.delete(uri);
-      // Remove failed URI from rotation
-      const index = this.variantUris.indexOf(uri);
-      if (index > -1) {
-        this.variantUris.splice(index, 1);
-        // Adjust current index if necessary
-        if (this.currentVariantIndex >= this.variantUris.length) {
-          this.currentVariantIndex = 0;
-        }
-      }
-      throw error;
-    }
-  }
-
-  private async loadAudioBuffer(uri: string): Promise<IAudioBuffer> {
-    return new Promise((resolve, reject) => {
-      const request = new XMLHttpRequest();
-      request.open("GET", uri, true);
-      request.timeout = Infinity;
-      request.responseType = "arraybuffer";
-
-      request.onload = () => {
-        const audioData = request.response;
-        this.audioContext.decodeAudioData(
-          audioData,
-          (buffer) => resolve(buffer),
-          (error) => reject(error)
-        );
-      };
-
-      request.onerror = () =>
-        reject(new Error(`Failed to load audio from ${uri}`));
-      request.send();
-    });
-  }
-
-  public unloadVariantBuffers() {
-    this.variantBuffers.clear();
-    this.variantLoadingPromises.clear();
-  }
-
-  public getVariantBuffer(uri: string): IAudioBuffer | null {
-    return this.variantBuffers.get(uri) || null;
-  }
-
-  // Public methods for variant preprocessing
-  public getVariantUris(): string[] {
-    return this.variantUris;
-  }
-
-  public getGainNode(): IGainNode<IAudioContext> | null {
-    return this.gainNode || null;
-  }
-
-  public getBufferSource(): IAudioBufferSourceNode<IAudioContext> | null {
-    return this.bufferSource || null;
-  }
-
-  public setBufferSource(
-    bufferSource: IAudioBufferSourceNode<IAudioContext> | null
-  ) {
-    this.bufferSource = bufferSource;
-  }
-
-  public clearBufferSourcePublic() {
-    this.clearBufferSource();
   }
 
   toString() {

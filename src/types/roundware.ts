@@ -12,23 +12,26 @@ import { IAssetFilters } from "./asset";
 
 import { ISpeakerFilters } from "./speaker";
 
+/** Optional factory for React Native. When provided, use expo-av with the same method names (createGain, createStereoPanner, createExpoAvElement, etc.). */
+export type CreateAudioContextFn = () => IAudioContextLike;
+
+/** Minimal shape used by Mixer/playback. Web uses standardized-audio-context IAudioContext. RN can use expo-av context with same method names. */
+export interface IAudioContextLike {
+  readonly state: string;
+  resume(): Promise<void>;
+  readonly currentTime: number;
+  __isExpoAv?: boolean;
+  __expoAvAudio?: unknown;
+  createGain?(): unknown;
+  createStereoPanner?(): unknown;
+  createExpoAvElement?(gainNode: unknown, panNode: unknown): unknown;
+}
+
 export interface IOptions {
   apiClient?: ApiClient;
   deviceId: string;
   clientType?: string;
   geoListenMode: GeoListenModeType;
-  /** Enable EMA-based geo smoothing (default: false) */
-  geoSmoothingEnabled?: boolean;
-  /** EMA alpha in [0,1], lower = more smoothing (default: 0.15) */
-  geoSmoothingAlpha?: number;
-  /** Discard updates with accuracy worse than this (meters). Default: 20 */
-  geoSmoothingMinAccuracyMeters?: number;
-  /** Minimum movement before emitting new point (meters). Default: 0 (disabled) */
-  geoSmoothingMinEmitDeltaMeters?: number;
-  /** Reset EMA if jump exceeds this (meters). Default: 50 */
-  geoSmoothingResetJumpMeters?: number;
-  /** Throttle geolocation update handling (ms). Default: 0 (no throttle) */
-  geoUpdateThrottleMs?: number;
 }
 export interface IRoundwareConstructorOptions extends IOptions {
   serverUrl: string;
@@ -47,6 +50,8 @@ export interface IRoundwareConstructorOptions extends IOptions {
   assetUpdateInterval?: number;
   keepPausedAssets?: boolean;
   speakerConfig: SpeakerConfig;
+  /** Optional. When provided (e.g. React Native), use expo-av context with same method names (createGain, createStereoPanner, createExpoAvElement). */
+  createAudioContext?: CreateAudioContextFn;
 }
 
 export type EffectsConfig = {
@@ -54,9 +59,7 @@ export type EffectsConfig = {
   fadeInDurationInMs?: number;
   delayTimeInMs?: number;
   feedback?: number;
-  wetDryRatio?: number; // Wet vs dry ratio (0-1, 0=no reverb, 1=all wet)
-  reverbRoomSize?: number; // Room size (0-1)
-  reverbDamping?: number; // High frequency damping (0-1)
+  reverb?: number;
   pan?: number[];
 };
 
@@ -77,38 +80,10 @@ export type SpeakerConfig = {
   replaceWithNoneProbability?: number;
   slotConsiderationProbability?: number;
   loopPointUpdateProbability?: number;
-  // probability that each individual speaker slot will rotate to a different available speaker
-  // 0.0 = never rotate, 1.0 = always rotate (not recommended)
-  speakerRotationProbability?: number;
   // list of fractions from which app will select randomly one of
-  // negative values will play the audio in reverse for the specified fraction
-  // e.g., [1/2, 1/1, -1/2, 1/8] - negative values play backwards
   loopFractions?: number[];
   effects?: EffectsConfig;
 
   // distance before starting the fetch
   prefetchDistanceMeters?: number;
-
-  // variant URI configuration
-  minVariantLoops?: number; // default: 2
-  maxVariantLoops?: number; // default: 4
-  variantCrossfadeDurationMs?: number; // default: 1000
-
-  // always-on speakers - these speakers will always play when available (in range)
-  alwaysOnWhenAvailable?: number[]; // array of speaker IDs that should always play when available
-
-  // new speaker fade-in configuration
-  newSpeakerFadeInDurationMs?: number; // default: 2000 (2 seconds)
-
-  // newly submitted speaker priority configuration
-  prioritizeNewlySubmitted?: boolean; // default: true - whether to prioritize newly submitted speakers
-  newlySubmittedPriorityDurationMs?: number; // default: 30000 (30 seconds) - how long to prioritize newly submitted speakers
-
-  // GPS smoothing configuration
-  geoSmoothingEnabled?: boolean; // Enable EMA-based geo smoothing (default: false)
-  geoSmoothingAlpha?: number; // EMA alpha in [0,1], lower = more smoothing (default: 0.15)
-  geoSmoothingMinAccuracyMeters?: number; // Discard updates with accuracy worse than this (meters). Default: 20
-  geoSmoothingMinEmitDeltaMeters?: number; // Minimum movement before emitting new point (meters). Default: 0 (disabled)
-  geoSmoothingResetJumpMeters?: number; // Reset EMA if jump exceeds this (meters). Default: 50
-  geoUpdateThrottleMs?: number; // Throttle geolocation update handling (ms). Default: 0 (no throttle)
 };
