@@ -36,12 +36,11 @@ import { ISpeakerData, ISpeakerFilters } from "./types/speaker";
 import { User } from "./user";
 
 export * from "./assetFilters";
-export { GeoListenMode, Roundware };
 
-  import bbox from "@turf/bbox";
-  import buffer from "@turf/buffer";
-  import { featureCollection, multiPolygon } from "@turf/helpers";
-  import { ListenHistory } from "./listenHistory";
+import { multiPolygon, featureCollection } from "@turf/helpers";
+import bbox from "@turf/bbox";
+import buffer from "@turf/buffer";
+import { ListenHistory } from "./listenHistory";
 
 /** This class is the primary integration point between Roundware's server and your application
 
@@ -185,7 +184,14 @@ class Roundware {
     const newOptions: Required<IOptions> = options as Required<IOptions>;
     newOptions.apiClient = this.apiClient;
 
+    console.log("FW DEBUG STEP 1 — Checking Navigator");
+
+    console.log("global =", global);
+    console.log("global.navigator =", global.navigator);
+
     let navigator: any = global.navigator || {};
+
+    console.log("Navigator Used =", navigator);
 
     // TODO need to reorganize/refactor these classes
     this.user =
@@ -200,13 +206,6 @@ class Roundware {
       new GeoPosition(navigator, {
         geoListenMode: newOptions.geoListenMode,
         defaultCoords: listenerLocation,
-        geoSmoothingEnabled: newOptions.geoSmoothingEnabled,
-        geoSmoothingAlpha: newOptions.geoSmoothingAlpha,
-        geoSmoothingMinAccuracyMeters: newOptions.geoSmoothingMinAccuracyMeters,
-        geoSmoothingMinEmitDeltaMeters:
-          newOptions.geoSmoothingMinEmitDeltaMeters,
-        geoSmoothingResetJumpMeters: newOptions.geoSmoothingResetJumpMeters,
-        geoUpdateThrottleMs: newOptions.geoUpdateThrottleMs,
       });
     this._session =
       session ||
@@ -410,9 +409,14 @@ class Roundware {
       }
     }
 
-    // also fetch timedAssetData if not available
+    // also fetch timedAssetData if not available (resilient to 401/network)
     if (!Array.isArray(this.timedAssetData)) {
-      this.timedAssetData = await this._timed_asset.connect({});
+      try {
+        this.timedAssetData = await this._timed_asset.connect({});
+      } catch (err) {
+        console.warn("Roundware: timed assets fetch failed.", err);
+        this.timedAssetData = [];
+      }
     }
 
     this._lastAssetUpdate = new Date();
@@ -427,9 +431,14 @@ class Roundware {
   }
 
   async loadAssetPool(): Promise<IAssetData[]> {
-    // fetch timedAssetData before updating assetPool
+    // fetch timedAssetData before updating assetPool (resilient to 401/network)
     if (!Array.isArray(this.timedAssetData)) {
-      this.timedAssetData = await this._timed_asset.connect({});
+      try {
+        this.timedAssetData = await this._timed_asset.connect({});
+      } catch (err) {
+        console.warn("Roundware: timed assets fetch failed, continuing without.", err);
+        this.timedAssetData = [];
+      }
     }
 
     // Options passed here should only need to go into the assets/ call.
@@ -528,7 +537,7 @@ class Roundware {
     return this.timedAssetData || [];
   }
 
-  audiotracks(): IAudioTrackData[] {
+  audiotracks(): IAudioTrackData[] | [] {
     return this._audioTracksData || [];
   }
 
@@ -651,3 +660,4 @@ class Roundware {
     };
   }
 }
+export { GeoListenMode, Roundware };

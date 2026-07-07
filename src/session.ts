@@ -16,25 +16,28 @@ export class Session {
    * @param {apiClient} options.apiClient - the API client object to use for server API calls
    **/
   constructor(
-    navigator: Window[`navigator`],
-    newProjectId: number,
-    geoListenEnablement: boolean,
-    options: {
-      apiClient: ApiClient;
-    }
-  ) {
-    this.clientSystem = navigator.userAgent;
-
-    if (this.clientSystem.length > 127) {
-      // on mobile browsers, this string is longer than the server wants
-      this.clientSystem = this.clientSystem.slice(0, 127);
-    }
-
-    this.projectId = newProjectId;
-    this.geoListenEnabled = geoListenEnablement;
-
-    this.apiClient = options.apiClient;
+  navigator: Window[`navigator`],
+  newProjectId: number,
+  geoListenEnablement: boolean,
+  options: {
+    apiClient: ApiClient;
   }
+) {
+
+  this.clientSystem =
+    navigator && typeof navigator.userAgent === "string"
+      ? navigator.userAgent
+      : "ReactNative-Expo";
+
+  if (this.clientSystem.length > 127) {
+    this.clientSystem = this.clientSystem.slice(0, 127);
+  }
+
+  this.projectId = newProjectId;
+  this.geoListenEnabled = geoListenEnablement;
+
+  this.apiClient = options.apiClient;
+}
 
   /** @returns {String} human-readable representation of this session **/
   toString(): string {
