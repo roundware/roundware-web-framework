@@ -376,6 +376,10 @@ describe("getUrlParam", () => {
     const result = getUrlParam(url, "param2");
     expect(result).toBe("value2");
   });
+
+  it("should return null for an empty URL (e.g. React Native without window.location)", () => {
+    expect(getUrlParam("", "param")).toBeNull();
+  });
 });
 
 describe("NO_OP", () => {

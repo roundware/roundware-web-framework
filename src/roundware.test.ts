@@ -624,7 +624,6 @@ describe('Roundware', () => {
       const setIntervalCallback = setIntervalSpy.mock.calls[0][0];
       
       // Call the callback function
-      // @ts-expect-error - TimerHandler can be a function or string, but we know it's a function here
       await setIntervalCallback();
       
       expect(updateAssetPoolSpy).toHaveBeenCalled();
