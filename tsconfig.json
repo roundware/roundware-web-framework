@@ -3,31 +3,26 @@
     "src",
     "./index.d.ts"
   ],
-  "compilerOptions": {
-    "outDir": "./dist/",
-    "target": "ES6",
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "lib": [
-      "ES6",
-      "DOM"
-    ],
-    "strict": false,
-    "noImplicitAny": false,
-    "noImplicitReturns": false,
-    "noImplicitThis": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "skipLibCheck": true,
-    // Ensure that .d.ts files are created by tsc, but not .js files
-    "declaration": true,
-    // Ensure that Babel can safely transpile files in the TypeScript project
-    "isolatedModules": true,
-    "esModuleInterop": true
-  },
   "exclude": [
     "node_modules",
     "dist",
     "**/*.test.ts"
-  ]
+  ],
+  "compilerOptions": {
+    "outDir": "./dist/",
+    "rootDir": "./src",
+    "target": "ES6",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "lib": [
+      "ES2017",
+      "DOM"
+    ],
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "isolatedModules": true,
+    "esModuleInterop": true
+  }
 }
