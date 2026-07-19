@@ -10,8 +10,9 @@
   "files": [
     "dist"
   ],
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "react-native": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "test": "jest",
@@ -45,6 +46,7 @@
     "@babel/preset-typescript": "^7.26.0",
     "@faker-js/faker": "^7.6.0",
     "@types/jest": "^28.1.8",
+    "@types/node": "^20.0.0",
     "@types/sinon": "^17.0.3",
     "@types/ws": "^8.5.4",
     "babel-loader": "^9.2.1",
