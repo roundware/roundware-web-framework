@@ -11,7 +11,6 @@ import {
 } from "standardized-audio-context";
 import { SpeakerConfig } from "../types/roundware";
 import { ISpeakerData } from "../types/speaker";
-import { speakerLog } from "../utils";
 
 import {
   Feature,
@@ -191,7 +190,6 @@ export class SpeakerTrack extends EventEmitter<{
     };
     if (expoCtx.__isExpoAv && expoCtx.__expoAvAudio) {
       if (this._expoSound || this.buffer) return;
-      this.log("Loading audio (expo-av)");
       const Audio = expoCtx.__expoAvAudio;
       Audio.Sound.createAsync(
         { uri: this.uri },
@@ -210,9 +208,7 @@ export class SpeakerTrack extends EventEmitter<{
           this.request = null;
           this.emit("loaded");
         });
-      }).catch((e: Error) => {
-        this.log("Error loading audio " + (e?.message || String(e)));
-      });
+      }).catch(() => {});
       return;
     }
 
@@ -225,7 +221,6 @@ export class SpeakerTrack extends EventEmitter<{
     }
 
     this.request = new XMLHttpRequest();
-    this.log("Fetching audio");
     this.request.open("GET", this.uri, true);
     this.request.timeout = Infinity;
     this.request.responseType = "arraybuffer";
@@ -303,24 +298,49 @@ export class SpeakerTrack extends EventEmitter<{
       const sound = (this as any)._expoSound;
       const vol = Math.max(0, Math.min(1, this.calculatedVolume));
       const panClamped = Math.max(-1, Math.min(1, pan));
-      // expo-av: no setPanAsync; pan is 2nd arg to setVolumeAsync on iOS. Android: use volume only.
-      const applyVol = expoCtx.__androidVolumeOnly
-        ? sound.setVolumeAsync(vol)
-        : sound.setVolumeAsync(vol, panClamped);
-      void applyVol.then(() =>
-        sound.playFromPositionAsync(Math.round((offset || 0) * 1000))
-      );
-      this.bufferSourcePlaying = true;
-      this.startedAtContextTime = (this.audioContext as any).currentTime - (offset || 0);
-      this.emit("playing");
-      sound.setOnPlaybackStatusUpdate((status: any) => {
-        if (!status?.isLoaded) return;
-        if (status.didJustFinishAndNotLoop) {
-          this.bufferSourcePlaying = false;
-          this.clearBufferSource();
-          this.emit("trackFinished");
+      const positionMillis = Math.round((offset || 0) * 1000);
+
+      if (this.stopTimeout) {
+        clearTimeout(this.stopTimeout);
+        this.stopTimeout = null;
+      }
+
+      void (async () => {
+        // Only stop when already playing — stopAsync on a fresh sound can block first play
+        if (this.bufferSourcePlaying) {
+          try {
+            sound.setOnPlaybackStatusUpdate(null);
+            await sound.stopAsync();
+          } catch {
+            // already stopped
+          }
         }
-      });
+
+        try {
+          if (expoCtx.__androidVolumeOnly) {
+            await sound.setVolumeAsync(vol);
+          } else {
+            await sound.setVolumeAsync(vol, panClamped);
+          }
+          await sound.playFromPositionAsync(positionMillis);
+          this.bufferSourcePlaying = true;
+          this.startedAtContextTime =
+            (this.audioContext as any).currentTime - (offset || 0);
+          this.emit("playing");
+
+          sound.setOnPlaybackStatusUpdate((status: any) => {
+            if (!status?.isLoaded) return;
+            // expo-av finish flag (didJustFinishAndNotLoop does not exist)
+            if (status.didJustFinish && !status.isLooping) {
+              sound.setOnPlaybackStatusUpdate(null);
+              this.bufferSourcePlaying = false;
+              this.emit("trackFinished");
+            }
+          });
+        } catch {
+          this.bufferSourcePlaying = false;
+        }
+      })();
       return;
     }
 
@@ -433,7 +453,6 @@ export class SpeakerTrack extends EventEmitter<{
     );
 
     this.stopTimeout = setTimeout(() => {
-      console.debug("Stopping from timeout");
       this.stopBufferSource();
     }, FADE_DURATION_SECONDS * 1000);
   }
@@ -458,7 +477,6 @@ export class SpeakerTrack extends EventEmitter<{
     }
     if (this.bufferSource) {
       this.bufferSource.stop();
-      console.trace("stopBufferSource");
       this.bufferSourcePlaying = false;
     }
   }
@@ -491,6 +509,16 @@ export class SpeakerTrack extends EventEmitter<{
   }
 
   fadeBufferSourceToVolume(volume: number) {
+    if (this._expoSound) {
+      if (this.stopTimeout) {
+        clearTimeout(this.stopTimeout);
+        this.stopTimeout = null;
+      }
+      const vol = Math.max(0, Math.min(1, volume || NEARLY_ZERO));
+      void this._expoSound.setVolumeAsync(vol);
+      return;
+    }
+
     if (!this.gainNode) {
       return;
     }
@@ -507,9 +535,7 @@ export class SpeakerTrack extends EventEmitter<{
     );
   }
 
-  log(string: string) {
-    speakerLog(`${this.data.id}] ` + string);
-  }
+  log(_string: string) {}
 
   toString() {
     const {

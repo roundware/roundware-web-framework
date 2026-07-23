@@ -303,7 +303,7 @@ export class SpeakerEngine extends EventEmitter<{
   updateNonBaseTracks() {
     // loopPointUpdateProbability; should ignore this call?
     const loopPointUpdateProbability =
-      this.mixParams.speakerConfig?.loopPointUpdateProbability || 1;
+      this.mixParams.speakerConfig?.loopPointUpdateProbability ?? 1;
 
     // return if should not update
     if (
@@ -344,7 +344,7 @@ export class SpeakerEngine extends EventEmitter<{
     for (let i = 1; i < this.mode.maxRandom; i++) {
       // slotConsiderationProbability
       const slotConsiderationProbability =
-        this.mixParams.speakerConfig?.slotConsiderationProbability || 1;
+        this.mixParams.speakerConfig?.slotConsiderationProbability ?? 1;
 
       const speakerId = this.playingTracks[i];
       const speaker = speakerId ? this.getSpeakerTrackById(speakerId) : null;
