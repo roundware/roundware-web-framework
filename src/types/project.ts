@@ -6,7 +6,6 @@ export interface IProjectData {
   description?: string;
   default_language_id?: number;
   language_ids: number[];
-  audio_format: string;
   auto_submit: boolean;
   max_recording_length_sec: number;
   listen_enabled: boolean;
