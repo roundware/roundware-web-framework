@@ -8,6 +8,55 @@ import { SpeakerEngine } from "./speaker_engine";
 import { SpeakerTrack } from "./speaker_track";
 import { LoadingStrategy, PlayingMode, SpeakerUtils } from "./speaker_utils";
 
+/**
+ * A stand-in AudioContext for the SpeakerEngine constructor.
+ *
+ * Since e698f18 ("implement audio effects processing system") the constructor
+ * builds a master mix — four gain nodes, connected to each other and to the
+ * destination. Most describe blocks here were written before that and gave the
+ * engine `{ currentTime: 0 }`, so the constructor threw
+ * "createGain is not a function" and every test in those blocks failed before
+ * reaching its own assertions. This supplies what the constructor needs and
+ * nothing more; blocks that assert on audio nodes still build their own.
+ */
+const makeMockGainNode = () => ({
+  gain: {
+    value: 1,
+    setValueAtTime: jest.fn(),
+    linearRampToValueAtTime: jest.fn(),
+    exponentialRampToValueAtTime: jest.fn(),
+    cancelScheduledValues: jest.fn(),
+    cancelAndHoldAtTime: jest.fn(),
+  },
+  connect: jest.fn(),
+  disconnect: jest.fn(),
+});
+
+/**
+ * Variant methods for a fake SpeakerTrack, describing a speaker with no
+ * variants: its loop count ticks but it never switches recording.
+ *
+ * Variant switching runs for every playing track at each loop point, so a
+ * fake speaker without these throws "getVariantLoopCount is not a function"
+ * in any test that reaches onLoopPoint — which is how tests written before
+ * variants started failing. Tests about variants should override these.
+ */
+const makeVariantStubs = () => ({
+  getVariantLoopCount: jest.fn().mockReturnValue(0),
+  getVariantLoopTarget: jest.fn().mockReturnValue(0),
+  incrementVariantLoopCount: jest.fn(),
+  shouldSwitchVariant: jest.fn().mockReturnValue(false),
+  selectNextVariant: jest.fn(),
+  getCurrentUri: jest.fn().mockReturnValue("test-audio.mp3"),
+});
+
+const makeMockAudioContext = (): IAudioContext =>
+  ({
+    currentTime: 0,
+    destination: {},
+    createGain: jest.fn(() => makeMockGainNode()),
+  }) as unknown as IAudioContext;
+
 // Test constants
 const LOOP_FRACTIONS = [1, 0.5, 0.25, 0.125];
 
@@ -129,6 +178,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -1173,6 +1223,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
 
     // Verify playWithConfig was called with correct configuration
     expect(track.playWithConfig).toHaveBeenCalledWith({
+      isNewSpeaker: false,
       duration: 30,
       offset: 0,
       fadeInDuration: FADE_IN_DURATION_SECONDS,
@@ -1832,9 +1883,7 @@ describe("SpeakerEngine", () => {
   let mockConfig: SpeakerConfig;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockConfig = { mode: "progressive-sync" };
 
@@ -2028,14 +2077,18 @@ describe("SpeakerEngine", () => {
       it("should stop playback and clean up resources", async () => {
         // Setup mock speakers
         const mockSpeaker1 = {
+          data: { id: 1 },
           clearListeners: jest.fn(),
           bufferSourcePlaying: true,
+          ...makeVariantStubs(),
           abortBufferSource: jest.fn(),
         } as unknown as SpeakerTrack;
 
         const mockSpeaker2 = {
+          data: { id: 2 },
           clearListeners: jest.fn(),
           bufferSourcePlaying: false,
+          ...makeVariantStubs(),
           abortBufferSource: jest.fn(),
         } as unknown as SpeakerTrack;
 
@@ -2244,9 +2297,7 @@ describe("SpeakerEngine - calculateVolumesByLocation", () => {
   let mockConfig: SpeakerConfig;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockConfig = { mode: "progressive-sync" };
 
@@ -2299,9 +2350,7 @@ describe("SpeakerEngine - group initialization", () => {
     // Mock console.debug
     jest.spyOn(console, "debug").mockImplementation(() => {});
 
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockConfig = { mode: "progressive-sync" };
 
@@ -2536,9 +2585,7 @@ describe("SpeakerEngine - currentBaseTrackId", () => {
   let mockConfig: SpeakerConfig;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockConfig = { mode: "progressive-sync" };
 
@@ -2590,9 +2637,7 @@ describe("SpeakerEngine - onLocationUpdateProgressiveBasePlusMaxNRandom", () => 
   let mockBaseTrack: jest.Mocked<SpeakerTrack>;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockConfig = { mode: "progressive-sync-basePlusMax5Random" };
 
@@ -2617,6 +2662,7 @@ describe("SpeakerEngine - onLocationUpdateProgressiveBasePlusMaxNRandom", () => 
       },
       bufferSourcePlaying: false,
       loopConfig: { pan: 0, duration: 10, times: 1 },
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
       groupId: 1,
@@ -2652,6 +2698,7 @@ describe("SpeakerEngine - onLocationUpdateProgressiveBasePlusMaxNRandom", () => 
       },
       bufferSourcePlaying: false,
       loopConfig: { pan: 0, duration: 10, times: 1 },
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
       groupId: 1,
@@ -3130,9 +3177,7 @@ describe("SpeakerEngine - onLoopPoint", () => {
   let mockBaseTrack: jest.Mocked<SpeakerTrack>;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockConfig = { mode: "progressive-sync" };
 
@@ -3141,6 +3186,7 @@ describe("SpeakerEngine - onLoopPoint", () => {
       data: { id: 1 },
       bufferSourcePlaying: false,
       loopConfig: { pan: 0, duration: 10, times: 1 },
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
       groupId: 1,
@@ -3160,6 +3206,7 @@ describe("SpeakerEngine - onLoopPoint", () => {
       data: { id: 2 },
       bufferSourcePlaying: false,
       loopConfig: { pan: 0, duration: 10, times: 1 },
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
       groupId: 1,
@@ -3558,9 +3605,7 @@ describe("SpeakerEngine - playAsBaseTrack", () => {
   let mockSpeakerTrack: jest.Mocked<SpeakerTrack>;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockConfig = { mode: "progressive-sync" };
 
@@ -3679,6 +3724,7 @@ describe("SpeakerEngine - playAsBaseTrack", () => {
     speakerEngine.playAsBaseTrack(mockSpeakerTrack, false);
 
     expect(mockSpeakerTrack.playWithConfig).toHaveBeenCalledWith({
+      isNewSpeaker: false,
       duration: 10,
       offset: 0,
       fadeInDuration: FADE_IN_DURATION_SECONDS,
@@ -3706,6 +3752,7 @@ describe("SpeakerEngine - playAsBaseTrack", () => {
     speakerEngine.playAsBaseTrack(mockSpeakerTrack, true);
 
     expect(mockSpeakerTrack.playWithConfig).toHaveBeenCalledWith({
+      isNewSpeaker: false,
       duration: 10,
       offset: 0,
       fadeInDuration: 0,
@@ -3781,9 +3828,8 @@ describe("SpeakerEngine - fadeOutLoopFromLoopPoint", () => {
   let mockSpeakerTrack: jest.Mocked<SpeakerTrack>;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 25, // Set current time to 25 seconds
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
+    Object.defineProperty(mockAudioContext, "currentTime", { value: 25 }); // 25 seconds in
 
     mockConfig = { mode: "progressive-sync" };
 
@@ -3803,6 +3849,7 @@ describe("SpeakerEngine - fadeOutLoopFromLoopPoint", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -3893,6 +3940,7 @@ describe("SpeakerEngine - fadeOutLoopFromLoopPoint", () => {
 
     // Verify fade out was played
     expect(mockSpeakerTrack.playWithConfig).toHaveBeenCalledWith({
+      isNewSpeaker: false,
       duration: expect.any(Number),
       fadeInDuration: 0,
       offset: expect.any(Number),
@@ -3955,6 +4003,7 @@ describe("SpeakerEngine - fadeOutLoopFromLoopPoint", () => {
 
     // Verify fade out was played
     expect(mockSpeakerTrack.playWithConfig).toHaveBeenCalledWith({
+      isNewSpeaker: false,
       duration: expect.any(Number),
       fadeInDuration: 0,
       offset: expect.any(Number),
@@ -3993,9 +4042,7 @@ describe("SpeakerEngine - Constructor", () => {
   let mockSpeakerData: ISpeakerData[];
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockSpeakerData = [
       {
@@ -4109,9 +4156,7 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
   let emitSpy: jest.Mock;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockConfig = { mode: "progressive-sync-basePlusMax5Random" };
 
@@ -4131,6 +4176,7 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -4168,6 +4214,7 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -4255,6 +4302,7 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -4293,6 +4341,7 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -4332,6 +4381,8 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
 
     // Verify playWithConfig was called with correct parameters
     expect(newSpeaker.playWithConfig).toHaveBeenCalledWith({
+      isNewSpeaker: true,
+      isReverse: false,
       duration: expect.any(Number),
       offset: 0,
       fadeInDuration: expect.any(Number),
@@ -4360,6 +4411,7 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -4427,6 +4479,7 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -4493,6 +4546,7 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -4565,9 +4619,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
   let mockSpeakerTrack: jest.Mocked<SpeakerTrack>;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockConfig = { mode: "progressive-sync" };
 
@@ -4587,6 +4639,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -4626,6 +4679,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint", () => {
         duration: 5,
         times: 2,
       },
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
     } as unknown as jest.Mocked<SpeakerTrack>;
@@ -4685,9 +4739,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint error cases", () => {
   let mockConfig: SpeakerConfig = { mode: "progressive-sync" };
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockSpeakerTrack = {
       data: { id: 1 },
@@ -4705,6 +4757,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint error cases", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -4780,9 +4833,7 @@ describe("SpeakerEngine - fadeOutLoopFromLoopPoint error cases", () => {
   let mockConfig: SpeakerConfig;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockSpeakerTrack = {
       data: { id: 1 },
@@ -4800,6 +4851,7 @@ describe("SpeakerEngine - fadeOutLoopFromLoopPoint error cases", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -4883,9 +4935,7 @@ describe("SpeakerEngine - getSpeakerTrackById error cases", () => {
   let mockConfig: SpeakerConfig;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockSpeakerTrack = {
       data: { id: 1 },
@@ -4903,6 +4953,7 @@ describe("SpeakerEngine - getSpeakerTrackById error cases", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -4971,9 +5022,7 @@ describe("SpeakerEngine - listenerPoint getter error cases", () => {
   let mockConfig: SpeakerConfig;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockSpeakerTrack = {
       data: { id: 1 },
@@ -4991,6 +5040,7 @@ describe("SpeakerEngine - listenerPoint getter error cases", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -5060,9 +5110,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint error cases", () => {
   let mockConfig: SpeakerConfig;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockSpeakerTrack = {
       data: { id: 1 },
@@ -5080,6 +5128,7 @@ describe("SpeakerEngine - repeatLoopOnLoopPoint error cases", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -5157,9 +5206,7 @@ describe("SpeakerEngine - play", () => {
   let mockConfig: SpeakerConfig;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockSpeakerTrack = {
       data: { id: 1 },
@@ -5177,6 +5224,7 @@ describe("SpeakerEngine - play", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),
@@ -5288,9 +5336,7 @@ describe("SpeakerEngine - updateParams", () => {
   let mockConfig: SpeakerConfig;
 
   beforeEach(() => {
-    mockAudioContext = {
-      currentTime: 0,
-    } as unknown as IAudioContext;
+    mockAudioContext = makeMockAudioContext();
 
     mockSpeakerTrack = {
       data: {
@@ -5324,6 +5370,7 @@ describe("SpeakerEngine - updateParams", () => {
       clearListeners: jest.fn(),
       fadeOutAndStopBufferSource: jest.fn(),
       playWithConfig: jest.fn(),
+      ...makeVariantStubs(),
       abortBufferSource: jest.fn(),
       stopBufferSource: jest.fn(),
       clearBufferSource: jest.fn(),

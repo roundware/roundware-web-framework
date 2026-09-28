@@ -196,7 +196,7 @@ export class SpeakerEngine extends EventEmitter<{
 
       // Create feedback gain node
       this.masterFeedbackGainNode = this.audioContext.createGain();
-      this.masterFeedbackGainNode.gain.value = effects.feedback || 0.5;
+      this.masterFeedbackGainNode.gain.value = effects.feedback ?? 0.5;
 
       // Connect delay with feedback loop
       this.masterDelayNode.connect(this.masterFeedbackGainNode);
@@ -743,8 +743,10 @@ export class SpeakerEngine extends EventEmitter<{
     this.ensureAlwaysOnSpeakersArePlaying();
 
     // loopPointUpdateProbability; should ignore this call?
+    // `??`, not `||`: 0 is a real setting ("never update at loop points"),
+    // and `|| 1` silently turned it into "always".
     const loopPointUpdateProbability =
-      this.mixParams.speakerConfig?.loopPointUpdateProbability || 1;
+      this.mixParams.speakerConfig?.loopPointUpdateProbability ?? 1;
 
     // return if should not update
     if (
@@ -893,7 +895,7 @@ export class SpeakerEngine extends EventEmitter<{
 
       // Current speaker is no longer available, doesn't exist, or we're rotating it - need to replace
       const slotConsiderationProbability =
-        this.mixParams.speakerConfig?.slotConsiderationProbability || 1;
+        this.mixParams.speakerConfig?.slotConsiderationProbability ?? 1;
 
       // return if should not update
       if (

@@ -568,6 +568,7 @@ describe('SpeakerTrack', () => {
           {}
         );
         expect(mockComposeBuffer).toHaveBeenCalledWith({
+          isReverse: false,
           duration: 10,
           times: 2,
           fadeInDuration: 1,
@@ -766,7 +767,7 @@ describe('SpeakerTrack', () => {
       expect(mockGainNode.gain.cancelAndHoldAtTime).toHaveBeenCalled();
       expect(mockGainNode.gain.exponentialRampToValueAtTime).toHaveBeenCalled();
 
-      jest.advanceTimersByTime(3000); // FADE_DURATION_SECONDS * 1000
+      jest.advanceTimersByTime(4000); // FADE_DURATION_SECONDS * 1000
       expect(mockBufferSource.stop).toHaveBeenCalled();
     });
 
@@ -797,31 +798,72 @@ describe('SpeakerTrack', () => {
       expect(mockGainNode.gain.exponentialRampToValueAtTime).not.toHaveBeenCalled();
     });
 
-    it('should clear existing stop timeout', () => {
-      const mockClearTimeout = jest.spyOn(global, 'clearTimeout');
-      speakerTrack.stopTimeout = setTimeout(() => {}, 1000);
+    // Volume changes are debounced by 50ms and ramp over 0.6s, floored at
+    // 0.05 (MIN_AUDIBLE), and skipped when the change is under 0.01 — added to
+    // stop rapid location updates causing audible stutter. These tests used to
+    // expect an immediate ramp over FADE_DURATION_SECONDS, which predates that.
+    const VOLUME_DEBOUNCE_MS = 50;
+    const VOLUME_RAMP_SECONDS = 0.6;
+
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it('should cancel a pending stop once the debounce fires', () => {
+      // Asserted by effect rather than by spying on clearTimeout: a spy taken
+      // under fake timers breaks the global for later tests once real timers
+      // are restored.
+      const pendingStop = jest.fn();
+      speakerTrack.stopTimeout = setTimeout(pendingStop, 1000);
       speakerTrack.fadeBufferSourceToVolume(0.5);
-      expect(mockClearTimeout).toHaveBeenCalled();
+      jest.advanceTimersByTime(VOLUME_DEBOUNCE_MS);
       expect(speakerTrack.stopTimeout).toBeNull();
+      jest.advanceTimersByTime(1000);
+      expect(pendingStop).not.toHaveBeenCalled();
     });
 
     it('should set up exponential ramp for volume change', () => {
+      mockGainNode.gain.value = 0;
       const targetVolume = 0.7;
       speakerTrack.fadeBufferSourceToVolume(targetVolume);
-      
+      jest.advanceTimersByTime(VOLUME_DEBOUNCE_MS);
+
       expect(mockGainNode.gain.cancelAndHoldAtTime).toHaveBeenCalledWith(mockAudioContext.currentTime);
       expect(mockGainNode.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(
         targetVolume,
-        mockAudioContext.currentTime + 3 // FADE_DURATION_SECONDS
+        mockAudioContext.currentTime + VOLUME_RAMP_SECONDS
       );
     });
 
-    it('should use NEARLY_ZERO when volume is falsy', () => {
+    it('should floor a falsy volume at the minimum audible level', () => {
+      mockGainNode.gain.value = 1;
       speakerTrack.fadeBufferSourceToVolume(0);
+      jest.advanceTimersByTime(VOLUME_DEBOUNCE_MS);
       expect(mockGainNode.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(
-        0.05, // NEARLY_ZERO
-        mockAudioContext.currentTime + 3 // FADE_DURATION_SECONDS
+        0.05, // MIN_AUDIBLE
+        mockAudioContext.currentTime + VOLUME_RAMP_SECONDS
       );
+    });
+
+    it('should coalesce rapid volume changes into one ramp to the last value', () => {
+      mockGainNode.gain.value = 0;
+      (mockGainNode.gain.exponentialRampToValueAtTime as jest.Mock).mockClear();
+      speakerTrack.fadeBufferSourceToVolume(0.3);
+      speakerTrack.fadeBufferSourceToVolume(0.5);
+      speakerTrack.fadeBufferSourceToVolume(0.9);
+      jest.advanceTimersByTime(VOLUME_DEBOUNCE_MS);
+      expect(mockGainNode.gain.exponentialRampToValueAtTime).toHaveBeenCalledTimes(1);
+      expect(mockGainNode.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(
+        0.9,
+        mockAudioContext.currentTime + VOLUME_RAMP_SECONDS
+      );
+    });
+
+    it('should skip changes too small to hear', () => {
+      mockGainNode.gain.value = 0.5;
+      (mockGainNode.gain.exponentialRampToValueAtTime as jest.Mock).mockClear();
+      speakerTrack.fadeBufferSourceToVolume(0.505);
+      jest.advanceTimersByTime(VOLUME_DEBOUNCE_MS);
+      expect(mockGainNode.gain.exponentialRampToValueAtTime).not.toHaveBeenCalled();
     });
   });
 
@@ -1007,7 +1049,7 @@ describe('SpeakerTrack', () => {
       expect(mockGainNode.gain.cancelAndHoldAtTime).toHaveBeenCalledWith(mockAudioContext.currentTime);
       expect(mockGainNode.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(
         0.05, // NEARLY_ZERO
-        mockAudioContext.currentTime + 3 // FADE_DURATION_SECONDS
+        mockAudioContext.currentTime + 4 // FADE_DURATION_SECONDS
       );
     });
 
@@ -1016,7 +1058,7 @@ describe('SpeakerTrack', () => {
       speakerTrack.fadeOutAndStopBufferSource();
 
       expect(mockBufferSource.stop).not.toHaveBeenCalled();
-      jest.advanceTimersByTime(3000); // FADE_DURATION_SECONDS * 1000
+      jest.advanceTimersByTime(4000); // FADE_DURATION_SECONDS * 1000
       expect(mockBufferSource.stop).toHaveBeenCalled();
     });
   });
@@ -1237,17 +1279,10 @@ describe('SpeakerTrack', () => {
         pan: 0,
       });
 
-      // Mock console.trace to verify it's called
-      const consoleTraceSpy = jest.spyOn(console, 'trace').mockImplementation();
-
       speakerTrack.stopBufferSource();
 
       expect(mockBufferSource.stop).toHaveBeenCalled();
-      expect(consoleTraceSpy).toHaveBeenCalledWith('stopBufferSource');
       expect(speakerTrack.bufferSourcePlaying).toBe(false);
-
-      // Restore console.trace
-      consoleTraceSpy.mockRestore();
     });
 
     it('should do nothing when buffer source is null', () => {

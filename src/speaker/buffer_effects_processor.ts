@@ -170,7 +170,7 @@ export class BufferEffectsProcessor {
 
   delayReverbClip(): BufferEffectsProcessor {
     const delayTime = this.config.delayTimeInMs || 50;
-    const feedback = this.config.feedback || 0.5;
+    const feedback = this.config.feedback ?? 0.5; // 0 means no echo, not the default
     const reverb = this.config.reverbRoomSize || 0.5;
 
     const delaySamples = Math.floor(
@@ -219,7 +219,7 @@ export class BufferEffectsProcessor {
 
   delayAndClip(): BufferEffectsProcessor {
     const delayTime = this.config.delayTimeInMs || 50;
-    const feedback = this.config.feedback || 0.5;
+    const feedback = this.config.feedback ?? 0.5; // 0 means no echo, not the default
     const delaySamples = Math.floor(
       (delayTime / 1000) * this.audioBuffer.sampleRate
     );
