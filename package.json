@@ -17,7 +17,7 @@
     "test": "jest",
     "build": "rm -rf dist && NODE_ENV=production && npm-run-all --parallel build:*",
     "build:main": "tsup src/index.ts --dts --format esm,cjs",
-    "build:non-bundled": "tsc",
+    "build:non-bundled": "tsc -p tsconfig.build.json",
     "docbuild": "jsdoc --verbose -c ./config/jsdoc.json",
     "devstart": "NODE_ENV=development webpack server",
     "deploy": "np",
