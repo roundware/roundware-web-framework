@@ -4268,12 +4268,24 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
 
   it("should skip loop point update when probability is 0", () => {
     speakerEngine.mixParams.speakerConfig!.loopPointUpdateProbability = 0;
+    const before = [...speakerEngine.playingTracks];
     speakerEngine.updateNonBaseTracks();
 
-    expect(mockSpeakerTrack.playWithConfig).not.toHaveBeenCalled();
+    // Skipping means "don't change which speakers play", not "stop them":
+    // the current ones are looped again (so playWithConfig *is* called), and
+    // nothing is replaced or faded out. The earlier version of this test
+    // asserted no playWithConfig at all, which only held while its base track
+    // had no buffer to loop against.
+    expect(emitSpy).toHaveBeenCalledWith("skippingLoopPointUpdate");
+    expect(speakerEngine.playingTracks).toEqual(before);
+    expect(mockSpeakerTrack.fadeOutAndStopBufferSource).not.toHaveBeenCalled();
   });
 
   it("should replace speaker with none when probability is 1", () => {
+    // A speaker still in range is kept unless a rotation roll succeeds (to
+    // stop speakers ping-ponging), and rotation defaults to 0. Replacement is
+    // what this test is about, so turn rotation on to reach it.
+    speakerEngine.mixParams.speakerConfig!.speakerRotationProbability = 1;
     speakerEngine.mixParams.speakerConfig!.replaceWithNoneProbability = 1;
     speakerEngine.updateNonBaseTracks();
 
@@ -4286,6 +4298,10 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
   });
 
   it("should replace speaker with new speaker when available", () => {
+    // A speaker still in range is kept unless a rotation roll succeeds (to
+    // stop speakers ping-ponging), and rotation defaults to 0. Replacement is
+    // what this test is about, so turn rotation on to reach it.
+    speakerEngine.mixParams.speakerConfig!.speakerRotationProbability = 1;
     const newSpeaker = {
       data: { id: 3 },
       buffer: {
@@ -4445,9 +4461,23 @@ describe("SpeakerEngine - updateNonBaseTracks", () => {
     );
   });
 
-  it("should handle case when no new speakers are available", () => {
-    // Remove all speakers except the base track and current speaker
+  // With nothing to rotate to, the slot keeps its speaker if that speaker is
+  // still in range, and empties only if it has gone out of range too — a
+  // rotation roll should not create silence on its own. This used to be one
+  // test expecting the slot to empty either way.
+  it("should keep the current speaker when no new speakers are available and it is still in range", () => {
+    speakerEngine.mixParams.speakerConfig!.speakerRotationProbability = 1;
     speakerEngine.speakers = [mockBaseTrack, mockSpeakerTrack];
+    speakerEngine.updateNonBaseTracks();
+
+    expect(speakerEngine.playingTracks[1]).toBe(mockSpeakerTrack.data.id);
+    expect(mockSpeakerTrack.fadeOutAndStopBufferSource).not.toHaveBeenCalled();
+  });
+
+  it("should empty the slot when no new speakers are available and the current one is out of range", () => {
+    speakerEngine.mixParams.speakerConfig!.speakerRotationProbability = 1;
+    speakerEngine.speakers = [mockBaseTrack, mockSpeakerTrack];
+    mockSpeakerTrack.calculatedVolume = mockSpeakerTrack.minVolume - 0.01;
     speakerEngine.updateNonBaseTracks();
 
     expect(speakerEngine.playingTracks[1]).toBeNull();

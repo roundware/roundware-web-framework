@@ -1,19 +1,35 @@
-on: push
+name: Publish to npm
+
+# Publishing is a deliberate act: create a GitHub Release (or run this by
+# hand from the Actions tab), and it publishes the version in package.json.
+#
+# This used to run `on: push` — every push, to every branch — and publish
+# whenever the tests passed and package.json's version differed from npm's.
+# The only thing that stopped it releasing arbitrary branches was that the
+# test suite had been failing since late 2025. With the tests fixed, a
+# version bump on any branch would have published it.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22.9.0
-      - run: npm install
+          node-version: 22
+
+      - run: npm ci
       - run: npm test
       - run: npm run build
-      - uses: JS-DevTools/npm-publish@v1
+
+      - uses: JS-DevTools/npm-publish@v3
         with:
           token: ${{ secrets.NPM_TOKEN }}
-          check-version: true
-          package: package.json
+          # npm dist-tag. `alpha` is what this has always published under;
+          # change it here if a release should go out as `beta` or `latest`.
           tag: alpha
