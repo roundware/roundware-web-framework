@@ -120,7 +120,6 @@ export type ITrackIdMap = {
 export * from "./api-client";
 export * from "./asset";
 export * from "./audioTrack";
-export * from "./envelope";
 export * from "./events";
 export * from "./mixer";
 export * from "./project";

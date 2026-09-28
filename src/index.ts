@@ -6,3 +6,4 @@ export { SpeakerUtils };
 export { Participant };
 export default Roundware;
 export * from "./types/index";
+export { AssetBundle } from "./bundle";

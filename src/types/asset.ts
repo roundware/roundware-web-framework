@@ -26,6 +26,8 @@ export interface IAssetData {
 
   language_id: number;
   envelope_id: number | null;
+  /** The main asset of this asset's bundle; null for a main asset. */
+  parent_asset_id?: number | null;
 
   /** @deprecated v2 field name — use created_at */
   created?: string | Date;

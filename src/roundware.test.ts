@@ -13,7 +13,7 @@ import { Mixer } from './mixer';
 import { ListenHistory } from './listenHistory';
 import { RoundwareEvents } from './events';
 import { Coordinates } from './types';
-import { Envelope } from './envelope';
+import { AssetBundle } from './bundle';
 import { IAssetData, IMixParams, IUiConfig, ITagGroup, ITag, ITimedAssetData, IAudioTrackData } from './types';
 import { IRoundwareConstructorOptions } from './types';
 import { ISpeakerData } from './types';
@@ -33,7 +33,7 @@ jest.mock('./audiotrack');
 jest.mock('./mixer');
 jest.mock('./listenHistory');
 jest.mock('./events');
-jest.mock('./envelope');
+jest.mock('./bundle');
 
 describe('Roundware', () => {
   let roundware: Roundware;
@@ -341,23 +341,6 @@ describe('Roundware', () => {
 
       expect(result).toEqual(mockAsset);
       expect(mockApiClient.get).toHaveBeenCalledWith('/assets/1/', expect.objectContaining({
-        session_id: undefined
-      }));
-    });
-  });
-
-  describe('getEnvelope', () => {
-    it('should fetch envelope from API', async () => {
-      const mockEnvelope = {
-        id: 1,
-        assets: []
-      };
-      mockApiClient.get.mockResolvedValue(mockEnvelope);
-
-      const result = await roundware.getEnvelope(1);
-
-      expect(result).toEqual(mockEnvelope);
-      expect(mockApiClient.get).toHaveBeenCalledWith('/envelopes/1', expect.objectContaining({
         session_id: undefined
       }));
     });
@@ -734,10 +717,10 @@ describe('Roundware', () => {
     });
   });
 
-  describe('asset saving and envelope management', () => {
-    it('should save asset with audio data', async () => {
-      const mockEnvelope = { upload: jest.fn() };
-      (roundware as any).makeEnvelope = jest.fn().mockResolvedValue(mockEnvelope);
+  describe('asset saving and bundles', () => {
+    it('should save an asset as a new bundle', async () => {
+      const mockBundle = { upload: jest.fn() };
+      (roundware as any).makeBundle = jest.fn().mockResolvedValue(mockBundle);
 
       const audioData = new Blob();
       const fileName = 'test.mp3';
@@ -745,24 +728,28 @@ describe('Roundware', () => {
 
       await roundware.saveAsset(audioData, fileName, data);
 
-      expect(mockEnvelope.upload).toHaveBeenCalledWith(audioData, fileName, data);
+      expect(mockBundle.upload).toHaveBeenCalledWith(audioData, fileName, data);
     });
 
-    it('should create new envelope', async () => {
-      const mockEnvelope = { connect: jest.fn() };
-      (Envelope as jest.Mock).mockImplementation(() => mockEnvelope);
-      roundware['_sessionId'] = 123; // Set session ID to allow envelope creation
+    it('should make a bundle without contacting the server', async () => {
+      roundware['_sessionId'] = 123;
+      const bundle = await roundware.makeBundle();
 
-      const envelope = await roundware.makeEnvelope();
-
-      expect(envelope).toBeDefined();
-      expect(mockEnvelope.connect).toHaveBeenCalled();
+      expect(bundle).toBeDefined();
+      expect(AssetBundle).toHaveBeenCalledWith(123, expect.anything(), expect.anything(), roundware);
     });
 
-    it('should throw error when creating envelope without session', async () => {
+    it('should keep makeEnvelope as an alias for makeBundle', async () => {
+      roundware['_sessionId'] = 123;
+      const spy = jest.spyOn(roundware, 'makeBundle');
+      await roundware.makeEnvelope();
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('should throw when making a bundle without a session', async () => {
       roundware['_sessionId'] = undefined;
-      
-      await expect(roundware.makeEnvelope()).rejects.toThrow(
+
+      await expect(roundware.makeBundle()).rejects.toThrow(
         "can't save assets without first connecting to the server"
       );
     });

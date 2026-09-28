@@ -4,7 +4,7 @@ import { ASSET_PRIORITIES } from "./assetFilters";
 import { AssetPool } from "./assetPool";
 import { Audiotrack } from "./audiotrack";
 import { noAssetData } from "./constants/warning";
-import { Envelope } from "./envelope";
+import { AssetBundle } from "./bundle";
 import {
   InvalidArgumentError,
   MissingArgumentError,
@@ -31,7 +31,6 @@ import {
 } from "./types";
 import { IAssetData, IAssetFilters } from "./types/asset";
 import { IAudioTrackData } from "./types/audioTrack";
-import { IEnvelopeData } from "./types/envelope";
 import { IOptions, IRoundwareConstructorOptions } from "./types/roundware";
 import { ISpeakerData, ISpeakerFilters } from "./types/speaker";
 import { User } from "./user";
@@ -539,35 +538,32 @@ class Roundware {
     return this._audioTracksData || [];
   }
 
-  /** Attach new assets to the project
+  /** Save a single asset as a new contribution.
    * @param {Object} audioData - the binary data from a recording to be saved as an asset
    * @param {string} fileName - name of the file
-   * @return {promise} - represents the API calls to save an asset; can be tested to find out whether upload was successful
-   * @see Envelope.upload */
+   * @return {promise} - the created asset
+   * @see AssetBundle.upload */
   async saveAsset(audioData: IAudioData, fileName: string, data: object) {
-    const envelope = await this.makeEnvelope();
-    return envelope.upload(audioData, fileName, data);
+    const bundle = await this.makeBundle();
+    return bundle.upload(audioData, fileName, data);
   }
 
-  /** Explicitly make a new envelope that you can attach multiple assets to by
-   calling the `Envelope.upload` method. This is the main way to add text,
-   photo, and video assets to an envelope. */
-  async makeEnvelope(): Promise<Envelope> {
+  /** Start a new contribution. The first `upload()` becomes its main asset;
+   later uploads — a photo, some text — attach to it. Nothing is sent to the
+   server until the first upload. */
+  async makeBundle(): Promise<AssetBundle> {
     if (!this._sessionId) {
       throw new Error(
         "can't save assets without first connecting to the server"
       );
     }
+    return new AssetBundle(this._sessionId, this.apiClient, this.geoPosition, this);
+  }
 
-    let envelope = new Envelope(
-      this._sessionId,
-      this.apiClient,
-      this.geoPosition,
-      this
-    );
-
-    await envelope.connect();
-    return envelope;
+  /** @deprecated Use `makeBundle()`. Kept so callers written for envelopes
+   keep working; it no longer creates an envelope on the server. */
+  async makeEnvelope(): Promise<AssetBundle> {
+    return this.makeBundle();
   }
 
   findTagDescription(tagId: number, tagType = "listen") {
@@ -610,13 +606,6 @@ class Roundware {
     }
     // Otherwise, ask the server for the asset details.
     return this.apiClient.get<IAssetData>(`/assets/${id}/`, {
-      session_id: this._sessionId,
-    });
-  }
-
-  /// @return Details about a particular envelope (which may contain multiple assets).
-  async getEnvelope(id: number): Promise<IEnvelopeData> {
-    return this.apiClient.get<IEnvelopeData>(`/envelopes/${id}`, {
       session_id: this._sessionId,
     });
   }
