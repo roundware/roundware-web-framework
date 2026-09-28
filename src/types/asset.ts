@@ -25,7 +25,6 @@ export interface IAssetData {
   project_id?: number;
 
   language_id: number;
-  envelope_id: number | null;
   /** The main asset of this asset's bundle; null for a main asset. */
   parent_asset_id?: number | null;
 
@@ -35,8 +34,6 @@ export interface IAssetData {
   updated?: string | Date;
   /** @deprecated v2 field name — use audio_length_sec */
   audio_length_in_seconds?: number;
-  /** @deprecated v2 field name — use envelope_id */
-  envelope_ids?: number[];
   /** @deprecated v2 field — removed in v3 */
   filename?: string;
   /** @deprecated v2 field — removed in v3 */

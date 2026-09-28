@@ -560,12 +560,6 @@ class Roundware {
     return new AssetBundle(this._sessionId, this.apiClient, this.geoPosition, this);
   }
 
-  /** @deprecated Use `makeBundle()`. Kept so callers written for envelopes
-   keep working; it no longer creates an envelope on the server. */
-  async makeEnvelope(): Promise<AssetBundle> {
-    return this.makeBundle();
-  }
-
   findTagDescription(tagId: number, tagType = "listen") {
     const tagGroups = this.uiConfig[tagType]!;
     for (const group of tagGroups) {

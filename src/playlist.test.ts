@@ -102,7 +102,6 @@ const mockDecoratedAsset = {
   tag_ids: [],
   session_id: 0,
   language_id: 0,
-  envelope_id: null,
 } as IDecoratedAsset;
 
 describe("Playlist", () => {
@@ -312,7 +311,6 @@ describe("Playlist", () => {
       tag_ids: [],
       session_id: 0,
       language_id: 0,
-      envelope_id: null,
     };
 
     mockAudioTrack.currentAsset = mockDecoratedAsset; // Use a fully mocked asset
@@ -560,7 +558,6 @@ describe("Playlist", () => {
       tag_ids: [],
       session_id: 0,
       language_id: 0,
-      envelope_id: null,
     } as IDecoratedAsset;
 
     jest.spyOn(mockAssetPool, 'nextForTrack').mockReturnValue(mockAsset);

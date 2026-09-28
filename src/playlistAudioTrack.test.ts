@@ -172,7 +172,6 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -239,7 +238,6 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -302,7 +300,6 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -359,7 +356,6 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -409,7 +405,6 @@ describe('PlaylistAudiotrack', () => {
         locationPoint: [0, 0],
         playCount: 0,
         activeRegionLength: 0,
-        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -480,7 +475,6 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -818,7 +812,6 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -872,7 +865,6 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,
@@ -927,7 +919,6 @@ describe('PlaylistAudiotrack', () => {
           properties: {}
         },
         playCount: 0,
-        envelope_id: null,
         latitude: 0,
         longitude: 0,
         submitted: false,

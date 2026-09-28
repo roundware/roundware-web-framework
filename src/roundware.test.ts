@@ -460,7 +460,6 @@ describe('Roundware', () => {
     tag_ids: [],
     project_id: 1,
     language_id: 1,
-    envelope_id: null,
     session_id: 1
   };
 
@@ -737,13 +736,6 @@ describe('Roundware', () => {
 
       expect(bundle).toBeDefined();
       expect(AssetBundle).toHaveBeenCalledWith(123, expect.anything(), expect.anything(), roundware);
-    });
-
-    it('should keep makeEnvelope as an alias for makeBundle', async () => {
-      roundware['_sessionId'] = 123;
-      const spy = jest.spyOn(roundware, 'makeBundle');
-      await roundware.makeEnvelope();
-      expect(spy).toHaveBeenCalled();
     });
 
     it('should throw when making a bundle without a session', async () => {

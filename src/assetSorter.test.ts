@@ -22,9 +22,9 @@ describe('AssetSorter', () => {
 
     // Create mock assets
     mockAssets = [
-      { id: 1, weight: 1, description: '', latitude: 0, longitude: 0, volume: 1, start_time: 0, end_time: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), file: null, submitted: false, media_type: 'audio', audio_length_sec: 0, tag_ids: [], session_id: 1, language_id: 1, envelope_id: null },
-      { id: 2, weight: 2, description: '', latitude: 0, longitude: 0, volume: 1, start_time: 0, end_time: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), file: null, submitted: false, media_type: 'audio', audio_length_sec: 0, tag_ids: [], session_id: 1, language_id: 1, envelope_id: null },
-      { id: 3, weight: 3, description: '', latitude: 0, longitude: 0, volume: 1, start_time: 0, end_time: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), file: null, submitted: false, media_type: 'audio', audio_length_sec: 0, tag_ids: [], session_id: 1, language_id: 1, envelope_id: null }
+      { id: 1, weight: 1, description: '', latitude: 0, longitude: 0, volume: 1, start_time: 0, end_time: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), file: null, submitted: false, media_type: 'audio', audio_length_sec: 0, tag_ids: [], session_id: 1, language_id: 1 },
+      { id: 2, weight: 2, description: '', latitude: 0, longitude: 0, volume: 1, start_time: 0, end_time: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), file: null, submitted: false, media_type: 'audio', audio_length_sec: 0, tag_ids: [], session_id: 1, language_id: 1 },
+      { id: 3, weight: 3, description: '', latitude: 0, longitude: 0, volume: 1, start_time: 0, end_time: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), file: null, submitted: false, media_type: 'audio', audio_length_sec: 0, tag_ids: [], session_id: 1, language_id: 1 }
     ];
   });
 

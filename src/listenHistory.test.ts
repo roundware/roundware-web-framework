@@ -27,7 +27,6 @@ describe("ListenHistory", () => {
     session_id: 1,
     project_id: 1,
     language_id: 1,
-    envelope_id: null,
     project: 1
   };
 

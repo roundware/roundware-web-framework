@@ -95,7 +95,6 @@ describe("AssetPool", () => {
         tag_ids: [],
         session_id: 1,
         language_id: 1,
-        envelope_id: null
       },
       {
         id: 2,
@@ -115,7 +114,6 @@ describe("AssetPool", () => {
         tag_ids: [],
         session_id: 1,
         language_id: 1,
-        envelope_id: null
       },
       {
         id: 3,
@@ -135,7 +133,6 @@ describe("AssetPool", () => {
         tag_ids: [],
         session_id: 1,
         language_id: 1,
-        envelope_id: null
       }
     ];
 
@@ -169,7 +166,6 @@ describe("AssetPool", () => {
         tag_ids: [],
         session_id: 1,
         language_id: 1,
-        envelope_id: null
       }
     ];
 

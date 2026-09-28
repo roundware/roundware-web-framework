@@ -29,7 +29,6 @@ const makeAsset = (id: number, overrides: Partial<IAssetData> = {}): IAssetData 
   tag_ids: [],
   session_id: 123,
   language_id: 1,
-  envelope_id: null,
   parent_asset_id: null,
   ...overrides,
 });
