@@ -46,6 +46,20 @@ describe("AssetPool", () => {
     expect(assetPool).toBeInstanceOf(AssetPool);
   });
 
+  test("holds only audio: photos and text are never queued for playback", () => {
+    const [audio, photo, text, legacy] = getRandomAssetData(4);
+    const assetPool = new AssetPool({
+      assets: [
+        { ...audio, media_type: "audio" },
+        { ...photo, media_type: "photo", file: "https://cdn.example.com/p.jpg" },
+        { ...text, media_type: "text", file: "https://cdn.example.com/t.txt" },
+        { ...legacy, media_type: undefined as unknown as string },
+      ],
+      timedAssets: [],
+    });
+    expect(assetPool.assets.map((a) => a.id).sort()).toEqual([audio.id, legacy.id].sort());
+  });
+
   test("should throw error if arguments of updateAssets() is not array", () => {
     const assetPool = new AssetPool({
       assets: getRandomAssetData(10),

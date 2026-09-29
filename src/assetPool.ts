@@ -53,7 +53,13 @@ export class AssetPool {
       );
     }
 
-    let newAssets = assets.map(assetDecorationMapper(timedAssets));
+    // Only audio can be played. Photos and text arrive here too (they are
+    // assets like any other, often attached to a recording, docs/014 in
+    // roundware-server-v3); now that they carry files, decorating them would
+    // queue a .jpg or .txt for playback. No media_type means audio (v2 data).
+    let newAssets = assets
+      .filter((a) => (a.media_type ?? "audio") === "audio")
+      .map(assetDecorationMapper(timedAssets));
     // preserve the existing properties of assets, add instead of replacing...
 
     newAssets.forEach((asset) => {
