@@ -49,7 +49,7 @@ export class SpeakerPreview {
   constructor(config: SpeakerConfig, context?: IAudioContext) {
     this.context = context ?? new AudioContext();
     this.config = config;
-    this.effects = new MasterEffects(context, context.destination, config.effects);
+    this.effects = new MasterEffects(this.context, this.context.destination, config.effects);
   }
 
   get isPlaying(): boolean {
