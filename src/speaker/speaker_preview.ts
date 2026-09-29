@@ -1,5 +1,10 @@
 import { sample } from "lodash";
-import { IAudioBuffer, IAudioBufferSourceNode, IAudioContext } from "standardized-audio-context";
+import {
+  AudioContext,
+  IAudioBuffer,
+  IAudioBufferSourceNode,
+  IAudioContext,
+} from "standardized-audio-context";
 import { SpeakerConfig } from "../types/roundware";
 import { BufferEffectsProcessor } from "./buffer_effects_processor";
 import { MasterEffects } from "./master_effects";
@@ -40,8 +45,9 @@ export class SpeakerPreview {
   volume = 1;
   onLoop?: (info: PreviewLoopInfo) => void;
 
-  constructor(context: IAudioContext, config: SpeakerConfig) {
-    this.context = context;
+  /** Uses the given audio context, or makes its own. */
+  constructor(config: SpeakerConfig, context?: IAudioContext) {
+    this.context = context ?? new AudioContext();
     this.config = config;
     this.effects = new MasterEffects(context, context.destination, config.effects);
   }
@@ -90,6 +96,7 @@ export class SpeakerPreview {
   dispose(): void {
     this.stop();
     this.effects.disconnect();
+    this.context.close?.().catch(() => undefined);
   }
 
   /** New fraction with probability loopPointUpdateProbability, as the engine does. */
