@@ -73,11 +73,12 @@ export class BufferEffectsProcessor {
   fadeOut(durationSeconds?: number): BufferEffectsProcessor {
     const numberOfChannels = this.audioBuffer.numberOfChannels;
     const length = this.audioBuffer.length;
+    // Its own setting; it used to read fadeInDurationInMs. Falls back to that,
+    // then 0.3 s, so existing configs sound the same.
+    const configuredMs = this.config.fadeOutDurationInMs ?? this.config.fadeInDurationInMs;
     const fadeSamples = Math.min(
-      (durationSeconds ||
-        (this.config.fadeInDurationInMs
-          ? this.config.fadeInDurationInMs / 1000
-          : 0.3)) * this.audioBuffer.sampleRate,
+      (durationSeconds || (configuredMs ? configuredMs / 1000 : 0.3)) *
+        this.audioBuffer.sampleRate,
       length
     );
     const startIndex = length - fadeSamples;
@@ -168,47 +169,6 @@ export class BufferEffectsProcessor {
     return this;
   }
 
-  delayReverbClip(): BufferEffectsProcessor {
-    const delayTime = this.config.delayTimeInMs || 50;
-    const feedback = this.config.feedback ?? 0.5; // 0 means no echo, not the default
-    const reverb = this.config.reverbRoomSize || 0.5;
-
-    const delaySamples = Math.floor(
-      (delayTime / 1000) * this.audioBuffer.sampleRate
-    );
-    const numberOfChannels = this.audioBuffer.numberOfChannels;
-    const newBuffer = this.context.createBuffer(
-      numberOfChannels,
-      this.audioBuffer.length,
-      this.audioBuffer.sampleRate
-    );
-
-    for (let channel = 0; channel < numberOfChannels; channel++) {
-      const inputData = this.audioBuffer.getChannelData(channel);
-      const outputData = newBuffer.getChannelData(channel);
-
-      // Copy original signal
-      for (let i = 0; i < inputData.length; i++) {
-        outputData[i] = inputData[i];
-      }
-
-      // Apply delay effect
-      for (let i = 0; i < inputData.length - delaySamples; i++) {
-        outputData[i + delaySamples] += inputData[i] * feedback;
-      }
-
-      // Apply reverb effect
-      for (let i = 0; i < inputData.length; i++) {
-        if (i > 0) {
-          outputData[i] += inputData[i - 1] * reverb;
-        }
-      }
-    }
-
-    this.audioBuffer = newBuffer;
-    return this;
-  }
-
   microFadeInAndOut(): BufferEffectsProcessor {
     return this.fadeInAndOut(
       this.config.microFadeInDurationInMs
@@ -217,89 +177,37 @@ export class BufferEffectsProcessor {
     );
   }
 
-  delayAndClip(): BufferEffectsProcessor {
-    const delayTime = this.config.delayTimeInMs || 50;
-    const feedback = this.config.feedback ?? 0.5; // 0 means no echo, not the default
-    const delaySamples = Math.floor(
-      (delayTime / 1000) * this.audioBuffer.sampleRate
-    );
-    const numberOfChannels = this.audioBuffer.numberOfChannels;
-    const newBuffer = this.context.createBuffer(
-      numberOfChannels,
-      this.audioBuffer.length,
-      this.audioBuffer.sampleRate
-    );
-
-    for (let channel = 0; channel < numberOfChannels; channel++) {
-      const inputData = this.audioBuffer.getChannelData(channel);
-      const outputData = newBuffer.getChannelData(channel);
-
-      // Copy original signal
-      for (let i = 0; i < inputData.length; i++) {
-        outputData[i] = inputData[i];
-      }
-
-      // Add delayed signal
-      for (let i = 0; i < inputData.length - delaySamples; i++) {
-        outputData[i + delaySamples] += inputData[i] * feedback;
-      }
-    }
-
-    this.audioBuffer = newBuffer;
-    return this;
-  }
-
-  reverbAndClip(): BufferEffectsProcessor {
-    const reverb = this.config.reverbRoomSize || 0.5;
-    const numberOfChannels = this.audioBuffer.numberOfChannels;
-    const newBuffer = this.context.createBuffer(
-      numberOfChannels,
-      this.audioBuffer.length,
-      this.audioBuffer.sampleRate
-    );
-
-    for (let channel = 0; channel < numberOfChannels; channel++) {
-      const inputData = this.audioBuffer.getChannelData(channel);
-      const outputData = newBuffer.getChannelData(channel);
-
-      // Copy original signal
-      for (let i = 0; i < inputData.length; i++) {
-        outputData[i] = inputData[i];
-      }
-
-      // Add reverb signal
-      for (let i = 0; i < inputData.length; i++) {
-        if (i > 0) {
-          outputData[i] += inputData[i - 1] * reverb;
-        }
-      }
-    }
-
-    this.audioBuffer = newBuffer;
-    return this;
-  }
-
   /**
    * Reverses the audio buffer data in place
    * This method reverses the audio samples for all channels
    */
+  /**
+   * Reverse into a new buffer. This used to reverse the samples in place —
+   * in the speaker's own decoded audio, which SpeakerTrack passes in — so
+   * every reversed loop flipped the stored audio, and the next "forward"
+   * loop played backwards.
+   */
   reverse(): BufferEffectsProcessor {
     const numberOfChannels = this.audioBuffer.numberOfChannels;
     const length = this.audioBuffer.length;
+    const reversed = this.context.createBuffer(
+      numberOfChannels,
+      length,
+      this.audioBuffer.sampleRate
+    );
 
     for (let channel = 0; channel < numberOfChannels; channel++) {
-      const channelData = this.audioBuffer.getChannelData(channel);
-
-      // Reverse the audio data by swapping samples from start and end
-      for (let i = 0; i < Math.floor(length / 2); i++) {
-        const temp = channelData[i];
-        channelData[i] = channelData[length - 1 - i];
-        channelData[length - 1 - i] = temp;
+      const source = this.audioBuffer.getChannelData(channel);
+      const target = reversed.getChannelData(channel);
+      for (let i = 0; i < length; i++) {
+        target[i] = source[length - 1 - i];
       }
     }
 
+    this.audioBuffer = reversed;
     return this;
   }
+
 
   getBuffer(): IAudioBuffer {
     return this.audioBuffer;

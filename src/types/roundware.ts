@@ -52,6 +52,7 @@ export interface IRoundwareConstructorOptions extends IOptions {
 export type EffectsConfig = {
   microFadeInDurationInMs?: number;
   fadeInDurationInMs?: number;
+  fadeOutDurationInMs?: number;
   delayTimeInMs?: number;
   feedback?: number;
   wetDryRatio?: number; // Wet vs dry ratio (0-1, 0=no reverb, 1=all wet)

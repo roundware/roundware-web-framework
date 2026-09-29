@@ -12,6 +12,7 @@ import { EffectsConfig, IMixParams, SpeakerConfig } from "../types/index";
 import { ISpeakerData } from "../types/speaker";
 import { FADE_IN_DURATION_SECONDS, isNearlyZero } from "../utils";
 import { BufferEffectsProcessor } from "./buffer_effects_processor";
+import { MasterEffects } from "./master_effects";
 import { SpeakerTrack } from "./speaker_track";
 import { LoadingStrategy, SpeakerUtils } from "./speaker_utils";
 
@@ -87,14 +88,10 @@ export class SpeakerEngine extends EventEmitter<{
 
   group: Map<number, number | null> = new Map();
 
-  // Master mixer for centralized audio processing
-  private masterGainNode: IGainNode<IAudioContext>;
-  private masterDelayNode: IDelayNode<IAudioContext> | null = null;
-  private masterFeedbackGainNode: IGainNode<IAudioContext> | null = null;
-  private masterReverbNode: IConvolverNode<IAudioContext> | null = null;
-  private masterDryGainNode: IGainNode<IAudioContext>;
-  private masterWetGainNode: IGainNode<IAudioContext>;
-  private masterEffectsSendNode: IGainNode<IAudioContext>;
+  // The effects bus every speaker plays through (delay, reverb, wet/dry).
+  // Updated live when the effects config changes (see updateParams).
+  private masterEffects: MasterEffects;
+  private lastEffectsJson = "";
 
   // Variant preprocessing for reduced loop point drift
   private variantPreprocessingTimers: Map<number, NodeJS.Timeout> = new Map();
@@ -110,28 +107,12 @@ export class SpeakerEngine extends EventEmitter<{
     super();
     this.audioContext = audioContext;
 
-    // Initialize master mixer first
-    this.masterGainNode = this.audioContext.createGain();
-    this.masterDryGainNode = this.audioContext.createGain();
-    this.masterWetGainNode = this.audioContext.createGain();
-    this.masterEffectsSendNode = this.audioContext.createGain();
-
-    // Connect dry signal to master gain
-    this.masterDryGainNode.connect(this.masterGainNode);
-
-    // Connect wet signal to master gain
-    this.masterWetGainNode.connect(this.masterGainNode);
-
-    // Connect master gain to destination
-    this.masterGainNode.connect(this.audioContext.destination);
-
-    // Initialize effects if configured
-    this.initializeMasterEffects(config.effects);
-
-    // Set initial wet/dry ratio
-    if (config.effects?.wetDryRatio !== undefined) {
-      this.updateWetDryRatio(config.effects.wetDryRatio);
-    }
+    this.masterEffects = new MasterEffects(
+      this.audioContext,
+      this.audioContext.destination,
+      config.effects
+    );
+    this.lastEffectsJson = JSON.stringify(config.effects ?? {});
 
     if (DEBUG_SPEAKER_DISPLAY) {
       this.createDebugStatusDisplay();
@@ -143,8 +124,8 @@ export class SpeakerEngine extends EventEmitter<{
           audioContext,
           config,
           groupId: SpeakerUtils.getRootForSpeaker(data, speakersData),
-          masterMixerNode: this.masterDryGainNode,
-          masterEffectsSendNode: this.masterEffectsSendNode,
+          masterMixerNode: this.masterEffects.dryInput,
+          masterEffectsSendNode: this.masterEffects.sendInput,
         } as any)
     );
 
@@ -183,116 +164,44 @@ export class SpeakerEngine extends EventEmitter<{
   }
 
   /**
-   * Initialize master effects (delay, feedback, reverb) for centralized processing
-   */
-  private initializeMasterEffects(effects?: EffectsConfig) {
-    if (!effects) return;
-
-    // Create delay effect if configured (only if delayTimeInMs > 0)
-    if (effects.delayTimeInMs && effects.delayTimeInMs > 0) {
-      this.masterDelayNode = this.audioContext.createDelay(1.0); // Max 1 second delay
-      this.masterDelayNode.delayTime.value =
-        (effects.delayTimeInMs || 50) / 1000;
-
-      // Create feedback gain node
-      this.masterFeedbackGainNode = this.audioContext.createGain();
-      this.masterFeedbackGainNode.gain.value = effects.feedback ?? 0.5;
-
-      // Connect delay with feedback loop
-      this.masterDelayNode.connect(this.masterFeedbackGainNode);
-      this.masterFeedbackGainNode.connect(this.masterDelayNode);
-
-      // Connect effects send to delay input
-      this.masterEffectsSendNode.connect(this.masterDelayNode);
-
-      // Connect delay output to wet gain
-      this.masterDelayNode.connect(this.masterWetGainNode);
-    }
-
-    // Create reverb effect if configured
-    if (effects.wetDryRatio && effects.wetDryRatio > 0) {
-      const wetDryRatio = effects.wetDryRatio;
-
-      // Create reverb convolver node
-      this.masterReverbNode = this.audioContext.createConvolver();
-      this.masterReverbNode.buffer = this.createReverbImpulseResponse(
-        effects.reverbRoomSize || 0.5,
-        effects.reverbDamping || 0.5
-      );
-
-      // Connect effects send to reverb
-      this.masterEffectsSendNode.connect(this.masterReverbNode);
-      this.masterReverbNode.connect(this.masterWetGainNode);
-    }
-  }
-
-  /**
    * Get the master mixer node that speakers should connect to
    */
   getMasterMixerNode(): IGainNode<IAudioContext> {
-    return this.masterDryGainNode;
+    return this.masterEffects.dryInput;
   }
 
   /**
    * Get the effects send node for speakers to connect to
    */
   getMasterEffectsSendNode(): IGainNode<IAudioContext> {
-    return this.masterEffectsSendNode;
+    return this.masterEffects.sendInput;
   }
 
   /**
    * Get the master delay node for speakers that need delay effects
    */
   getMasterDelayNode(): IDelayNode<IAudioContext> | null {
-    return this.masterDelayNode;
+    return this.masterEffects.delayNode;
   }
 
   /**
    * Get the master reverb node for speakers that need reverb effects
    */
   getMasterReverbNode(): IConvolverNode<IAudioContext> | null {
-    return this.masterReverbNode;
+    return this.masterEffects.reverbNode;
   }
 
   /**
    * Update wet/dry ratio for reverb effect
    */
   updateWetDryRatio(wetDryRatio: number) {
-    if (this.masterWetGainNode && this.masterDryGainNode) {
-      this.masterWetGainNode.gain.value = wetDryRatio;
-      this.masterDryGainNode.gain.value = 1 - wetDryRatio;
-    }
+    this.masterEffects.setWetDry(wetDryRatio);
   }
 
-  /**
-   * Create a reverb impulse response using algorithmic generation
-   */
-  private createReverbImpulseResponse(
-    roomSize: number,
-    damping: number
-  ): IAudioBuffer {
-    const sampleRate = this.audioContext.sampleRate;
-    const length = Math.floor(sampleRate * roomSize * 3); // 3 seconds max for more obvious reverb
-    const impulse = this.audioContext.createBuffer(2, length, sampleRate);
-
-    for (let channel = 0; channel < 2; channel++) {
-      const channelData = impulse.getChannelData(channel);
-
-      for (let i = 0; i < length; i++) {
-        // Generate white noise with higher amplitude for more obvious effect
-        const noise = (Math.random() * 2 - 1) * 0.8;
-
-        // Apply exponential decay with more dramatic curve
-        const decay = Math.pow(1 - damping, i / length);
-
-        // Apply room size scaling with more dramatic effect
-        const roomScale = Math.pow(roomSize, 0.3);
-
-        channelData[i] = noise * decay * roomScale;
-      }
-    }
-
-    return impulse;
+  /** Apply a new effects configuration to the running bus. */
+  updateEffects(effects: EffectsConfig | undefined) {
+    this.masterEffects.update(effects ?? {});
+    this.lastEffectsJson = JSON.stringify(effects ?? {});
   }
 
   private createDebugStatusDisplay() {
@@ -425,6 +334,12 @@ export class SpeakerEngine extends EventEmitter<{
 
   updateParams(params: IMixParams) {
     this.mixParams = params;
+
+    // Effects used to be fixed at construction; follow them now.
+    const effectsJson = JSON.stringify(params.speakerConfig?.effects ?? {});
+    if (params.speakerConfig && effectsJson !== this.lastEffectsJson) {
+      this.updateEffects(params.speakerConfig.effects);
+    }
 
     if (this.loadingStrategy === LoadingStrategy.PROGRESSIVE) {
       const newSpeakers: {

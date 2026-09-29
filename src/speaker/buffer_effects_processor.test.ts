@@ -122,34 +122,6 @@ describe("BufferEffectsProcessor", () => {
     });
   });
 
-  describe("delayReverbClip", () => {
-    it("should apply both delay and reverb effects", () => {
-      const processor = new BufferEffectsProcessor(
-        new AudioContext().createBuffer(2, 441000, 44100),
-        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
-        new AudioContext(),
-        {
-          delayTimeInMs: 50,
-          feedback: 0.5,
-          reverb: 0.5,
-        }
-      );
-      const processedBuffer = processor.delayReverbClip().getBuffer();
-      expect(processedBuffer.duration).toBeCloseTo(10, 1);
-    });
-
-    it("should use default values when config is not provided", () => {
-      const processor = new BufferEffectsProcessor(
-        new AudioContext().createBuffer(2, 441000, 44100),
-        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
-        new AudioContext(),
-        {}
-      );
-      const processedBuffer = processor.delayReverbClip().getBuffer();
-      expect(processedBuffer.duration).toBeCloseTo(10, 1);
-    });
-  });
-
   describe("fades", () => {
     it("fadeIn should not change the duration of the buffer", () => {
       const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
@@ -225,45 +197,6 @@ describe("BufferEffectsProcessor", () => {
   });
 
   describe("delay", () => {
-    it("should not change the duration of the buffer", () => {
-      const mockBuffer = new AudioContext().createBuffer(2, 10, 44100);
-      const processor = new BufferEffectsProcessor(
-        mockBuffer,
-        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
-        new AudioContext(),
-        {
-          delayTimeInMs: 50,
-        }
-      );
-      const delayedBuffer = processor.delayAndClip().getBuffer();
-      expect(delayedBuffer.duration).toEqual(mockBuffer.duration);
-    });
-  });
-
-  describe("reverbAndClip", () => {
-    it("should apply reverb effect with custom value", () => {
-      const mockBuffer = new AudioContext().createBuffer(2, 441000, 44100);
-      const processor = new BufferEffectsProcessor(
-        mockBuffer,
-        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
-        new AudioContext(),
-        { reverb: 0.7 }
-      );
-      const processedBuffer = processor.reverbAndClip().getBuffer();
-      expect(processedBuffer.duration).toBeCloseTo(10, 1);
-    });
-
-    it("should apply reverb effect with default value", () => {
-      const mockBuffer = new AudioContext().createBuffer(2, 441000, 44100);
-      const processor = new BufferEffectsProcessor(
-        mockBuffer,
-        // @ts-expect-error - AudioContextMock is compatible with IAudioContext at runtime
-        new AudioContext(),
-        {}
-      );
-      const processedBuffer = processor.reverbAndClip().getBuffer();
-      expect(processedBuffer.duration).toBeCloseTo(10, 1);
-    });
   });
 
   describe("reverse", () => {
@@ -590,67 +523,6 @@ describe("BufferEffectsProcessor", () => {
         })
         .getBuffer();
       expect(composedBuffer.duration).toBeCloseTo(2, 1);
-    });
-  });
-
-  describe("delayAndClip", () => {
-    it("should apply delay effect with custom parameters", () => {
-      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
-      const processor = new BufferEffectsProcessor(
-        mockBuffer,
-        new AudioContext(),
-        {
-          delayTimeInMs: 100,
-          feedback: 0.7,
-        }
-      );
-      const delayedBuffer = processor.delayAndClip().getBuffer();
-      expect(delayedBuffer.duration).toEqual(mockBuffer.duration);
-      expect(delayedBuffer.numberOfChannels).toEqual(
-        mockBuffer.numberOfChannels
-      );
-    });
-
-    it("should use default parameters when config is not provided", () => {
-      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
-      const processor = new BufferEffectsProcessor(
-        mockBuffer,
-        new AudioContext(),
-        {}
-      );
-      const delayedBuffer = processor.delayAndClip().getBuffer();
-      expect(delayedBuffer.duration).toEqual(mockBuffer.duration);
-      expect(delayedBuffer.numberOfChannels).toEqual(
-        mockBuffer.numberOfChannels
-      );
-    });
-
-    it("should maintain buffer length after applying delay", () => {
-      const mockBuffer = new AudioContext().createBuffer(2, 44100, 44100);
-      const processor = new BufferEffectsProcessor(
-        mockBuffer,
-        new AudioContext(),
-        {
-          delayTimeInMs: 50,
-          feedback: 0.5,
-        }
-      );
-      const delayedBuffer = processor.delayAndClip().getBuffer();
-      expect(delayedBuffer.length).toEqual(mockBuffer.length);
-    });
-
-    it("should handle different channel configurations", () => {
-      const mockBuffer = new AudioContext().createBuffer(1, 44100, 44100); // Mono
-      const processor = new BufferEffectsProcessor(
-        mockBuffer,
-        new AudioContext(),
-        {
-          delayTimeInMs: 50,
-          feedback: 0.5,
-        }
-      );
-      const delayedBuffer = processor.delayAndClip().getBuffer();
-      expect(delayedBuffer.numberOfChannels).toEqual(1);
     });
   });
 
