@@ -47,6 +47,8 @@ export interface IRoundwareConstructorOptions extends IOptions {
   assetUpdateInterval?: number;
   keepPausedAssets?: boolean;
   speakerConfig: SpeakerConfig;
+  /** The participant's language code; text is fetched in it (server docs/017). */
+  language?: string;
 }
 
 export type EffectsConfig = {

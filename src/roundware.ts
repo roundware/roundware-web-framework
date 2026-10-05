@@ -179,6 +179,7 @@ class Roundware {
     this._assetUpdateInterval = assetUpdateInterval || 300000;
 
     this.apiClient = new ApiClient(this._serverUrl);
+    this.apiClient.language = options.language;
 
     const newOptions: Required<IOptions> = options as Required<IOptions>;
     newOptions.apiClient = this.apiClient;

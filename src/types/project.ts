@@ -48,11 +48,11 @@ export interface IProjectData {
   demo_stream_enabled?: boolean;
   /** @deprecated v2 field — removed in v3 */
   demo_stream_url?: string;
-  /** @deprecated v2 field — removed in v3 */
+  /** In the requested language (server docs/017). */
   demo_stream_message?: string;
-  /** @deprecated v2 field — removed in v3 */
+  /** In the requested language (server docs/017). */
   sharing_message?: string;
-  /** @deprecated v2 field — removed in v3 */
+  /** In the requested language (server docs/017). */
   out_of_range_message?: string;
   /** @deprecated v2 field — removed in v3 */
   out_of_range_url?: string;

@@ -15,6 +15,10 @@ import { ApiClientOptions } from "./types/api-client";
 export class ApiClient {
   private _serverUrl: string;
   private _authToken: string;
+  /** The participant's language: sent as `lang` on every GET, so the server
+   *  returns text in it (each field falling back to the project's default
+   *  language). Server docs/017. */
+  language?: string;
   /**
    * Created new ApiClient
    * @param  {Window|undefined} window
@@ -94,6 +98,8 @@ export class ApiClient {
       case "HEAD":
         if (typeof data == "object")
           for (let key in data) queryParams.append(key, data[key]);
+        if (this.language && !queryParams.has("lang"))
+          queryParams.append("lang", this.language);
         break;
       // for other HTTP methods, 'data' has to be turned into a request body, with a properly-set Content-Type required by the Roundware server API.
       default:
