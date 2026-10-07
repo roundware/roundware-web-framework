@@ -49,6 +49,10 @@ export interface IRoundwareConstructorOptions extends IOptions {
   speakerConfig: SpeakerConfig;
   /** The participant's language code; text is fetched in it (server docs/017). */
   language?: string;
+  /** "test" on a project's test site: every request reads (and records to)
+   *  the project as it's being edited rather than its live copy (server
+   *  docs/021). Omitted on the live site. */
+  site?: string;
 }
 
 export type EffectsConfig = {

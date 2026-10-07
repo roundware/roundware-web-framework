@@ -19,6 +19,10 @@ export class ApiClient {
    *  returns text in it (each field falling back to the project's default
    *  language). Server docs/017. */
   language?: string;
+  /** "test" on a project's test site: sent as `site` on every request, so
+   *  the server reads the project as it's being edited instead of its live
+   *  copy, and marks what's recorded there as a test. Server docs/021. */
+  site?: string;
   /**
    * Created new ApiClient
    * @param  {Window|undefined} window
@@ -117,6 +121,11 @@ export class ApiClient {
 
         break;
     }
+
+    // On every method, not only GET: a recording made on the test site is
+    // marked as a test by the server.
+    if (this.site && !queryParams.has("site"))
+      queryParams.append("site", this.site);
 
     url.search = queryParams.toString();
     if (this._authToken) {
