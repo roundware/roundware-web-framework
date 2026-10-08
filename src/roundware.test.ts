@@ -250,6 +250,31 @@ describe('Roundware', () => {
       expect(mockMixer.updateParams).toHaveBeenCalledWith({ listenerLocation: newLocation });
     });
 
+    it('without a session: only the project and its questions, nothing written', async () => {
+      const { mockUiConfig } = setupConnectMocks();
+
+      const result = await roundware.connect({ withoutSession: true });
+
+      expect(mockProject.connect).toHaveBeenCalledWith();
+      expect(mockProject.fetchUIConfig).toHaveBeenCalledWith();
+      expect(mockParticipant.connect).not.toHaveBeenCalled();
+      expect(mockSession.connect).not.toHaveBeenCalled();
+      expect(mockGeoPosition.connect).not.toHaveBeenCalled();
+      expect(mockSpeaker.connect).not.toHaveBeenCalled();
+      expect(mockAudiotrack.connect).not.toHaveBeenCalled();
+      expect(result).toEqual({ uiConfig: mockUiConfig });
+    });
+
+    it('ensureSession: the participant and session, once', async () => {
+      setupConnectMocks(456);
+      await roundware.connect({ withoutSession: true });
+
+      expect(await roundware.ensureSession()).toBe(456);
+      expect(await roundware.ensureSession()).toBe(456);
+      expect(mockParticipant.connect).toHaveBeenCalledTimes(1);
+      expect(mockSession.connect).toHaveBeenCalledTimes(1);
+    });
+
     it('should handle connection errors', async () => {
       mockParticipant.connect.mockRejectedValue(new Error('Connection failed'));
 

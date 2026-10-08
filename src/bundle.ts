@@ -9,6 +9,10 @@ export interface UploadOptions {
   longitude?: number;
   tag_ids?: number[];
   media_type?: string;
+  /** Optional contact details the contributor gives, kept with this
+   *  contribution and seen only by the project's team (server docs/023). */
+  contributor_name?: string;
+  contributor_email?: string;
 }
 
 /**
@@ -111,6 +115,12 @@ export class AssetBundle {
     }
     if (data.media_type) {
       formData.append("media_type", data.media_type);
+    }
+    if (data.contributor_name) {
+      formData.append("contributor_name", data.contributor_name);
+    }
+    if (data.contributor_email) {
+      formData.append("contributor_email", data.contributor_email);
     }
 
     console.info(

@@ -311,9 +311,29 @@ class Roundware {
     this.mixer.updateParams({ geoListenMode: GeoListenMode.DISABLED });
   }
 
+  /** Connected without a session (connect({ withoutSession })): only the
+   *  project and its questions, for recording only — an embedded recorder.
+   *  No participant, session, location watch, speakers, audio tracks or
+   *  asset pool until ensureSession(). */
+  private _withoutSession = false;
+
   /** Initiate a connection to Roundware
+   *
+   *  `withoutSession`: fetch only what recording needs — the project and its
+   *  questions — and write nothing to the server. An embedded recorder on a
+   *  busy page would otherwise create a participant and a session for every
+   *  visitor who loads it. Call ensureSession() before submitting.
    *  @return {Promise} - Can be resolved in order to get the audio stream URL, or rejected to get an error message; see example above **/
-  async connect(): Promise<{ uiConfig: IUiConfig }> {
+  async connect(options: { withoutSession?: boolean } = {}): Promise<{ uiConfig: IUiConfig }> {
+    if (options.withoutSession) {
+      this._withoutSession = true;
+      const [, uiConfig] = await Promise.all([
+        this.project.connect(),
+        this.project.fetchUIConfig(),
+      ]);
+      this.uiConfig = uiConfig;
+      return { uiConfig };
+    }
     try {
       // want to start this process as soon as possible, as it can take a few seconds
       this.geoPosition.connect((newLocation: Coordinates) =>
@@ -399,7 +419,22 @@ class Roundware {
     );
   }
 
+  /** The session, created now if connect() went without one: the
+   *  participant, the session and its start event — on the first submit,
+   *  not when the page loads. Returns the session id. */
+  async ensureSession(): Promise<number> {
+    if (this._sessionId) return this._sessionId;
+    await this.participant.connect(this._projectId);
+    this._session.participantId = this.participant.id;
+    this._sessionId = await this._session.connect();
+    this.events = new RoundwareEvents(this._sessionId, this.apiClient);
+    this.events.logEvent(`start_session`);
+    return this._sessionId;
+  }
+
   async updateAssetPool(): Promise<void> {
+    // Recording only (connect withoutSession): no pool to keep.
+    if (this._withoutSession) return;
     let filters = this._assetFilters;
     let existingAssets: IAssetData[] = [];
     if (this._lastAssetUpdate) {

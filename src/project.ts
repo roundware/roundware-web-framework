@@ -70,10 +70,11 @@ export class Project {
    * @param {number} sessionId
    * @returns {Promise} sessionId | undefined
    */
-  async connect(sessionId: number): Promise<number | undefined> {
+  async connect(sessionId?: number): Promise<number | undefined> {
     const path = "/projects/" + this.projectId + "/";
 
-    const requestData = { session_id: sessionId };
+    // No session yet when connecting without one (Roundware.connect).
+    const requestData = sessionId ? { session_id: sessionId } : {};
 
     try {
       const data = await this.apiClient.get<IProjectData>(path, requestData);
@@ -112,7 +113,7 @@ export class Project {
    * @param {number} sessionId
    * @returns Promise<IUiConfig>
    */
-  async fetchUIConfig(sessionId: number): Promise<IUiConfig> {
+  async fetchUIConfig(sessionId?: number): Promise<IUiConfig> {
     // Fetch UIGroups (with embedded ui_items) and Tags in parallel
     const [uiGroups, tags] = await Promise.all([
       this.apiClient.get<IRawUIGroup[]>("/uigroups/", {
