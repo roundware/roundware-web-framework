@@ -153,6 +153,7 @@ export class Project {
         display_items: displayItems,
         group_short_name: group.name,
         header_display_text: group.header_text,
+        select_type: group.select_type === "multi" ? "multi" : "single",
         uiitem_filter:
           group.ui_item_filter === "none" || !group.ui_item_filter
             ? "none"

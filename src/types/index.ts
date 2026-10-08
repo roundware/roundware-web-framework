@@ -50,6 +50,9 @@ export interface ITagGroup {
   group_short_name?: string;
   header_display_text?: string;
   uiitem_filter?: "none" | `random-${number}`;
+  /** One answer, or several (the group's select_type). Speak questions are
+   *  single unless the project says otherwise; Listen filters allow several. */
+  select_type?: "single" | "multi";
 }
 export interface IUiConfig {
   speak?: ITagGroup[];

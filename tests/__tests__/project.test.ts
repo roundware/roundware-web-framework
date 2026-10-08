@@ -256,6 +256,7 @@ describe("Project", () => {
             ],
             group_short_name: "speak-group",
             header_display_text: "Speak Header",
+            select_type: "single",
             uiitem_filter: "none",
           },
         ],
