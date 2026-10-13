@@ -2029,8 +2029,10 @@ describe("SpeakerEngine", () => {
     });
 
     it("should throw error when PREFETCH strategy and speakers not loaded", async () => {
+      // Plain "prefetch" plays classic (classic_speakers.test.ts); a Choir
+      // mode can still prefetch.
       speakerEngine.mixParams.speakerConfig = {
-        mode: "prefetch",
+        mode: "prefetch-sync-basePlusMax5Random" as SpeakerConfig["mode"],
       };
       speakerEngine.speakers = [
         { buffer: null } as any,
@@ -2043,7 +2045,7 @@ describe("SpeakerEngine", () => {
 
     it("should not throw when PREFETCH strategy and all speakers loaded", async () => {
       speakerEngine.mixParams.speakerConfig = {
-        mode: "prefetch",
+        mode: "prefetch-sync-basePlusMax5Random" as SpeakerConfig["mode"],
       };
       speakerEngine.speakers = [{ buffer: {} } as any, { buffer: {} } as any];
       await expect(speakerEngine.play()).resolves.not.toThrow();
@@ -2061,16 +2063,47 @@ describe("SpeakerEngine", () => {
       expect(updateSpy).toHaveBeenCalled();
     });
 
-    it("should not call onLocationUpdateProgressiveBasePlusMaxNRandom when PROGRESSIVE and maxRandom = 0", async () => {
-      speakerEngine.mixParams.speakerConfig = {
-        mode: "progressive-sync",
-      };
-      const updateSpy = jest.spyOn(
-        speakerEngine,
-        "onLocationUpdateProgressiveBasePlusMaxNRandom"
-      );
-      await speakerEngine.play();
-      expect(updateSpy).not.toHaveBeenCalled();
+    it("plays classic speakers, not Choir's, when there's no basePlusMaxNRandom", async () => {
+      for (const mode of ["classic", "progressive-sync", "stream", "prefetch-sync"]) {
+        speakerEngine.mixParams.speakerConfig = {
+          mode: mode as SpeakerConfig["mode"],
+        };
+        const updateSpy = jest.spyOn(
+          speakerEngine,
+          "onLocationUpdateProgressiveBasePlusMaxNRandom"
+        );
+        const classicPlay = jest
+          .spyOn((speakerEngine as any).classic, "play")
+          .mockImplementation(() => {});
+        await speakerEngine.play();
+        expect(speakerEngine.isClassic).toBe(true);
+        expect(classicPlay).toHaveBeenCalled();
+        expect(updateSpy).not.toHaveBeenCalled();
+        classicPlay.mockRestore();
+        updateSpy.mockRestore();
+      }
+    });
+
+    it("switching to classic lets Choir's decoded recordings go", () => {
+      const track = {
+        data: { id: 1 },
+        clearListeners: jest.fn(),
+        bufferSourcePlaying: true,
+        abortBufferSource: jest.fn(),
+        unload: jest.fn(),
+      } as unknown as SpeakerTrack;
+      speakerEngine.speakers = [track];
+      const classicUpdate = jest
+        .spyOn((speakerEngine as any).classic, "update")
+        .mockImplementation(() => {});
+      speakerEngine.updateParams({
+        ...speakerEngine.mixParams,
+        speakerConfig: { mode: "stream" },
+      });
+      expect(track.abortBufferSource).toHaveBeenCalled();
+      expect(track.unload).toHaveBeenCalled();
+      expect(classicUpdate).toHaveBeenCalled();
+      classicUpdate.mockRestore();
     });
 
     describe("stop method", () => {
@@ -2206,7 +2239,7 @@ describe("SpeakerEngine", () => {
 
         speakerEngine.speakers = [mockSpeaker1, mockSpeaker2];
         speakerEngine.mixParams.speakerConfig = {
-          mode: "progressive-sync",
+          mode: "progressive-sync-basePlusMax5Random",
           prefetchDistanceMeters: 1.5,
         };
 
@@ -5320,7 +5353,9 @@ describe("SpeakerEngine - play", () => {
   });
 
   it("should throw error when using prefetch strategy and not all speakers are loaded", async () => {
-    mockMixParams.speakerConfig = { mode: "prefetch" };
+    mockMixParams.speakerConfig = {
+      mode: "prefetch-sync-basePlusMax5Random" as SpeakerConfig["mode"],
+    };
     speakerEngine.updateParams(mockMixParams);
     mockSpeakerTrack.buffer = null;
     speakerEngine.speakers = [mockSpeakerTrack];
@@ -5469,7 +5504,7 @@ describe("SpeakerEngine - updateParams", () => {
 
   it("should load and unload speakers based on distance when using progressive strategy", () => {
     mockMixParams.speakerConfig = {
-      mode: "progressive-sync",
+      mode: "progressive-sync-basePlusMax5Random",
       prefetchDistanceMeters: 50,
     };
     speakerEngine.speakers = [mockSpeakerTrack];

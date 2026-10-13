@@ -12,9 +12,10 @@ import { EffectsConfig, IMixParams, SpeakerConfig } from "../types/index";
 import { ISpeakerData } from "../types/speaker";
 import { FADE_IN_DURATION_SECONDS, isNearlyZero } from "../utils";
 import { BufferEffectsProcessor } from "./buffer_effects_processor";
+import { ClassicSpeakers } from "./classic_speakers";
 import { MasterEffects } from "./master_effects";
 import { SpeakerTrack } from "./speaker_track";
-import { LoadingStrategy, SpeakerUtils } from "./speaker_utils";
+import { LoadingStrategy, PlayingMode, SpeakerUtils } from "./speaker_utils";
 
 const DEBUG_SPEAKER_DISPLAY = false;
 const DEBUG_LOOP_SYNC = true; // Enable detailed loop sync debugging
@@ -93,6 +94,11 @@ export class SpeakerEngine extends EventEmitter<{
   private masterEffects: MasterEffects;
   private lastEffectsJson = "";
 
+  // Every speaker in earshot at once, as in v2 (classic_speakers.ts): the
+  // player for any mode without basePlusMaxNRandom.
+  private classic: ClassicSpeakers;
+  private wasClassic = false;
+
   // Variant preprocessing for reduced loop point drift
   private variantPreprocessingTimers: Map<number, NodeJS.Timeout> = new Map();
   private preprocessedVariantBuffers: Map<number, IAudioBuffer> = new Map();
@@ -113,6 +119,15 @@ export class SpeakerEngine extends EventEmitter<{
       config.effects
     );
     this.lastEffectsJson = JSON.stringify(config.effects ?? {});
+
+    this.classic = new ClassicSpeakers(
+      this.audioContext,
+      [this.masterEffects.dryInput, this.masterEffects.sendInput],
+      (ids) => {
+        this.playingTracks = ids;
+        this.emit("playingTracksUpdated", ids);
+      }
+    );
 
     if (DEBUG_SPEAKER_DISPLAY) {
       this.createDebugStatusDisplay();
@@ -283,7 +298,13 @@ export class SpeakerEngine extends EventEmitter<{
       );
     }
 
-    if (this.loadingStrategy === LoadingStrategy.PREFETCH) {
+    if (this.isClassic) {
+      this.classic.play(
+        this.speakers,
+        this.mixParams.listenerPoint ? this.listenerPoint : null,
+        this.speakerConfig
+      );
+    } else if (this.loadingStrategy === LoadingStrategy.PREFETCH) {
       // prefech requires all speakers to be loaded
       if (!this.speakers.every((speaker) => speaker.buffer))
         throw new Error(
@@ -304,6 +325,7 @@ export class SpeakerEngine extends EventEmitter<{
   }
 
   public async stop(): Promise<void> {
+    this.classic.stop();
     this.speakers.forEach((track) => {
       // cancel all loops and future processing
       track?.clearListeners("trackFinished");
@@ -339,6 +361,16 @@ export class SpeakerEngine extends EventEmitter<{
     const effectsJson = JSON.stringify(params.speakerConfig?.effects ?? {});
     if (params.speakerConfig && effectsJson !== this.lastEffectsJson) {
       this.updateEffects(params.speakerConfig.effects);
+    }
+
+    // The app starts with its built-in (Choir) settings and gets the
+    // project's when listening starts, so the mode can change here.
+    if (this.isClassic !== this.wasClassic) this.switchPlayer();
+    if (this.isClassic) {
+      if (this.mixParams.listenerPoint) {
+        this.classic.update(this.speakers, this.listenerPoint, this.speakerConfig);
+      }
+      return;
     }
 
     if (this.loadingStrategy === LoadingStrategy.PROGRESSIVE) {
@@ -1390,6 +1422,37 @@ export class SpeakerEngine extends EventEmitter<{
     return SpeakerUtils.getLoadingStrategy(
       this.mixParams.speakerConfig?.mode || "progressive-sync"
     );
+  }
+
+  get speakerConfig(): SpeakerConfig {
+    return this.mixParams.speakerConfig ?? ({} as SpeakerConfig);
+  }
+
+  /** Classic (v2's) speakers rather than Choir's base plus random. */
+  get isClassic() {
+    return this.mode.mode === PlayingMode.NORMAL;
+  }
+
+  /** Hand the speakers from one player to the other. Choir's decoded
+   *  recordings are let go: classic streams them. */
+  private switchPlayer() {
+    this.wasClassic = this.isClassic;
+    if (this.isClassic) {
+      this.speakers.forEach((track) => {
+        track.clearListeners("trackFinished");
+        track.clearListeners("trackAborted");
+        if (track.bufferSourcePlaying) track.abortBufferSource();
+        this.clearVariantPreprocessingTimer(track.data.id);
+        track.unload();
+      });
+      this.playingTracks = [];
+      if (this.playing) {
+        this.classic.play(this.speakers, null, this.speakerConfig);
+      }
+    } else {
+      this.classic.releaseAll();
+      this.playingTracks = [];
+    }
   }
 
   get mode() {
