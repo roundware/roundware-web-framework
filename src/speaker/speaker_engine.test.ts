@@ -2029,7 +2029,7 @@ describe("SpeakerEngine", () => {
     });
 
     it("should throw error when PREFETCH strategy and speakers not loaded", async () => {
-      // Plain "prefetch" plays classic (classic_speakers.test.ts); a Choir
+      // Plain "prefetch" plays classic (classic_speakers.test.ts); a looping
       // mode can still prefetch.
       speakerEngine.mixParams.speakerConfig = {
         mode: "prefetch-sync-basePlusMax5Random" as SpeakerConfig["mode"],
@@ -2063,7 +2063,7 @@ describe("SpeakerEngine", () => {
       expect(updateSpy).toHaveBeenCalled();
     });
 
-    it("plays classic speakers, not Choir's, when there's no basePlusMaxNRandom", async () => {
+    it("plays classic speakers, not looping, when there's no basePlusMaxNRandom", async () => {
       for (const mode of ["classic", "progressive-sync", "stream", "prefetch-sync"]) {
         speakerEngine.mixParams.speakerConfig = {
           mode: mode as SpeakerConfig["mode"],
@@ -2084,7 +2084,7 @@ describe("SpeakerEngine", () => {
       }
     });
 
-    it("switching to classic lets Choir's decoded recordings go", () => {
+    it("switching to classic lets looping mode's decoded recordings go", () => {
       const track = {
         data: { id: 1 },
         clearListeners: jest.fn(),

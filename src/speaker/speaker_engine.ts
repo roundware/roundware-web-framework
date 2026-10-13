@@ -363,7 +363,7 @@ export class SpeakerEngine extends EventEmitter<{
       this.updateEffects(params.speakerConfig.effects);
     }
 
-    // The app starts with its built-in (Choir) settings and gets the
+    // The app starts with its built-in (looping) settings and gets the
     // project's when listening starts, so the mode can change here.
     if (this.isClassic !== this.wasClassic) this.switchPlayer();
     if (this.isClassic) {
@@ -1428,12 +1428,12 @@ export class SpeakerEngine extends EventEmitter<{
     return this.mixParams.speakerConfig ?? ({} as SpeakerConfig);
   }
 
-  /** Classic (v2's) speakers rather than Choir's base plus random. */
+  /** Classic (v2's) speakers rather than looping mode's base plus random. */
   get isClassic() {
     return this.mode.mode === PlayingMode.NORMAL;
   }
 
-  /** Hand the speakers from one player to the other. Choir's decoded
+  /** Hand the speakers from one player to the other. Looping mode's decoded
    *  recordings are let go: classic streams them. */
   private switchPlayer() {
     this.wasClassic = this.isClassic;

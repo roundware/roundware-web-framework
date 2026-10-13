@@ -71,8 +71,8 @@ export type SpeakerConfig = {
   /** Which speaker player. "classic": every speaker in earshot plays its
    *  whole recording on a loop, louder nearer, as in v2 ("-sync" keeps them
    *  on one clock); v2's "stream" and "prefetch" modes play classic too.
-   *  "progressive-sync-basePlusMaxNRandom": Choir's base speaker plus up to
-   *  N random others, in loops. */
+   *  "progressive-sync-basePlusMaxNRandom": looping mode — a base speaker
+   *  plus up to N random others, in loops. */
   mode:
     | "classic"
     | "classic-sync"
