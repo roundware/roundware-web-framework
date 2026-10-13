@@ -302,6 +302,29 @@ describe('SpeakerTrack', () => {
       const volume = speakerTrack.volumeByLocation(mockPoint);
       expect(volume).toBe(0.5); // minVolume + (maxVolume - minVolume) * 0.5
     });
+
+    // Turf throws on degenerate geometry (v2 shapes with a repeated closing
+    // point did, 2026-10-13); one speaker must not stop the app.
+    it('treats a speaker whose geometry can\'t be measured as out of range, warning once', () => {
+      const mockPoint: Point = { type: 'Point', coordinates: [0.5, 0.5] };
+      const mockBooleanPointInPolygon = require('@turf/boolean-point-in-polygon');
+      mockBooleanPointInPolygon.mockImplementation(() => {
+        throw new Error('coordinates must contain numbers');
+      });
+      speakerTrack.attenuationBorderPolygon = {
+        type: 'Feature',
+        geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
+        properties: {},
+      };
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      expect(speakerTrack.volumeByLocation(mockPoint)).toBe(0.0);
+      expect(speakerTrack.volumeByLocation(mockPoint)).toBe(0.0);
+      expect(warn).toHaveBeenCalledTimes(1);
+
+      warn.mockRestore();
+      mockBooleanPointInPolygon.mockReset();
+    });
   });
 
   describe('loadBuffer', () => {

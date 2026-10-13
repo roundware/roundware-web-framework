@@ -350,10 +350,18 @@ export class SpeakerEngine extends EventEmitter<{
         this.mixParams.speakerConfig?.prefetchDistanceMeters || 0;
 
       this.speakers.forEach((speaker) => {
-        const distance = pointToPolygonDistance(
-          this.listenerPoint,
-          speaker.data.shape!
-        );
+        // One speaker's malformed shape must not stop the others (or the
+        // app: this runs on the first location update). Turf throws on
+        // degenerate geometry — v2 shapes with a repeated closing point did.
+        let distance = Infinity;
+        try {
+          distance = pointToPolygonDistance(
+            this.listenerPoint,
+            speaker.data.shape!
+          );
+        } catch (e) {
+          speaker.warnGeometryOnce("distance to its shape", e);
+        }
 
         if (distance < minDistanceToLoad) {
           // this.emit("speakerNear", {});

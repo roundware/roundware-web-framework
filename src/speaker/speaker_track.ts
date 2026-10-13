@@ -187,7 +187,29 @@ export class SpeakerTrack extends EventEmitter<{
     return ratio;
   }
 
+  private geometryWarned = false;
+
+  /** Say once, not on every location update, that this speaker's geometry
+   *  couldn't be measured; it's then treated as out of range. */
+  warnGeometryOnce(what: string, error: unknown) {
+    if (this.geometryWarned) return;
+    this.geometryWarned = true;
+    console.warn(
+      `Speaker ${this.data?.id}: couldn't work out ${what}; treated as out of range.`,
+      error
+    );
+  }
+
   volumeByLocation(listenerPoint: Point) {
+    try {
+      return this.volumeAt(listenerPoint);
+    } catch (e) {
+      this.warnGeometryOnce("its volume from the listener's location", e);
+      return this.minVolume;
+    }
+  }
+
+  private volumeAt(listenerPoint: Point) {
     if (!listenerPoint) {
       return this.calculatedVolume;
     } else if (this.attenuationShapeContains(listenerPoint)) {
