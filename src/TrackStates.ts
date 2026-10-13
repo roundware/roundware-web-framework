@@ -56,11 +56,18 @@ export class LoadingState implements ICommonStateProperties {
       this.track.setZeroGain();
       this.track.audioElement.addEventListener(
         "playing",
-        () => this.track.playlist.playing && this.track.transition(newState),
+        () => {
+          if (!this.track.playlist.playing) return;
+          // Into the history once it's heard, not when it's chosen: one that
+          // fails to play, or is paused first, was never listened to.
+          if (this.track.currentAsset?.id === asset.id) {
+            this.track.playlist._client.listenHistory.addAsset(asset);
+          }
+          this.track.transition(newState);
+        },
         { once: true }
       );
       this.track.playAudio();
-      this.track.playlist._client.listenHistory.addAsset(asset);
       return;
     } else {
       newState = new WaitingForAssetState(track, trackOptions);

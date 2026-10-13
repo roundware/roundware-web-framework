@@ -73,6 +73,25 @@ describe("ListenHistory", () => {
   });
 
   describe("addAsset", () => {
+    it("keeps each project's history apart", () => {
+      listenHistory = new ListenHistory(8);
+      expect(localforage.getItem).toHaveBeenCalledWith("listenHistory:8");
+      listenHistory.addAsset(mockAsset1);
+      expect(localforage.setItem).toHaveBeenCalledWith("listenHistory:8", listenHistory.assets);
+    });
+
+    it("a replay is a new entry; the earlier one keeps its time", () => {
+      const pooled = { ...mockAsset1 };
+      listenHistory.addAsset(pooled);
+      const first = listenHistory.assets[0].addedAt;
+      jest.spyOn(Date, "now").mockReturnValue(first! + 5000);
+      listenHistory.addAsset(pooled);
+      expect(listenHistory.assets[0].addedAt).toBe(first);
+      expect(listenHistory.assets[1].addedAt).toBe(first! + 5000);
+      expect((pooled as any).addedAt).toBeUndefined(); // the pool's asset untouched
+      (Date.now as jest.Mock).mockRestore();
+    });
+
     it("should add an asset with addedAt timestamp", () => {
       const beforeAdd = Date.now();
       listenHistory.addAsset(mockAsset1);

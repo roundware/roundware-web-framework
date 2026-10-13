@@ -245,7 +245,7 @@ class Roundware {
       listenerLocation: this.listenerLocation,
       mixParams,
     });
-    this.listenHistory = new ListenHistory();
+    this.listenHistory = new ListenHistory(this._projectId);
   }
 
   updateLocation(listenerLocation: Coordinates): void {

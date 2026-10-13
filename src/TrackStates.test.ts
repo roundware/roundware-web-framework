@@ -176,7 +176,10 @@ describe("TrackStates", () => {
         locationPoint: mockListenerPoint,
         playCount: 0,
       };
-      (track.loadNextAsset as jest.Mock).mockReturnValue(mockAsset);
+      (track.loadNextAsset as jest.Mock).mockImplementation(() => {
+        track.currentAsset = mockAsset;
+        return mockAsset;
+      });
 
       // Capture the event listener callback
       let playingCallback: Function = () => {};
@@ -196,10 +199,12 @@ describe("TrackStates", () => {
         { once: true }
       );
       expect(track.playAudio).toHaveBeenCalled();
-      expect(track.playlist._client.listenHistory.addAsset).toHaveBeenCalledWith(mockAsset);
+      // Chosen isn't heard: history waits for it to play.
+      expect(track.playlist._client.listenHistory.addAsset).not.toHaveBeenCalled();
 
       // Simulate the playing event
       playingCallback();
+      expect(track.playlist._client.listenHistory.addAsset).toHaveBeenCalledWith(mockAsset);
       expect(track.transition).toHaveBeenCalledWith(expect.any(FadingInState));
     });
 
@@ -272,11 +277,11 @@ describe("TrackStates", () => {
         { once: true }
       );
       expect(track.playAudio).toHaveBeenCalled();
-      expect(track.playlist._client.listenHistory.addAsset).toHaveBeenCalledWith(mockAsset);
 
       // Simulate the playing event
       playingCallback();
       expect(track.transition).not.toHaveBeenCalled();
+      expect(track.playlist._client.listenHistory.addAsset).not.toHaveBeenCalled();
     });
   });
 

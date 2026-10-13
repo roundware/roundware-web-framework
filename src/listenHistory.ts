@@ -7,10 +7,14 @@ type IAssetHistory = IAssetData & {
 };
 export class ListenHistory {
   assets: IAssetHistory[] = [];
+  /** Each project its own history: projects served from one address (a
+   *  local build, a preview) used to share one. */
+  private key: string;
 
-  constructor() {
+  constructor(projectId?: number) {
+    this.key = projectId ? `listenHistory:${projectId}` : `listenHistory`;
     // load earlier history from indexedDB
-    localforage.getItem<IAssetData>(`listenHistory`).then((assets) => {
+    localforage.getItem<IAssetHistory[]>(this.key).then((assets) => {
       if (Array.isArray(assets))
         this.assets = [...assets, ...this.assets].sort(
           (a, b) => b.addedAt! - a.addedAt!
@@ -19,16 +23,18 @@ export class ListenHistory {
   }
 
   addAsset(asset: IAssetData) {
-    let historyItem: IAssetHistory = asset;
-    historyItem.addedAt = Date.now();
+    // A copy, stamped: writing the time onto the pool's own asset changed
+    // every earlier entry for it too, and stored entries come back as
+    // separate copies anyway.
+    const historyItem: IAssetHistory = { ...asset, addedAt: Date.now() };
 
     this.assets.push(historyItem);
     // add to indexedDB
-    localforage.setItem(`listenHistory`, this.assets);
+    localforage.setItem(this.key, this.assets);
   }
 
   clear() {
     this.assets = [];
-    localforage.setItem(`listenHistory`, this.assets);
+    localforage.setItem(this.key, this.assets);
   }
 }
