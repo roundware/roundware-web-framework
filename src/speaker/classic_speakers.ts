@@ -99,6 +99,11 @@ export class ClassicSpeakers {
         if (voice) this.release(voice);
         continue;
       }
+      if (voice?.releasing) {
+        // Back in range while it fades out: kept.
+        voice.releasing = false;
+        speaker.emit("loaded");
+      }
       voice ??= this.assign(speaker, config);
       if (!this.playing) continue;
       if (audible) this.sound(voice, volume);
@@ -158,6 +163,11 @@ export class ClassicSpeakers {
     this.voices.forEach((v) => v.speaker && this.free(v));
   }
 
+  /** Whether a speaker is readied: its stream assigned, loading or playing. */
+  has(speakerId: number) {
+    return this.voices.some((v) => v.speaker?.data.id === speakerId && !v.releasing);
+  }
+
   private voiceFor(speakerId: number) {
     return this.voices.find((v) => v.speaker?.data.id === speakerId);
   }
@@ -195,6 +205,9 @@ export class ClassicSpeakers {
     voice.releasing = false;
     voice.audio.loop = config.loop !== false;
     voice.audio.src = speaker.uri;
+    // As a decoded recording's arrival is announced (the map stops drawing
+    // the speaker as not loaded).
+    speaker.emit("loaded");
     return voice;
   }
 
@@ -224,12 +237,15 @@ export class ClassicSpeakers {
   }
 
   private release(voice: Voice) {
+    if (!voice.releasing) voice.speaker?.emit("unloaded");
     voice.releasing = true;
     if (voice.sounding) this.silence(voice);
     else if (!voice.timer) this.free(voice);
   }
 
   private free(voice: Voice) {
+    // Released (out of range) already said so; otherwise say it now.
+    if (voice.speaker && !voice.releasing) voice.speaker.emit("unloaded");
     this.clearTimer(voice);
     voice.audio.pause();
     voice.audio.src = silenceAudioBase64;

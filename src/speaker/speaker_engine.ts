@@ -442,7 +442,8 @@ export class SpeakerEngine extends EventEmitter<{
               try {
                 baseTrack?.off("loaded", onLoaded);
               } catch {}
-              this.playAsBaseTrack(baseTrack, false);
+              // Classic announces its streams as "loaded" too.
+              if (!this.isClassic) this.playAsBaseTrack(baseTrack, false);
             };
             baseTrack?.on("loaded", onLoaded);
           } else {
@@ -1426,6 +1427,14 @@ export class SpeakerEngine extends EventEmitter<{
 
   get speakerConfig(): SpeakerConfig {
     return this.mixParams.speakerConfig ?? ({} as SpeakerConfig);
+  }
+
+  /** Whether a speaker's audio is ready or on its way: decoded or being
+   *  fetched (looping mode), or its stream readied (classic). The map draws
+   *  speakers that aren't as not loaded. */
+  isLoaded(track: SpeakerTrack) {
+    if (this.isClassic) return this.classic.has(track.data.id);
+    return !!track.buffer || !!track.request;
   }
 
   /** Classic (v2's) speakers rather than looping mode's base plus random. */

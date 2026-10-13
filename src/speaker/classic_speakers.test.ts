@@ -193,6 +193,24 @@ describe("ClassicSpeakers", () => {
     expect(classic.playingIds).toEqual([1]);
   });
 
+  it("says when a speaker's stream is readied and let go (the map's not loaded)", () => {
+    const s = speaker(1, 1);
+    classic.play([s], listener, CONFIG);
+    expect(s.emit).toHaveBeenCalledWith("loaded");
+    expect(classic.has(1)).toBe(true);
+
+    s.volumeByLocation.mockReturnValue(0);
+    classic.update([s], { type: "Point", coordinates: [1, 1] }, CONFIG);
+    expect(s.emit).toHaveBeenCalledWith("unloaded");
+    expect(classic.has(1)).toBe(false);
+
+    (s.emit as jest.Mock).mockClear();
+    s.volumeByLocation.mockReturnValue(1);
+    classic.update([s], listener, CONFIG); // back while fading
+    expect(s.emit).toHaveBeenCalledWith("loaded");
+    expect(classic.has(1)).toBe(true);
+  });
+
   it("a speaker with a minimum volume plays everywhere, as in v2", () => {
     const background = speaker(1, 0.3, true); // its minimum, far outside
     classic.play([background], listener, CONFIG);
