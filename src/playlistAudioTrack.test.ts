@@ -70,6 +70,7 @@ describe('PlaylistAudiotrack', () => {
       playing: true,
       next: jest.fn(),
       elapsedTimeMs: 0,
+      _client: { triggerOnPlayAssets: jest.fn() },
     } as any;
 
     mockClient = {
@@ -265,6 +266,8 @@ describe('PlaylistAudiotrack', () => {
 
       expect(newPlaylistAudiotrack.playing).toBe(false);
       expect(mockClient?.events?.logAssetEnd).toHaveBeenCalledWith(mockAsset.id);
+      // The app hears that it's no longer playing (the map's highlight).
+      expect(mockPlaylist._client.triggerOnPlayAssets).toHaveBeenCalled();
     });
 
     it('should handle pause event when no current asset', () => {

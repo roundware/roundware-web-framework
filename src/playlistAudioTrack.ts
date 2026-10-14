@@ -211,12 +211,18 @@ export class PlaylistAudiotrack {
         this.listenEvents?.logAssetStart(this.currentAsset.id);
         this.playing = true;
         this.played = true;
+        // Heard now: the app's "playing" follows the audio, not the choice
+        // (playlist.currentlyPlayingAssets).
+        this.playlist._client.triggerOnPlayAssets();
       }
     });
 
     audioElement.addEventListener("pause", () => {
+      const wasPlaying = this.playing;
       this.playing = false;
       this.listenEvents?.logAssetEnd(this.currentAsset?.id!);
+      // Ended, faded out or stopped: no longer heard.
+      if (wasPlaying) this.playlist._client.triggerOnPlayAssets();
     });
 
     audioElement.addEventListener("end", () =>
