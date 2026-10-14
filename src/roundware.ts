@@ -352,7 +352,7 @@ class Roundware {
 
       this._sessionId = sessionId;
 
-      this.events = new RoundwareEvents(this._sessionId, this.apiClient);
+      this.events = new RoundwareEvents(this._sessionId, this.apiClient, () => this.listenerLocation);
 
       this.events.logEvent(`start_session`);
 
@@ -427,7 +427,7 @@ class Roundware {
     await this.participant.connect(this._projectId);
     this._session.participantId = this.participant.id;
     this._sessionId = await this._session.connect();
-    this.events = new RoundwareEvents(this._sessionId, this.apiClient);
+    this.events = new RoundwareEvents(this._sessionId, this.apiClient, () => this.listenerLocation);
     this.events.logEvent(`start_session`);
     return this._sessionId;
   }

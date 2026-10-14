@@ -1,118 +1,103 @@
-// Import necessary dependencies and the RoundwareEvents class
-
 import { ApiClient } from "../../src/api-client";
 import { RoundwareEvents } from "../../src/events";
-import { EventType, EventPayload } from "../../src/types/events";
+import { EventType } from "../../src/types/events";
 
-// Mock the ApiClient class
 jest.mock("../../src/api-client");
 
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
 describe("RoundwareEvents", () => {
-  let roundwareEvents: RoundwareEvents;
-  let mockApiClient: jest.Mocked<ApiClient>;
+  let events: RoundwareEvents;
+  let api: jest.Mocked<ApiClient>;
+  let at: { latitude?: number; longitude?: number } | undefined;
 
   beforeEach(() => {
-    mockApiClient = new ApiClient("") as jest.Mocked<ApiClient>;
-    roundwareEvents = new RoundwareEvents(123, mockApiClient);
+    api = new ApiClient("") as jest.Mocked<ApiClient>;
+    api.post.mockResolvedValue({ id: 456 });
+    api.patch.mockResolvedValue({});
+    at = { latitude: 42.36, longitude: -71.06 };
+    events = new RoundwareEvents(123, api, () => at);
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
+  afterEach(() => jest.clearAllMocks());
 
-  describe("logAssetStart", () => {
-    it("should log asset start and update _startedAssets", async () => {
-      const assetId = 1;
+  describe("listening history", () => {
+    it("records a contribution heard, from when and where", async () => {
       const startTime = new Date();
-
-      // Mock the post method of ApiClient
-      mockApiClient.post.mockResolvedValue({ id: 456 });
-
-      await roundwareEvents.logAssetStart(assetId, startTime);
-
-      expect(mockApiClient.post).toHaveBeenCalledWith("/listenevents/", {
+      await events.logAssetStart(1, startTime);
+      expect(api.post).toHaveBeenCalledWith("/listenevents/", {
         started_at: startTime.toISOString(),
         session_id: 123,
-        asset_id: assetId,
+        asset_id: 1,
+        latitude: 42.36,
+        longitude: -71.06,
       });
+    });
 
-      expect(roundwareEvents["_startedAssets"]).toHaveProperty(
-        assetId.toString(),
-        expect.objectContaining({ startTime, id: 456 })
+    it("records how long, once it stops", async () => {
+      await events.logAssetStart(1);
+      await events.logAssetEnd(1);
+      expect(api.patch).toHaveBeenCalledWith(
+        "/listenevents/456/",
+        expect.objectContaining({ duration_sec: expect.any(Number) })
       );
     });
 
-    it("should log asset start with default startTime if not provided", async () => {
-      const assetId = 1;
-
-      // Mock the post method of ApiClient
-      mockApiClient.post.mockResolvedValue({ id: 456 });
-
-      await roundwareEvents.logAssetStart(assetId);
-
-      expect(mockApiClient.post).toHaveBeenCalledWith("/listenevents/", {
-        started_at: expect.any(String),
-        session_id: 123,
-        asset_id: assetId,
-      });
-
-      expect(roundwareEvents["_startedAssets"]).toHaveProperty(
-        assetId.toString(),
-        expect.objectContaining({ startTime: expect.any(Date), id: 456 })
-      );
-    });
-  });
-
-  describe("logAssetEnd", () => {
-    it("should log asset end if assetId exists in _startedAssets", async () => {
-      const assetId = 1;
-      const startTime = new Date();
-      roundwareEvents["_startedAssets"][assetId] = { startTime, id: 789 };
-
-      // Mock the patch method of ApiClient
-      mockApiClient.patch.mockResolvedValue({});
-
-      await roundwareEvents.logAssetEnd(assetId);
-
-      expect(mockApiClient.patch).toHaveBeenCalledWith(
-        "/listenevents/789/",
-        expect.objectContaining({
-          duration_sec: expect.any(Number),
-        })
-      );
+    it("a stop before the start's row exists still records it", async () => {
+      let resolve: (v: { id: number }) => void = () => {};
+      api.post.mockReturnValue(new Promise((r) => (resolve = r)) as any);
+      await events.logAssetStart(1);
+      const ending = events.logAssetEnd(1);
+      resolve({ id: 789 });
+      await ending;
+      expect(api.patch).toHaveBeenCalledWith("/listenevents/789/", expect.anything());
     });
 
-    it("should not log asset end if assetId does not exist in _startedAssets", async () => {
-      const assetId = 1;
+    it("nothing to stop, nothing sent; and only once", async () => {
+      await events.logAssetEnd(1);
+      expect(api.patch).not.toHaveBeenCalled();
+      await events.logAssetStart(1);
+      await events.logAssetEnd(1);
+      await events.logAssetEnd(1);
+      expect(api.patch).toHaveBeenCalledTimes(1);
+    });
 
-      // Mock the patch method of ApiClient
-      mockApiClient.patch.mockResolvedValue({});
+    it("records speakers heard too", async () => {
+      events.logSpeakerStart(7);
+      expect(api.post).toHaveBeenCalledWith(
+        "/listenevents/",
+        expect.objectContaining({ speaker_id: 7, latitude: 42.36 })
+      );
+      await settle();
+      await events.logSpeakerEnd(7);
+      expect(api.patch).toHaveBeenCalledWith("/listenevents/456/", expect.anything());
+    });
 
-      await roundwareEvents.logAssetEnd(assetId);
-
-      expect(mockApiClient.patch).not.toHaveBeenCalled();
+    it("no location when the listener's isn't known", async () => {
+      at = undefined;
+      await events.logAssetStart(1);
+      expect(api.post.mock.calls[0][1]).not.toHaveProperty("latitude");
     });
   });
 
   describe("logEvent", () => {
-    it("should log an event using the post method of ApiClient", async () => {
-      const eventType: EventType = "start_session";
-      const payload: EventPayload = {
-        latitude: 40.7128,
-        longitude: -74.006,
-      };
-
-      // Mock the post method of ApiClient
-      mockApiClient.post.mockResolvedValue(payload);
-
-      await roundwareEvents.logEvent(eventType, payload);
-
-      expect(mockApiClient.post).toHaveBeenCalledWith("/events/", {
+    it("says where the listener was", async () => {
+      await events.logEvent("play_stream" as EventType);
+      expect(api.post).toHaveBeenCalledWith("/events/", {
         session_id: 123,
-        event_type: eventType,
+        event_type: "play_stream",
         client_time: expect.any(String),
-        ...payload,
+        latitude: 42.36,
+        longitude: -71.06,
       });
+    });
+
+    it("an event's own location wins (location_update)", async () => {
+      await events.logEvent("location_update" as EventType, { latitude: 1, longitude: 2 });
+      expect(api.post).toHaveBeenCalledWith(
+        "/events/",
+        expect.objectContaining({ latitude: 1, longitude: 2 })
+      );
     });
   });
 });

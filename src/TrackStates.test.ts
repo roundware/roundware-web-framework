@@ -688,6 +688,8 @@ describe("TrackStates", () => {
 
     it("should log asset end", async () => {
       state.finish();
+      // The duration waits for the start's row (events.ts stopHearing).
+      await new Promise((r) => setTimeout(r, 0));
       expect(mockApiClient.patch).toHaveBeenCalled();
     });
 

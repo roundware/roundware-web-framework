@@ -126,7 +126,30 @@ export class Mixer {
       this.audioContext,
       this.mixParams.speakerConfig
     );
+    this.recordSpeakersHeard(this.speakerEngine);
     console.info(`SpeakerEngine initialized (pre-play prefetch enabled)`);
+  }
+
+  /**
+   * Speakers heard go into the session's listening history, like the
+   * contributions heard (server docs/010): from when the engine starts
+   * playing one to when it stops — exactly in classic mode, to the loop
+   * point in looping mode, which reports its changes there.
+   */
+  private recordSpeakersHeard(engine: SpeakerEngine) {
+    let heard = new Set<number>();
+    const follow = (ids: (number | null)[]) => {
+      const now = new Set(ids.filter((id): id is number => id != null));
+      now.forEach((id) => {
+        if (!heard.has(id)) this._client.events?.logSpeakerStart(id);
+      });
+      heard.forEach((id) => {
+        if (!now.has(id)) this._client.events?.logSpeakerEnd(id);
+      });
+      heard = now;
+    };
+    engine.on("playingTracksUpdated", follow);
+    engine.on("stop", () => follow([]));
   }
 
   /**
