@@ -25,7 +25,7 @@ describe("RoundwareEvents", () => {
     it("records a contribution heard, from when and where", async () => {
       const startTime = new Date();
       await events.logAssetStart(1, startTime);
-      expect(api.post).toHaveBeenCalledWith("/listenevents/", {
+      expect(api.post).toHaveBeenCalledWith("/listeninghistoryitems/", {
         started_at: startTime.toISOString(),
         session_id: 123,
         asset_id: 1,
@@ -38,7 +38,7 @@ describe("RoundwareEvents", () => {
       await events.logAssetStart(1);
       await events.logAssetEnd(1);
       expect(api.patch).toHaveBeenCalledWith(
-        "/listenevents/456/",
+        "/listeninghistoryitems/456/",
         expect.objectContaining({ duration_sec: expect.any(Number) })
       );
     });
@@ -50,7 +50,7 @@ describe("RoundwareEvents", () => {
       const ending = events.logAssetEnd(1);
       resolve({ id: 789 });
       await ending;
-      expect(api.patch).toHaveBeenCalledWith("/listenevents/789/", expect.anything());
+      expect(api.patch).toHaveBeenCalledWith("/listeninghistoryitems/789/", expect.anything());
     });
 
     it("nothing to stop, nothing sent; and only once", async () => {
@@ -65,12 +65,12 @@ describe("RoundwareEvents", () => {
     it("records speakers heard too", async () => {
       events.logSpeakerStart(7);
       expect(api.post).toHaveBeenCalledWith(
-        "/listenevents/",
+        "/listeninghistoryitems/",
         expect.objectContaining({ speaker_id: 7, latitude: 42.36 })
       );
       await settle();
       await events.logSpeakerEnd(7);
-      expect(api.patch).toHaveBeenCalledWith("/listenevents/456/", expect.anything());
+      expect(api.patch).toHaveBeenCalledWith("/listeninghistoryitems/456/", expect.anything());
     });
 
     it("no location when the listener's isn't known", async () => {

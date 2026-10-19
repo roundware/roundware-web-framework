@@ -1,7 +1,9 @@
 import { ApiClient } from "./api-client";
 import { IAssetData } from "./types/asset";
 import { EventPayload, EventType } from "./types/events";
-const LISTEN_EVENTS = "/listenevents/";
+// Listening history (server /listeninghistoryitems/); v2 called these listen
+// events, at /listenevents/, which the v3 server no longer answers.
+const LISTEN_EVENTS = "/listeninghistoryitems/";
 const EVENTS_PATH = `/events/`;
 /**
  *
