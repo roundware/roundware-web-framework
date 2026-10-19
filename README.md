@@ -8,28 +8,25 @@
 This is currently alpha software; the code is in flux!
 </aside>
 
-## Build & Install Locally
+## Working on it with the web app (v3)
 
-```js
-//
-git clone git@github.com:roundware/roundware-web-framework.git
-npm run build
+The framework is developed beside the web app (`roundware-web-app-v3`),
+which depends on it as `link:../roundware-web-framework` — this folder,
+built. Keep the two checked out side by side.
 
-// isstall tarbal in your app
-cd roundware-web-template
-npm i ../roundware-web-framework
-npm run dev
-
+```bash
+pnpm install
+pnpm run build:main        # dist/, which the app's link reads
+pnpm run build:main --watch      # rebuild on every change while working
+pnpm test
 ```
 
-## Development with Framework & Web Template
+The branch is `v3-updates`. The web app's CI checks it out next to the
+app and builds it, so **push the framework before an app change that
+needs it**. The npm package (`0.13.1-beta.4`) predates v3: don't switch the
+app to it (`use-published-framework`) until a v3 version is published.
 
-```ts
-npm watch
-
-// inside web project
-npm link ../roundware-web-framework
-```
+(The samples below describe the v2 API and are out of date.)
 
 ## Code Samples
 
