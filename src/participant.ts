@@ -83,12 +83,13 @@ export class Participant {
     this.id = responseData.id;
     this.participantToken = responseData.participant_token ?? undefined;
 
+    // Sent with every request from now on, in its own header
+    // (ApiClient.participantToken): not as Authorization: Bearer, which
+    // the server reads as a team member's JWT and answers by demanding
+    // X-Tenant-Slug.
+    this.apiClient.participantToken = this.participantToken;
+
     // Persist the token for cross-session reconnection.
-    // Note: we do NOT set this as the apiClient's auth header because
-    // the participant token is not a JWT — sending it as Authorization: Bearer
-    // would cause the server to treat it as an admin auth attempt and
-    // demand X-Tenant-Slug. Public endpoints identify participants via
-    // the session's participant_id instead.
     if (this.participantToken) {
       try {
         localStorage.setItem("rw_participant_token", this.participantToken);

@@ -23,6 +23,13 @@ export class ApiClient {
    *  the server reads the project as it's being edited instead of its live
    *  copy, and marks what's recorded there as a test. Server docs/021. */
   site?: string;
+  /** The participant this device is (Participant.connect): sent as
+   *  `X-Participant-Token` on every request, so the server knows who's
+   *  asking — for rate limits per participant rather than per address
+   *  (a gallery's Wi-Fi is one address), and which participant made
+   *  each contribution. Not the Authorization header: that's for
+   *  signed-in team members' JWTs. Server docs/010 priority 2. */
+  participantToken?: string;
   /**
    * Created new ApiClient
    * @param  {Window|undefined} window
@@ -130,6 +137,9 @@ export class ApiClient {
     url.search = queryParams.toString();
     if (this._authToken) {
       headers["Authorization"] = this._authToken;
+    }
+    if (this.participantToken) {
+      headers["X-Participant-Token"] = this.participantToken;
     }
 
     requestInit.headers = headers;

@@ -33,6 +33,22 @@ describe("ApiClient", () => {
     ]);
   });
 
+  it("sends the participant token on every request, once connected", async () => {
+    const seen: (string | undefined)[] = [];
+    global.fetch = jest.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      seen.push((init?.headers as Record<string, string>)?.["X-Participant-Token"]);
+      return { ok: true, json: async () => ({}) } as Response;
+    }) as jest.Mock;
+    const client = new ApiClient("https://api.example.test/api/3");
+    await client.get("/tags/", { project_id: 1 });
+    client.participantToken = "abc123";
+    await client.get("/tags/", { project_id: 1 });
+    await client.post("/assets/", new FormData(), {
+      contentType: "multipart/form-data",
+    });
+    expect(seen).toEqual([undefined, "abc123", "abc123"]);
+  });
+
   it("sends no site on the live site", async () => {
     const client = new ApiClient("https://api.example.test/api/3");
     await client.get("/tags/", { project_id: 1 });
