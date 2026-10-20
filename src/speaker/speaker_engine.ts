@@ -378,7 +378,8 @@ export class SpeakerEngine extends EventEmitter<{
         [key: number]: number;
       }[] = [];
       // How near before a speaker's loop is loaded: within this many
-      // meters of where it starts being heard (its shape plus its fade).
+      // meters of its shape, the outer edge of where it's heard (it fades
+      // in inside the shape, from that edge to its attenuation border).
       // Turf measures in kilometers unless told, so the default of 5 was
       // 5 km — every speaker of a project decoded at once (2026-10-19).
       const minDistanceToLoad =
@@ -393,7 +394,7 @@ export class SpeakerEngine extends EventEmitter<{
           distance =
             pointToPolygonDistance(this.listenerPoint, speaker.data.shape!, {
               units: "meters",
-            }) - (speaker.data.attenuation_distance ?? 0);
+            });
         } catch (e) {
           speaker.warnGeometryOnce("distance to its shape", e);
         }

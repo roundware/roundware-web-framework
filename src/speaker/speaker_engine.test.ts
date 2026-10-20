@@ -2273,25 +2273,27 @@ describe("SpeakerEngine", () => {
         });
       });
 
-      it("should measure the preload distance in meters from where a speaker starts being heard", () => {
+      it("should measure the preload distance in meters from its shape", () => {
         const shape = { type: "MultiPolygon", coordinates: [] };
-        const makeSpeaker = (id: number, attenuation_distance?: number) =>
+        const makeSpeaker = (id: number, attenuation_distance: number) =>
           ({
             data: { id, shape, attenuation_distance },
             loadBuffer: jest.fn(),
             unload: jest.fn(),
           } as unknown as SpeakerTrack);
-        // Both shapes 60 m away; one fades in over its last 20 m.
-        const fading = makeSpeaker(1, 20);
-        const abrupt = makeSpeaker(2);
-        speakerEngine.speakers = [fading, abrupt];
+        // The shape is the outer edge of where a speaker is heard; its fade
+        // is inside it, so the fade distance doesn't bring it nearer.
+        const near = makeSpeaker(1, 20);
+        const far = makeSpeaker(2, 20);
+        speakerEngine.speakers = [near, far];
         speakerEngine.mixParams.speakerConfig = {
           mode: "progressive-sync-basePlusMax5Random",
           prefetchDistanceMeters: 50,
         };
         const distanceSpy = jest
           .spyOn(require("@turf/point-to-polygon-distance"), "default")
-          .mockImplementation(() => 60);
+          .mockImplementationOnce(() => 40)
+          .mockImplementationOnce(() => 60);
 
         speakerEngine.updateParams(speakerEngine.mixParams);
 
@@ -2300,9 +2302,9 @@ describe("SpeakerEngine", () => {
           shape,
           { units: "meters" }
         );
-        expect(fading.loadBuffer).toHaveBeenCalled();
-        expect(abrupt.loadBuffer).not.toHaveBeenCalled();
-        expect(abrupt.unload).toHaveBeenCalled();
+        expect(near.loadBuffer).toHaveBeenCalled();
+        expect(far.loadBuffer).not.toHaveBeenCalled();
+        expect(far.unload).toHaveBeenCalled();
       });
 
       it("should call onLocationUpdateProgressiveBasePlusMaxNRandom when playing and maxRandom > 0", () => {
