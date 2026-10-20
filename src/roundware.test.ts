@@ -383,6 +383,39 @@ describe('Roundware', () => {
       expect(bounds.northeast).toBeDefined();
     });
 
+    describe('isInRange', () => {
+      // About 111 m square at (0, 0).
+      const square = { type: 'MultiPolygon', coordinates: [[[[0, 0], [0.001, 0], [0.001, 0.001], [0, 0.001], [0, 0]]]] };
+      const at = (lng: number, lat: number) => ({ type: 'Point', coordinates: [lng, lat] } as any);
+      const inside = at(0.0005, 0.0005);
+      const near = at(-0.00045, 0.0005); // about 50 m outside
+      const far = at(1, 1); // about 157 km away
+
+      it('allows inside a shape, or within the out-of-range distance of one', () => {
+        (roundware as any).speakers = jest.fn().mockReturnValue([{ id: 1, is_active: true, shape: square }]);
+        roundware.project.outOfRangeDistance = 100;
+        expect(roundware.isInRange(inside)).toBe(true);
+        expect(roundware.isInRange(near)).toBe(true);
+        expect(roundware.isInRange(far)).toBe(false);
+        // No leeway: only inside.
+        roundware.project.outOfRangeDistance = 0;
+        expect(roundware.isInRange(inside)).toBe(true);
+        expect(roundware.isInRange(near)).toBe(false);
+      });
+
+      it('allows anywhere with no shaped active speaker, or a global one', () => {
+        roundware.project.outOfRangeDistance = 100;
+        (roundware as any).speakers = jest.fn().mockReturnValue([]);
+        expect(roundware.isInRange(far)).toBe(true);
+        (roundware as any).speakers = jest.fn().mockReturnValue([{ id: 1, is_active: false, shape: square }]);
+        expect(roundware.isInRange(far)).toBe(true);
+        (roundware as any).speakers = jest
+          .fn()
+          .mockReturnValue([{ id: 1, is_active: true, shape: square }, { id: 2, is_active: true, is_global: true }]);
+        expect(roundware.isInRange(far)).toBe(true);
+      });
+    });
+
     it('should leave global speakers out, and say the project plays everywhere', () => {
       const square = { type: 'MultiPolygon', coordinates: [[[[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]]] };
       // Global, though it keeps a shape from before: far away, and ignored.

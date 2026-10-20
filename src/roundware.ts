@@ -40,6 +40,8 @@ export * from "./assetFilters";
 export { GeoListenMode, Roundware };
 
 import bbox from "@turf/bbox";
+import pointToPolygonDistance from "@turf/point-to-polygon-distance";
+import type { Feature, Point } from "geojson";
 import buffer from "@turf/buffer";
 import { featureCollection, multiPolygon } from "@turf/helpers";
 import { ListenHistory } from "./listenHistory";
@@ -566,6 +568,42 @@ class Roundware {
    *  nowhere is out of range, and the map has no area to keep to. */
   playsEverywhere(): boolean {
     return this.speakers().some((s) => isGlobalSpeaker(s) && s.is_active !== false);
+  }
+
+  /**
+   * Whether a place is in the project's range — where recording is allowed
+   * and nobody is out of range. One rule for the record button, the
+   * out-of-range message and the server's hold on contributions (server
+   * assets._in_range; docs/019):
+   *
+   * - inside an active speaker's shape, or within the project's out-of-range
+   *   distance of one — leeway for jumpy GPS;
+   * - anywhere, when an active speaker plays everywhere (docs/027);
+   * - anywhere, when no active speaker has a shape: no range to be out of.
+   *
+   * A shape that can't be measured doesn't count, as one that isn't there.
+   */
+  isInRange(point?: Point | Feature<Point> | null): boolean {
+    if (!point) return true;
+    if (this.playsEverywhere()) return true;
+    const shaped = this.speakers().filter(
+      (s) => s.is_active !== false && !isGlobalSpeaker(s) && !!s.shape
+    );
+    if (shaped.length === 0) return true;
+    const leeway = Math.max(0, Number(this.project?.outOfRangeDistance) || 0);
+    let measured = false;
+    for (const speaker of shaped) {
+      let meters: number;
+      try {
+        // Negative inside the shape.
+        meters = pointToPolygonDistance(point, speaker.shape!, { units: "meters" });
+      } catch {
+        continue;
+      }
+      measured = true;
+      if (meters <= leeway) return true;
+    }
+    return !measured;
   }
 
   /** Whether any speaker has an area of its own on the map: a shape, and
