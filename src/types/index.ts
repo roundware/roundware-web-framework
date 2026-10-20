@@ -47,6 +47,10 @@ export interface ITag {
 
 export interface ITagGroup {
   display_items: ITag[];
+  /** The UI group's id: what a filter's chosen tags are kept under. Its
+   *  name comes from its tag category, so two filters of one category
+   *  shared a name — and a selection. */
+  id?: number;
   group_short_name?: string;
   header_display_text?: string;
   uiitem_filter?: "none" | `random-${number}`;

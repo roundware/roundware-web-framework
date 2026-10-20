@@ -152,6 +152,7 @@ export class Project {
 
       const tagGroup: ITagGroup = {
         display_items: displayItems,
+        id: group.id,
         group_short_name: group.name,
         header_display_text: group.header_text,
         select_type: group.select_type === "multi" ? "multi" : "single",

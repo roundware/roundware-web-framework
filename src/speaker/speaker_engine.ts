@@ -377,7 +377,10 @@ export class SpeakerEngine extends EventEmitter<{
       const newSpeakers: {
         [key: number]: number;
       }[] = [];
-      // distance
+      // How near before a speaker's loop is loaded: within this many
+      // meters of where it starts being heard (its shape plus its fade).
+      // Turf measures in kilometers unless told, so the default of 5 was
+      // 5 km — every speaker of a project decoded at once (2026-10-19).
       const minDistanceToLoad =
         this.mixParams.speakerConfig?.prefetchDistanceMeters || 0;
 
@@ -387,10 +390,10 @@ export class SpeakerEngine extends EventEmitter<{
         // degenerate geometry — v2 shapes with a repeated closing point did.
         let distance = Infinity;
         try {
-          distance = pointToPolygonDistance(
-            this.listenerPoint,
-            speaker.data.shape!
-          );
+          distance =
+            pointToPolygonDistance(this.listenerPoint, speaker.data.shape!, {
+              units: "meters",
+            }) - (speaker.data.attenuation_distance ?? 0);
         } catch (e) {
           speaker.warnGeometryOnce("distance to its shape", e);
         }

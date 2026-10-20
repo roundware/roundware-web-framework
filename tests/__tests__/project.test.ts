@@ -254,6 +254,7 @@ describe("Project", () => {
             display_items: [
               { id: 1, default_state: true, parent_id: null, tag_display_text: "Tag 1", tag_id: 101 },
             ],
+            id: 1,
             group_short_name: "speak-group",
             header_display_text: "Speak Header",
             select_type: "single",
