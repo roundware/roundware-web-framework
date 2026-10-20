@@ -5,6 +5,10 @@ import { Point } from "geojson";
 import { SpeakerConfig } from "../types/roundware";
 import { ISpeakerData } from "../types/speaker";
 
+/** A speaker that plays everywhere (server docs/027). */
+export const isGlobalSpeaker = (speaker?: Pick<ISpeakerData, "is_global"> | null): boolean =>
+  !!speaker?.is_global;
+
 export class SpeakerUtils {
   static findBaseSpeaker(speakers: ISpeakerData[], currentLocation: Point) {
     // which is base.
@@ -16,13 +20,11 @@ export class SpeakerUtils {
         (node?.parents ?? [])?.every((parentId) => !allIds.has(parentId))
       )
       .sort((a, b) => {
-        const centerOfMassA = centerOfMass(a!.shape);
-        const centerOfMassB = centerOfMass(b!.shape);
-
-        return (
-          distance(currentLocation, centerOfMassA) -
-          distance(currentLocation, centerOfMassB)
-        );
+        // A global speaker is everywhere, so nearest of all: a global base
+        // loop is the one everything else syncs to.
+        const away = (s: ISpeakerData) =>
+          isGlobalSpeaker(s) ? -1 : distance(currentLocation, centerOfMass(s.shape!));
+        return away(a) - away(b);
       })[0];
 
     return base;

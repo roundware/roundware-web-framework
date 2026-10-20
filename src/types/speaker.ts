@@ -10,6 +10,10 @@ export interface ISpeakerData {
   backup_uri?: string;
   variant_uris?: string[];
   attenuation_distance: number;
+  /** Plays everywhere, at its max volume: its shape (kept for switching
+   *  back), fade and borders don't count. A project with an active one has
+   *  no out of range (server docs/027). */
+  is_global?: boolean;
   shape?: MultiPolygon;
   boundary?: MultiLineString;
   attenuation_border?: LineString;

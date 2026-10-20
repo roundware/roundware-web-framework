@@ -123,6 +123,29 @@ describe('SpeakerTrack', () => {
     (mockAudioContext.createBuffer as jest.Mock).mockReturnValue(mockBuffer);
   });
 
+  describe('a global speaker', () => {
+    it('plays at its max volume everywhere, with no shape or borders', () => {
+      const track = new SpeakerTrack({
+        data: {
+          id: 9,
+          max_volume: 0.8,
+          min_volume: 0.1,
+          attenuation_distance: 0,
+          uri: 'everywhere.mp3',
+          is_global: true,
+        },
+        audioContext: mockAudioContext,
+        config: mockConfig,
+        groupId: 1,
+      });
+      const farAway = { type: 'Point', coordinates: [151.2, -33.9] } as any;
+      expect(track.isGlobal).toBe(true);
+      expect(track.volumeByLocation(farAway)).toBe(0.8);
+      expect(track.volumeByLocation(undefined as any)).toBe(0.8);
+      expect(track.outerBoundaryContains(farAway)).toBe(true);
+    });
+  });
+
   describe('constructor', () => {
     it('should initialize with correct properties', () => {
       expect(speakerTrack.maxVolume).toBe(mockData.max_volume);

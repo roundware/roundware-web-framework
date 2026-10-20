@@ -1,4 +1,5 @@
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import { isGlobalSpeaker } from "./speaker_utils";
 import { Coord } from "@turf/helpers";
 import lineToPolygon from "@turf/line-to-polygon";
 // import pointToLineDistance from './vendor/turf/point-to-line-distance';
@@ -162,13 +163,20 @@ export class SpeakerTrack extends EventEmitter<{
     this.initializeVariants(variant_uris);
   }
 
+  /** Plays everywhere, at its max volume (server docs/027). */
+  get isGlobal(): boolean {
+    return isGlobalSpeaker(this.data);
+  }
+
   outerBoundaryContains(point: Coord) {
+    if (this.isGlobal) return true;
     return (
       this.outerBoundary && booleanPointInPolygon(point, this.outerBoundary)
     );
   }
 
   attenuationShapeContains(point: Coord) {
+    if (this.isGlobal) return true;
     return (
       this.attenuationBorderPolygon &&
       booleanPointInPolygon(point, this.attenuationBorderPolygon)
@@ -210,7 +218,10 @@ export class SpeakerTrack extends EventEmitter<{
   }
 
   private volumeAt(listenerPoint: Point) {
-    if (!listenerPoint) {
+    // Everywhere, whether or not the listener's location is known.
+    if (this.isGlobal) {
+      return this.maxVolume;
+    } else if (!listenerPoint) {
       return this.calculatedVolume;
     } else if (this.attenuationShapeContains(listenerPoint)) {
       return this.maxVolume;

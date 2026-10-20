@@ -19,6 +19,7 @@ import { Project } from "./project";
 import { Session } from "./session";
 import { logger } from "./shims";
 import { Speaker } from "./speaker";
+import { isGlobalSpeaker } from "./speaker/speaker_utils";
 import { TimedAsset } from "./timed_asset";
 
 import {
@@ -561,6 +562,18 @@ class Roundware {
     return this._speakerData || [];
   }
 
+  /** Whether an active speaker plays everywhere (server docs/027): then
+   *  nowhere is out of range, and the map has no area to keep to. */
+  playsEverywhere(): boolean {
+    return this.speakers().some((s) => isGlobalSpeaker(s) && s.is_active !== false);
+  }
+
+  /** Whether any speaker has an area of its own on the map: a shape, and
+   *  not global. Without one, getMapBounds is just the project's location. */
+  hasSpeakerArea(): boolean {
+    return this.speakers().some((s) => !!s.shape && !isGlobalSpeaker(s));
+  }
+
   assets(): IAssetData[] {
     if (!this.assetData) console.warn(noAssetData);
     return this.assetData || [];
@@ -650,9 +663,17 @@ class Roundware {
     southwest: Coordinates;
     northeast: Coordinates;
   } {
+    // A global speaker has no area: it plays everywhere (docs/027).
     const speakersHavingShape = this.speakers().filter(
-      (speaker) => !!speaker.shape
+      (speaker) => !!speaker.shape && !isGlobalSpeaker(speaker)
     ) as (ISpeakerData & Required<Pick<ISpeakerData, `shape`>>)[];
+    if (speakersHavingShape.length === 0) {
+      const { latitude, longitude } = this.project?.location ?? { latitude: 0, longitude: 0 };
+      return {
+        southwest: { latitude, longitude },
+        northeast: { latitude, longitude },
+      };
+    }
     // get polygons from all speakers
     const polygons = speakersHavingShape.map((s) =>
       multiPolygon(s.shape.coordinates)

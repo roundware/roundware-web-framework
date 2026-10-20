@@ -173,6 +173,7 @@ export class ClassicSpeakers {
   }
 
   private metersAway(speaker: SpeakerTrack, listener: Point) {
+    if (speaker.isGlobal) return 0;
     if (!speaker.outerBoundary) return Infinity;
     try {
       return pointToPolygonDistance(listener, speaker.outerBoundary, {

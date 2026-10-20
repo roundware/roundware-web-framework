@@ -391,10 +391,12 @@ export class SpeakerEngine extends EventEmitter<{
         // degenerate geometry — v2 shapes with a repeated closing point did.
         let distance = Infinity;
         try {
-          distance =
-            pointToPolygonDistance(this.listenerPoint, speaker.data.shape!, {
-              units: "meters",
-            });
+          // A global speaker is heard everywhere: always loaded.
+          distance = speaker.isGlobal
+            ? 0
+            : pointToPolygonDistance(this.listenerPoint, speaker.data.shape!, {
+                units: "meters",
+              });
         } catch (e) {
           speaker.warnGeometryOnce("distance to its shape", e);
         }

@@ -9,6 +9,30 @@ describe("SpeakerUtils", () => {
       coordinates: [0, 0],
     };
 
+    it("should take a global speaker as the base loop, wherever the listener is", () => {
+      const near: ISpeakerData = {
+        id: 1,
+        max_volume: 1,
+        min_volume: 0,
+        attenuation_distance: 2,
+        uri: "near.mp3",
+        shape: {
+          type: "MultiPolygon",
+          coordinates: [[[[0, 0], [0.001, 0], [0.001, 0.001], [0, 0.001], [0, 0]]]],
+        } as MultiPolygon,
+      };
+      // Global, and no shape at all.
+      const everywhere: ISpeakerData = {
+        id: 2,
+        max_volume: 1,
+        min_volume: 0,
+        attenuation_distance: 0,
+        uri: "everywhere.mp3",
+        is_global: true,
+      };
+      expect(SpeakerUtils.findBaseSpeaker([near, everywhere], mockCurrentLocation)?.id).toBe(2);
+    });
+
     it("should find the base speaker with no parents", () => {
       const speakers: ISpeakerData[] = [
         {

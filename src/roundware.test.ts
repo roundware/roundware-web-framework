@@ -383,6 +383,21 @@ describe('Roundware', () => {
       expect(bounds.northeast).toBeDefined();
     });
 
+    it('should leave global speakers out, and say the project plays everywhere', () => {
+      const square = { type: 'MultiPolygon', coordinates: [[[[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]]] };
+      // Global, though it keeps a shape from before: far away, and ignored.
+      const everywhere = { id: 2, is_global: true, is_active: true, shape: { type: 'MultiPolygon', coordinates: [[[[50, 50], [50, 51], [51, 51], [51, 50], [50, 50]]]] } };
+      (roundware as any).speakers = jest.fn().mockReturnValue([{ id: 1, shape: square }, everywhere]);
+      roundware.project.outOfRangeDistance = undefined;
+      const bounds = roundware.getMapBounds();
+      expect(bounds.northeast.latitude).toBeLessThan(2);
+      expect(roundware.playsEverywhere()).toBe(true);
+      expect(roundware.hasSpeakerArea()).toBe(true);
+
+      (roundware as any).speakers = jest.fn().mockReturnValue([everywhere]);
+      expect(roundware.hasSpeakerArea()).toBe(false);
+    });
+
     it('should handle project without outOfRangeDistance', () => {
       const mockSpeakers = [{
         shape: {

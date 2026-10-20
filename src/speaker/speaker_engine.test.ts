@@ -2307,6 +2307,23 @@ describe("SpeakerEngine", () => {
         expect(far.unload).toHaveBeenCalled();
       });
 
+      it("should always load a global speaker, which has no shape to measure", () => {
+        const everywhere = {
+          data: { id: 7, is_global: true, attenuation_distance: 0 },
+          isGlobal: true,
+          loadBuffer: jest.fn(),
+          unload: jest.fn(),
+        } as unknown as SpeakerTrack;
+        speakerEngine.speakers = [everywhere];
+        speakerEngine.mixParams.speakerConfig = {
+          mode: "progressive-sync-basePlusMax5Random",
+          prefetchDistanceMeters: 50,
+        };
+        speakerEngine.updateParams(speakerEngine.mixParams);
+        expect(everywhere.loadBuffer).toHaveBeenCalled();
+        expect(everywhere.unload).not.toHaveBeenCalled();
+      });
+
       it("should call onLocationUpdateProgressiveBasePlusMaxNRandom when playing and maxRandom > 0", () => {
         speakerEngine.playing = true;
         speakerEngine.mixParams.speakerConfig = {
