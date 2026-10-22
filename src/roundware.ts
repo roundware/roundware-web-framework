@@ -46,6 +46,40 @@ import buffer from "@turf/buffer";
 import { featureCollection, multiPolygon } from "@turf/helpers";
 import { ListenHistory } from "./listenHistory";
 
+const updatedAt = (a: IAssetData): string | Date | undefined => a.updated_at ?? a.updated;
+
+/** Merge a refresh into the known assets: a fresh copy replaces the old one
+ *  with the same id (a moving asset's new position, an edit), in place; new
+ *  ones are added at the end. ``changed`` is false when nothing differs, so
+ *  an unchanged refresh doesn't re-render anything. */
+export function mergeAssetsById(
+  existing: IAssetData[],
+  fetched: IAssetData[]
+): { merged: IAssetData[]; changed: boolean } {
+  const fresh = new Map(fetched.map((a) => [a.id, a]));
+  let changed = false;
+  const merged = existing.map((old) => {
+    const f = fresh.get(old.id);
+    if (!f) return old;
+    fresh.delete(old.id);
+    if (String(updatedAt(f)) !== String(updatedAt(old))) changed = true;
+    return f;
+  });
+  if (fresh.size) changed = true;
+  return { merged: merged.concat([...fresh.values()]), changed };
+}
+
+/** The newest ``updated_at`` among these assets, less a few seconds, by the
+ *  server's clock; undefined when none has one. */
+export function latestUpdate(assets: IAssetData[], marginMs = 5000): Date | undefined {
+  let newest = -Infinity;
+  for (const a of assets) {
+    const t = new Date(updatedAt(a) as string).getTime();
+    if (Number.isFinite(t) && t > newest) newest = t;
+  }
+  return Number.isFinite(newest) ? new Date(newest - marginMs) : undefined;
+}
+
 /** This class is the primary integration point between Roundware's server and your application
 
    @example
@@ -109,6 +143,11 @@ class Roundware {
   private _speakerData: ISpeakerData[] = [];
   private _audioTracksData: IAudioTrackData[] | null = null;
   private _lastAssetUpdate: Date | undefined;
+  private _lastFullAssetRefresh = 0;
+  /** How often a refresh asks for every asset rather than only the changed
+   *  ones, so that assets hidden or deleted on the server leave the map and
+   *  the mix (an incremental refresh cannot see them go). */
+  fullAssetRefreshMs = 10 * 60 * 1000;
   timedAssetData: ITimedAssetData[] | null = null;
   private _assetDataTimer: NodeJS.Timeout | undefined;
   listenHistory: ListenHistory;
@@ -439,18 +478,30 @@ class Roundware {
     // Recording only (connect withoutSession): no pool to keep.
     if (this._withoutSession) return;
     let filters = this._assetFilters;
-    let existingAssets: IAssetData[] = [];
-    if (this._lastAssetUpdate) {
-      filters = {
-        ...filters,
-        created__gte: this._lastAssetUpdate.toISOString(),
-      };
-      existingAssets = this.assets();
+    const full = Date.now() - this._lastFullAssetRefresh >= this.fullAssetRefreshMs;
+    const since = full ? undefined : this._lastAssetUpdate;
+    if (since) {
+      // Assets created *or changed* since the last refresh: moving assets
+      // change position as they travel (server docs/030). A server without
+      // the filter returns everything, which the merge below also handles.
+      filters = { ...filters, updated__gte: since.toISOString() };
     }
 
-    const newAssets = existingAssets.concat(await this._asset.connect(filters));
-    if (newAssets.length !== this.assetData?.length) {
-      this.assetData = newAssets;
+    const fetched = await this._asset.connect(filters);
+    let existing = this.assetData ?? [];
+    let removed = false;
+    if (full) {
+      // Everything the server lists now: anything else has gone.
+      this._lastFullAssetRefresh = Date.now();
+      const ids = new Set(fetched.map((a) => a.id));
+      const kept = existing.filter((a) => ids.has(a.id));
+      removed = kept.length < existing.length;
+      existing = kept;
+    }
+    const { merged, changed: updated } = mergeAssetsById(existing, fetched);
+    const changed = updated || removed;
+    if (changed || !this.assetData) {
+      this.assetData = merged;
       if (typeof this._onUpdateAssets == "function") {
         this._onUpdateAssets(this.assetData);
       }
@@ -461,11 +512,15 @@ class Roundware {
       this.timedAssetData = await this._timed_asset.connect({});
     }
 
-    this._lastAssetUpdate = new Date();
+    // Next time, ask from the newest change seen, by the server's clock (a
+    // listener's device clock can be minutes off), less a few seconds for
+    // changes saved while this refresh was being answered.
+    this._lastAssetUpdate = latestUpdate(this.assetData ?? []) ?? this._lastAssetUpdate ?? new Date();
 
     // Update the mixer's asset pool, if any.
     const pool = this.assetPool;
     if (pool && Array.isArray(this.timedAssetData)) {
+      if (removed) pool.retainOnly((this.assetData ?? []).map((a) => a.id));
       pool.updateAssets(this.assetData, this.timedAssetData);
     }
 

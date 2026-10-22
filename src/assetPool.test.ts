@@ -1443,6 +1443,31 @@ describe("AssetPool", () => {
     ]));
   });
 
+  test("moves an asset already in the pool, keeping its playback state (server docs/030)", () => {
+    const balloon = { ...getRandomAssetData(1)[0], latitude: 42.0, longitude: -80.0 };
+    const assetPool = new AssetPool({ assets: [balloon] });
+    const inPool = assetPool.assets.find((a) => a.id === balloon.id)!;
+    inPool.playCount = 3;
+
+    assetPool.updateAssets([{ ...balloon, latitude: 42.36, longitude: -71.06, moving: true }], []);
+
+    expect(assetPool.assets).toHaveLength(1);
+    const moved = assetPool.assets[0];
+    expect(moved.latitude).toBe(42.36);
+    expect(moved.locationPoint.geometry.coordinates).toEqual([-71.06, 42.36]);
+    expect(moved.moving).toBe(true);
+    expect(moved.playCount).toBe(3);
+  });
+
+  test("retainOnly drops assets hidden or deleted on the server", () => {
+    const assets = getRandomAssetData(3);
+    const assetPool = new AssetPool({ assets });
+
+    assetPool.retainOnly([assets[0].id, assets[2].id]);
+
+    expect(assetPool.assets.map((a) => a.id).sort()).toEqual([assets[0].id, assets[2].id].sort());
+  });
+
   test("should not add duplicate assets", () => {
     const testAsset = getRandomAssetData(1)[0];
     const assetPool = new AssetPool({

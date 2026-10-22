@@ -47,10 +47,25 @@ export interface IAssetData {
   } | null;
   /** @deprecated v2 field — use project_id */
   project?: number;
+
+  /** Has a path (server docs/030): latitude/longitude are where it is now. */
+  moving?: boolean;
+  /** For a moving asset: its newest point, so it can be moved smoothly
+   *  between refreshes (velocity in m/s east and north). */
+  path?: {
+    kind: string;
+    status: string;
+    latest_at: string | null;
+    latest_u: number | null;
+    latest_v: number | null;
+    latest_altitude_m: number | null;
+  } | null;
 }
 
-export interface IAssetFilters extends Partial<IAssetData> {
+export interface IAssetFilters extends Partial<Omit<IAssetData, "path">> {
   created__gte?: string;
+  /** Created or changed since (server docs/030). */
+  updated__gte?: string;
 }
 export interface IDecoratedAsset extends IAssetData {
   activeRegionLowerBound: number;
