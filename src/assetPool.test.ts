@@ -1459,6 +1459,15 @@ describe("AssetPool", () => {
     expect(moved.playCount).toBe(3);
   });
 
+  test("retainOnly drops assets hidden or deleted on the server", () => {
+    const assets = getRandomAssetData(3);
+    const assetPool = new AssetPool({ assets });
+
+    assetPool.retainOnly([assets[0].id, assets[2].id]);
+
+    expect(assetPool.assets.map((a) => a.id).sort()).toEqual([assets[0].id, assets[2].id].sort());
+  });
+
   test("should not add duplicate assets", () => {
     const testAsset = getRandomAssetData(1)[0];
     const assetPool = new AssetPool({

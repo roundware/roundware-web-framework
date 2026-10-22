@@ -143,6 +143,11 @@ class Roundware {
   private _speakerData: ISpeakerData[] = [];
   private _audioTracksData: IAudioTrackData[] | null = null;
   private _lastAssetUpdate: Date | undefined;
+  private _lastFullAssetRefresh = 0;
+  /** How often a refresh asks for every asset rather than only the changed
+   *  ones, so that assets hidden or deleted on the server leave the map and
+   *  the mix (an incremental refresh cannot see them go). */
+  fullAssetRefreshMs = 10 * 60 * 1000;
   timedAssetData: ITimedAssetData[] | null = null;
   private _assetDataTimer: NodeJS.Timeout | undefined;
   listenHistory: ListenHistory;
@@ -473,7 +478,8 @@ class Roundware {
     // Recording only (connect withoutSession): no pool to keep.
     if (this._withoutSession) return;
     let filters = this._assetFilters;
-    const since = this._lastAssetUpdate;
+    const full = Date.now() - this._lastFullAssetRefresh >= this.fullAssetRefreshMs;
+    const since = full ? undefined : this._lastAssetUpdate;
     if (since) {
       // Assets created *or changed* since the last refresh: moving assets
       // change position as they travel (server docs/030). A server without
@@ -482,8 +488,18 @@ class Roundware {
     }
 
     const fetched = await this._asset.connect(filters);
-    const existing = since ? this.assets() : [];
-    const { merged, changed } = mergeAssetsById(existing, fetched);
+    let existing = this.assetData ?? [];
+    let removed = false;
+    if (full) {
+      // Everything the server lists now: anything else has gone.
+      this._lastFullAssetRefresh = Date.now();
+      const ids = new Set(fetched.map((a) => a.id));
+      const kept = existing.filter((a) => ids.has(a.id));
+      removed = kept.length < existing.length;
+      existing = kept;
+    }
+    const { merged, changed: updated } = mergeAssetsById(existing, fetched);
+    const changed = updated || removed;
     if (changed || !this.assetData) {
       this.assetData = merged;
       if (typeof this._onUpdateAssets == "function") {
@@ -504,6 +520,7 @@ class Roundware {
     // Update the mixer's asset pool, if any.
     const pool = this.assetPool;
     if (pool && Array.isArray(this.timedAssetData)) {
+      if (removed) pool.retainOnly((this.assetData ?? []).map((a) => a.id));
       pool.updateAssets(this.assetData, this.timedAssetData);
     }
 

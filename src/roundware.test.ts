@@ -554,6 +554,7 @@ describe('Roundware', () => {
 
       // Set up initial state
       roundware.assetData = mockExistingAssets;
+      roundware['_lastFullAssetRefresh'] = Date.now();
       roundware['_lastAssetUpdate'] = mockLastUpdate;
       mockAsset.connect.mockResolvedValue(mockNewAssets);
 
@@ -573,7 +574,8 @@ describe('Roundware', () => {
         const onUpdate = jest.fn();
         roundware['_onUpdateAssets'] = onUpdate;
         roundware.assetData = [moved(1, 42.0, '2026-10-22T21:10:00Z'), { ...mockAssetData, id: 2 }];
-        roundware['_lastAssetUpdate'] = new Date('2026-10-22T21:09:55Z');
+        roundware['_lastFullAssetRefresh'] = Date.now();
+      roundware['_lastAssetUpdate'] = new Date('2026-10-22T21:09:55Z');
         mockAsset.connect.mockResolvedValue([moved(1, 42.5, '2026-10-22T21:20:49Z')]);
 
         await roundware.updateAssetPool();
@@ -588,7 +590,8 @@ describe('Roundware', () => {
         roundware['_onUpdateAssets'] = onUpdate;
         const same = moved(1, 42.0, '2026-10-22T21:10:00Z');
         roundware.assetData = [same];
-        roundware['_lastAssetUpdate'] = new Date('2026-10-22T21:09:55Z');
+        roundware['_lastFullAssetRefresh'] = Date.now();
+      roundware['_lastAssetUpdate'] = new Date('2026-10-22T21:09:55Z');
         // e.g. a server that ignores updated__gte and sends everything again
         mockAsset.connect.mockResolvedValue([{ ...same }]);
 
@@ -600,12 +603,46 @@ describe('Roundware', () => {
 
       it('asks from the newest change by the server clock, less a few seconds', async () => {
         roundware.assetData = [moved(1, 42.0, '2026-10-22T21:10:00Z')];
-        roundware['_lastAssetUpdate'] = new Date('2026-10-22T21:09:55Z');
+        roundware['_lastFullAssetRefresh'] = Date.now();
+      roundware['_lastAssetUpdate'] = new Date('2026-10-22T21:09:55Z');
         mockAsset.connect.mockResolvedValue([moved(1, 42.5, '2026-10-22T21:20:49Z')]);
 
         await roundware.updateAssetPool();
 
         expect(roundware['_lastAssetUpdate']!.toISOString()).toBe('2026-10-22T21:20:44.000Z');
+      });
+
+      it('every so often asks for all assets, and drops the ones the server no longer lists', async () => {
+        const onUpdate = jest.fn();
+        roundware['_onUpdateAssets'] = onUpdate;
+        const retainOnly = jest.fn();
+        const updateAssets = jest.fn();
+        roundware.mixer = { assetPool: { retainOnly, updateAssets } } as any;
+        roundware.timedAssetData = [];
+        roundware.assetData = [moved(1, 42.0, '2026-10-22T21:10:00Z'), moved(2, 43.0, '2026-10-22T21:10:00Z')];
+        roundware['_lastAssetUpdate'] = new Date('2026-10-22T21:09:55Z');
+        roundware['_lastFullAssetRefresh'] = Date.now() - roundware.fullAssetRefreshMs;
+        // Asset 2 was hidden (or deleted) on the server.
+        mockAsset.connect.mockResolvedValue([moved(1, 42.0, '2026-10-22T21:10:00Z')]);
+
+        await roundware.updateAssetPool();
+
+        expect(mockAsset.connect.mock.calls[0][0]).not.toHaveProperty('updated__gte');
+        expect(roundware.assetData!.map((a) => a.id)).toEqual([1]);
+        expect(onUpdate).toHaveBeenCalledTimes(1);
+        expect(retainOnly).toHaveBeenCalledWith([1]);
+      });
+
+      it('between full refreshes, asks only for changes', async () => {
+        roundware.assetData = [moved(1, 42.0, '2026-10-22T21:10:00Z')];
+        roundware['_lastAssetUpdate'] = new Date('2026-10-22T21:09:55Z');
+        roundware['_lastFullAssetRefresh'] = Date.now();
+        mockAsset.connect.mockResolvedValue([]);
+
+        await roundware.updateAssetPool();
+
+        expect(mockAsset.connect.mock.calls[0][0]).toHaveProperty('updated__gte');
+        expect(roundware.assetData!.map((a) => a.id)).toEqual([1]);
       });
     });
 

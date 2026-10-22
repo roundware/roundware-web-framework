@@ -177,6 +177,13 @@ export class AssetPool {
     this.assetSorter.sort(this.assets);
   }
 
+  /** Keep only these assets: the others were hidden or deleted on the server.
+   *  One already playing finishes; it just isn't picked again. */
+  retainOnly(ids: Iterable<number>) {
+    const keep = new Set(ids);
+    this.assets = this.assets.filter((a) => keep.has(a.id));
+  }
+
   add(asset: IDecoratedAsset) {
     this.assets.push(asset);
     this.sortAssets();
