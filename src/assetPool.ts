@@ -7,6 +7,24 @@ import { ILookupTable, IMixParams, ITimedAssetData } from "./types";
 import { IAssetData, IDecoratedAsset } from "./types/asset";
 import { cleanAudioURL, coordsToPoints } from "./utils";
 
+/** What a refresh may change on an asset already in the pool: where it is
+ *  (a moving asset moves), and what a team member can edit. Not the pool's
+ *  own playback state (playCount, lastListenTime, status). */
+const REFRESHED_FIELDS = [
+  "latitude",
+  "longitude",
+  "locationPoint",
+  "shape",
+  "updated_at",
+  "moving",
+  "path",
+  "volume",
+  "weight",
+  "description",
+  "tag_ids",
+  "submitted",
+] as const;
+
 export class AssetPool {
   assetSorter: AssetSorter;
   playingTracks: {};
@@ -60,10 +78,18 @@ export class AssetPool {
     let newAssets = assets
       .filter((a) => (a.media_type ?? "audio") === "audio")
       .map(assetDecorationMapper(timedAssets));
-    // preserve the existing properties of assets, add instead of replacing...
-
+    // New assets are added. One already in the pool keeps its playback state
+    // (play count, last listen, paused) but takes the server's latest values:
+    // a moving asset's position (server docs/030), and edits.
     newAssets.forEach((asset) => {
-      if (!this.assets.some((a) => a.id === asset.id)) this.add(asset);
+      const existing = this.assets.find((a) => a.id === asset.id);
+      if (!existing) {
+        this.add(asset);
+        return;
+      }
+      for (const key of REFRESHED_FIELDS) {
+        if (key in asset) (existing as any)[key] = (asset as any)[key];
+      }
     });
   }
 
