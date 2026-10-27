@@ -34,7 +34,9 @@ interface IRawTag {
   id: number;
   project_id: number;
   tag_category_id: number;
-  value: string; // This is the display text
+  /** The admin's short name for the tag. */
+  value: string;
+  /** What participants see (2026-10-27); a tag without one shows its value. */
   description: string | null;
   data: string | null;
   filter: string | null;
@@ -124,10 +126,11 @@ export class Project {
       }),
     ]);
 
-    // Build tag lookup map: tag_id → display text (tag.value)
+    // Build tag lookup map: tag_id → display text: the participant text
+    // (the description), else the short name (the value).
     const tagLookup = new Map<number, string>();
     for (const tag of tags) {
-      tagLookup.set(tag.id, tag.value);
+      tagLookup.set(tag.id, tag.description?.trim() ? tag.description : tag.value);
     }
 
     // Group UIGroups by ui_mode ("listen", "speak", etc.)
