@@ -12,6 +12,9 @@ export interface IAssetData {
 
   created_at: string | Date;
   updated_at: string | Date;
+  /** When it was recorded (server docs/032): when it was added, unless the
+   *  team gave another date. Missing from servers before 2026-10-28. */
+  recorded_at?: string | Date;
   weight: number;
 
   start_time: number;

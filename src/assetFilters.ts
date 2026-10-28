@@ -256,15 +256,15 @@ export const dateRangeFilter =
   ): number | false => {
     if (!startDate || !endDate) return ASSET_PRIORITIES.LOWEST;
 
-    if (!asset.created_at) return ASSET_PRIORITIES.LOWEST;
-    if (!(asset.created_at instanceof Date))
-      asset.created_at = new Date(asset.created_at);
+    // When it was recorded (server docs/032), else when it was added.
+    const when = asset.recorded_at || asset.created_at;
+    if (!when) return ASSET_PRIORITIES.LOWEST;
+    const t = new Date(when).getTime();
+    if (isNaN(t)) return ASSET_PRIORITIES.LOWEST;
 
-    if (asset.created_at.getTime() <= startDate.getTime())
-      return ASSET_PRIORITIES.DISCARD;
+    if (t <= startDate.getTime()) return ASSET_PRIORITIES.DISCARD;
 
-    if (asset.created_at.getTime() >= endDate.getTime())
-      return ASSET_PRIORITIES.DISCARD;
+    if (t >= endDate.getTime()) return ASSET_PRIORITIES.DISCARD;
 
     return ASSET_PRIORITIES.NORMAL;
   };

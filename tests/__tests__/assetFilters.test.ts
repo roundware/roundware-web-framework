@@ -723,6 +723,40 @@ describe("dateRangeFilter", () => {
     ).toBe(ASSET_PRIORITIES.NORMAL);
   });
 
+  test("goes by the date recorded when there is one", () => {
+    const now = new Date();
+    expect(
+      dateRangeFilter()(
+        {
+          ...getRandomDecoratedAssetData(1)[0],
+          created_at: now,
+          recorded_at: new Date("1998-06-03T00:00:00Z"),
+        },
+        {
+          startDate: new Date("1998-01-01T00:00:00Z"),
+          endDate: new Date("1999-01-01T00:00:00Z"),
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.NORMAL);
+  });
+
+  test("goes by the date added without a date recorded", () => {
+    const now = new Date();
+    expect(
+      dateRangeFilter()(
+        {
+          ...getRandomDecoratedAssetData(1)[0],
+          created_at: now,
+          recorded_at: undefined,
+        },
+        {
+          startDate: new Date("1998-01-01T00:00:00Z"),
+          endDate: new Date("1999-01-01T00:00:00Z"),
+        }
+      )
+    ).toBe(ASSET_PRIORITIES.DISCARD);
+  });
+
   test("should return lowest if no created_at", () => {
     const testDate = new Date();
     expect(
