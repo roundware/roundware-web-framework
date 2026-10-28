@@ -13,6 +13,11 @@ export interface UploadOptions {
    *  contribution and seen only by the project's team (server docs/023). */
   contributor_name?: string;
   contributor_email?: string;
+  /** The project's terms exactly as the participant was shown them, and
+   *  their language: the server records that, and when, they agreed
+   *  (2026-10-28). Send with the main upload. */
+  agreed_terms?: string;
+  agreed_terms_language?: string;
 }
 
 /**
@@ -121,6 +126,12 @@ export class AssetBundle {
     }
     if (data.contributor_email) {
       formData.append("contributor_email", data.contributor_email);
+    }
+    if (data.agreed_terms) {
+      formData.append("agreed_terms", data.agreed_terms);
+      if (data.agreed_terms_language) {
+        formData.append("agreed_terms_language", data.agreed_terms_language);
+      }
     }
 
     console.info(
