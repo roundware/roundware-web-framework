@@ -173,14 +173,29 @@ export function trackTagsFilter() {
   };
 }
 
-// Rank the asset if it is tagged with one of the currently-enabled tag IDs
+/**
+ * The listener's tag filters. With listenTagGroups (each Listen group's
+ * chosen tags), an asset needs one chosen tag in every group: any within a
+ * group, all across groups, as the web app's map shows (2026-11-20). An
+ * asset with no tag in a group's category doesn't pass it. A group with
+ * none chosen is no limit (the web app sends every tag of a group the
+ * listener hasn't narrowed). Without groups, the older flat listenTagIds:
+ * any one of them.
+ */
 export function anyTagsFilter() {
   return (asset: IDecoratedAsset, mixParams: IMixParams): number | false => {
-    const { listenTagIds } = mixParams;
+    const { listenTagIds, listenTagGroups } = mixParams;
+    const assetTagIds = asset.tag_ids ?? [];
+
+    if (Array.isArray(listenTagGroups)) {
+      const groups = listenTagGroups.filter((g) => g && g.length);
+      if (!groups.length) return ASSET_PRIORITIES.NEUTRAL;
+      return groups.every((g) => g.some((t) => assetTagIds.includes(t)))
+        ? ASSET_PRIORITIES.LOWEST
+        : ASSET_PRIORITIES.DISCARD;
+    }
 
     if (!listenTagIds || isEmpty(listenTagIds)) return ASSET_PRIORITIES.NEUTRAL;
-
-    const { tag_ids: assetTagIds } = asset;
 
     if (assetTagIds.some((t) => listenTagIds.includes(t))) {
       return ASSET_PRIORITIES.LOWEST;

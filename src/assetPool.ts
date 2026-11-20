@@ -111,6 +111,10 @@ export class AssetPool {
       ...stateParams,
       ...track.trackOptions,
       listenTagIds: listenTagIds.length ? listenTagIds : this.mixParams.listenTagIds ?? [],
+      listenTagGroups:
+        stateParams.listenTagGroups ??
+        track.mixParams?.listenTagGroups ??
+        this.mixParams.listenTagGroups,
       trackTagIds: track.mixParams?.trackTagIds ?? [],
     };
   }
@@ -135,6 +139,7 @@ export class AssetPool {
       elapsedSeconds: number;
       listenerPoint?: IMixParams[`listenerPoint`];
       listenTagIds?: IMixParams[`listenTagIds`];
+      listenTagGroups?: IMixParams[`listenTagGroups`];
       filterOutAssets: IAssetData[];
     }
   ): IDecoratedAsset | undefined {

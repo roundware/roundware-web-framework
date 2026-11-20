@@ -15,6 +15,8 @@ export class Playlist {
   assetPool: AssetPool;
   playing: boolean;
   listenTagIds: IMixParams[`listenTagIds`];
+  /** Each Listen group's chosen tags, once the app sends them. */
+  listenTagGroups?: IMixParams[`listenTagGroups`];
   _client: Roundware;
   _elapsedTimeMs: number;
   trackMap: Map<PlaylistAudiotrack, IDecoratedAsset | null>;
@@ -86,14 +88,22 @@ export class Playlist {
       .map((t) => t.currentAsset!);
   }
 
-  updateParams({ listenerPoint, listenTagIds, ...params }: IMixParams) {
+  updateParams({ listenerPoint, listenTagIds, listenTagGroups, ...params }: IMixParams) {
     if (listenerPoint) this.listenerPoint = listenerPoint;
     if (listenTagIds) {
       this.listenTagIds = listenTagIds.map((t) => Number(t));
     }
+    if (listenTagGroups) {
+      this.listenTagGroups = listenTagGroups.map((g) => g.map((t) => Number(t)));
+    }
 
     this.tracks.forEach((t) =>
-      t.updateParams({ listenerPoint, listenTagIds, ...params })
+      t.updateParams({
+        listenerPoint,
+        listenTagIds,
+        ...(listenTagGroups ? { listenTagGroups: this.listenTagGroups } : {}),
+        ...params,
+      })
     );
   }
 
@@ -142,6 +152,7 @@ export class Playlist {
       elapsedSeconds: this.elapsedTimeMs / 1000,
       listenerPoint: this.listenerPoint,
       listenTagIds: this.listenTagIds,
+      listenTagGroups: this.listenTagGroups,
     });
   }
 
@@ -151,6 +162,7 @@ export class Playlist {
       currentlyPlayingAssets: filterOutAssets,
       elapsedTimeMs,
       listenTagIds,
+      listenTagGroups,
     } = this;
     const elapsedSeconds = elapsedTimeMs / 1000;
 
@@ -159,6 +171,7 @@ export class Playlist {
       elapsedSeconds,
       listenerPoint: this.listenerPoint,
       listenTagIds,
+      listenTagGroups,
     });
 
     this.trackMap.set(forTrack, nextAsset || null);
