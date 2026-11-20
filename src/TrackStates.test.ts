@@ -786,8 +786,8 @@ describe("TrackStates", () => {
       track.currentAsset = mockAsset;
       track.assetEnvelope = new AssetEnvelope(trackOptions, mockAsset);
 
-      // Mock distanceRangesFilter to return DISCARD
-      jest.spyOn(require("./assetFilters"), "distanceRangesFilter").mockReturnValue(() => ASSET_PRIORITIES.DISCARD);
+      // What's playing would no longer be chosen
+      (track.playlist as any).stillWanted = jest.fn(() => false);
 
       state.updateParams({});
       expect(track.transition).toHaveBeenCalledWith(
@@ -1064,8 +1064,8 @@ describe("TrackStates", () => {
       track.assetEnvelope = new AssetEnvelope(trackOptions, track.currentAsset);
       track.playing = true;
 
-      // Mock distanceRangesFilter to return DISCARD
-      jest.spyOn(require("./assetFilters"), "distanceRangesFilter").mockReturnValue(() => ASSET_PRIORITIES.DISCARD);
+      // What's playing would no longer be chosen
+      (track.playlist as any).stillWanted = jest.fn(() => false);
 
       state.updateParams({});
       expect(track.transition).toHaveBeenCalledWith(expect.any(FadingOutState));
@@ -1106,8 +1106,8 @@ describe("TrackStates", () => {
       track.assetEnvelope = new AssetEnvelope(trackOptions, track.currentAsset);
       track.playing = false;
 
-      // Mock distanceRangesFilter to return DISCARD
-      jest.spyOn(require("./assetFilters"), "distanceRangesFilter").mockReturnValue(() => ASSET_PRIORITIES.DISCARD);
+      // What's playing would no longer be chosen
+      (track.playlist as any).stillWanted = jest.fn(() => false);
 
       state.updateParams({});
       expect(track.transition).not.toHaveBeenCalled();
@@ -1151,8 +1151,8 @@ describe("TrackStates", () => {
         assetEnvelope: track.assetEnvelope,
       });
 
-      // Mock distanceRangesFilter to return DISCARD
-      jest.spyOn(require("./assetFilters"), "distanceRangesFilter").mockReturnValue(() => ASSET_PRIORITIES.DISCARD);
+      // What's playing would no longer be chosen
+      (track.playlist as any).stillWanted = jest.fn(() => false);
 
       state.updateParams({});
       expect(track.transition).not.toHaveBeenCalled();
@@ -1194,8 +1194,8 @@ describe("TrackStates", () => {
       track.assetEnvelope = new AssetEnvelope(trackOptions, track.currentAsset);
       track.playing = true;
 
-      // Mock distanceRangesFilter to return DISCARD
-      jest.spyOn(require("./assetFilters"), "distanceRangesFilter").mockReturnValue(() => ASSET_PRIORITIES.DISCARD);
+      // What's playing would no longer be chosen
+      (track.playlist as any).stillWanted = jest.fn(() => false);
 
       state.updateParams({});
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -1242,8 +1242,8 @@ describe("TrackStates", () => {
       track.assetEnvelope = new AssetEnvelope(trackOptions, track.currentAsset);
       track.playing = true;
 
-      // Mock distanceRangesFilter to return a non-DISCARD priority
-      jest.spyOn(require("./assetFilters"), "distanceRangesFilter").mockReturnValue(() => ASSET_PRIORITIES.PLAY);
+      // What's playing would still be chosen
+      (track.playlist as any).stillWanted = jest.fn(() => true);
 
       state.updateParams({});
       expect(track.transition).not.toHaveBeenCalled();

@@ -136,6 +136,15 @@ export class Playlist {
     return this._elapsedTimeMs + elapsedSinceLastStartMs;
   }
 
+  /** Whether the asset a track is playing would still be chosen now. */
+  stillWanted(track: PlaylistAudiotrack, asset: IDecoratedAsset): boolean {
+    return this.assetPool.stillWanted(track, asset, {
+      elapsedSeconds: this.elapsedTimeMs / 1000,
+      listenerPoint: this.listenerPoint,
+      listenTagIds: this.listenTagIds,
+    });
+  }
+
   next(forTrack: PlaylistAudiotrack) {
     const {
       assetPool,

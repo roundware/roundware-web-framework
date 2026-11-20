@@ -235,7 +235,8 @@ export class PlaylistAudiotrack {
     this.trackOptions = trackOptions;
     this.mixParams = {
       timedAssetPriority: audioData.timed_asset_priority,
-      listenTagIds: audioData.tag_filters,
+      // Its own: the listener's tags come with updateParams.
+      trackTagIds: (audioData.tag_filters ?? []).map(Number),
     };
 
     const { min_pan_pos, max_pan_pos, min_pan_duration, max_pan_duration } = audioData;
@@ -276,8 +277,8 @@ export class PlaylistAudiotrack {
     this.state.play();
   }
 
-  updateParams({ listenTagIds = [], ...params }: IMixParams = {}) {
-    this.mixParams?.listenTagIds?.concat(...listenTagIds);
+  updateParams({ trackTagIds: _ignored, ...params }: IMixParams = {}) {
+    // The track's own tags are set once, from its audiotrack.
     this.mixParams = { ...this.mixParams, ...params };
     if (this.state) this.state.updateParams(this.mixParams);
   }

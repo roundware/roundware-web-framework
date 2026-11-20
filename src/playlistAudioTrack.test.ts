@@ -646,17 +646,19 @@ describe('PlaylistAudiotrack', () => {
       expect(mockState.updateParams).toHaveBeenCalled();
     });
 
-    it('should handle updateParams with existing listenTagIds', () => {
+    it('keeps the listener\'s latest tags apart from the track\'s own', () => {
       const mockState = {
         updateParams: jest.fn(),
       } as unknown as ITrackStates;
       playlistAudiotrack.state = mockState;
-      playlistAudiotrack.mixParams = { listenTagIds: [3, 4] } as any;
-      
-      playlistAudiotrack.updateParams({ listenTagIds: [1, 2] });
-      
-      expect(playlistAudiotrack.mixParams?.listenTagIds).toEqual([3, 4]);
-      expect(mockState.updateParams).toHaveBeenCalled();
+      playlistAudiotrack.mixParams = { listenTagIds: [3, 4], trackTagIds: [9] } as any;
+
+      playlistAudiotrack.updateParams({ listenTagIds: [1, 2], trackTagIds: [7] });
+
+      expect(playlistAudiotrack.mixParams?.listenTagIds).toEqual([1, 2]);
+      // Set once, from the audiotrack: not by the listener's changes.
+      expect(playlistAudiotrack.mixParams?.trackTagIds).toEqual([9]);
+      expect(mockState.updateParams).toHaveBeenCalledWith(playlistAudiotrack.mixParams);
     });
 
     it('should handle updateParams when mixParams exists but listenTagIds is undefined', () => {

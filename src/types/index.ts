@@ -19,6 +19,8 @@ export type IMixParams = {
   timedAssetPriority?: IAudioData[`timed_asset_priority`];
   listenerLocation?: Coordinates;
   listenTagIds?: number[];
+  /** The track's own tag filters (trackTagsFilter). */
+  trackTagIds?: number[];
   geoListenMode?: GeoListenModeType;
   latitude?: number;
   longitude?: number;

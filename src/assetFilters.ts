@@ -160,6 +160,19 @@ export const distanceRangesFilter =
     }
   };
 
+/** A track with tag filters (server: the audiotrack's tag_filters) plays
+ *  only assets with at least one of them. It narrows what the listener's own
+ *  filters allow, never widens it. Passing leaves the rank to the others. */
+export function trackTagsFilter() {
+  return (asset: IDecoratedAsset, { trackTagIds }: IMixParams): number | false => {
+    if (!trackTagIds || isEmpty(trackTagIds)) return ASSET_PRIORITIES.NEUTRAL;
+    const assetTagIds = asset.tag_ids ?? [];
+    return assetTagIds.some((t) => trackTagIds.includes(t))
+      ? ASSET_PRIORITIES.NEUTRAL
+      : ASSET_PRIORITIES.DISCARD;
+  };
+}
+
 // Rank the asset if it is tagged with one of the currently-enabled tag IDs
 export function anyTagsFilter() {
   return (asset: IDecoratedAsset, mixParams: IMixParams): number | false => {
@@ -278,29 +291,50 @@ export const pausedAssetFilter =
     }
     return ASSET_PRIORITIES.NORMAL;
   };
+/** Where the listener is, and when: whether an asset is in reach now. */
+const geoFilter = anyAssetFilter([
+  timedAssetFilter(), // if an asset is scheduled to play right now, or
+
+  assetShapeFilter(), // if an asset has a shape and we AREN'T in it, reject entirely, or
+  allAssetFilter([
+    distanceFixedFilter(), // if it has no shape, consider a fixed distance from it, or
+
+    distanceRangesFilter(),
+    // if the listener is within a user-configured distance or angle range
+  ]),
+]);
+
 export const roundwareDefaultFilterChain: (
   asset: IDecoratedAsset,
   mixParams: IMixParams
 ) => AssetPriorityType = allAssetFilter([
-  anyAssetFilter([
-    timedAssetFilter(), // if an asset is scheduled to play right now, or
-
-    assetShapeFilter(), // if an asset has a shape and we AREN'T in it, reject entirely, or
-    allAssetFilter([
-      distanceFixedFilter(), // if it has no shape, consider a fixed distance from it, or
-
-      distanceRangesFilter(),
-      // if the listener is within a user-configured distance or angle range
-    ]),
-  ]),
+  geoFilter,
 
   timedRepeatFilter(), // only repeat assets if there's no other choice
   //blockedAssetsFilter(), // skip blocked assets and users
-  anyTagsFilter(), // all the tags on an asset must be in our list of tags to listen for
+  anyTagsFilter(), // the asset has one of the tags the listener chose
+  trackTagsFilter(), // and, on a track with tag filters, one of the track's
 
   dateRangeFilter(),
 
   pausedAssetFilter(), // if any asset was paused due to out of range it will be returned first
-  //trackTagsFilter(),     // if any track-level tag filters exist, apply them
   //dynamicTagFilter("_ten_most_recent_days",mostRecentFilter({ days: 10 })) // Only pass assets created within the most recent 10 days
+]);
+
+/**
+ * Whether an asset already playing would still be chosen: in reach, with
+ * the listener's tags and the track's, in the date range. A track that fades
+ * out when filtered (fadeout_when_filtered) asks this whenever the listener
+ * moves or changes a filter. Not whether it was played already, which the
+ * selection chain also asks: every playing asset has been.
+ */
+export const stillWantedFilter = allAssetFilter([
+  (asset: IDecoratedAsset, mixParams: IMixParams) =>
+    // Without a location to go by, location takes no part (as in the chain).
+    rankForGeofilteringEligibility(asset, mixParams)
+      ? geoFilter(asset, mixParams)
+      : ASSET_PRIORITIES.NEUTRAL,
+  anyTagsFilter(),
+  trackTagsFilter(),
+  dateRangeFilter(),
 ]);

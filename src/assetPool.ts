@@ -1,5 +1,9 @@
-import { union } from "lodash";
-import { AssetPriorityType, roundwareDefaultFilterChain } from "./assetFilters";
+import {
+  ASSET_PRIORITIES,
+  AssetPriorityType,
+  roundwareDefaultFilterChain,
+  stillWantedFilter,
+} from "./assetFilters";
 import { AssetSorter } from "./assetSorter";
 import { InvalidArgumentError } from "./errors/app.errors";
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
@@ -93,12 +97,39 @@ export class AssetPool {
     });
   }
 
+  /** Everything the filters go by, for this track now. The listener's tags
+   *  and the track's own stay apart: a track's tags narrow what the listener
+   *  chose (trackTagsFilter). They were once merged into one list, so a
+   *  filtered track played more, not less (2026-11-20). */
+  paramsForTrack(
+    track: PlaylistAudiotrack,
+    { listenTagIds = [], ...stateParams }: IMixParams & { elapsedSeconds?: number }
+  ): IMixParams {
+    return {
+      ...this.mixParams,
+      ...track.mixParams,
+      ...stateParams,
+      ...track.trackOptions,
+      listenTagIds: listenTagIds.length ? listenTagIds : this.mixParams.listenTagIds ?? [],
+      trackTagIds: track.mixParams?.trackTagIds ?? [],
+    };
+  }
+
+  /** Whether the asset playing on this track would still be chosen
+   *  (stillWantedFilter): if not, a track that fades out when filtered does. */
+  stillWanted(
+    track: PlaylistAudiotrack,
+    asset: IDecoratedAsset,
+    stateParams: IMixParams & { elapsedSeconds?: number }
+  ): boolean {
+    return stillWantedFilter(asset, this.paramsForTrack(track, stateParams)) !== ASSET_PRIORITIES.DISCARD;
+  }
+
   nextForTrack(
     track: PlaylistAudiotrack,
     {
       elapsedSeconds,
       filterOutAssets = [],
-      listenTagIds = [],
       ...stateParams
     }: {
       elapsedSeconds: number;
@@ -107,17 +138,7 @@ export class AssetPool {
       filterOutAssets: IAssetData[];
     }
   ): IDecoratedAsset | undefined {
-    const mixParams: IMixParams = {
-      ...this.mixParams,
-      ...track.mixParams,
-      ...stateParams,
-      listenTagIds: union(
-        this.mixParams.listenTagIds,
-        track.mixParams?.listenTagIds,
-        listenTagIds
-      ),
-      ...track.trackOptions,
-    };
+    const mixParams: IMixParams = this.paramsForTrack(track, stateParams);
 
     interface IRankedAssets {
       [rank: number]: IDecoratedAsset[];

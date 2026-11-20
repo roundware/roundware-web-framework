@@ -1,4 +1,3 @@
-import { ASSET_PRIORITIES, distanceRangesFilter } from "./assetFilters";
 import { AssetEnvelope } from "./mixer/AssetEnvelope";
 import { TrackOptions } from "./mixer/TrackOptions";
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
@@ -210,10 +209,8 @@ export class TimedTrackState implements ICommonStateProperties {
     track.transition(loadingState);
   }
 
-  // TODO:
-  // 1. Check priority by `distanceRangesFilter` with new location
-  // 2. If DISCARD && current asset is not finished then first fade out and pause
-  // 3. Add the asset to pausedAsset
+  // A track that fades out when filtered: if what's playing would no longer
+  // be chosen, fade it out and pause it, to resume if it's wanted again.
   updateParams(params: IMixParams) {
     const { track } = this;
     if (!track.audioData.fadeout_when_filtered) return;
@@ -221,9 +218,10 @@ export class TimedTrackState implements ICommonStateProperties {
     // already fading out let it finish.
     if (track.state instanceof FadingOutState) return;
 
-    const prioriy = distanceRangesFilter()(track.currentAsset, params);
-
-    if (prioriy === ASSET_PRIORITIES.DISCARD) {
+    // Any way it can stop being wanted: the listener moved out of reach, or
+    // unchose its tag, or the date range left it out (2026-11-20; it was
+    // distance alone).
+    if (!track.playlist.stillWanted(track, track.currentAsset)) {
       // fade out and pause only if playing
       if (track.playing) {
         track.transition(
