@@ -1,3 +1,4 @@
+import type { NavigatorLike } from "./platform";
 import { GeoEmaSmoother } from "./geo_smoothing";
 import { GeoListenMode } from "./mixer";
 import { logger } from "./shims";
@@ -36,7 +37,7 @@ export class GeoPosition {
    * @param {Boolean} [options.geoListenMode = GeoListenMode.DISABLED] - whether or not to attempt to use geolocation
    * @param {Boolean} [options.defaultCoords] */
 
-  private _navigator: Window[`navigator`];
+  private _navigator: NavigatorLike;
   private _initialGeolocationPromise: Promise<Coordinates>;
   private defaultCoords: Coordinates;
   private _lastCoords: Coordinates;
@@ -48,7 +49,7 @@ export class GeoPosition {
   private _geoPositionStatus: true | number = 3;
   private _smoother?: GeoEmaSmoother;
 
-  constructor(navigator: Window[`navigator`], options: GeoPositionOptions) {
+  constructor(navigator: NavigatorLike, options: GeoPositionOptions) {
     this._navigator = navigator;
 
     const { defaultCoords, geoListenMode } = options;

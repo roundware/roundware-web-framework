@@ -1,5 +1,5 @@
 import { PlaylistAudiotrack } from "./playlistAudioTrack";
-import { getUrlParam } from "./utils";
+import { getPlatform } from "./platform";
 
 import { IAudioTrackData } from "./types/audioTrack";
 import { IMixParams, ITrackIdMap } from "./types";
@@ -47,10 +47,7 @@ export class Playlist {
     this._client = client;
 
     let elapsedTimeMs = 0;
-    const timerSecs = getUrlParam(
-      window.location.toString(),
-      "rwfTimerSeconds"
-    );
+    const timerSecs = getPlatform().urlParam("rwfTimerSeconds");
 
     if (timerSecs) {
       const elapsedSecs = Number(timerSecs);

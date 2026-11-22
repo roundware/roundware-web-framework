@@ -1,3 +1,4 @@
+import { getPlatform } from "../platform";
 import pointToPolygonDistance from "@turf/point-to-polygon-distance";
 import { Point } from "geojson";
 import { IAudioContext, IGainNode } from "standardized-audio-context";
@@ -186,10 +187,11 @@ export class ClassicSpeakers {
   }
 
   private newVoice() {
-    const audio = new Audio();
+    const { element: audio, source } = getPlatform().createMediaElement(
+      this.audioContext
+    );
     audio.crossOrigin = "anonymous";
     audio.preload = "auto";
-    const source = this.audioContext.createMediaElementSource(audio);
     const gain = this.audioContext.createGain();
     gain.gain.value = 0;
     source.connect(gain);

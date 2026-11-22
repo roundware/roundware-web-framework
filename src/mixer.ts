@@ -5,7 +5,8 @@ import { Roundware, AssetPriorityType } from "./roundware";
 import { Coordinates, GeoListenModeType, IMixParams } from "./types";
 import { IAssetData, IDecoratedAsset } from "./types/asset";
 
-import { buildAudioContext, coordsToPoints, getUrlParam } from "./utils";
+import { coordsToPoints } from "./utils";
+import { getPlatform } from "./platform";
 import { SpeakerEngine } from "./speaker/speaker_engine";
 
 export const GeoListenMode: {
@@ -69,7 +70,7 @@ export class Mixer {
       sortMethods,
       mixParams: this.mixParams,
     });
-    this.audioContext = buildAudioContext();
+    this.audioContext = getPlatform().createAudioContext();
   }
 
   updateParams({ listenerLocation, ...params }: IMixParams) {
@@ -164,10 +165,8 @@ export class Mixer {
         );
       const listenerPoint = this.mixParams.listenerPoint;
 
-      let selectTrackId: string | number | null = getUrlParam(
-        window.location.toString(),
-        "rwfSelectTrackId"
-      );
+      let selectTrackId: string | number | null =
+        getPlatform().urlParam("rwfSelectTrackId");
       let audioTracks = this._client.audiotracks();
 
       if (selectTrackId) {

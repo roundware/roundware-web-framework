@@ -10,9 +10,8 @@ import { IMixParams } from "./types";
 import { IDecoratedAsset } from "./types/asset";
 import { IAudioTrackData } from "./types/audioTrack";
 import { ITrackStates } from "./types/track-states";
+import { getPlatform } from "./platform";
 import {
-  getUrlParam,
-  makeAudioSafeToPlay,
   playlistTrackLog,
   silenceAudioBase64,
   timestamp,
@@ -175,11 +174,11 @@ export class PlaylistAudiotrack {
     this.currentAsset = null;
     this.audioData = audioData;
 
-    const audioElement = new Audio();
+    const { element: audioElement, source: audioSrc } =
+      getPlatform().createMediaElement(audioContext);
     audioElement.crossOrigin = "anonymous";
     audioElement.loop = false;
     audioElement.src = silenceAudioBase64;
-    const audioSrc = audioContext.createMediaElementSource(audioElement);
 
     this.gainNode = audioContext.createGain();
     const panNode = audioContext.createStereoPanner();
@@ -199,7 +198,7 @@ export class PlaylistAudiotrack {
     audioElement.addEventListener("ended", () => this.onAudioEnded());
 
     const trackOptions = new TrackOptions(
-      (param) => getUrlParam(window.location.toString(), param),
+      (param) => getPlatform().urlParam(param) as string,
       audioData
     );
 
@@ -253,7 +252,7 @@ export class PlaylistAudiotrack {
 
     const that = this;
     // try to play silence audio to avoid NotAllowedError on iOS
-    makeAudioSafeToPlay(this.audioElement, this.audioContext, () => {
+    getPlatform().whenAudioAllowed(this.audioElement, this.audioContext, () => {
       that.isSafeToPlay = true;
       console.log(`successfully ${that.audioData.id} ${that.isSafeToPlay}`);
     });

@@ -154,7 +154,20 @@ export class ApiClient {
     }
 
     if (!response.ok) {
-      console.error("Roundware API error, code:", response.status);
+      // Which request, and the server's reason (a 422 names the bad field).
+      let reason = "";
+      try {
+        reason = await response.text();
+      } catch {}
+      console.error(
+        "Roundware API error, code:",
+        response.status,
+        `${requestInit.method ?? "GET"} ${url.pathname}`,
+        reason.slice(0, 300),
+        typeof requestInit.body === "string"
+          ? `sent ${requestInit.body.slice(0, 200)}`
+          : ""
+      );
       throw new RoundwareConnectionError();
     }
 

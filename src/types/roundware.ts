@@ -8,6 +8,7 @@ import { Session } from "../session";
 import { Speaker } from "../speaker";
 import { TimedAsset } from "../timed_asset";
 import { User } from "../user";
+import type { RoundwarePlatform } from "../platform";
 import { IAssetFilters } from "./asset";
 
 import { ISpeakerFilters } from "./speaker";
@@ -31,6 +32,8 @@ export interface IOptions {
   geoUpdateThrottleMs?: number;
 }
 export interface IRoundwareConstructorOptions extends IOptions {
+  /** Where the framework runs; the web's by default (src/platform.ts). */
+  platform?: RoundwarePlatform;
   serverUrl: string;
   projectId: number;
   speakerFilters?: ISpeakerFilters;

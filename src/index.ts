@@ -5,6 +5,8 @@ export { GeoListenMode };
 export { SpeakerUtils };
 export { Participant };
 export default Roundware;
+export { getPlatform, setPlatform } from "./platform";
+export type { RoundwarePlatform, MediaElementLike, NavigatorLike } from "./platform";
 export * from "./types/index";
 export { AssetBundle } from "./bundle";
 // The admin's Audio lab: one speaker through the real effects and loop

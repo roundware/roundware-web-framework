@@ -1,3 +1,4 @@
+import type { NavigatorLike } from "./platform";
 import { ApiClient } from "./api-client";
 
 /** Responsible for establishing a session with the Roundware server **/
@@ -19,7 +20,7 @@ export class Session {
    * @param {number} [options.participantId] - optional participant ID to link this session to
    **/
   constructor(
-    navigator: Window[`navigator`],
+    navigator: NavigatorLike,
     newProjectId: number,
     geoListenEnablement: boolean,
     options: {

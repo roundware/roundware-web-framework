@@ -45,6 +45,7 @@ import type { Feature, Point } from "geojson";
 import buffer from "@turf/buffer";
 import { featureCollection, multiPolygon } from "@turf/helpers";
 import { ListenHistory } from "./listenHistory";
+import { getPlatform, setPlatform } from "./platform";
 
 const updatedAt = (a: IAssetData): string | Date | undefined => a.updated_at ?? a.updated;
 
@@ -169,6 +170,9 @@ class Roundware {
         `IRoundwareConstructorOptions`
       );
 
+    // Before anything else: the mixer's audio engine is made below.
+    if (options?.platform) setPlatform(options.platform);
+
     const {
       serverUrl,
       projectId,
@@ -227,7 +231,7 @@ class Roundware {
     const newOptions: Required<IOptions> = options as Required<IOptions>;
     newOptions.apiClient = this.apiClient;
 
-    let navigator = window.navigator;
+    let navigator = getPlatform().navigator;
 
     // Participant replaces User for v3 API
     this.participant = new Participant({
