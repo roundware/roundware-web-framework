@@ -61,6 +61,22 @@ export type NativeAudioOptions = {
   log?: (message: string) => void;
 };
 
+/** Every element made, for diagnostics (nativeAudioStatus). Few are made:
+ *  one per playlist track and speaker, reused as `src` changes. */
+const made = new Set<NativeAudioElement>();
+
+/** What each element is doing now: for test logs, e.g. during an interruption. */
+export function nativeAudioStatus(): { name: string; paused: boolean; time: number; duration: number }[] {
+  return [...made]
+    .filter((el) => el.src && !el.src.startsWith("data:"))
+    .map((el) => ({
+      name: el.src.split("/").pop() ?? "",
+      paused: el.paused,
+      time: el.currentTime,
+      duration: el.duration,
+    }));
+}
+
 export class NativeAudioElement {
   crossOrigin: string | null = null;
   preload = "auto";
@@ -97,6 +113,7 @@ export class NativeAudioElement {
     this.ctx = ctx;
     this.opts = opts;
     this.output = ctx.createGain();
+    made.add(this);
   }
 
   get src() {

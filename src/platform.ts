@@ -51,6 +51,11 @@ export interface RoundwarePlatform {
     audioContext: IAudioContext,
     onReady: () => void
   ): void;
+  /** Where the system can take the audio away for a while (a phone call,
+   *  Siri, another app's audio): `listener` hears "began" when it stops and
+   *  "resumed" once it plays again. Returns a function that stops listening.
+   *  The web has none. */
+  onAudioInterruption?(listener: (event: "began" | "resumed") => void): () => void;
   /** A setting from the page's URL (debugging options); null when absent. */
   urlParam(name: string): string | null;
   navigator: NavigatorLike;

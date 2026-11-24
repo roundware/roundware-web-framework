@@ -71,6 +71,19 @@ export class Mixer {
       mixParams: this.mixParams,
     });
     this.audioContext = getPlatform().createAudioContext();
+    // While the system has the audio (a call, Siri, another app), the mix
+    // holds: the playlist's timers would otherwise go on through recordings
+    // nobody hears. `playing` stays true; listening carries on after.
+    getPlatform().onAudioInterruption?.((event) => {
+      if (!this.playing) return;
+      if (event === "began") {
+        this.playlist?.pause();
+        this.speakerEngine?.stop();
+      } else {
+        this.playlist?.play();
+        this.speakerEngine?.play();
+      }
+    });
   }
 
   updateParams({ listenerLocation, ...params }: IMixParams) {

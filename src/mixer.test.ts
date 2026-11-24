@@ -1,6 +1,7 @@
 import { IAudioContext } from "standardized-audio-context";
 import { AssetPool } from "./assetPool";
 import { Mixer } from "./mixer";
+import { getPlatform, setPlatform } from "./platform";
 import { Playlist } from "./playlist";
 import { Roundware } from "./roundware";
 import { SpeakerEngine } from "./speaker/speaker_engine";
@@ -497,5 +498,33 @@ describe("Mixer", () => {
     
     // Restore original initContext
     mixer.initContext = originalInitContext;
+  });
+
+  it("holds the mix while the system has the audio, and carries on after", async () => {
+    const web = getPlatform();
+    let tell: (e: "began" | "resumed") => void = () => {};
+    setPlatform({ ...web, onAudioInterruption: (fn) => ((tell = fn), () => {}) });
+    try {
+      const m = new Mixer({ client: mockClient, listenerLocation, mixParams });
+      await m.play();
+      const playlist = m.playlist as jest.Mocked<Playlist>;
+      (playlist.pause as jest.Mock).mockClear();
+      (playlist.play as jest.Mock).mockClear();
+      tell("began");
+      expect(playlist.pause).toHaveBeenCalledTimes(1);
+      expect(SpeakerEngine.prototype.stop).toHaveBeenCalled();
+      expect(m.playing).toBe(true); // still on, as far as the listener knows
+      tell("resumed");
+      expect(playlist.play).toHaveBeenCalledTimes(1);
+
+      // Stopped by the listener: an interruption changes nothing.
+      m.stop();
+      (playlist.play as jest.Mock).mockClear();
+      tell("began");
+      tell("resumed");
+      expect(playlist.play).not.toHaveBeenCalled();
+    } finally {
+      setPlatform(web);
+    }
   });
 });
