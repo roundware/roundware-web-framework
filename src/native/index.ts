@@ -135,7 +135,7 @@ export function createNativePlatform({
           interrupted = true;
           tell("began");
         } else if (interrupted && e.shouldResume) {
-          resume("iOS said to");
+          resume("the system said to");
         } else if (interrupted) {
           log("waiting for the app to be opened to resume");
         }

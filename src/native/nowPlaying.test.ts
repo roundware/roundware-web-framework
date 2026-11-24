@@ -37,9 +37,17 @@ describe("lock-screen controls", () => {
     const t = setup();
     await flush();
     expect(t.shown[0]).toMatchObject({ title: "Roundware", state: "playing", isLiveStream: true });
-    const off = t.notification.enableControl.mock.calls.map((c: any[]) => c[0]);
-    expect(off).toEqual(expect.arrayContaining(["nextTrack", "previousTrack", "skipForward", "skipBackward", "seekTo"]));
-    expect(off).not.toContain("play");
+    const set = (on: boolean) =>
+      t.notification.enableControl.mock.calls.filter((c: any[]) => c[1] === on).map((c: any[]) => c[0]);
+    expect(set(false)).toEqual(expect.arrayContaining(["nextTrack", "previousTrack", "skipForward", "skipBackward", "seekTo"]));
+    expect(set(true)).toEqual(["play", "pause"]); // Android starts with none on
+  });
+
+  it("publishes after setting the controls (Android clears the state on each)", async () => {
+    const t = setup();
+    await flush();
+    const lastControl = Math.max(...t.notification.enableControl.mock.invocationCallOrder);
+    expect(t.notification.show.mock.invocationCallOrder[0]).toBeGreaterThan(lastControl);
   });
 
   it("pauses and plays the mix", async () => {

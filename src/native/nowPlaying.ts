@@ -49,12 +49,22 @@ export function connectNowPlaying(
       .show({ ...info, isLiveStream: true, state: playing() ? "playing" : "paused" })
       .catch((e) => log(`now playing failed: ${e instanceof Error ? e.message : e}`));
 
-  // Roundware has no tracks to skip or position to seek.
+  // Only play and pause: Roundware has no tracks to skip or position to
+  // seek. Controls start all on for iOS and all off for Android, so each is
+  // set either way. Published after, since on Android changing a control
+  // clears the playing state until the next show.
+  const controls: [string, boolean][] = [
+    ["play", true],
+    ["pause", true],
+    ...["nextTrack", "previousTrack", "skipForward", "skipBackward", "seekTo"].map(
+      (c) => [c, false] as [string, boolean]
+    ),
+  ];
   (async () => {
-    await publish();
-    for (const control of ["nextTrack", "previousTrack", "skipForward", "skipBackward", "seekTo"]) {
-      await notification.enableControl(control, false).catch(() => {});
+    for (const [control, on] of controls) {
+      await notification.enableControl(control, on).catch(() => {});
     }
+    await publish();
   })();
 
   const subs: Subscription[] = [
