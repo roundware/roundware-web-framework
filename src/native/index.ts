@@ -12,11 +12,13 @@
  *   import { createNativePlatform, defineLocationTask } from "roundware-web-framework/dist/native";
  *
  *   defineLocationTask(TaskManager); // at startup, before anything renders
- *   const platform = createNativePlatform({ audio: AudioAPI, Location });
+ *   // Streaming needs the library's file source, which it doesn't export:
+ *   import { AudioFileSourceNode } from "react-native-audio-api/lib/module/Audio/AudioFileSourceNode";
+ *   const platform = createNativePlatform({ audio: { ...AudioAPI, AudioFileSourceNode }, Location });
  */
 import type { IAudioContext, IAudioNode } from "standardized-audio-context";
 import type { RoundwarePlatform } from "../platform";
-import { NativeAudioElement } from "./NativeAudioElement";
+import { FileSourceNodeClass, NativeAudioElement } from "./NativeAudioElement";
 import { createNativeGeolocation, LocationModule } from "./nativeGeolocation";
 
 export { defineLocationTask, LOCATION_TASK } from "./nativeGeolocation";
@@ -27,6 +29,8 @@ type Subscription = { remove(): void };
 /** The parts of react-native-audio-api used here. */
 export type AudioModule = {
   AudioContext: new () => any;
+  /** For streaming (built with FFmpeg); without it, files are decoded whole. */
+  AudioFileSourceNode?: FileSourceNodeClass;
   AudioManager: {
     setSystemOptions(options: Record<string, unknown>): void;
     setAudioSessionActivity(active: boolean): Promise<unknown>;
@@ -45,6 +49,10 @@ export type NativePlatformOptions = {
   userAgent?: string;
   /** Debug settings the web reads from its URL (rwfTimerSeconds, ...). */
   settings?: Record<string, string>;
+  /** A file's address → the file on the device, downloaded first if need
+   *  be (docs/039). Without it, files stream straight from the server, and
+   *  opening one holds the app's JavaScript until the server answers. */
+  fetchMedia?: (url: string) => Promise<string>;
   /** Where the platform reports audio interruptions; console by default. */
   log?: (message: string) => void;
 };
@@ -54,6 +62,7 @@ export function createNativePlatform({
   Location,
   userAgent = "Roundware native",
   settings = {},
+  fetchMedia,
   log = (m) => console.info(`[Roundware native] ${m}`),
 }: NativePlatformOptions): RoundwarePlatform {
   const geolocation = createNativeGeolocation(Location);
@@ -87,7 +96,11 @@ export function createNativePlatform({
     },
 
     createMediaElement(audioContext) {
-      const element = new NativeAudioElement(audioContext as any);
+      const element = new NativeAudioElement(audioContext as any, {
+        FileSourceNode: audio.AudioFileSourceNode,
+        fetchFile: fetchMedia,
+        log,
+      });
       return {
         element: element as unknown as HTMLAudioElement,
         source: element.output as IAudioNode<IAudioContext>,
