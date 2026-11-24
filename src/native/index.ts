@@ -23,6 +23,8 @@ import { createNativeGeolocation, LocationModule } from "./nativeGeolocation";
 
 export { defineLocationTask, LOCATION_TASK } from "./nativeGeolocation";
 export { NativeAudioElement, nativeAudioStatus } from "./NativeAudioElement";
+export { connectNowPlaying } from "./nowPlaying";
+export type { NowPlaying, NowPlayingInfo, PlaybackNotificationLike } from "./nowPlaying";
 
 type Subscription = { remove(): void };
 
@@ -65,6 +67,9 @@ export type NativePlatformOptions = {
 export type NativePlatform = RoundwarePlatform & {
   /** True while the system has the audio (from "began" until "resumed"). */
   audioInterrupted(): boolean;
+  /** Takes the audio back after an interruption, e.g. when the listener
+   *  presses play on the lock screen (iOS allows it then). True if it did. */
+  resumeAudio(why: string): Promise<boolean>;
 };
 
 export function createNativePlatform({
@@ -80,6 +85,7 @@ export function createNativePlatform({
   let interruption: Subscription | null = null;
   let appState: Subscription | null = null;
   let interrupted = false;
+  let resumeCurrent: ((why: string) => Promise<boolean>) | null = null;
   const listeners = new Set<(event: "began" | "resumed") => void>();
   const tell = (event: "began" | "resumed") =>
     listeners.forEach((fn) => {
@@ -104,17 +110,20 @@ export function createNativePlatform({
       // is used up unheard. It resumes when iOS says it may, or else when the
       // app is next opened: iOS won't let it start again from the background
       // after, say, Voice Memos, which says not to resume.
-      const resume = async (why: string) => {
+      const resume = async (why: string): Promise<boolean> => {
         try {
           await audio.AudioManager.setAudioSessionActivity(true);
           await ctx.resume();
           interrupted = false;
           log(`resumed (${why}), audio ${ctx.state}`);
           tell("resumed");
+          return true;
         } catch (err) {
           log(`resume failed (${why}): ${err instanceof Error ? err.message : String(err)}; will resume when the app is opened`);
+          return false;
         }
       };
+      resumeCurrent = resume;
       audio.AudioManager.observeAudioInterruptions(true);
       interruption?.remove();
       appState?.remove();
@@ -161,6 +170,8 @@ export function createNativePlatform({
     },
 
     audioInterrupted: () => interrupted,
+
+    resumeAudio: async (why) => (interrupted && resumeCurrent ? resumeCurrent(why) : true),
 
     urlParam: (name) => settings[name] ?? null,
 
