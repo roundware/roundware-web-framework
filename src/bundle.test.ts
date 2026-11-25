@@ -179,12 +179,36 @@ describe('AssetBundle', () => {
       expect(assetPosts(mockApiClient)[0].get('media_type')).toBe('photo');
     });
 
-    it('refreshes the asset pool and logs an event', async () => {
+    it('logs an event and refreshes a loaded asset pool', async () => {
+      mockRoundware.assetData = [];
       const asset = await bundle.upload(mockAudioData, 'a.mp3');
       expect(mockRoundware.updateAssetPool).toHaveBeenCalled();
       expect(mockRoundware.events!.logEvent).toHaveBeenCalledWith('upload_asset', {
         data: `asset_id:${asset.id}`,
       });
+    });
+
+    it("doesn't wait for the asset pool to refresh", async () => {
+      mockRoundware.assetData = [];
+      mockRoundware.updateAssetPool = jest.fn(() => new Promise<void>(() => {})); // never ends
+      const asset = await bundle.upload(mockAudioData, 'a.mp3');
+      expect(asset.id).toBe(1);
+    });
+
+    it("leaves an unloaded asset pool alone (it's fetched whole when listening starts)", async () => {
+      mockRoundware.assetData = null;
+      await bundle.upload(mockAudioData, 'a.mp3');
+      expect(mockRoundware.updateAssetPool).not.toHaveBeenCalled();
+    });
+
+    it('still succeeds if the refresh fails', async () => {
+      mockRoundware.assetData = [];
+      mockRoundware.updateAssetPool = jest.fn().mockRejectedValue(new Error('offline'));
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      await expect(bundle.upload(mockAudioData, 'a.mp3')).resolves.toMatchObject({ id: 1 });
+      await new Promise((r) => setTimeout(r, 0));
+      expect(warn).toHaveBeenCalled();
+      warn.mockRestore();
     });
   });
 });

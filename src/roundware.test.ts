@@ -847,6 +847,14 @@ describe('Roundware', () => {
       expect(mixer.updateParams).toHaveBeenCalledWith(expect.objectContaining(activationParams));
     });
 
+    it('activates the mixer where the listener is now', async () => {
+      mockAsset.connect.mockResolvedValue([mockAssetData]);
+      const here = { latitude: 42.5, longitude: -71.3 };
+      roundware.listenerLocation = here;
+      const mixer = await roundware.activateMixer({ tagIds: [] });
+      expect(mixer.updateParams).toHaveBeenCalledWith(expect.objectContaining({ listenerLocation: here }));
+    });
+
     it('should kill stream', () => {
       expect(() => roundware.kill()).not.toThrow();
     });

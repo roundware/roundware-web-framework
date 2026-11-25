@@ -80,6 +80,22 @@ describe("Mixer", () => {
     expect(mixer.mixParams.listenerPoint).toEqual({ x: 10, y: 20 });
   });
 
+  it("keeps the listener where they are when the mix starts", () => {
+    (coordsToPoints as jest.Mock).mockImplementation(({ latitude, longitude }) => ({
+      type: "Point",
+      coordinates: [longitude, latitude],
+    }));
+    const started = new Mixer({
+      client: mockClient,
+      listenerLocation: { latitude: 0, longitude: 0 },
+      mixParams: { ...mixParams, listenerLocation: { latitude: 0, longitude: 0 } },
+    });
+    expect(started.mixParams).not.toHaveProperty("listenerLocation");
+    started.updateParams({ listenerLocation: { latitude: 42.5, longitude: -71.3 } });
+    started.initContext();
+    expect(started.mixParams.listenerPoint).toEqual({ type: "Point", coordinates: [-71.3, 42.5] });
+  });
+
   it("should skip a track if playlist exists", () => {
     const mockSkip = jest.fn();
     mixer.playlist = { skip: mockSkip } as unknown as Playlist;

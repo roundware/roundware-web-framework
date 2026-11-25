@@ -144,12 +144,20 @@ export class AssetBundle {
       contentType: "multipart/form-data",
     });
 
-    // Update the asset pool to include the newly uploaded asset
-    await this._roundware.updateAssetPool();
-
     this._roundware.events?.logEvent(`upload_asset`, {
       data: `asset_id:${asset.id}`,
     });
+
+    // The new asset joins the pool, if one is loaded (listening), by a
+    // refresh in the background: the upload is done once the server has it.
+    // Waiting on the refresh held every submit, and with no pool loaded yet
+    // (the Speak page) it fetched every asset in the project (2026-11-24).
+    // With no pool, nothing to do: it's loaded whole when listening starts.
+    if (this._roundware.assetData) {
+      this._roundware
+        .updateAssetPool()
+        .catch((e) => console.warn("Asset pool refresh after upload failed", e));
+    }
 
     return asset;
   }

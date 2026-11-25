@@ -561,6 +561,8 @@ class Roundware {
     const allMixParams = {
       ...this._initialOptions,
       ...this.mixParams,
+      // Where the listener is now, not where the options started them.
+      listenerLocation: this.listenerLocation,
       ...activationParams,
       sessionId: this._sessionId,
     };

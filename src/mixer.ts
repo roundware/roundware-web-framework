@@ -55,12 +55,18 @@ export class Mixer {
     const assets: IAssetData[] = client.assets();
     const timedAssets = client.timedAssets();
 
+    // The listener's place is kept only as listenerPoint, which location
+    // updates change. A listenerLocation left in mixParams (the client's
+    // starting options carry one) would be applied again whenever mixParams
+    // is, as by initContext, putting the listener back where they started:
+    // speakers there loaded, the ones nearby released and loaded again.
+    const { listenerLocation: _start, ...rest } = mixParams;
     this.mixParams = {
       listenerPoint: coordsToPoints({
         latitude: listenerLocation.latitude!,
         longitude: listenerLocation.longitude!,
       }),
-      ...mixParams,
+      ...rest,
     };
 
     this.assetPool = new AssetPool({
